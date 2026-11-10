@@ -1,3 +1,4 @@
+from contextvars import ContextVar
 from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
 from utils.core_services import get_core_services
@@ -9,6 +10,21 @@ import json, os, time, urllib.request, urllib.error
 import tempfile
 import zipfile
 import threading
+import copy
+import hashlib
+from utils.integration_result import ActionResult, emit_action
+
+_CONFIG_OVERRIDE = ContextVar("arr_settings_configuration", default=None)
+
+
+def _setting(key, default=None):
+    configuration = _CONFIG_OVERRIDE.get()
+    return (
+        configuration.get(key, default)
+        if configuration is not None
+        else CONFIG_MANAGER.get(key, default)
+    )
+
 
 ARR_SERVICES = [
     "sonarr",
@@ -82,6 +98,7 @@ CUSTOM_INDEXER_DUPLICATE_FILES = {
 
 _INDEXER_SCHEMA_LOGGED = False
 _CUSTOM_INDEXER_SYNC_LOCK = threading.Lock()
+_PROWLARR_PATCH_LOCK = threading.RLock()
 _CUSTOM_INDEXER_SYNC_TS = 0.0
 
 
@@ -355,8 +372,8 @@ def ensure_custom_indexers(config_dir: str, zilean_port: int) -> None:
     _prune_duplicate_custom_indexers(custom_dir)
 
     try:
-        user_id = int(CONFIG_MANAGER.get("puid"))
-        group_id = int(CONFIG_MANAGER.get("pgid"))
+        user_id = int(_setting("puid"))
+        group_id = int(_setting("pgid"))
         chown_recursive(definitions_dir, user_id, group_id)
     except Exception as exc:
         logger.warning("Failed to update ownership for %s: %s", definitions_dir, exc)
@@ -391,10 +408,10 @@ def _wait_for_api_key(
 def _collect_arr_entries() -> list[dict]:
     entries = []
     for svc_name in ARR_SERVICES:
-        svc_cfg = CONFIG_MANAGER.get(svc_name) or {}
+        svc_cfg = _setting(svc_name) or {}
         instances = (svc_cfg.get("instances") or {}) or {}
         for inst_key, inst in instances.items():
-            if not inst.get("enabled"):
+            if not isinstance(inst, dict) or not inst.get("enabled"):
                 continue
             port = inst.get("port") or inst.get("host_port")
             try:
@@ -406,14 +423,13 @@ def _collect_arr_entries() -> list[dict]:
                     "Skipping %s instance %s: missing port", svc_name, inst_key
                 )
                 continue
-            host = f"http://127.0.0.1:{port}"
+            host = _native_host(inst, port)
             cfg_path = (inst.get("config_file") or "").strip()
             token = _parse_arr_api_key(cfg_path)
             if not token:
                 logger.warning(
                     "Skipping %s instance %s: missing API key", svc_name, inst_key
                 )
-                continue
             core_services = get_core_services(inst)
             entries.append(
                 {
@@ -425,6 +441,151 @@ def _collect_arr_entries() -> list[dict]:
                 }
             )
     return entries
+
+
+def _native_host(instance: dict, port) -> str:
+    base = ""
+    path = instance.get("config_file") or ""
+    if path and os.path.isfile(path):
+        try:
+            base = (
+                (ET.parse(path).getroot().findtext(".//UrlBase") or "")
+                .strip()
+                .strip("/")
+            )
+        except (ET.ParseError, OSError):
+            pass
+    return f"http://127.0.0.1:{port}" + (f"/{base}" if base else "")
+
+
+def _api_request(host, token, resource, method="GET", data=None):
+    """Negotiate supported Prowlarr API routes without retrying rejected writes."""
+    for version in ("v1", "v3"):
+        try:
+            return _prowlarr_req(
+                _join(host, f"/api/{version}/{resource}"), token, method, data
+            )
+        except urllib.error.HTTPError as exc:
+            if exc.code not in {404, 405} or version == "v3":
+                raise
+    raise RuntimeError("Prowlarr API resource unavailable")
+
+
+def _ownership_endpoint_scope(instance):
+    port = int(instance.get("port") or instance.get("host_port") or 0)
+    host = _native_host(instance, port)
+    key = _parse_arr_api_key(instance.get("config_file") or "")
+    return hashlib.sha256(
+        json.dumps(
+            {"family": "prowlarr", "url": host, "key": key}, sort_keys=True
+        ).encode()
+    ).hexdigest()
+
+
+def _load_ownership(instance):
+    config_dir = instance.get("config_dir")
+    if not config_dir:
+        raise ValueError("Prowlarr config directory is required for safe ownership")
+    path = os.path.join(config_dir, ".dumb-setup-ownership.json")
+    if os.path.islink(path):
+        raise ValueError("Prowlarr ownership metadata must be a regular file")
+    if not os.path.exists(path):
+        return {"applications": {}, "indexers": {}}
+    with open(path, encoding="utf-8") as handle:
+        value = json.load(handle)
+    if (
+        not isinstance(value, dict)
+        or any(
+            not isinstance(value.get(key), dict) for key in ("applications", "indexers")
+        )
+        or any(
+            not isinstance(identifier, int)
+            for key in ("applications", "indexers")
+            for identifier in value[key].values()
+        )
+    ):
+        raise ValueError("Prowlarr ownership metadata is invalid")
+    if "signatures" in value and (
+        not isinstance(value["signatures"], dict)
+        or any(
+            not isinstance(signature, str) for signature in value["signatures"].values()
+        )
+    ):
+        raise ValueError("Prowlarr ownership signatures are invalid")
+    if value.get("_endpoint_scope") != _ownership_endpoint_scope(instance):
+        # A new server may reuse native integer IDs. Never adopt those rows on
+        # the strength of a previous endpoint's sidecar alone.
+        return {"applications": {}, "indexers": {}}
+    return value
+
+
+def _save_ownership(instance, ownership):
+    ownership["_endpoint_scope"] = _ownership_endpoint_scope(instance)
+    root = instance["config_dir"]
+    if os.path.islink(os.path.join(root, ".dumb-setup-ownership.json")):
+        raise ValueError("Prowlarr ownership metadata must be a regular file")
+    os.makedirs(root, mode=0o700, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(prefix=".dumb-ownership-", dir=root)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            json.dump(ownership, handle, sort_keys=True)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.chmod(temporary, 0o600)
+        uid, gid = _setting("puid"), _setting("pgid")
+        if uid is not None and gid is not None:
+            os.chown(temporary, int(uid), int(gid))
+        os.replace(temporary, os.path.join(root, ".dumb-setup-ownership.json"))
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+def _connection_fingerprint(value):
+    """Bind an upstream ID to public connection identity without retaining secrets."""
+    fields = [
+        (str(field.get("name") or "").lower(), field.get("value"))
+        for field in value.get("fields") or []
+        if str(field.get("name") or "").lower()
+        in {"baseurl", "url", "host", "prowlarrurl"}
+    ]
+    public = {
+        "name": value.get("name"),
+        "implementation": value.get("implementation"),
+        "configContract": value.get("configContract"),
+        "endpoints": sorted(fields),
+    }
+    return hashlib.sha256(
+        json.dumps(public, sort_keys=True).encode("utf-8")
+    ).hexdigest()
+
+
+def _owned_row_is_current(ownership, key, row):
+    expected = ownership.get("signatures", {}).get(key)
+    return not expected or expected == _connection_fingerprint(row)
+
+
+def _merge_application_payload(existing: dict, desired: dict) -> dict:
+    """Own endpoint/key/routing tags; preserve user enablement and sync policy."""
+    merged = copy.deepcopy(existing)
+    merged["name"] = desired["name"]
+    fields = {
+        str(field.get("name") or "").lower(): field
+        for field in merged.get("fields") or []
+    }
+    for field in desired.get("fields") or []:
+        key = str(field.get("name") or "").lower()
+        if key not in {"baseurl", "url", "host", "apikey", "prowlarrurl"}:
+            continue
+        if key in fields:
+            fields[key]["value"] = field.get("value")
+        else:
+            merged.setdefault("fields", []).append(copy.deepcopy(field))
+    merged["tags"] = sorted(
+        set(existing.get("tags") or []) | set(desired.get("tags") or [])
+    )
+    return merged
 
 
 def _join(host: str, path: str) -> str:
@@ -460,7 +621,7 @@ def _prowlarr_req(
             body = ""
         setattr(e, "body", body)
         if body:
-            logger.warning("Prowlarr API error response from %s: %s", url, body)
+            logger.warning("Prowlarr API request rejected with HTTP %s.", e.code)
         raise
 
 
@@ -619,7 +780,9 @@ def _build_fields_from_schema(schema: dict, overrides: dict) -> list:
     return [{"name": k, "value": v} for k, v in fields.items()]
 
 
-def _is_application_current(existing: dict, desired: dict) -> bool:
+def _is_application_current(
+    existing: dict, desired: dict, *, masked_credentials_current=False
+) -> bool:
     if not existing or not desired:
         return False
     for key in ("enable", "syncLevel", "implementation", "configContract"):
@@ -644,7 +807,12 @@ def _is_application_current(existing: dict, desired: dict) -> bool:
     }
     for key, value in desired_fields.items():
         if existing_fields.get(key) != value:
-            return False
+            if not (
+                key == "apikey"
+                and existing_fields.get(key) == "********"
+                and masked_credentials_current
+            ):
+                return False
     return True
 
 
@@ -796,7 +964,7 @@ def _is_indexer_current(existing: dict, desired: dict) -> bool:
     for key in ("enable", "implementation", "configContract"):
         if (existing.get(key) or "") != (desired.get(key) or ""):
             return False
-    if sorted(existing.get("tags") or []) != sorted(desired.get("tags") or []):
+    if not set(desired.get("tags") or []).issubset(existing.get("tags") or []):
         return False
     existing_fields = {
         (f.get("name") or "").lower(): f.get("value")
@@ -920,354 +1088,520 @@ def _get_default_app_profile_id(host: str, token: str) -> Optional[int]:
 def _apply_indexer(host: str, token: str, desired: dict, match: Optional[dict]):
     if match:
         idx_id = match.get("id")
-        put_body = desired.copy()
-        put_body["id"] = idx_id
-        _prowlarr_req(
-            _join(host, f"/api/v1/indexer/{idx_id}"),
-            token,
-            "PUT",
-            put_body,
-        )
+        payload = copy.deepcopy(desired)
+        payload["id"] = idx_id
+        _api_request(host, token, f"indexer/{idx_id}", "PUT", payload)
         return True, idx_id
-    created = (
-        _prowlarr_req(_join(host, "/api/v1/indexer"), token, "POST", desired) or {}
-    )
-    return True, created.get("id")
+    created = _api_request(host, token, "indexer", "POST", desired) or {}
+    return bool(created.get("id")), created.get("id")
 
 
-def ensure_zilean_indexer(host: str, token: str, base_url: str, tag_ids: list[int]):
-    schemas = _get_prowlarr_indexer_schemas(host, token)
-    if not schemas:
-        logger.warning("Prowlarr indexer schema not available; skipping Zilean sync.")
-        return
-    schema = _find_generic_torznab_schema(schemas)
-    if not schema:
-        _log_indexer_schema_names(schemas)
-        logger.warning("Prowlarr could not find Generic Torznab schema for Zilean.")
-        return
-    logger.debug(
-        "Prowlarr Zilean Torznab schema: %s",
-        {
-            "implementation": schema.get("implementation"),
-            "implementationName": schema.get("implementationName"),
-            "name": schema.get("name"),
-            "definitionName": schema.get("definitionName"),
-            "protocol": schema.get("protocol"),
-            "fields": [f.get("name") for f in (schema.get("fields") or [])],
-        },
-    )
-    desired = _build_zilean_torznab_payload(
-        schema, base_url, tag_ids=tag_ids, enabled=True
-    )
-    app_profile_id = _get_default_app_profile_id(host, token)
-    if app_profile_id:
-        desired["appProfileId"] = app_profile_id
-    desired.pop("minimumSeeders", None)
-    existing = _prowlarr_req(_join(host, "/api/v1/indexer"), token, "GET") or []
-    match = _find_existing_zilean_indexer(existing, f"{base_url.rstrip('/')}/torznab")
-    if match and _is_indexer_current(match, desired):
-        logger.debug("Prowlarr Zilean Torznab indexer already current.")
-        return
-    ok, _ = _apply_indexer(host, token, desired, match)
-    if ok:
-        logger.info("Prowlarr synchronized Zilean Torznab indexer.")
-
-
-def ensure_stremthru_indexer(host: str, token: str, tag_ids: list[int]):
-    schemas = _get_prowlarr_indexer_schemas(host, token)
-    if not schemas:
-        logger.warning(
-            "Prowlarr indexer schema not available; skipping StremThru sync."
+def _ensure_managed_indexer(host, token, desired, match, ownership, key):
+    owned_id = ownership["indexers"].get(key)
+    if match:
+        if owned_id != match.get("id"):
+            return (
+                False,
+                "Existing indexer is user-managed; configure or explicitly adopt it manually.",
+            )
+        if not _owned_row_is_current(ownership, f"indexer:{key}", match):
+            return (
+                False,
+                "Indexer identity changed outside DUMB. Review its custom settings before applying managed changes.",
+            )
+        merged = copy.deepcopy(match)
+        merged["tags"] = sorted(
+            set(match.get("tags") or []) | set(desired.get("tags") or [])
         )
-        return
-    schema = _find_indexer_schema(schemas, "stremthru")
+        if _is_indexer_current(match, merged):
+            return True, "already_present"
+        ok, saved_id = _apply_indexer(host, token, merged, match)
+    else:
+        ok, saved_id = _apply_indexer(host, token, desired, None)
+    if ok and isinstance(saved_id, int):
+        ownership["indexers"][key] = saved_id
+        ownership.setdefault("signatures", {})[f"indexer:{key}"] = (
+            _connection_fingerprint(merged if match else desired)
+        )
+    return ok, "applied" if ok else "Indexer creation returned no identity."
+
+
+def ensure_zilean_indexer(
+    host: str, token: str, base_url: str, tag_ids: list[int], ownership=None
+):
+    if ownership is None:
+        return (
+            False,
+            "Prowlarr ownership metadata is required before automatic indexer setup.",
+        )
+    schema = _find_generic_torznab_schema(_get_prowlarr_indexer_schemas(host, token))
     if not schema:
-        _log_indexer_schema_names(schemas)
-        logger.warning("Prowlarr could not find schema for StremThru.")
-        return
-    logger.debug(
-        "Prowlarr StremThru schema: %s",
-        {
-            "implementation": schema.get("implementation"),
-            "implementationName": schema.get("implementationName"),
-            "name": schema.get("name"),
-            "definitionName": schema.get("definitionName"),
-            "protocol": schema.get("protocol"),
-            "fields": [f.get("name") for f in (schema.get("fields") or [])],
-        },
+        return False, "The installed Prowlarr API does not expose Generic Torznab."
+    desired = _build_zilean_torznab_payload(schema, base_url, tag_ids)
+    profile = _get_default_app_profile_id(host, token)
+    if profile:
+        desired["appProfileId"] = profile
+    desired.pop("minimumSeeders", None)
+    existing = _api_request(host, token, "indexer") or []
+    saved_id = ownership["indexers"].get("zilean")
+    match = next(
+        (
+            item
+            for item in existing
+            if saved_id is not None and item.get("id") == saved_id
+        ),
+        None,
     )
+    match = match or _find_existing_zilean_indexer(
+        existing, f"{base_url.rstrip('/')}/torznab"
+    )
+    return _ensure_managed_indexer(host, token, desired, match, ownership, "zilean")
+
+
+def ensure_stremthru_indexer(host: str, token: str, tag_ids: list[int], ownership=None):
+    if ownership is None:
+        return (
+            False,
+            "Prowlarr ownership metadata is required before automatic indexer setup.",
+        )
+    schema = _find_indexer_schema(
+        _get_prowlarr_indexer_schemas(host, token), "stremthru"
+    )
+    if not schema:
+        return False, "The installed Prowlarr API does not expose StremThru."
     desired = _build_indexer_payload(
         schema,
         schema.get("name") or "Stremthru",
         "https://stremthru.13377001.xyz/v0/torznab",
-        tag_ids=tag_ids,
-        enabled=True,
+        tag_ids,
     )
-    app_profile_id = _get_default_app_profile_id(host, token)
-    if app_profile_id:
-        desired["appProfileId"] = app_profile_id
-    existing = _prowlarr_req(_join(host, "/api/v1/indexer"), token, "GET") or []
-
-    def _match_by_definition(
-        existing_items: list, definition_file: str
-    ) -> Optional[dict]:
-        for item in existing_items:
-            for field in item.get("fields") or []:
-                if (field.get("name") or "").lower() == "definitionfile":
-                    value = (field.get("value") or "").lower()
-                    if definition_file.lower() in value:
-                        return item
-        return None
-
-    match = _match_by_definition(existing, "custom/stremthru")
-    if match:
-
-        def _get_field(fields_list: list, field_name: str) -> Optional[str]:
-            for field in fields_list:
-                if (field.get("name") or "").lower() == field_name.lower():
-                    return field.get("value") or ""
-            return ""
-
-        def _set_field(fields_list: list, field_name: str, value) -> None:
-            for field in fields_list:
-                if (field.get("name") or "").lower() == field_name.lower():
-                    field["value"] = value
-                    return
-            fields_list.append({"name": field_name, "value": value})
-
-        fields = match.get("fields") or []
-        current_base = _get_field(fields, "baseUrl")
-        stremthru_url = "https://stremthru.13377001.xyz/v0/torznab"
-        wrong_values = {
-            "",
-            "http://127.0.0.1:8182",
-            "https://zileanfortheweebs.midnightignite.me",
-        }
-        if current_base and current_base.strip().lower() == stremthru_url.lower():
-            if _is_indexer_current(match, desired):
-                logger.debug("Prowlarr StremThru indexer already current.")
-                return
-            ok, _ = _apply_indexer(host, token, desired, match)
-            if ok:
-                logger.info("Prowlarr synchronized StremThru indexer.")
-            return
-        if current_base and current_base.strip() not in wrong_values:
-            logger.debug("Prowlarr StremThru base URL set by user; leaving as-is.")
-            return
-        _set_field(fields, "baseUrl", stremthru_url)
-        _set_field(fields, "definitionFile", "Custom/stremthru")
-        put_body = match.copy()
-        put_body["fields"] = fields
-        if not put_body.get("definitionFile"):
-            put_body["definitionFile"] = "Custom/stremthru"
-        put_body["baseUrl"] = stremthru_url
-        ok, _ = _apply_indexer(host, token, desired, put_body)
-        if ok:
-            logger.info("Prowlarr synchronized StremThru indexer.")
-        return
-    ok, _ = _apply_indexer(host, token, desired, None)
-    if ok:
-        logger.info("Prowlarr created StremThru indexer.")
+    profile = _get_default_app_profile_id(host, token)
+    if profile:
+        desired["appProfileId"] = profile
+    existing = _api_request(host, token, "indexer") or []
+    saved_id = ownership["indexers"].get("stremthru")
+    match = next(
+        (
+            item
+            for item in existing
+            if saved_id is not None and item.get("id") == saved_id
+        ),
+        None,
+    )
+    if match is None:
+        match = next(
+            (
+                item
+                for item in existing
+                if any(
+                    str(field.get("name") or "").lower() == "definitionfile"
+                    and "custom/stremthru" in str(field.get("value") or "").lower()
+                    for field in item.get("fields") or []
+                )
+            ),
+            None,
+        )
+    return _ensure_managed_indexer(host, token, desired, match, ownership, "stremthru")
 
 
 def _apply_application(host: str, token: str, desired: dict, match: Optional[dict]):
     if match:
         app_id = match.get("id")
-        put_body = desired.copy()
-        existing_tags = [
-            tag for tag in (match.get("tags") or []) if isinstance(tag, int)
-        ]
-        desired_tags = [
-            tag for tag in (desired.get("tags") or []) if isinstance(tag, int)
-        ]
-        # Preserve user-defined tags while ensuring managed tags are present.
-        put_body["tags"] = sorted(set(existing_tags + desired_tags))
-        put_body["id"] = app_id
-        _prowlarr_req(
-            _join(host, f"/api/v1/applications/{app_id}"),
-            token,
-            "PUT",
-            put_body,
-        )
+        payload = copy.deepcopy(desired)
+        payload["id"] = app_id
+        _api_request(host, token, f"applications/{app_id}", "PUT", payload)
         return True, app_id
-    created = (
-        _prowlarr_req(_join(host, "/api/v1/applications"), token, "POST", desired) or {}
-    )
-    return True, created.get("id")
+    created = _api_request(host, token, "applications", "POST", desired) or {}
+    return bool(created.get("id")), created.get("id")
 
 
-def patch_prowlarr_apps() -> Tuple[bool, Optional[str]]:
-    prowlarr_cfg = CONFIG_MANAGER.get("prowlarr") or {}
-    instances = (prowlarr_cfg.get("instances") or {}) or {}
+def patch_prowlarr_apps(
+    result_collector=None, *, configuration=None, target_ids=None
+) -> Tuple[bool, Optional[str]]:
+    token = _CONFIG_OVERRIDE.set(configuration)
+    try:
+        with _PROWLARR_PATCH_LOCK:
+            return _patch_prowlarr_apps(result_collector, target_ids)
+    finally:
+        _CONFIG_OVERRIDE.reset(token)
+
+
+def _patch_prowlarr_apps(
+    result_collector=None, target_ids=None
+) -> Tuple[bool, Optional[str]]:
+    """Reconcile explicitly assigned owned links and retain actionable failures."""
+    prowlarr_cfg = _setting("prowlarr") or {}
     enabled_instances = [
-        (inst_key, inst)
-        for inst_key, inst in instances.items()
+        (key, inst)
+        for key, inst in (prowlarr_cfg.get("instances") or {}).items()
         if isinstance(inst, dict) and inst.get("enabled")
     ]
-    if not enabled_instances:
-        return True, "Prowlarr disabled"
-
-    logger.info("Starting Prowlarr application sync.")
-    zilean_port = 8182
-    zilean_enabled = False
-    decypharr_enabled = False
-    try:
-        zilean_cfg = CONFIG_MANAGER.get("zilean", {}) or {}
-        zilean_port = int(zilean_cfg.get("port", 8182))
-        zilean_enabled = bool(zilean_cfg.get("enabled"))
-        decypharr_cfg = CONFIG_MANAGER.get("decypharr", {}) or {}
-        decypharr_enabled = bool(decypharr_cfg.get("enabled"))
-        for _, inst in enabled_instances:
-            config_dir = inst.get("config_dir")
-            if config_dir:
-                ensure_custom_indexers(config_dir, zilean_port)
-    except Exception as exc:
-        logger.warning("Prowlarr custom indexer sync skipped: %s", exc)
     arr_entries = _collect_arr_entries()
-    if not arr_entries:
-        return True, None
-
+    errors = []
     for inst_key, inst in enabled_instances:
-        port = inst.get("port") or inst.get("host_port")
-        try:
-            port = str(int(port)) if port is not None else None
-        except Exception:
-            port = None
-        if not port:
-            logger.warning("Skipping Prowlarr %s: missing port", inst_key)
-            continue
-        host = f"http://127.0.0.1:{port}"
-        cfg_path = (inst.get("config_file") or "").strip()
-        token = _parse_arr_api_key(cfg_path)
-        if not token:
-            token = _wait_for_api_key(cfg_path)
-        if not token:
-            logger.warning("Skipping Prowlarr %s: missing API key", inst_key)
-            continue
-        if not _wait_for_prowlarr(host, token):
-            logger.warning(
-                "Prowlarr %s is not responding; skipping app sync.", inst_key
-            )
-            continue
 
-        schemas = _get_prowlarr_schemas(host, token)
-        if not schemas:
-            logger.warning(
-                "Prowlarr %s schema not available; skipping app sync.", inst_key
+        def report(
+            target, execution, detail, *, changed=False, verified=False, retryable=False
+        ):
+            emit_action(
+                ActionResult(
+                    action_id=f"prowlarr.link:{inst_key}->{target}",
+                    service_key="prowlarr",
+                    action="arr_link",
+                    instance_key=inst_key,
+                    execution=execution,
+                    detail=detail,
+                    changed=changed,
+                    verification="passed" if verified else "not_checked",
+                    retryable=retryable,
+                ),
+                result_collector,
+            )
+            if execution in {"failed", "waiting_dependency", "waiting_input"}:
+                errors.append(f"Prowlarr {inst_key}: {target}: {detail}")
+
+        selected = inst.get("arr_instances")
+        all_ids = {f"{entry['service']}.{entry['instance']}" for entry in arr_entries}
+        if selected is not None and (
+            not isinstance(selected, list)
+            or any(not isinstance(value, str) for value in selected)
+        ):
+            report(
+                "selection",
+                "waiting_input",
+                "Arr assignments must be a list of canonical instance keys.",
             )
             continue
-        existing_apps = (
-            _prowlarr_req(_join(host, "/api/v1/applications"), token, "GET") or []
-        )
-        needed_tags = sorted(
-            {
-                svc
-                for entry in arr_entries
-                for svc in entry.get("core_services") or []
-                if svc in ("decypharr", "infinidysk")
-            }
-        )
-        if decypharr_enabled and "decypharr" not in needed_tags:
-            needed_tags.append("decypharr")
-        tag_aliases = (
-            {"infinidysk": "nzbdav"} if _uses_legacy_infinidysk_namespace() else None
-        )
-        tag_map = _ensure_tag_ids(host, token, needed_tags, aliases=tag_aliases)
-        if decypharr_enabled:
-            zilean_url = (
-                f"http://127.0.0.1:{zilean_port}"
-                if zilean_enabled
-                else "https://zileanfortheweebs.midnightignite.me"
-            )
-            tag_ids = []
-            if "decypharr" in tag_map:
-                tag_ids = [tag_map["decypharr"]]
-            try:
-                ensure_zilean_indexer(host, token, zilean_url, tag_ids)
-                ensure_stremthru_indexer(host, token, tag_ids)
-            except Exception as exc:
-                logger.warning(
-                    "Prowlarr %s custom indexer sync failed: %s", inst_key, exc
+        if selected is not None:
+            for unknown in set(selected) - all_ids:
+                if unknown.startswith("external_arr."):
+                    continue
+                if target_ids is not None and unknown not in target_ids:
+                    continue
+                report(
+                    unknown,
+                    "waiting_input",
+                    "The assigned Arr instance is missing or disabled. Update its assignment.",
                 )
-
-        for entry in arr_entries:
-            app_name = ARR_APP_MAP.get(entry["service"], entry["service"].capitalize())
-            arr_host = entry["host"]
-            arr_key = entry["api_key"]
-            core_services = entry.get("core_services") or []
-            tag_ids = []
-            if core_services:
-                tag_ids = [tag_map[svc] for svc in core_services if svc in tag_map]
-            schema = _find_schema(schemas, app_name)
-            if not schema:
-                logger.warning(
-                    "Prowlarr %s could not find schema for %s.", inst_key, app_name
+        entries = [
+            entry
+            for entry in arr_entries
+            if selected is None or f"{entry['service']}.{entry['instance']}" in selected
+        ]
+        try:
+            port = int(inst.get("port") or inst.get("host_port") or 0)
+            if not 0 < port < 65536:
+                report("readiness", "waiting_input", "Set a valid Prowlarr port.")
+                continue
+            host = _native_host(inst, port)
+            cfg_path = (inst.get("config_file") or "").strip()
+            token = _parse_arr_api_key(cfg_path)
+            if not token:
+                report(
+                    "readiness",
+                    "waiting_dependency",
+                    "Waiting for the Prowlarr API key.",
+                    retryable=True,
                 )
                 continue
-            try:
+            if not _wait_for_prowlarr(host, token):
+                report(
+                    "readiness",
+                    "waiting_dependency",
+                    "Waiting for the Prowlarr API.",
+                    retryable=True,
+                )
+                continue
+            schemas = _get_prowlarr_schemas(host, token)
+            if not schemas:
+                report(
+                    "schema",
+                    "waiting_dependency",
+                    "Prowlarr application schemas are unavailable.",
+                    retryable=True,
+                )
+                continue
+            ownership = _load_ownership(inst)
+            existing_apps = _api_request(host, token, "applications") or []
+            workflow_labels = sorted(
+                {
+                    svc
+                    for entry in entries
+                    if target_ids is None
+                    or f"{entry['service']}.{entry['instance']}" in target_ids
+                    for svc in entry.get("core_services") or []
+                    if svc in {"decypharr", "infinidysk", "altmount"}
+                }
+            )
+            aliases = (
+                {"infinidysk": "nzbdav"}
+                if _uses_legacy_infinidysk_namespace()
+                else None
+            )
+            tag_map = _ensure_tag_ids(host, token, workflow_labels, aliases)
+            known_workflow_ids = {
+                item["id"]
+                for item in _get_prowlarr_tags(host, token)
+                if isinstance(item, dict)
+                and isinstance(item.get("id"), int)
+                and str(item.get("label", "")).lower()
+                in {"decypharr", "infinidysk", "nzbdav", "altmount"}
+            }
+            # Narrowing an explicit assignment retires only identifiable owned links.
+            selected_ids = {
+                f"{entry['service']}.{entry['instance']}" for entry in entries
+            }
+            selected_ids.update(
+                identity
+                for identity in (selected or [])
+                if identity.startswith("external_arr.")
+            )
+            if selected is not None:
+                for identity, owned_id in ownership["applications"].items():
+                    if identity in selected_ids or (
+                        target_ids is not None and identity not in target_ids
+                    ):
+                        continue
+                    owned = next(
+                        (app for app in existing_apps if app.get("id") == owned_id),
+                        None,
+                    )
+                    if owned and not _owned_row_is_current(
+                        ownership, f"app:{identity}", owned
+                    ):
+                        report(
+                            identity,
+                            "waiting_input",
+                            "The saved connection identity changed. Review it before removing its assignment.",
+                        )
+                        continue
+                    if owned and owned.get("enable", True):
+                        retired = copy.deepcopy(owned)
+                        retired["enable"] = False
+                        retired["syncLevel"] = "disabled"
+                        _apply_application(host, token, retired, owned)
+                        report(
+                            identity,
+                            "applied",
+                            "The owned connection was disabled after its assignment was removed.",
+                            changed=True,
+                        )
+            if (
+                target_ids is None
+                and "decypharr" in workflow_labels
+                and "decypharr" in tag_map
+            ):
+                zilean_cfg = _setting("zilean") or {}
+                zilean_url = (
+                    f"http://127.0.0.1:{int(zilean_cfg.get('port') or 8182)}"
+                    if zilean_cfg.get("enabled")
+                    else "https://zileanfortheweebs.midnightignite.me"
+                )
+                for name, ensure in (
+                    (
+                        "indexer.zilean",
+                        lambda: ensure_zilean_indexer(
+                            host, token, zilean_url, [tag_map["decypharr"]], ownership
+                        ),
+                    ),
+                    (
+                        "indexer.stremthru",
+                        lambda: ensure_stremthru_indexer(
+                            host, token, [tag_map["decypharr"]], ownership
+                        ),
+                    ),
+                ):
+                    try:
+                        ok, outcome = ensure()
+                        _save_ownership(inst, ownership)
+                    except Exception:
+                        report(
+                            name,
+                            "failed",
+                            "Indexer configuration failed; check API compatibility and readiness.",
+                            retryable=True,
+                        )
+                        continue
+                    report(
+                        name,
+                        outcome if ok else "waiting_input",
+                        (
+                            "Indexer settings retained; credentials and custom URLs remain user-managed."
+                            if ok
+                            else outcome
+                        ),
+                        changed=ok and outcome == "applied",
+                    )
+            for entry in entries:
+                identity = f"{entry['service']}.{entry['instance']}"
+                if target_ids is not None and identity not in target_ids:
+                    continue
+                app_name = ARR_APP_MAP.get(
+                    entry["service"], entry["service"].capitalize()
+                )
+                owned_id = ownership["applications"].get(identity)
+                schema = _find_schema(schemas, app_name)
+                if not schema:
+                    report(
+                        identity,
+                        "waiting_input",
+                        "The installed Prowlarr version does not expose this application's schema.",
+                    )
+                    continue
+                if not entry.get("api_key"):
+                    report(
+                        identity,
+                        "waiting_dependency",
+                        "Waiting for the Arr API key.",
+                        retryable=True,
+                    )
+                    continue
+                required_labels = set(entry.get("core_services") or []) & {
+                    "decypharr",
+                    "infinidysk",
+                    "altmount",
+                }
+                if not required_labels.issubset(tag_map):
+                    report(
+                        identity,
+                        "failed",
+                        "Workflow routing tags could not be established.",
+                        retryable=True,
+                    )
+                    continue
+                tags = [
+                    tag_map[label]
+                    for label in entry.get("core_services") or []
+                    if label in tag_map
+                ]
                 desired = _build_application_payload(
                     schema,
                     app_name,
-                    arr_host,
-                    arr_key,
+                    entry["host"],
+                    entry["api_key"],
                     entry["instance"],
                     host,
-                    tag_ids=tag_ids,
+                    sorted(set(tags)),
                 )
-                match = _find_existing_application(
-                    existing_apps, desired, schema, arr_host
+                match = next(
+                    (
+                        app
+                        for app in existing_apps
+                        if owned_id is not None and app.get("id") == owned_id
+                    ),
+                    None,
                 )
-                if match and _is_application_current(match, desired):
-                    logger.debug(
-                        "Prowlarr %s application %s (%s) already configured.",
-                        inst_key,
-                        app_name,
-                        entry["instance"],
+                conflict = _find_existing_application(
+                    existing_apps, desired, schema, entry["host"]
+                )
+                if match is None and conflict:
+                    report(
+                        identity,
+                        "waiting_input",
+                        "An existing user-managed connection matches. Configure it manually or explicitly replace it.",
                     )
                     continue
+                if match:
+                    if not _owned_row_is_current(ownership, f"app:{identity}", match):
+                        report(
+                            identity,
+                            "waiting_input",
+                            "Connection identity changed outside DUMB. Review it before applying managed changes.",
+                        )
+                        continue
+                    desired = _merge_application_payload(match, desired)
+                    # Replace obsolete workflow routing tags, keeping ownership and user tags.
+                    workflow_ids = known_workflow_ids
+                    desired["tags"] = sorted(
+                        (set(desired["tags"]) - workflow_ids) | set(tags)
+                    )
+                    if (
+                        not match.get("enable", True)
+                        or str(match.get("syncLevel") or "").lower() == "disabled"
+                    ):
+                        report(
+                            identity,
+                            "waiting_input",
+                            "The managed application is disabled. Enable synchronization in Prowlarr when ready.",
+                        )
+                        continue
                 api_version = "v1" if entry["service"] == "lidarr" else "v3"
                 if not _wait_for_arr(
-                    arr_host,
-                    arr_key,
+                    entry["host"],
+                    entry["api_key"],
                     timeout_s=15,
-                    interval_s=2.0,
+                    interval_s=2,
                     api_version=api_version,
                 ):
-                    logger.warning(
-                        "Arr %s (%s) not ready; skipping Prowlarr app sync.",
-                        app_name,
-                        entry["instance"],
+                    report(
+                        identity,
+                        "waiting_dependency",
+                        "Waiting for the Arr API.",
+                        retryable=True,
                     )
                     continue
-                ok, app_id = _apply_application(host, token, desired, match)
-                if ok:
-                    if match:
-                        logger.info(
-                            "Prowlarr %s updated application %s (%s).",
-                            inst_key,
-                            app_name,
-                            entry["instance"],
-                        )
-                    else:
-                        logger.info(
-                            "Prowlarr %s created application %s (%s).",
-                            inst_key,
-                            app_name,
-                            entry["instance"],
-                        )
-            except urllib.error.HTTPError as e:
-                logger.warning(
-                    "Prowlarr %s app sync failed for %s: %s",
-                    inst_key,
-                    app_name,
-                    e,
+                credential_digest = hashlib.sha256(
+                    entry["api_key"].encode()
+                ).hexdigest()
+                known_credential = (ownership.get("credentials") or {}).get(
+                    identity
+                ) == credential_digest
+                changed = not (
+                    match
+                    and _is_application_current(
+                        match, desired, masked_credentials_current=known_credential
+                    )
+                    and set(match.get("tags") or []) == set(desired.get("tags") or [])
+                    and match.get("name") == desired.get("name")
                 )
-            except Exception as e:
-                logger.warning(
-                    "Prowlarr %s app sync failed for %s: %s",
-                    inst_key,
-                    app_name,
-                    e,
+                if changed:
+                    ok, app_id = _apply_application(host, token, desired, match)
+                    if not ok:
+                        report(
+                            identity,
+                            "failed",
+                            "Prowlarr did not return a saved application identity.",
+                            retryable=True,
+                        )
+                        continue
+                else:
+                    app_id = match["id"]
+                ownership["applications"][identity] = app_id
+                ownership.setdefault("credentials", {})[identity] = credential_digest
+                ownership.setdefault("signatures", {})[f"app:{identity}"] = (
+                    _connection_fingerprint(desired)
                 )
-
-    return True, None
+                _save_ownership(inst, ownership)
+                readback = _api_request(host, token, f"applications/{app_id}")
+                if (
+                    not isinstance(readback, dict)
+                    or not _is_application_current(
+                        readback, desired, masked_credentials_current=True
+                    )
+                    or set(readback.get("tags") or []) != set(desired.get("tags") or [])
+                    or readback.get("name") != desired.get("name")
+                ):
+                    report(
+                        identity,
+                        "failed",
+                        "Prowlarr application readback did not match the intended connection.",
+                        changed=changed,
+                        retryable=True,
+                    )
+                    continue
+                report(
+                    identity,
+                    "applied" if changed else "already_present",
+                    "Connection configuration was read back. Test indexer synchronization in Prowlarr.",
+                    changed=changed,
+                    verified=False,
+                )
+        except Exception:
+            report(
+                "reconciliation",
+                "failed",
+                "Prowlarr reconciliation failed. Check service readiness and API compatibility.",
+                retryable=True,
+            )
+            logger.warning("Prowlarr %s reconciliation failed.", inst_key)
+    return (False, "; ".join(errors)) if errors else (True, None)

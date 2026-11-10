@@ -13,8 +13,19 @@ import requests
 import yaml
 
 from utils.config_loader import CONFIG_MANAGER
+from utils.integration_result import (
+    ActionResult,
+    BoundedIntegrationRetry,
+    arr_action_result,
+    arr_target_allowed,
+    emit_action,
+    capture_integration_results,
+    reset_retry_after_success,
+    request_failure,
+)
 from utils.core_services import has_core_service
 from utils.decypharr_settings import (
+    _arr_host,
     _parse_arr_api_key,
     _wait_for_arr,
     _with_retries,
@@ -23,13 +34,13 @@ from utils.decypharr_settings import (
 from utils.download import Downloader
 from utils.global_logger import logger
 from utils.private_files import atomic_write_private_text
+from utils.integration_ownership import fingerprint, read_ownership, write_ownership
 from utils.url_security import safe_request, safe_urlopen
 from utils.versions import Versions
 
 ALTMOUNT_MOUNT_TYPES = {"dfs", "rclone", "external_rclone", "none"}
 
-_ALT_RETRY_LOCK = threading.Lock()
-_ALT_RETRY_SCHEDULED = False
+_ALT_RETRY = BoundedIntegrationRetry()
 downloader = Downloader()
 versions = Versions()
 
@@ -97,11 +108,22 @@ def _collect_arr_entries() -> list[dict[str, Any]]:
                 {
                     "service": svc_name,
                     "name": label,
-                    "host": f"http://127.0.0.1:{port}",
+                    "host": _arr_host(port, cfg_path),
                     "token": token,
                 }
             )
     return entries
+
+
+def expected_arr_category(config, service, instance_key):
+    """Exact AltMount category used by its per-instance Arr integration."""
+    instance = ((config.get(service) or {}).get("instances") or {}).get(
+        instance_key
+    ) or {}
+    label = (
+        instance.get("instance_name") or instance.get("name") or instance_key or ""
+    ).strip()
+    return f"{service}:{label}" if label else service
 
 
 def _load_yaml(path: str) -> dict[str, Any]:
@@ -122,53 +144,112 @@ def _ensure_category(categories: list[Any], name: str, order: int) -> None:
     categories.append({"name": name, "order": order, "priority": 0, "dir": name})
 
 
-def _upsert_arr_instance(instances: list[Any], entry: dict[str, Any]) -> bool:
-    desired = {
-        "name": entry["name"],
-        "url": entry["host"],
-        "api_key": entry["token"],
-        "enabled": True,
-    }
+def _sync_arr_instances(instances, service, entries, owned=None):
+    owned = owned if owned is not None else {}
+    desired = {entry["name"]: entry for entry in entries if entry["service"] == service}
+    retained = []
+    changed = False
+    seen = set()
     for item in instances:
         if not isinstance(item, dict):
+            retained.append(item)
             continue
-        if item.get("name") == desired["name"] or item.get("url") == desired["url"]:
-            changed = False
-            for key, value in desired.items():
-                if item.get(key) != value:
-                    item[key] = value
-                    changed = True
-            return changed
-    instances.append(desired)
-    return True
-
-
-def _is_dumb_managed_arr_instance(item: Any, service: str) -> bool:
-    if not isinstance(item, dict):
-        return False
-    name = str(item.get("name") or "")
-    url = str(item.get("url") or "")
-    return name.startswith(f"{service}:") and url.startswith("http://127.0.0.1:")
-
-
-def _sync_arr_instances(
-    instances: list[Any], service: str, entries: list[dict[str, Any]]
-) -> bool:
-    desired_entries = [entry for entry in entries if entry["service"] == service]
-    desired_names = {entry["name"] for entry in desired_entries}
-    retained = [
-        item
-        for item in instances
-        if not (
-            _is_dumb_managed_arr_instance(item, service)
-            and item.get("name") not in desired_names
-        )
-    ]
-    changed = retained != instances
+        name = str(item.get("name") or "")
+        target = desired.get(name)
+        record = owned.get(name)
+        snapshot = {key: item.get(key) for key in ("name", "url", "api_key")}
+        managed = bool(record and record.get("fingerprint") == fingerprint(snapshot))
+        if not target:
+            if managed:
+                owned.pop(name, None)
+                changed = True
+            else:
+                retained.append(item)
+            continue
+        seen.add(name)
+        if not target.get("token"):
+            retained.append(item)
+            emit_action(
+                arr_action_result(
+                    "altmount",
+                    "arr_registration",
+                    target["host"],
+                    CONFIG_MANAGER,
+                    execution="waiting_dependency",
+                    detail="Waiting for the Arr API key before refreshing its registration.",
+                    retryable=True,
+                )
+            )
+            continue
+        if not managed:
+            retained.append(item)
+            emit_action(
+                arr_action_result(
+                    "altmount",
+                    "arr_registration",
+                    target["host"],
+                    CONFIG_MANAGER,
+                    execution="waiting_input",
+                    detail="An existing Arr registration is unowned or was edited outside DUMB; it was preserved.",
+                )
+            )
+            continue
+        updated = dict(item)
+        updated.update(name=name, url=target["host"], api_key=target["token"])
+        # Respect deliberate disables. Only brand-new registrations default on.
+        retained.append(updated)
+        changed |= updated != item
+        owned[name] = {
+            "fingerprint": fingerprint(
+                {key: updated.get(key) for key in ("name", "url", "api_key")}
+            )
+        }
+    for name, target in desired.items():
+        if name in seen:
+            continue
+        if not target.get("token"):
+            emit_action(
+                arr_action_result(
+                    "altmount",
+                    "arr_registration",
+                    target["host"],
+                    CONFIG_MANAGER,
+                    execution="waiting_dependency",
+                    detail="Waiting for the Arr API key before creating its registration.",
+                    retryable=True,
+                )
+            )
+            continue
+        # A custom-named connection to the same endpoint is also user-owned.
+        if any(
+            isinstance(item, dict) and item.get("url") == target["host"]
+            for item in retained
+        ):
+            emit_action(
+                arr_action_result(
+                    "altmount",
+                    "arr_registration",
+                    target["host"],
+                    CONFIG_MANAGER,
+                    execution="waiting_input",
+                    detail="A user-managed registration already targets this Arr; it was preserved.",
+                )
+            )
+            continue
+        item = {
+            "name": name,
+            "url": target["host"],
+            "api_key": target["token"],
+            "enabled": True,
+        }
+        retained.append(item)
+        owned[name] = {
+            "fingerprint": fingerprint(
+                {key: item.get(key) for key in ("name", "url", "api_key")}
+            )
+        }
+        changed = True
     instances[:] = retained
-    for entry in desired_entries:
-        if _upsert_arr_instance(instances, entry):
-            changed = True
     return changed
 
 
@@ -635,6 +716,8 @@ def _sync_altmount_config(
         return
 
     data = _load_yaml(config_file)
+    ledger_file = config_file + ".dumb-arr-links.json"
+    ownership = read_ownership(ledger_file)
     changed = False
 
     api_cfg = data.setdefault("api", {})
@@ -686,7 +769,9 @@ def _sync_altmount_config(
             changed = True
     for service in _CATEGORY_DEFAULTS:
         field = f"{service}_instances"
-        if _sync_arr_instances(arrs_cfg[field], service, arr_entries):
+        if _sync_arr_instances(
+            arrs_cfg[field], service, arr_entries, ownership.setdefault(service, {})
+        ):
             changed = True
 
     if changed:
@@ -695,29 +780,34 @@ def _sync_altmount_config(
             config_file,
             yaml.safe_dump(data, sort_keys=False),
         )
+        write_ownership(ledger_file, ownership)
         logger.info("Updated AltMount Arr integration config at %s", config_file)
 
 
-def _schedule_altmount_retry(delay_s: int = 15) -> None:
-    global _ALT_RETRY_SCHEDULED
-    with _ALT_RETRY_LOCK:
-        if _ALT_RETRY_SCHEDULED:
-            return
-        _ALT_RETRY_SCHEDULED = True
-
-    def _runner():
-        global _ALT_RETRY_SCHEDULED
-        try:
-            time.sleep(max(1, delay_s))
-            patch_altmount_arr_integration()
-        finally:
-            with _ALT_RETRY_LOCK:
-                _ALT_RETRY_SCHEDULED = False
-
-    threading.Thread(target=_runner, daemon=True).start()
+def _schedule_altmount_retry(delay_s: int = 15) -> bool:
+    emit_action(
+        ActionResult(
+            action_id="altmount.readiness",
+            service_key="altmount",
+            action="readiness",
+            execution="waiting_dependency",
+            detail="Setup is waiting for application readiness; automatic retries are bounded.",
+            retryable=True,
+        )
+    )
+    return _ALT_RETRY.schedule(
+        patch_altmount_arr_integration, _shutdown_requested, delay_s=delay_s
+    )
 
 
-def patch_altmount_arr_integration() -> tuple[bool, str | None]:
+def patch_altmount_arr_integration(*, result_collector=None):
+    with capture_integration_results(result_collector) as outcomes:
+        result = _patch_altmount_arr_integration()
+    reset_retry_after_success(_ALT_RETRY, result, outcomes)
+    return result
+
+
+def _patch_altmount_arr_integration() -> tuple[bool, str | None]:
     if _shutdown_requested():
         return False, "Shutdown requested"
 
@@ -733,6 +823,7 @@ def patch_altmount_arr_integration() -> tuple[bool, str | None]:
 
     api_key = str((config.get("env") or {}).get("ALTMOUNT_API_KEY") or "").strip()
     if not api_key:
+        _schedule_altmount_retry()
         return False, "AltMount API key missing"
 
     port = int(config.get("port") or 8088)
@@ -746,20 +837,37 @@ def patch_altmount_arr_integration() -> tuple[bool, str | None]:
 
     for entry in arr_entries:
         host = entry.get("host") or ""
+        if not arr_target_allowed(host, CONFIG_MANAGER):
+            continue
         token = entry.get("token") or ""
         service = entry.get("service") or ""
         api_version = "v1" if service == "lidarr" else "v3"
         if not token:
-            logger.warning(
-                "%s API token missing; skipping AltMount download client.", host
+            emit_action(
+                arr_action_result(
+                    "altmount",
+                    "readiness",
+                    host,
+                    CONFIG_MANAGER,
+                    execution="waiting_dependency",
+                    detail="Waiting for the Arr API key.",
+                    retryable=True,
+                )
             )
+            _schedule_altmount_retry()
             continue
         if not _wait_for_arr(
-            host, token, timeout_s=60, interval_s=2.0, api_version=api_version
+            host,
+            token,
+            timeout_s=60,
+            interval_s=2.0,
+            api_version=api_version,
+            provider="altmount",
         ):
             logger.warning(
                 "Arr not up yet, skipping AltMount download client ensure for %s", host
             )
+            _schedule_altmount_retry()
             continue
         _with_retries(
             ensure_decypharr_sabnzbd_client,
@@ -769,6 +877,7 @@ def patch_altmount_arr_integration() -> tuple[bool, str | None]:
             api_token=api_key,
             service=service,
             name="altmount",
+            url_base="/sabnzbd",
             category=entry.get("name"),
             category_map=_CATEGORY_DEFAULTS,
             test_before_save=False,

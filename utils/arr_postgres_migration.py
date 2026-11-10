@@ -4161,6 +4161,37 @@ class ArrPostgresMigrationManager:
                 return True
         return False
 
+    def has_setup_conflicting_job(self) -> bool:
+        """Conservatively block setup while any migration or recovery owns state.
+
+        Call under the shared admission lock when reserving a setup mutation.
+        Invalid retained migration evidence requires operator review rather than
+        silently admitting a new configuration writer.
+        """
+        with self._lock:
+            if self._active_processes:
+                return True
+            if not self.jobs_dir.is_dir():
+                return False
+            for path in self.jobs_dir.glob("*.json"):
+                try:
+                    payload = self.get_job(path.stem)
+                except (ValueError, TypeError, AttributeError, OSError):
+                    return True
+                if not isinstance(payload, dict):
+                    return True
+                status = payload.get("status")
+                if (
+                    status in ACTIVE_JOB_STATUSES
+                    or status == "rollback_failed"
+                    or (
+                        status in {"failed", "interrupted"}
+                        and payload.get("rollback_available") is True
+                    )
+                ):
+                    return True
+        return False
+
     def _matching_rehearsal(
         self,
         process_name: str,
@@ -4286,7 +4317,7 @@ class ArrPostgresMigrationManager:
                 or infinidysk_v2_jobs_active()
             ):
                 raise ArrPostgresMigrationError(ACTIVE_NAMESPACE_MIGRATION_BLOCKER)
-            if service_key == "infinidysk" and infinidysk_external_mutation_active():
+            if infinidysk_external_mutation_active():
                 raise ArrPostgresMigrationError(EXTERNAL_MUTATION_BLOCKER)
             if service_key == "infinidysk" and self.has_active_infinidysk_job():
                 raise ArrPostgresMigrationError(
@@ -5241,7 +5272,11 @@ class ArrPostgresMigrationManager:
         if not preliminary:
             raise ArrPostgresMigrationError("Migration job was not found.")
         service_key = preliminary.get("service_key")
+        # Setup and migration recovery share configuration, service ownership
+        # and consumer paths. Preserve both existing migration generations.
         with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+            if infinidysk_external_mutation_active():
+                raise ArrPostgresMigrationError(EXTERNAL_MUTATION_BLOCKER)
             if infinidysk_namespace_migration_active() or infinidysk_v2_jobs_active():
                 raise ArrPostgresMigrationError(
                     "Cannot roll back a service database while a namespace migration job is active or an InfiniDysk 2.x migration owns its consumers."

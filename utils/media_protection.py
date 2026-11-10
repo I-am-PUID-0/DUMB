@@ -390,6 +390,51 @@ class PlexAdapter(MediaServerAdapter):
 
 
 class MediaBrowserAdapter(MediaServerAdapter):
+    @staticmethod
+    def _normalise_jellyfin_dto(value):
+        """Support Jellyfin 12 camelCase without treating playback as idle.
+
+        Only fields consumed by this adapter are normalized; unknown library
+        options and user settings retain their names and values for round trips.
+        Contradictory aliases fail closed rather than choosing an idle value.
+        """
+        names = {
+            "NowPlayingItem",
+            "Id",
+            "ItemId",
+            "Name",
+            "Key",
+            "Description",
+            "Category",
+            "State",
+            "Triggers",
+            "LibraryOptions",
+            "EnableRealtimeMonitor",
+            "Locations",
+            "Items",
+        }
+        if isinstance(value, list):
+            return [MediaBrowserAdapter._normalise_jellyfin_dto(item) for item in value]
+        if not isinstance(value, dict):
+            return value
+        result = {
+            key: MediaBrowserAdapter._normalise_jellyfin_dto(item)
+            for key, item in value.items()
+        }
+        for canonical in names:
+            alias = canonical[0].lower() + canonical[1:]
+            if alias not in result:
+                continue
+            if canonical in result and (
+                type(result[canonical]) is not type(result[alias])
+                or result[canonical] != result[alias]
+            ):
+                raise RuntimeError(
+                    "The media server returned conflicting activity/configuration fields"
+                )
+            result[canonical] = result.pop(alias)
+        return result
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         host = str(self.config.get("host") or "127.0.0.1")
@@ -400,8 +445,16 @@ class MediaBrowserAdapter(MediaServerAdapter):
     def _request(self, method: str, path: str, **kwargs):
         if not self.api_key:
             raise RuntimeError(f"{self.key.title()} API key is not configured")
+        if any(
+            ord(character) < 32 or ord(character) >= 127 for character in self.api_key
+        ):
+            raise RuntimeError(
+                "The media server API key contains invalid header characters"
+            )
         headers = dict(kwargs.pop("headers", {}) or {})
         headers["X-Emby-Token"] = self.api_key
+        if self.key == "jellyfin":
+            headers["Authorization"] = f"MediaBrowser Token={json.dumps(self.api_key)}"
         response = requests.request(
             method,
             f"{self.base_url}{path}",
@@ -412,7 +465,8 @@ class MediaBrowserAdapter(MediaServerAdapter):
         response.raise_for_status()
         if not response.content:
             return None
-        return response.json()
+        value = response.json()
+        return self._normalise_jellyfin_dto(value) if self.key == "jellyfin" else value
 
     @staticmethod
     def _scan_tasks(tasks: list[dict]) -> list[dict]:
@@ -431,9 +485,18 @@ class MediaBrowserAdapter(MediaServerAdapter):
             sessions = self._request("GET", "/Sessions") or []
             active = [session for session in sessions if session.get("NowPlayingItem")]
             tasks = self._request("GET", "/ScheduledTasks") or []
+            scan_tasks = self._scan_tasks(tasks)
+            if any(
+                not isinstance(task.get("State"), str)
+                or task["State"].lower() not in {"idle", "running", "cancelling"}
+                for task in scan_tasks
+            ):
+                raise RuntimeError(
+                    "The media server returned an unsupported library-scan activity state"
+                )
             running = [
                 task
-                for task in self._scan_tasks(tasks)
+                for task in scan_tasks
                 if str(task.get("State") or "").lower() in {"running", "cancelling"}
             ]
             busy = bool(active or running)

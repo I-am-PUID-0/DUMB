@@ -276,10 +276,12 @@ class InfiniDyskSetupTests(unittest.TestCase):
     def test_guarded_migration_defers_live_arr_calls_but_persists_provider_config(
         self,
     ):
+        directory = tempfile.TemporaryDirectory(prefix="infinidysk-config-")
+        self.addCleanup(directory.cleanup)
         config_manager = Mock()
         config_manager.get.return_value = {
             "process_name": "InfiniDysk",
-            "config_dir": "/infinidysk",
+            "config_dir": directory.name,
             "backend_port": 8080,
             "env": {},
         }
@@ -335,6 +337,8 @@ class InfiniDyskSetupTests(unittest.TestCase):
             ("rclone.mount-dir", "/mnt/debrid/infinidysk"),
             [item.args for item in setter.call_args_list],
         )
+        updates = dict(item.args for item in setter.call_args_list)
+        self._assert_registration_owned(directory.name, updates["arr.instances"])
 
     def test_config_patch_refuses_external_sync_during_active_migration(self):
         with (
@@ -484,9 +488,11 @@ class InfiniDyskSetupTests(unittest.TestCase):
         admitted.assert_called_once_with()
 
     def test_postgres_config_patch_uses_api_without_opening_main_sqlite(self):
+        directory = tempfile.TemporaryDirectory(prefix="infinidysk-config-")
+        self.addCleanup(directory.cleanup)
         config = {
             "process_name": "InfiniDysk",
-            "config_dir": "/infinidysk",
+            "config_dir": directory.name,
             "backend_port": 8080,
             "postgres_enabled": True,
             "env": {
@@ -560,6 +566,23 @@ class InfiniDyskSetupTests(unittest.TestCase):
         updates = dict(api_request.call_args_list[1].args[2])
         self.assertEqual(updates["rclone.mount-dir"], "/mnt/debrid/infinidysk")
         self.assertEqual(updates["api.categories"], "movies,music,tv,whisparr")
+        self._assert_registration_owned(directory.name, updates["arr.instances"])
+
+    def _assert_registration_owned(self, config_dir, instances_json):
+        ledger = Path(config_dir, ".dumb-arr-links.json")
+        registration = json.loads(instances_json)["RadarrInstances"][0]
+        records = json.loads(ledger.read_text())
+        self.assertEqual(
+            records["radarr"][registration["Host"].lower()]["fingerprint"],
+            nzbdav_settings.fingerprint(
+                {
+                    key: registration.get(key)
+                    for key in ("Host", "ApiKey", "Category", "Instance")
+                }
+            ),
+        )
+        self.assertEqual(ledger.stat().st_uid, os.geteuid())
+        self.assertEqual(ledger.stat().st_mode & 0o777, 0o600)
 
     @staticmethod
     def _write_nzbdav_source(root: Path) -> None:

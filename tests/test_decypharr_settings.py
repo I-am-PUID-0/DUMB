@@ -120,6 +120,11 @@ def _debrid_config_fixture(
                 decypharr_settings, "_shutdown_requested", return_value=False
             ),
             mock.patch.object(decypharr_settings.os, "makedirs"),
+            mock.patch.object(
+                decypharr_settings,
+                "ensure_media_directory",
+                return_value={"created": False, "ownership_mismatch": False},
+            ),
         ):
             yield config_path, config
 
@@ -132,6 +137,46 @@ class DecypharrSettingsTests(unittest.TestCase):
         self.assertIsNone(error)
         self.assertEqual(config_path.stat().st_mode & 0o777, 0o600)
         return changed, json.loads(config_path.read_text(encoding="utf-8"))
+
+    def test_sab_clients_use_native_api_suffix_with_optional_application_base(self):
+        schema = {
+            "implementation": "Sabnzbd",
+            "implementationName": "SABnzbd",
+            "configContract": "SabnzbdSettings",
+            "fields": [
+                {"name": key, "value": None}
+                for key in ("host", "port", "useSsl", "urlBase", "apiKey", "category")
+            ],
+        }
+        for url_base in ("/sabnzbd", "/decypharr/sabnzbd"):
+            with (
+                self.subTest(url_base=url_base),
+                mock.patch.object(
+                    decypharr_settings, "_get_sab_schema", return_value=schema
+                ),
+                mock.patch.object(
+                    decypharr_settings,
+                    "_upsert_managed_download_client",
+                    return_value=(True, 12),
+                ) as upsert,
+            ):
+                result = decypharr_settings.ensure_decypharr_sabnzbd_client(
+                    "http://arr.example.com",
+                    "arr-key",
+                    8088,
+                    "provider-key",
+                    "radarr",
+                    category="dumb-movies",
+                    url_base=url_base,
+                    test_before_save=True,
+                )
+                self.assertEqual((True, 12), result)
+                desired = upsert.call_args.args[2]
+                fields = {row["name"]: row["value"] for row in desired["fields"]}
+                self.assertEqual(url_base, fields["urlBase"])
+                self.assertEqual("dumb-movies", fields["category"])
+                self.assertTrue(upsert.call_args.kwargs["test_connection"])
+                self.assertEqual([], desired["tags"])
 
     def test_provider_api_defaults_cover_all_bootstrap_and_append_modes(self):
         modes = [
@@ -460,7 +505,14 @@ class DecypharrSettingsTests(unittest.TestCase):
             try:
                 decypharr_settings.CONFIG_MANAGER = _ConfigManager()
                 decypharr_settings._shutdown_requested = lambda: False
-                with mock.patch.object(decypharr_settings.os, "makedirs"):
+                with (
+                    mock.patch.object(decypharr_settings.os, "makedirs"),
+                    mock.patch.object(
+                        decypharr_settings,
+                        "ensure_media_directory",
+                        return_value={"created": False, "ownership_mismatch": False},
+                    ),
+                ):
                     updated, error = decypharr_settings.patch_decypharr_config(
                         create_if_missing=True,
                         configure_integrations=False,

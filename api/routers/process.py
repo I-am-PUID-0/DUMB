@@ -25,6 +25,7 @@ from utils.cli_debrid_runtime import cli_battery_is_embedded
 from utils.infinidysk_v2_support import versioned_capabilities, validate_candidate
 from utils.project_metadata import get_project_version
 from utils.runtime_paths import pyproject_file
+from utils.arrangement_catalog import service_metadata
 from utils.dependency_map import (
     build_conditional_dependency_map,
     filter_conditional_deps_for_instance,
@@ -55,6 +56,7 @@ from utils.infinidysk_migration_admission import (
     assert_infinidysk_external_mutation_reserved,
     infinidysk_namespace_migration_active,
     infinidysk_postgres_migration_active,
+    infinidysk_v2_jobs_active,
     release_infinidysk_external_mutation,
     reserve_infinidysk_external_mutation,
 )
@@ -533,7 +535,35 @@ def _effective_core_dependencies(
     ):
         deps = [dep for dep in deps if dep not in {"zurg", "rclone"}]
 
+    if core_key == "cli_debrid":
+        if cfg.get("battery_mode", "standalone") == "embedded":
+            deps = [dep for dep in deps if dep != "cli_battery"]
+        if not cfg.get("use_phalanx_db", False):
+            deps = [dep for dep in deps if dep != "phalanx_db"]
+
     return deps
+
+
+def _native_infinidysk_rclone_owner(service, instances):
+    """Preserve the native wizard's owner; onboarding never creates a replacement."""
+    from utils.infinidysk_v2_topology import (
+        is_v2,
+        selected_topology,
+        validate_rclone_topology,
+        validate_selected_owners,
+    )
+
+    if not is_v2(service):
+        return None
+    if service.get("mount_backend", "rclone") == "fuse":
+        valid, error = validate_selected_owners(service, instances)
+        owner = None
+    else:
+        valid, error = validate_rclone_topology(service, instances)
+        owner = selected_topology(service, instances)[0]["instance"] if valid else None
+    if not valid:
+        raise HTTPException(status_code=409, detail=error)
+    return owner
 
 
 def _onboarding_core_dependencies(
@@ -898,6 +928,8 @@ CORE_SERVICE_DEBRID_PROVIDERS = {
 }
 
 SERVICE_OPTION_DESCRIPTIONS = {
+    "battery_mode": "CLI source Battery layout: auto, standalone companion, or integrated in CLI Debrid. Confirm the selected source before enabling a companion.",
+    "use_phalanx_db": "Enable the optional PhalanxDB companion for this CLI arrangement.",
     "whisparr_profiles": "Managed saved Whisparr profiles; version selection remembers separate SQLite libraries and release settings.",
     "whisparr_version": "Whisparr version: v2 or v3 (Eros). Empty detects the existing version. DUMB remembers separate SQLite library profiles when switching; PostgreSQL requires separate instances.",
     "repo_owner": "GitHub username (owner) of the service repository.",
@@ -4033,7 +4065,7 @@ def apply_service_options(
                     continue
                 if config_block.get(key) != value:
                     logger.debug(
-                        f"Overriding '{key}' = '{value}' in service config for {config_block.get('process_name', 'Unknown Process')}"
+                        f"Updating field '{key}' for {config_block.get('process_name', 'Unknown Process')}"
                     )
                     config_block[key] = value
                     updated = True
@@ -4046,7 +4078,7 @@ def apply_service_options(
             continue
         if config_block.get(key) != value:
             logger.debug(
-                f"Overriding '{key}' = '{value}' in service config for {config_block.get('process_name', 'Unknown Process')}"
+                f"Updating field '{key}' for {config_block.get('process_name', 'Unknown Process')}"
             )
             config_block[key] = value
             updated = True
@@ -4185,7 +4217,12 @@ def _purge_template_placeholders(
     changed = False
     template_names = set(tmpl_instances.keys())
     for name in list(instances.keys()):
-        if name in template_names and name != keep:
+        # Template-shaped names may belong to established live instances.
+        if (
+            name in template_names
+            and name != keep
+            and not instances[name].get("enabled")
+        ):
             del instances[name]
             changed = True
     if changed:
@@ -4887,17 +4924,95 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
     with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
         namespace_blocked = infinidysk_namespace_migration_active()
         postgres_blocked = postgres_sensitive and infinidysk_postgres_migration_active()
-        if namespace_blocked or postgres_blocked:
+        native_blocked = infinidysk_v2_jobs_active()
+        if namespace_blocked or postgres_blocked or native_blocked:
             raise HTTPException(
                 status_code=409,
                 detail=(
                     "Onboarding cannot change configuration while an InfiniDysk "
                     "namespace migration is active or awaiting recovery. InfiniDysk "
                     "and PostgreSQL onboarding is also frozen during its guarded "
-                    "database migration."
+                    "database migration. Native InfiniDysk migration or recovery "
+                    "also owns its consumers until it is complete."
                 ),
             )
         return _run_startup_admitted(request, updater, api_state, logger)
+
+
+def _materialize_onboarding_resources(request: UnifiedStartRequest, logger):
+    """Publish the full desired instance set before any installer can link it."""
+    from utils.arrangement_plan import project_configuration
+
+    with open(CONFIG_MANAGER.default_config_path) as handle:
+        defaults = json.load(handle)
+    payload = request.model_dump()
+    entries = payload.get("core_services") or []
+    entries = [entries] if isinstance(entries, dict) else entries
+    for entry in entries:
+        key, instance = _resolve_startup_service(entry["name"])
+        if key:
+            entry["name"] = key
+            if instance and not entry.get("instance_name"):
+                entry["instance_name"] = instance
+    payload["core_services"] = entries
+    try:
+        proposed, resources = project_configuration(
+            payload, CONFIG_MANAGER.config, defaults
+        )
+    except ValueError as error:
+        raise HTTPException(400, detail=str(error)) from None
+    # Validate special migration/family contracts before publishing any proposed
+    # instance. A failed preflight must not enable half the requested stack.
+    for resource in resources:
+        key, instance = resource["service_key"], resource.get("instance_key")
+        candidate = proposed[key]["instances"][instance] if instance else proposed[key]
+        if key == "infinidysk":
+            _validate_infinidysk_service_options(
+                CONFIG_MANAGER.config.get(key, {}), candidate, service_key=key
+            )
+        elif key == "postgres":
+            _validate_postgres_service_options(
+                CONFIG_MANAGER.config.get(key, {}), candidate
+            )
+        elif key == "whisparr":
+            from utils.whisparr_profiles import plan_whisparr_profile
+            from utils.whisparr_settings import (
+                WhisparrConfigurationError,
+                resolve_whisparr_version,
+            )
+
+            existing = (
+                CONFIG_MANAGER.config.get(key, {})
+                .get("instances", {})
+                .get(instance, candidate)
+            )
+            try:
+                candidate = plan_whisparr_profile(
+                    existing, candidate, instance_name=instance
+                )
+                resolve_whisparr_version(candidate)
+            except WhisparrConfigurationError as error:
+                raise HTTPException(400, detail=str(error)) from None
+            proposed[key]["instances"][instance] = candidate
+    for resource in resources:
+        key = resource["service_key"]
+        CONFIG_MANAGER.config[key] = proposed[key]
+    # Source-mode Riven credentials do not pass through legacy Zurg/rclone.
+    for entry in entries:
+        key = entry["name"]
+        if key not in {"decypharr", "riven_backend"}:
+            continue
+        providers = entry.get("debrid_service") or []
+        secrets = entry.get("debrid_key") or []
+        providers = [providers] if isinstance(providers, str) else providers
+        secrets = [secrets] if isinstance(secrets, str) else secrets
+        for provider, secret in zip(providers, secrets):
+            if provider and secret:
+                CONFIG_MANAGER.config[key].setdefault("api_keys", {})[
+                    provider.strip().lower()
+                ] = secret
+    CONFIG_MANAGER.save_config()
+    logger.info("Prepared all selected service instances before startup.")
 
 
 def _run_startup_admitted(request: UnifiedStartRequest, updater, api_state, logger):
@@ -4956,6 +5071,9 @@ def _run_startup_admitted(request: UnifiedStartRequest, updater, api_state, logg
                     effective_options,
                     service_key=service_key,
                 )
+                _native_infinidysk_rclone_owner(
+                    config[service_key], config.get("rclone", {}).get("instances", {})
+                )
         if "infinidysk" in optional_services:
             effective_options = dict(
                 optional_service_options.get("infinidysk", {}) or {}
@@ -4966,6 +5084,9 @@ def _run_startup_admitted(request: UnifiedStartRequest, updater, api_state, logg
                 effective_options,
                 service_key="infinidysk",
             )
+    # Validate migration/database admission before publishing any desired state.
+    # Materialize every selected instance before the first provider can start.
+    _materialize_onboarding_resources(request, logger)
     used_ports: dict[int, str] = {}
     _seed_used_ports(config, used_ports, logger)
 
@@ -5188,7 +5309,7 @@ def _run_startup_admitted(request: UnifiedStartRequest, updater, api_state, logg
 
             dependencies = _effective_core_dependencies(config_key, effective_config)
 
-            if config_key == "decypharr":
+            if config_key in {"decypharr", "riven_backend"}:
                 # Persist provider API keys from onboarding/runtime requests so both
                 # Decypharr config patching and external_rclone reconciliation can
                 # build the correct provider set before startup.
@@ -5201,9 +5322,7 @@ def _run_startup_admitted(request: UnifiedStartRequest, updater, api_state, logg
                     if api_keys_map.get(svc_name_lc) != svc_key:
                         api_keys_map[svc_name_lc] = svc_key
                         api_keys_updated = True
-                        logger.debug(
-                            "Set Decypharr API key for provider %s", svc_name_lc
-                        )
+                        logger.debug("Set provider credential for %s", config_key)
                 if api_keys_updated:
                     CONFIG_MANAGER.save_config()
 
@@ -5229,9 +5348,7 @@ def _run_startup_admitted(request: UnifiedStartRequest, updater, api_state, logg
                 if mount_type in ("rclone", "dfs", "none", ""):
                     for svc_name, svc_key in zip(debrid_services, debrid_keys):
                         if svc_name and svc_key:
-                            logger.debug(
-                                f"Confirmed Decypharr embedded-mode API key for {svc_name.strip().lower()}: {svc_key[:4]}..."
-                            )
+                            logger.debug("Confirmed Decypharr provider credential.")
 
             logger.debug(f"Dependencies for '{config_key}': {dependencies}")
             post_core_rclone = config_key == "infinidysk" or (
@@ -5243,7 +5360,11 @@ def _run_startup_admitted(request: UnifiedStartRequest, updater, api_state, logg
             # 4.1) Handle zurg/rclone dependencies for this core service (multi-instance support)
             #
             num_instances = max(len(debrid_services), 1)
-            if config_key == "decypharr":
+            native_infinidysk = (
+                config_key == "infinidysk"
+                and str(effective_config.get("runtime_generation", "1")) == "2"
+            )
+            if config_key == "decypharr" or native_infinidysk:
                 num_instances = 1
             for i in range(num_instances):
                 for dep in dependencies:
@@ -5275,6 +5396,10 @@ def _run_startup_admitted(request: UnifiedStartRequest, updater, api_state, logg
                         instance_key = display.strip()
 
                         instances = config[dep]["instances"]
+                        if native_infinidysk and dep == "rclone":
+                            instance_key = _native_infinidysk_rclone_owner(
+                                effective_config, instances
+                            )
 
                         # Check if instance already exists
                         inst = instance_key if instance_key in instances else None
@@ -5284,12 +5409,13 @@ def _run_startup_admitted(request: UnifiedStartRequest, updater, api_state, logg
                             if not inst_cfg.get("enabled"):
                                 inst_cfg["enabled"] = True
                                 CONFIG_MANAGER.save_config()
-                            apply_service_options(
-                                inst_cfg,
-                                core_service.service_options.get(inst, {}),
-                                logger,
-                                service_key=dep,
-                            )
+                            if not native_infinidysk:
+                                apply_service_options(
+                                    inst_cfg,
+                                    core_service.service_options.get(inst, {}),
+                                    logger,
+                                    service_key=dep,
+                                )
                             if (
                                 dep == "zurg"
                                 and service_type == "realdebrid"
@@ -5752,11 +5878,32 @@ def _run_startup_admitted(request: UnifiedStartRequest, updater, api_state, logg
         except HTTPException as e:
             errors.append({"service": core_service.name, "error": e.detail})
 
+    integration_outcomes = []
+    # Provider-first setup must reconcile against the complete, started Arr set.
+    for provider in ("decypharr", "infinidysk"):
+        if not config.get(provider, {}).get("enabled"):
+            continue
+        try:
+            if provider == "decypharr":
+                from utils.decypharr_settings import patch_decypharr_config
+
+                patch_decypharr_config(result_collector=integration_outcomes)
+            else:
+                from utils.nzbdav_settings import patch_nzbdav_config
+
+                patch_nzbdav_config(result_collector=integration_outcomes)
+        except Exception:
+            logger.warning(
+                "Provider integration reconciliation is incomplete for %s.", provider
+            )
+
     try:
         from utils.altmount_settings import patch_altmount_arr_integration
 
         if config.get("altmount", {}).get("enabled"):
-            success, error = patch_altmount_arr_integration()
+            success, error = patch_altmount_arr_integration(
+                result_collector=integration_outcomes
+            )
             if not success and error:
                 logger.warning("AltMount Arr automation did not complete: %s", error)
     except Exception as e:
@@ -5835,7 +5982,13 @@ def _run_startup_admitted(request: UnifiedStartRequest, updater, api_state, logg
         )
 
     logger.info("Core services started successfully.")
-    return {"results": results, "errors": errors}
+    from dataclasses import asdict
+
+    return {
+        "results": results,
+        "errors": errors,
+        "integration_results": [asdict(item) for item in integration_outcomes],
+    }
 
 
 @process_router.get("/core-services")
@@ -5911,6 +6064,7 @@ async def get_core_services(
 
         core_services.append(
             {
+                **service_metadata(key),
                 "name": display_name,
                 "key": key,
                 "dependencies": dependencies,
@@ -6067,6 +6221,7 @@ async def get_optional_services(
 
         results.append(
             {
+                **service_metadata(key),
                 "name": display_name,
                 "key": key,
                 "description": OPTIONAL_SERVICES_DESCRIPTIONS.get(
@@ -6196,6 +6351,9 @@ async def cleanup_install_cache(
 async def get_capabilities(current_user: str = Depends(get_optional_current_user)):
     return {
         **versioned_capabilities(get_project_version(pyproject_file())),
+        "setup_arrangements": True,
+        "setup_infinidysk_runtime_choices": True,
+        "setup_infinidysk_runtime_protocol": 1,
         "optional_only_onboarding": True,
         "optional_service_options": True,
         "manual_update_check": True,

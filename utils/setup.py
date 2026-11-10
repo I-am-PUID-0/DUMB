@@ -2894,6 +2894,40 @@ def _setup_project_inner(
                 or original_webdav_password != config.get("webdav_password")
             )
 
+        if configure_phase and key == "cli_debrid":
+            from utils.arrangement_discovery import sync_cli_phalanx_environment
+
+            previous_cli_env = copy.deepcopy(config.get("env"))
+            environment_had_key = "env" in config
+            phalanx_sync = sync_cli_phalanx_environment(
+                config, CONFIG_MANAGER.get("phalanx_db") or {}
+            )
+            if phalanx_sync["changed"]:
+                try:
+                    CONFIG_MANAGER.save_config(
+                        config.get("process_name") or "CLI Debrid"
+                    )
+                except Exception:
+                    if environment_had_key:
+                        config["env"] = previous_cli_env
+                    else:
+                        config.pop("env", None)
+                    raise
+            battery_cfg = CONFIG_MANAGER.get("cli_battery") or {}
+            if config.get("battery_mode", "auto") == "standalone" or (
+                config.get("battery_mode", "auto") == "auto"
+                and battery_cfg.get("enabled")
+            ):
+                # The parent consumes this port too. Dependencies may have been
+                # assigned a different port during onboarding collision checks.
+                battery_port = str(battery_cfg.get("port", 5001))
+                if (
+                    config.setdefault("env", {}).get("CLI_DEBRID_BATTERY_PORT")
+                    != battery_port
+                ):
+                    config["env"]["CLI_DEBRID_BATTERY_PORT"] = battery_port
+                    CONFIG_MANAGER.save_config()
+
         if configure_phase and config.get("env"):
             env_changed = key == "infinidysk" and infinidysk_config_changed
             for env_key, value in config["env"].items():
@@ -2999,6 +3033,7 @@ def _setup_project_inner(
             copy_server_config(
                 "/config/server.json",
                 os.path.join(config["config_dir"], "config/server.json"),
+                owner=(user_id, group_id),
             )
 
             frontend_host = config.get("host") or "0.0.0.0"
@@ -12101,14 +12136,23 @@ def clear_directory(directory_path, exclude_dirs=None, retries=3, delay=2):
             return False, f"Failed to clear directory {directory_path}: {e}"
 
 
-def copy_server_config(source, destination):
+def copy_server_config(source, destination, *, owner=None):
     try:
         if not os.path.exists(source):
             logger.debug(f"server.json not found at {source}, skipping copy.")
             return
 
         os.makedirs(os.path.dirname(destination), exist_ok=True)
-        shutil.copy2(source, destination)
+        if os.path.islink(source) or os.path.islink(destination):
+            raise ValueError("Server configuration must use regular files.")
+        with open(source, encoding="utf-8") as handle:
+            content = handle.read(2 * 1024 * 1024 + 1)
+        if len(content) > 2 * 1024 * 1024:
+            raise ValueError("Server configuration exceeds its size limit.")
+        # Validate the document before replacing a working configuration. The
+        # copied file contains the backend key and must always remain private.
+        json.loads(content)
+        atomic_write_private_text(destination, content, owner=owner)
         logger.info(f"Copied server configuration to {destination}")
     except Exception as e:
         logger.error(f"Error copying server configuration: {e}")

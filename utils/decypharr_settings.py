@@ -1,7 +1,24 @@
 from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
+from utils.integration_result import (
+    ActionResult,
+    BoundedIntegrationRetry,
+    arr_action_result,
+    arr_target_allowed,
+    emit_action,
+    capture_integration_results,
+    reset_retry_after_success,
+    request_failure,
+)
 from utils.core_services import get_core_services, has_core_service
 from utils.private_files import atomic_write_private_text
+from utils.integration_ownership import (
+    ensure_media_directory,
+    arr_ownership_path,
+    fingerprint,
+    read_ownership,
+    write_ownership,
+)
 from utils.url_security import safe_request, safe_urlopen
 from utils.versions import Versions
 from collections import OrderedDict
@@ -75,6 +92,23 @@ def _parse_arr_api_key(config_xml_path: str) -> str:
     return ""
 
 
+def _arr_host(port, config_file):
+    base = ""
+    try:
+        if config_file and os.path.isfile(config_file):
+            base = (ET.parse(config_file).getroot().findtext("UrlBase") or "").strip()
+    except (OSError, ET.ParseError):
+        pass
+    # UrlBase is a path, never an authority or query string.
+    if base and (
+        not base.startswith("/")
+        or base.startswith("//")
+        or any(ch in base for ch in ("?", "#", "\\", "\r", "\n"))
+    ):
+        raise ValueError("Arr UrlBase must be an absolute URL path")
+    return f"http://127.0.0.1:{port}{base.rstrip('/')}"
+
+
 def _collect_arr_entries(
     decypharr_cfg: dict, existing_arrs: Optional[list] = None
 ) -> list:
@@ -107,9 +141,8 @@ def _collect_arr_entries(
             except Exception:
                 port = None
 
-            host = f"http://127.0.0.1:{port}" if port else ""
-
             cfg_path = (inst.get("config_file") or "").strip()
+            host = _arr_host(port, cfg_path) if port else ""
             token = _parse_arr_api_key(cfg_path)
 
             inst_name = (
@@ -137,10 +170,99 @@ def _collect_arr_entries(
 COMBINED_ROOT_COMPANION_SERVICES = {"infinidysk", "altmount"}
 
 
+def _merge_decypharr_arrs(existing, desired):
+    desired_by_name = {entry["name"]: entry for entry in desired}
+    retained = []
+    consumed = set()
+    for entry in existing:
+        if not isinstance(entry, dict):
+            retained.append(entry)
+            continue
+        name = entry.get("name")
+        target = desired_by_name.get(name)
+        if entry.get("source") != "auto":
+            retained.append(entry)
+            if target and (
+                entry.get("host") == target.get("host") or name == target.get("name")
+            ):
+                consumed.add(name)
+                emit_action(
+                    arr_action_result(
+                        "decypharr",
+                        "arr_registration",
+                        target.get("host"),
+                        CONFIG_MANAGER,
+                        execution="waiting_input",
+                        detail="An existing Arr registration is user-managed; it was preserved.",
+                    )
+                )
+            continue
+        if not target:
+            # Only explicitly marked auto entries may retire on opt-out.
+            continue
+        if not target.get("token"):
+            retained.append(entry)
+            consumed.add(name)
+            emit_action(
+                arr_action_result(
+                    "decypharr",
+                    "arr_registration",
+                    target.get("host"),
+                    CONFIG_MANAGER,
+                    execution="waiting_dependency",
+                    detail="Waiting for the Arr API key before refreshing its registration.",
+                    retryable=True,
+                )
+            )
+            continue
+        merged = dict(entry)
+        merged.update(target)
+        if entry.get("enabled") is False:
+            merged["enabled"] = False
+        retained.append(merged)
+        consumed.add(name)
+    retained.extend(
+        entry
+        for entry in desired
+        if entry["name"] not in consumed and entry.get("token")
+    )
+    return retained
+
+
 def _uses_combined_root(core_services: list[str]) -> bool:
     normalized = {str(service or "").strip().lower() for service in core_services}
     return "decypharr" in normalized and bool(
         normalized.intersection(COMBINED_ROOT_COMPANION_SERVICES)
+    )
+
+
+def expected_arr_category(config, service, instance_key):
+    """Exact native/client category; deliberately retains the configured label."""
+    instance = ((config.get(service) or {}).get("instances") or {}).get(
+        instance_key
+    ) or {}
+    label = (
+        instance.get("instance_name") or instance.get("name") or instance_key or ""
+    ).strip()
+    return f"{service}:{label}" if label else service
+
+
+def expected_arr_root(config, service, instance_key):
+    """Pure expected-root recipe shared with read-only arrangement verification."""
+    instance = ((config.get(service) or {}).get("instances") or {}).get(
+        instance_key
+    ) or {}
+    label = (
+        instance.get("instance_name") or instance.get("name") or instance_key or ""
+    ).strip()
+    links = get_core_services(instance)
+    base = (
+        "/mnt/debrid/combined_symlinks"
+        if _uses_combined_root(links)
+        else "/mnt/debrid/decypharr_symlinks"
+    )
+    return os.path.join(
+        base, _slugify_category(f"{service}-{label}") or _slugify_category(service)
     )
 
 
@@ -192,13 +314,9 @@ def _arr_req(
                 return json.loads(raw.decode("utf-8"))
             except Exception:
                 return raw.decode("utf-8")
-    except urllib.error.HTTPError as e:
-        try:
-            body = e.read().decode("utf-8")
-        except Exception:
-            body = ""
-        if body:
-            logger.warning("Arr API error response from %s: %s", url, body)
+    except urllib.error.HTTPError:
+        # Upstream response bodies can echo API keys and passwords.
+        logger.warning("Arr API request failed; response details are omitted.")
         raise
 
 
@@ -305,32 +423,67 @@ def _get_lidarr_rootfolder_payload(host: str, token: str, path: str) -> Optional
 
 def _ensure_arr_rootfolder(
     host: str, token: str, path: str, api_version: str = "v3"
-) -> bool:
-    """Ensure a root folder exists on a Sonarr/Radarr instance.
-    Returns True if created, False if already present or on error."""
+) -> ActionResult:
+    def outcome(**kwargs):
+        return arr_action_result(
+            "decypharr", "root_folder", host, CONFIG_MANAGER, **kwargs
+        )
+
+    if not arr_target_allowed(host, CONFIG_MANAGER):
+        return outcome(
+            execution="skipped",
+            detail="This Arr is outside the selected reconciliation scope.",
+        )
     if not (host and token and path):
-        return False
+        return outcome(
+            execution="waiting_dependency",
+            detail="Waiting for the Arr API key and root path.",
+            retryable=True,
+        )
     try:
         url = _arr_url(host, api_version, "rootfolder")
-        existing = _arr_req(url, token, "GET") or []
+        existing = _arr_req(url, token, "GET")
+        if not isinstance(existing, list):
+            raise ValueError("Unexpected root folder response")
         if any(
             _normalize_path(x.get("path", "")) == _normalize_path(path)
-            for x in (existing or [])
+            for x in existing
+            if isinstance(x, dict)
         ):
-            return False
+            return outcome(
+                execution="already_present",
+                verification="passed",
+                detail="The required root folder is present.",
+            )
         payload = {"path": path}
         if api_version == "v1":
-            payload = _get_lidarr_rootfolder_payload(host, token, path) or payload
-            if payload == {"path": path}:
-                return False
+            payload = _get_lidarr_rootfolder_payload(host, token, path)
+            if not payload:
+                return outcome(
+                    execution="waiting_input",
+                    detail="Create a Lidarr quality profile and metadata profile, then retry.",
+                )
         _arr_req(url, token, "POST", payload)
-        logger.info(f"Created root folder '{path}' on {host}")
-        return True
-    except urllib.error.HTTPError as e:
-        logger.warning(f"HTTP error ensuring rootfolder {path} on {host}: {e}")
-    except Exception as e:
-        logger.warning(f"Failed to ensure rootfolder {path} on {host}: {e}")
-    return False
+        saved = _arr_req(url, token, "GET")
+        if not isinstance(saved, list) or not any(
+            _normalize_path(x.get("path", "")) == _normalize_path(path)
+            for x in saved
+            if isinstance(x, dict)
+        ):
+            return outcome(
+                execution="failed",
+                verification="failed",
+                detail="The application did not retain the required root folder.",
+                retryable=True,
+            )
+        return outcome(
+            execution="applied",
+            verification="passed",
+            detail="The root folder was created and read back.",
+            changed=True,
+        )
+    except Exception as exc:
+        return outcome(**request_failure(exc))
 
 
 def _coerce_chmod_value(current_value, desired_value: str):
@@ -349,58 +502,67 @@ def _ensure_arr_permissions(
     set_permissions: bool = True,
     api_version: str = "v3",
     chmod_file: str = "666",
-) -> bool:
+) -> ActionResult:
+    def outcome(**kwargs):
+        return arr_action_result(
+            "decypharr", "permissions", host, CONFIG_MANAGER, **kwargs
+        )
+
+    if not arr_target_allowed(host, CONFIG_MANAGER):
+        return outcome(
+            execution="skipped",
+            detail="This Arr is outside the selected reconciliation scope.",
+        )
     if not (host and token):
-        return False
+        return outcome(
+            execution="waiting_dependency",
+            detail="Waiting for the Arr API key.",
+            retryable=True,
+        )
     try:
         url = _arr_url(host, api_version, "config/mediamanagement")
-        current = _arr_req(url, token, "GET") or {}
+        current = _arr_req(url, token, "GET")
         if not isinstance(current, dict):
-            return False
+            raise ValueError("Unexpected media management response")
         desired = current.copy()
-        perms_key = "setPermissions"
-        if "setPermissionsLinux" in current and "setPermissions" not in current:
-            perms_key = "setPermissionsLinux"
+        perms_key = (
+            "setPermissionsLinux"
+            if "setPermissionsLinux" in current and "setPermissions" not in current
+            else "setPermissions"
+        )
         desired[perms_key] = bool(set_permissions)
         desired["chmodFolder"] = _coerce_chmod_value(
             current.get("chmodFolder"), chmod_folder
         )
+        owned_fields = [perms_key, "chmodFolder"]
         if "chmodFile" in current:
-            desired["chmodFile"] = _coerce_chmod_value(
-                current.get("chmodFile"), chmod_file
+            desired["chmodFile"] = _coerce_chmod_value(current["chmodFile"], chmod_file)
+            owned_fields.append("chmodFile")
+        if all(desired.get(key) == current.get(key) for key in owned_fields):
+            return outcome(
+                execution="already_present",
+                verification="passed",
+                detail="The required Arr permission settings are present.",
             )
-        updated = (
-            desired.get(perms_key) != current.get(perms_key)
-            or desired.get("chmodFolder") != current.get("chmodFolder")
-            or desired.get("chmodFile") != current.get("chmodFile")
-        )
-        if not updated:
-            return False
         _arr_req(url, token, "PUT", desired)
-        verify = _arr_req(url, token, "GET") or {}
-        if isinstance(verify, dict) and verify.get(perms_key) != desired.get(perms_key):
-            logger.warning(
-                "Arr permissions update did not persist on %s: %s=%s",
-                host,
-                perms_key,
-                verify.get(perms_key),
+        saved = _arr_req(url, token, "GET")
+        if not isinstance(saved, dict) or any(
+            saved.get(key) != desired.get(key) for key in owned_fields
+        ):
+            return outcome(
+                execution="failed",
+                verification="failed",
+                detail="The application did not retain the required permission settings.",
+                retryable=True,
             )
-        logger.info(
-            "Updated Arr permissions on %s: %s=%s chmodFolder=%s",
-            host,
-            perms_key,
-            desired.get(perms_key),
-            desired.get("chmodFolder"),
+        return outcome(
+            execution="applied",
+            verification="passed",
+            detail="The Arr permission settings were applied and read back.",
+            changed=True,
         )
-        return True
-    except urllib.error.HTTPError as e:
-        logger.warning(f"HTTP error updating Arr permissions on {host}: {e}")
-    except Exception as e:
-        logger.warning(f"Failed to update Arr permissions on {host}: {e}")
-    return False
-
-
-# --- Download client (qBittorrent) upsert -----------------------------------
+    except Exception as exc:
+        return outcome(**request_failure(exc))
 
 
 def _get_qbt_schema(host: str, key: str, api_version: str = "v3"):
@@ -554,71 +716,17 @@ def ensure_decypharr_download_client(
         "fields": fields,
     }
 
-    if test_before_save:
-        _arr_req(
-            _arr_url(arr_host, api_version, "downloadclient/test"),
-            arr_api_key,
-            "POST",
-            desired,
-        )
-
-    def _verify_saved(client_id: Optional[int]) -> None:
-        # Best-effort readback to confirm what Arr persisted.
-        if not client_id:
-            return
-        try:
-            saved = (
-                _arr_req(
-                    _arr_url(arr_host, api_version, f"downloadclient/{client_id}"),
-                    arr_api_key,
-                    "GET",
-                )
-                or {}
-            )
-            saved_fields = {
-                f.get("name"): f.get("value") for f in (saved.get("fields") or [])
-            }
-            logger.debug(
-                "Saved download client fields for %s: %s", arr_host, saved_fields
-            )
-        except Exception as e:
-            logger.warning(
-                "Could not re-read saved download client for verification: %s", e
-            )
-
-    existing = (
-        _arr_req(_arr_url(arr_host, api_version, "downloadclient"), arr_api_key, "GET")
-        or []
+    return _upsert_managed_download_client(
+        arr_host,
+        arr_api_key,
+        desired,
+        provider="decypharr",
+        managed_fields=set(overrides)
+        | set(category_aliases)
+        | {"useCategory", "useTags"},
+        api_version=api_version,
+        test_connection=test_before_save,
     )
-    match = next(
-        (c for c in existing if (c.get("name") or "").lower() == name.lower()), None
-    )
-
-    if match:
-        client_id = match.get("id")
-        put_body = desired.copy()
-        put_body["id"] = client_id
-        _arr_req(
-            _arr_url(arr_host, api_version, f"downloadclient/{client_id}"),
-            arr_api_key,
-            "PUT",
-            put_body,
-        )
-        _verify_saved(client_id)
-        return True, client_id
-
-    created = (
-        _arr_req(
-            _arr_url(arr_host, api_version, "downloadclient"),
-            arr_api_key,
-            "POST",
-            desired,
-        )
-        or {}
-    )
-    client_id = created.get("id")
-    _verify_saved(client_id)
-    return True, client_id
 
 
 def ensure_decypharr_sabnzbd_client(
@@ -632,6 +740,7 @@ def ensure_decypharr_sabnzbd_client(
     category: Optional[str] = None,
     test_before_save: bool = False,
     api_version: str = "v3",
+    url_base: str = "/sabnzbd",
 ) -> Tuple[bool, Optional[int]]:
     """Create or update a Sabnzbd client named `decypharr-usenet` that points to Decypharr."""
 
@@ -658,7 +767,7 @@ def ensure_decypharr_sabnzbd_client(
         "host": "127.0.0.1",
         "port": int(decypharr_port),
         "useSsl": False,
-        "urlBase": "",
+        "urlBase": url_base,
         "apiKey": api_token,
     }
 
@@ -690,49 +799,218 @@ def ensure_decypharr_sabnzbd_client(
         "fields": fields,
     }
 
-    if test_before_save:
-        _arr_req(
-            _arr_url(arr_host, api_version, "downloadclient/test"),
-            arr_api_key,
-            "POST",
-            desired,
-        )
-
-    existing = (
-        _arr_req(_arr_url(arr_host, api_version, "downloadclient"), arr_api_key, "GET")
-        or []
-    )
-    match = next(
-        (c for c in existing if (c.get("name") or "").lower() == name.lower()), None
+    return _upsert_managed_download_client(
+        arr_host,
+        arr_api_key,
+        desired,
+        provider="altmount" if name == "altmount" else "decypharr",
+        managed_fields=set(overrides) | {"category", "nzbCategory"},
+        api_version=api_version,
+        test_connection=test_before_save,
     )
 
-    if match:
-        client_id = match.get("id")
-        put_body = desired.copy()
-        put_body["id"] = client_id
-        _arr_req(
-            _arr_url(arr_host, api_version, f"downloadclient/{client_id}"),
-            arr_api_key,
-            "PUT",
-            put_body,
-        )
-        return True, client_id
 
-    created = (
-        _arr_req(
-            _arr_url(arr_host, api_version, "downloadclient"),
-            arr_api_key,
-            "POST",
-            desired,
-        )
-        or {}
+class ManagedIntegrationConflict(RuntimeError):
+    """A connection needs an explicit ownership/policy decision."""
+
+    retryable = False
+
+
+class ManagedIntegrationReadbackError(ManagedIntegrationConflict):
+    """A saved client could not yet be verified."""
+
+    retryable = True
+
+
+def _upsert_managed_download_client(
+    arr_host,
+    arr_api_key,
+    desired,
+    *,
+    provider,
+    managed_fields,
+    api_version="v3",
+    test_connection=False,
+    request_fn=None,
+    aliases=(),
+    config_manager=None,
+):
+    request = request_fn or _arr_req
+    manager = config_manager or CONFIG_MANAGER
+    if not arr_target_allowed(arr_host, manager):
+        return False, None
+    action = (
+        "download_client_usenet"
+        if desired.get("protocol") == "usenet"
+        else "download_client_torrent"
     )
-    return True, created.get("id")
 
+    def outcome(**kwargs):
+        return emit_action(
+            arr_action_result(provider, action, arr_host, manager, **kwargs)
+        )
 
-# ---------------------------------------------------------------------------
-# Resilience helpers (wait + retries)
-# ---------------------------------------------------------------------------
+    def fields_map(item):
+        return {
+            str(field.get("name") or "").lower(): field.get("value")
+            for field in item.get("fields") or []
+            if isinstance(field, dict)
+        }
+
+    url = _arr_url(arr_host, api_version, "downloadclient")
+    try:
+        existing = request(url, arr_api_key, "GET")
+        if not isinstance(existing, list):
+            raise ValueError("Unexpected download client response")
+        names = {str(desired["name"]).lower(), *(str(name).lower() for name in aliases)}
+        desired_endpoint = fields_map(desired)
+        for item in existing:
+            current_endpoint = fields_map(item)
+            if (
+                str(item.get("name") or "").lower() not in names
+                and item.get("implementation") == desired.get("implementation")
+                and current_endpoint.get("host") == desired_endpoint.get("host")
+                and current_endpoint.get("port") == desired_endpoint.get("port")
+            ):
+                outcome(
+                    execution="waiting_input",
+                    detail="A user-named download client already uses this endpoint; it was preserved. Choose which connection should be used.",
+                )
+                raise ManagedIntegrationConflict(
+                    "An existing connection already uses this endpoint"
+                )
+        matches = [
+            item for item in existing if str(item.get("name") or "").lower() in names
+        ]
+        if len(matches) > 1:
+            outcome(
+                execution="waiting_input",
+                detail="Multiple download clients match this connection. Choose which connection DUMB may manage.",
+            )
+            raise ManagedIntegrationConflict(
+                "Download client ownership needs confirmation"
+            )
+        ledger_path = arr_ownership_path(arr_host, manager)
+        records = read_ownership(ledger_path)
+        owner_key = f"{provider}.{desired.get('protocol')}"
+        owned = records.get(owner_key) or {}
+        match = matches[0] if matches else None
+
+        def owned_fields_snapshot(client):
+            values = fields_map(client)
+            return {
+                "name": client.get("name"),
+                "implementation": client.get("implementation"),
+                "fields": {
+                    str(name).lower(): values.get(str(name).lower())
+                    for name in managed_fields
+                },
+            }
+
+        if match and (
+            owned.get("id") != match.get("id")
+            or owned.get("fingerprint") != fingerprint(owned_fields_snapshot(match))
+        ):
+            outcome(
+                execution="waiting_input",
+                detail="An existing download client is unowned or was edited outside DUMB. Preserve it or explicitly adopt it before retrying.",
+            )
+            raise ManagedIntegrationConflict(
+                "Existing download client ownership needs confirmation"
+            )
+        if match and match.get("enable") is False:
+            outcome(
+                execution="waiting_input",
+                detail="The DUMB-managed download client was disabled. Enable it in the Arr application when ready.",
+            )
+            return False, match.get("id")
+        payload = dict(desired) if match is None else dict(match)
+        managed = {str(name).lower() for name in managed_fields}
+        desired_fields = fields_map(desired)
+        if match:
+            fields = [dict(field) for field in match.get("fields") or []]
+            found = set()
+            for field in fields:
+                name = str(field.get("name") or "").lower()
+                if name in managed and name in desired_fields:
+                    field["value"] = desired_fields[name]
+                    found.add(name)
+            fields.extend(
+                dict(field)
+                for field in desired.get("fields") or []
+                if str(field.get("name") or "").lower() in managed - found
+            )
+            payload["fields"] = fields
+        changed = payload != match
+        client_id = match.get("id") if match else None
+        if changed:
+            saved = request(
+                f"{url}/{client_id}" if match else url,
+                arr_api_key,
+                "PUT" if match else "POST",
+                payload,
+            )
+            if not match:
+                client_id = saved.get("id") if isinstance(saved, dict) else None
+        if client_id is None:
+            raise ValueError("Application did not return a download client ID")
+        # Reserve the exact expected state before readback. A temporary GET
+        # failure after successful POST/PUT must not orphan our own connection.
+        records[owner_key] = {
+            "id": client_id,
+            "fingerprint": fingerprint(owned_fields_snapshot(payload)),
+        }
+        write_ownership(ledger_path, records)
+        saved = request(f"{url}/{client_id}", arr_api_key, "GET")
+        saved_fields = fields_map(saved) if isinstance(saved, dict) else {}
+        if not isinstance(saved, dict) or any(
+            saved_fields.get(name) != value
+            for name, value in desired_fields.items()
+            if name in managed
+        ):
+            outcome(
+                execution="failed",
+                verification="failed",
+                detail="Download client configuration did not match its readback.",
+                retryable=True,
+            )
+            raise ManagedIntegrationReadbackError("Download client readback failed")
+        records[owner_key] = {
+            "id": client_id,
+            "fingerprint": fingerprint(owned_fields_snapshot(saved)),
+        }
+        write_ownership(ledger_path, records)
+        outcome(
+            execution="applied" if changed else "already_present",
+            verification="passed",
+            changed=changed,
+            detail="Download client settings were read back. End-to-end downloading is not tested.",
+        )
+        if test_connection:
+            result = request(f"{url}/test", arr_api_key, "POST", saved)
+            passed = result in (None, [], {})
+            emit_action(
+                arr_action_result(
+                    provider,
+                    action + "_connection",
+                    arr_host,
+                    manager,
+                    execution="applied" if passed else "failed",
+                    verification="passed" if passed else "failed",
+                    detail=(
+                        "The Arr application accepted the connection test."
+                        if passed
+                        else "The Arr application rejected the connection test; check the application's connection settings."
+                    ),
+                    retryable=not passed,
+                )
+            )
+        return changed, client_id
+    except ManagedIntegrationConflict:
+        raise
+    except Exception as exc:
+        outcome(**request_failure(exc))
+        raise
 
 
 def _wait_for_arr(
@@ -741,18 +1019,67 @@ def _wait_for_arr(
     timeout_s: int = 60,
     interval_s: float = 2.0,
     api_version: str = "v3",
+    provider: str = "decypharr",
 ) -> bool:
-    """Poll /api/{version}/system/status until the Arr instance is responding or timeout."""
-    deadline = time.time() + max(1, timeout_s)
+    if not arr_target_allowed(host, CONFIG_MANAGER):
+        return False
+    if not (host and token):
+        emit_action(
+            arr_action_result(
+                provider,
+                "readiness",
+                host,
+                CONFIG_MANAGER,
+                execution="waiting_dependency",
+                detail="Waiting for the Arr API key.",
+                retryable=True,
+            )
+        )
+        if provider == "decypharr":
+            _schedule_decypharr_retry()
+        return False
+    deadline = time.monotonic() + max(1, timeout_s)
     url = _arr_url(host, api_version, "system/status")
-    while time.time() < deadline:
+    while time.monotonic() < deadline:
         if _shutdown_requested():
             return False
         try:
             _arr_req(url, token, "GET", timeout=5)
+            emit_action(
+                arr_action_result(
+                    provider,
+                    "readiness",
+                    host,
+                    CONFIG_MANAGER,
+                    execution="already_present",
+                    verification="passed",
+                    detail="The authenticated Arr API is ready.",
+                )
+            )
             return True
-        except Exception:
+        except Exception as exc:
+            failure = request_failure(exc)
+            if not failure["retryable"]:
+                emit_action(
+                    arr_action_result(
+                        provider, "readiness", host, CONFIG_MANAGER, **failure
+                    )
+                )
+                return False
             time.sleep(interval_s)
+    emit_action(
+        arr_action_result(
+            provider,
+            "readiness",
+            host,
+            CONFIG_MANAGER,
+            execution="waiting_dependency",
+            detail="Waiting for the Arr API to become ready.",
+            retryable=True,
+        )
+    )
+    if provider == "decypharr":
+        _schedule_decypharr_retry()
     return False
 
 
@@ -764,20 +1091,34 @@ def _with_retries(
     backoff: float = 1.6,
     **kwargs,
 ):
-    """Run fn with retries. Returns fn result or raises last error."""
     last_err = None
     delay = max(0.1, base_delay_s)
-    for i in range(max(1, attempts)):
+    count = max(1, attempts)
+    for index in range(count):
         if _shutdown_requested():
             raise RuntimeError("Shutdown requested")
         try:
-            return fn(*args, **kwargs)
-        except Exception as e:
-            last_err = e
-            if i == attempts - 1:
-                break
-            time.sleep(delay)
-            delay *= backoff
+            result = fn(*args, **kwargs)
+            if not isinstance(result, ActionResult):
+                return result
+            if (
+                result.execution not in {"failed", "waiting_dependency"}
+                or not result.retryable
+                or index == count - 1
+            ):
+                emit_action(result)
+                if result.retryable and result.execution in {
+                    "failed",
+                    "waiting_dependency",
+                }:
+                    _schedule_decypharr_retry()
+                return result
+        except Exception as exc:
+            last_err = exc
+            if not request_failure(exc)["retryable"] or index == count - 1:
+                raise
+        time.sleep(delay)
+        delay *= backoff
     raise last_err if last_err else RuntimeError("retry failed")
 
 
@@ -797,27 +1138,23 @@ def _wait_for_decypharr(
     return False
 
 
-_DECYPHARR_RETRY_LOCK = threading.Lock()
-_DECYPHARR_RETRY_SCHEDULED = False
+_DECYPHARR_RETRY = BoundedIntegrationRetry()
 
 
-def _schedule_decypharr_retry(delay_s: int = 15) -> None:
-    global _DECYPHARR_RETRY_SCHEDULED
-    with _DECYPHARR_RETRY_LOCK:
-        if _DECYPHARR_RETRY_SCHEDULED:
-            return
-        _DECYPHARR_RETRY_SCHEDULED = True
-
-    def _runner():
-        global _DECYPHARR_RETRY_SCHEDULED
-        try:
-            time.sleep(max(1, delay_s))
-            patch_decypharr_config()
-        finally:
-            with _DECYPHARR_RETRY_LOCK:
-                _DECYPHARR_RETRY_SCHEDULED = False
-
-    threading.Thread(target=_runner, daemon=True).start()
+def _schedule_decypharr_retry(delay_s: int = 15) -> bool:
+    emit_action(
+        ActionResult(
+            action_id="decypharr.readiness",
+            service_key="decypharr",
+            action="readiness",
+            execution="waiting_dependency",
+            detail="Setup is waiting for application readiness; automatic retries are bounded.",
+            retryable=True,
+        )
+    )
+    return _DECYPHARR_RETRY.schedule(
+        patch_decypharr_config, _shutdown_requested, delay_s=delay_s
+    )
 
 
 def _shutdown_requested() -> bool:
@@ -899,6 +1236,19 @@ def _uses_current_decypharr_config_schema(
 
 
 def patch_decypharr_config(
+    *, create_if_missing=False, configure_integrations=True, result_collector=None
+):
+    with capture_integration_results(result_collector) as outcomes:
+        result = _patch_decypharr_config(
+            create_if_missing=create_if_missing,
+            configure_integrations=configure_integrations,
+        )
+    if configure_integrations:
+        reset_retry_after_success(_DECYPHARR_RETRY, result, outcomes)
+    return result
+
+
+def _patch_decypharr_config(
     *, create_if_missing: bool = False, configure_integrations: bool = True
 ):
     if _shutdown_requested():
@@ -1434,18 +1784,24 @@ def patch_decypharr_config(
             desired_arrs = _collect_arr_entries(
                 decypharr_config, config_data.get("arrs") or []
             )
-            if desired_arrs:
-                if config_data.get("arrs") != desired_arrs:
-                    config_data["arrs"] = desired_arrs
-                    logger.info("Synchronized arrs (sonarr/radarr) from instances")
-                    updated = True
+            merged_arrs = _merge_decypharr_arrs(
+                config_data.get("arrs") or [], desired_arrs
+            )
+            if config_data.get("arrs", []) != merged_arrs:
+                config_data["arrs"] = merged_arrs
+                logger.info("Synchronized DUMB-managed Arr registrations.")
+                updated = True
         except Exception as e:
             logger.warning(f"Failed to synchronize arrs: {e}")
 
         # ---- Ensure Arr root folders (combined symlinks) ----
         root_paths = []
         try:
-            arrs = desired_arrs or []
+            arrs = [
+                entry
+                for entry in (desired_arrs or [])
+                if arr_target_allowed(entry.get("host"), CONFIG_MANAGER)
+            ]
             if not configure_integrations:
                 arrs = []
             for entry in arrs:
@@ -1473,15 +1829,31 @@ def patch_decypharr_config(
                 root_path = f"{base_root}/{instance_slug}"
                 root_paths.append(root_path)
                 try:
-                    if not os.path.exists(root_path):
-                        os.makedirs(root_path, exist_ok=True)
-                        logger.info(f"Created directory: {root_path}")
-                    if user_id is not None and group_id is not None:
-                        os.chown(root_path, int(user_id), int(group_id))
-                    os.chmod(root_path, 0o777)
-                except Exception as e:
-                    logger.warning(
-                        f"Failed to ensure rootfolder directory {root_path}: {e}"
+                    directory_result = ensure_media_directory(
+                        root_path, user_id, group_id
+                    )
+                    if directory_result["ownership_mismatch"]:
+                        emit_action(
+                            arr_action_result(
+                                "decypharr",
+                                "root_directory_ownership",
+                                entry.get("host"),
+                                CONFIG_MANAGER,
+                                execution="waiting_input",
+                                detail="An existing media root has different ownership or is a symlink. Review it manually; existing files and permissions were preserved.",
+                            )
+                        )
+                except OSError:
+                    emit_action(
+                        arr_action_result(
+                            "decypharr",
+                            "root_directory_ownership",
+                            entry.get("host"),
+                            CONFIG_MANAGER,
+                            execution="failed",
+                            detail="The media root could not be created or inspected. Check the configured storage path.",
+                            retryable=True,
+                        )
                     )
                 host = entry.get("host")
                 token = entry.get("token")
@@ -1519,7 +1891,11 @@ def patch_decypharr_config(
 
         # ---- Ensure download client 'decypharr' on each Arr ----
         try:
-            arrs = desired_arrs or []
+            arrs = [
+                entry
+                for entry in (desired_arrs or [])
+                if arr_target_allowed(entry.get("host"), CONFIG_MANAGER)
+            ]
             if not configure_integrations:
                 arrs = []
             decypharr_port = int(decypharr_config.get("port", 8282))
@@ -1587,6 +1963,10 @@ def patch_decypharr_config(
                                     api_token=api_token,
                                     service=svc,
                                     name="decypharr-usenet",
+                                    url_base=str(
+                                        config_data.get("url_base") or ""
+                                    ).rstrip("/")
+                                    + "/sabnzbd",
                                     category=entry.get("name"),
                                     category_map={
                                         "radarr": "radarr",
@@ -1734,29 +2114,44 @@ def patch_decypharr_config(
 
         for dir_path in required_dirs:
             try:
-                if not os.path.exists(dir_path):
-                    os.makedirs(dir_path, exist_ok=True)
-                    logger.info(f"Created directory: {dir_path}")
-                if user_id is not None and group_id is not None:
-                    os.chown(dir_path, int(user_id), int(group_id))
-            except OSError as e:
-                # FUSE-backed mountpoints may not support chown/chmod operations.
-                if getattr(e, "errno", None) in (1, 30, 95):
-                    logger.debug("Skipping ownership update for %s: %s", dir_path, e)
-                    continue
-                logger.warning(
-                    f"Failed to ensure ownership or creation of {dir_path}: {e}"
-                )
-            except Exception as e:
-                logger.warning(
-                    f"Failed to ensure ownership or creation of {dir_path}: {e}"
+                directory_result = ensure_media_directory(dir_path, user_id, group_id)
+                if directory_result["ownership_mismatch"]:
+                    emit_action(
+                        ActionResult(
+                            action_id="decypharr.media_directory_ownership",
+                            service_key="decypharr",
+                            action="media_directory_ownership",
+                            execution="waiting_input",
+                            detail="An existing media directory has different ownership or is a symlink; review it manually.",
+                        )
+                    )
+            except OSError:
+                emit_action(
+                    ActionResult(
+                        action_id="decypharr.media_directory_ownership",
+                        service_key="decypharr",
+                        action="media_directory_ownership",
+                        execution="failed",
+                        detail="A required media directory could not be created or inspected.",
+                        retryable=True,
+                    )
                 )
 
         return (True, None) if updated else (False, None)
 
-    except Exception as e:
-        logger.error(f"Error patching Decypharr config: {e}")
-        return False, str(e)
+    except Exception:
+        logger.error("Decypharr configuration reconciliation failed.")
+        emit_action(
+            ActionResult(
+                action_id="decypharr.configuration",
+                service_key="decypharr",
+                action="configuration",
+                execution="failed",
+                detail="Provider settings could not be safely reconciled; review readiness and ownership.",
+                retryable=True,
+            )
+        )
+        return False, "Decypharr configuration reconciliation failed."
 
 
 # ---------------------------------------------------------------------------

@@ -21,6 +21,7 @@ from utils.dependencies import (
 from api.routers.process import process_router
 from api.routers.infinidysk_v2 import infinidysk_v2_router
 from api.routers.backup_storage import backup_storage_router
+from api.routers.setup import setup_router, shutdown_setup_coordinator
 from api.routers.config import config_router
 from api.routers.health import health_router
 from api.routers.logs import logs_router
@@ -69,6 +70,7 @@ def _requires_namespace_mutation_reservation(method: str, path: str) -> bool:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield
+    shutdown_setup_coordinator()
     media_protection_manager = get_media_protection_manager()
     media_protection_manager.shutdown()
     rclone_optimizer_manager = get_rclone_optimizer_manager()
@@ -179,6 +181,9 @@ def create_app() -> FastAPI:
     app.include_router(infinidysk_v2_router, prefix="/process", tags=["InfiniDysk 2.x"])
     app.include_router(
         backup_storage_router, prefix="/process", tags=["Backup storage"]
+    )
+    app.include_router(
+        setup_router, prefix="/process/setup", tags=["Arrangement Setup"]
     )
     app.include_router(
         rclone_optimizer_router,

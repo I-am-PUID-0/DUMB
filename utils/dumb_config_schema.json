@@ -1309,6 +1309,20 @@
           "type": "string",
           "pattern": "^$|^@default$|^[a-z0-9][a-z0-9_-]{0,63}$",
           "description": "Optional registered cold backup destination; empty preserves the existing path and @default explicitly follows the shared default."
+        },
+        "battery_mode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "standalone",
+            "embedded"
+          ],
+          "description": "Selected CLI source layout; auto requires confirmation when a new moving source cannot be identified."
+        },
+        "use_phalanx_db": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable the optional PhalanxDB companion for the selected CLI arrangement."
         }
       },
       "required": [
@@ -2671,6 +2685,17 @@
               ]
             }
           }
+        },
+        "arr_instances": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true,
+          "description": "Exact family.instance assignments; null preserves legacy workflow selection and an empty list selects none."
         }
       },
       "required": [
@@ -2906,6 +2931,17 @@
               ]
             }
           }
+        },
+        "arr_instances": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true,
+          "description": "Exact family.instance assignments; null preserves legacy workflow selection and an empty list selects none."
         }
       },
       "required": [
@@ -3292,6 +3328,17 @@
                 },
                 "env": {
                   "type": "object"
+                },
+                "arr_instances": {
+                  "type": [
+                    "null",
+                    "array"
+                  ],
+                  "items": {
+                    "type": "string"
+                  },
+                  "uniqueItems": true,
+                  "description": "Exact family.instance Arr assignments. Null preserves legacy all-enabled routing; an empty list selects none."
                 }
               },
               "required": [
@@ -3723,6 +3770,24 @@
           "type": "string",
           "pattern": "^$|^@default$|^[a-z0-9][a-z0-9_-]{0,63}$",
           "description": "Optional registered cold backup destination; empty preserves the existing path and @default explicitly follows the shared default."
+        },
+        "api_keys": {
+          "type": "object",
+          "properties": {
+            "realdebrid": {
+              "type": "string"
+            },
+            "alldebrid": {
+              "type": "string"
+            },
+            "debridlink": {
+              "type": "string"
+            },
+            "torbox": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
         }
       },
       "required": [

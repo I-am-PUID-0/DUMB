@@ -301,14 +301,43 @@ def uses_postgres_database(config: dict) -> bool:
     return _infinidysk_postgres_selected(config)
 
 
-def get_active_config_value(name: str, config: dict) -> Optional[str]:
+def get_active_config_value(
+    name: str, config: dict, *, max_bytes: int | None = None
+) -> Optional[str]:
     """Read the selected application store without falling back across providers."""
+    if max_bytes is not None and (
+        isinstance(max_bytes, bool)
+        or not isinstance(max_bytes, int)
+        or not 1 <= max_bytes <= 2 * 1024 * 1024
+    ):
+        raise ValueError("The native configuration read limit is invalid.")
+
+    def bounded(value):
+        if value is None:
+            return None
+        raw = value.encode("utf-8") if isinstance(value, str) else bytes(value)
+        if max_bytes is not None and len(raw) > max_bytes:
+            raise ValueError("The native configuration item exceeds its read limit.")
+        return raw.decode("utf-8")
+
     if not uses_postgres_database(config):
         env = config.get("env") or {}
         config_dir = env.get("CONFIG_PATH") or config.get("config_dir") or "/infinidysk"
-        uri = (Path(config_dir) / "db.sqlite").resolve().as_uri() + "?mode=ro"
+        path = Path(config_dir) / "db.sqlite"
+        if max_bytes is not None and (path.is_symlink() or not path.is_file()):
+            raise ValueError(
+                "The selected native SQLite database must be an existing regular file."
+            )
+        uri = path.resolve().as_uri() + "?mode=ro"
         connection = sqlite3.connect(uri, uri=True, timeout=2)
         try:
+            if max_bytes is not None:
+                connection.execute("PRAGMA query_only=ON")
+                row = connection.execute(
+                    "SELECT substr(CAST(ConfigValue AS BLOB), 1, ?) FROM ConfigItems WHERE ConfigName = ?",
+                    (max_bytes + 1, name),
+                ).fetchone()
+                return bounded(row[0]) if row else None
             row = connection.execute(
                 "SELECT ConfigValue FROM ConfigItems WHERE ConfigName = ?", (name,)
             ).fetchone()
@@ -335,13 +364,20 @@ def get_active_config_value(name: str, config: dict) -> Optional[str]:
         connection.set_session(readonly=True, autocommit=True)
         with connection.cursor() as cursor:
             cursor.execute("SET statement_timeout = '2s'")
-            cursor.execute(
-                'SELECT "ConfigValue" FROM "public"."ConfigItems" '
-                'WHERE "ConfigName" = %s',
-                (name,),
-            )
+            if max_bytes is not None:
+                cursor.execute(
+                    "SELECT substring(convert_to(\"ConfigValue\", 'UTF8') from 1 for %s) "
+                    'FROM "public"."ConfigItems" WHERE "ConfigName" = %s',
+                    (max_bytes + 1, name),
+                )
+            else:
+                cursor.execute(
+                    'SELECT "ConfigValue" FROM "public"."ConfigItems" '
+                    'WHERE "ConfigName" = %s',
+                    (name,),
+                )
             row = cursor.fetchone()
-        return row[0] if row else None
+        return (bounded(row[0]) if max_bytes is not None else row[0]) if row else None
     finally:
         connection.close()
 

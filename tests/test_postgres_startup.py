@@ -1,4 +1,5 @@
 import builtins
+import ast
 import io
 import os
 import signal
@@ -200,6 +201,56 @@ class PostgresStartupSafetyTests(unittest.TestCase):
 
         self.assertFalse(success)
         self.assertEqual(error, "PostgreSQL initdb failed: initdb failed")
+
+    def test_pgadmin_runtime_config_is_private_owned_and_quotes_literal_uri(self):
+        with tempfile.TemporaryDirectory() as directory:
+            install = os.path.join(directory, "runtime")
+            os.mkdir(install)
+            target = os.path.join(directory, "config_local.py")
+            uri = "postgresql://user:p'ass\\word@127.0.0.1/pgadmin"
+            with (
+                patch.object(postgres_utils.glob, "glob", return_value=[install]),
+                patch.object(postgres_utils, "user_id", os.geteuid()),
+                patch.object(postgres_utils, "group_id", os.getegid()),
+            ):
+                actual = postgres_utils.create_pgadmin_config(
+                    directory, uri, target, "0.0.0.0", 5050
+                )
+            self.assertEqual(target, actual)
+            with open(target) as handle:
+                parsed = ast.parse(handle.read())
+            fields = {
+                statement.targets[0].id: ast.literal_eval(statement.value)
+                for statement in parsed.body
+            }
+            self.assertEqual(uri, fields["CONFIG_DATABASE_URI"])
+            self.assertEqual(0o600, os.stat(target).st_mode & 0o777)
+            self.assertEqual(os.geteuid(), os.stat(target).st_uid)
+            self.assertEqual(
+                target, os.readlink(os.path.join(install, "config_local.py"))
+            )
+
+    def test_pgadmin_start_stops_when_runtime_config_creation_failed(self):
+        process_handler = SimpleNamespace(start_process=Mock())
+        with patch.object(
+            postgres_utils,
+            "create_pgadmin_config",
+            return_value=(False, "Configuration unavailable."),
+        ):
+            success, error = start_pgadmin(
+                process_handler,
+                "/tmp/pgadmin",
+                "/tmp/config_local.py",
+                "postgresql://example.invalid/pgadmin",
+                "operator@example.com",
+                "test-password",
+                "pgAdmin4",
+                5050,
+                "0.0.0.0",
+            )
+        self.assertFalse(success)
+        self.assertEqual("Configuration unavailable.", error)
+        process_handler.start_process.assert_not_called()
 
     def test_pgadmin_start_propagates_immediate_process_failure(self):
         process_handler = SimpleNamespace(

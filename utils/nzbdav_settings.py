@@ -1,9 +1,25 @@
 from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
+from utils.decypharr_settings import _arr_host, _upsert_managed_download_client
+from utils.integration_result import (
+    ActionResult,
+    BoundedIntegrationRetry,
+    arr_action_result,
+    arr_target_allowed,
+    emit_action,
+    capture_integration_results,
+    reset_retry_after_success,
+    request_failure,
+)
 from utils.core_services import get_core_services, has_core_service
 from utils import nzbdav_db
+from utils.integration_ownership import (
+    ensure_media_directory,
+    fingerprint,
+    read_ownership,
+    write_ownership,
+)
 from utils.url_security import safe_request, safe_urlopen
-from utils.user_management import chown_recursive, chown_single
 from contextlib import contextmanager
 from typing import Optional, Tuple
 import defusedxml.ElementTree as ET
@@ -122,13 +138,22 @@ def _collect_arr_entries() -> Tuple[list[dict], list[dict], list[dict], list[dic
                     "Skipping %s instance %s: missing port", svc_name, inst_key
                 )
                 continue
-            host = f"http://127.0.0.1:{port}"
             cfg_path = (inst.get("config_file") or "").strip()
+            host = _arr_host(port, cfg_path)
             token = _parse_arr_api_key(cfg_path)
             if not token:
-                logger.warning(
-                    "Skipping %s instance %s: missing API key", svc_name, inst_key
+                emit_action(
+                    ActionResult(
+                        action_id=f"infinidysk.arr.{svc_name}.{inst_key}.readiness",
+                        service_key="infinidysk",
+                        instance_key=f"{svc_name}.{inst_key}",
+                        action="readiness",
+                        execution="waiting_dependency",
+                        detail="Waiting for the Arr API key.",
+                        retryable=True,
+                    )
                 )
+                _schedule_nzbdav_retry()
                 continue
             inst_name = (
                 inst.get("instance_name") or inst.get("name") or inst_key or ""
@@ -154,6 +179,8 @@ def get_nzbdav_arr_categories() -> list[dict]:
     seen = set()
     for service, entries in zip(("radarr", "sonarr", "lidarr", "whisparr"), buckets):
         for entry in entries:
+            if not arr_target_allowed(entry.get("Host"), CONFIG_MANAGER):
+                continue
             category = (entry.get("Category") or "").strip().lower()
             if not category or category in seen:
                 continue
@@ -166,6 +193,37 @@ def get_nzbdav_arr_categories() -> list[dict]:
                 }
             )
     return result
+
+
+def expected_arr_category(config, service, instance_key):
+    """Exact InfiniDysk slug used by its native Arr registration and client."""
+    instance = ((config.get(service) or {}).get("instances") or {}).get(
+        instance_key
+    ) or {}
+    label = (
+        instance.get("instance_name") or instance.get("name") or instance_key or ""
+    ).strip()
+    return _slugify_category(f"{service}-{label}") or _slugify_category(service)
+
+
+def expected_arr_root(config, service, instance_key):
+    """Pure expected-root recipe; legacy namespace and shared roots are retained."""
+    instance = ((config.get(service) or {}).get("instances") or {}).get(
+        instance_key
+    ) or {}
+    label = (
+        instance.get("instance_name") or instance.get("name") or instance_key or ""
+    ).strip()
+    links = get_core_services(instance)
+    combined = "decypharr" in links and "infinidysk" in links
+    base = (
+        "/mnt/debrid/combined_symlinks"
+        if combined
+        else _infinidysk_symlink_root(config.get("infinidysk") or {})
+    )
+    return os.path.join(
+        base, _slugify_category(f"{service}-{label}") or _slugify_category(service)
+    )
 
 
 def _instance_core_services(svc_name: str, instance_name: str) -> list[str]:
@@ -228,6 +286,7 @@ def _infinidysk_config_api_request(
     if not api_key:
         return None, "InfiniDysk frontend/backend API key is unavailable."
     backend_port = int(config.get("backend_port") or 8080)
+
     for attempt in range(2):
         request = safe_request(
             f"http://127.0.0.1:{backend_port}/{endpoint.lstrip('/')}",
@@ -377,14 +436,8 @@ def _arr_req(
                 return json.loads(raw.decode("utf-8"))
             except Exception:
                 return raw.decode("utf-8")
-    except urllib.error.HTTPError as e:
-        try:
-            body = e.read().decode("utf-8")
-        except Exception:
-            body = ""
-        setattr(e, "body", body)
-        if body:
-            logger.warning("Arr API error response from %s: %s", url, body)
+    except urllib.error.HTTPError:
+        logger.warning("Arr API request failed; response details are omitted.")
         raise
 
 
@@ -468,32 +521,67 @@ def _get_lidarr_rootfolder_payload(
 
 def _ensure_arr_rootfolder(
     host: str, token: str, path: str, api_version: str = "v3"
-) -> bool:
-    """Ensure a root folder exists on a Sonarr/Radarr instance.
-    Returns True if created, False if already present or on error."""
+) -> ActionResult:
+    def outcome(**kwargs):
+        return arr_action_result(
+            "infinidysk", "root_folder", host, CONFIG_MANAGER, **kwargs
+        )
+
+    if not arr_target_allowed(host, CONFIG_MANAGER):
+        return outcome(
+            execution="skipped",
+            detail="This Arr is outside the selected reconciliation scope.",
+        )
     if not (host and token and path):
-        return False
+        return outcome(
+            execution="waiting_dependency",
+            detail="Waiting for the Arr API key and root path.",
+            retryable=True,
+        )
     try:
         url = _arr_url(host, api_version, "rootfolder")
-        existing = _arr_req(url, token, "GET") or []
+        existing = _arr_req(url, token, "GET")
+        if not isinstance(existing, list):
+            raise ValueError("Unexpected root folder response")
         if any(
             _normalize_path(x.get("path", "")) == _normalize_path(path)
-            for x in (existing or [])
+            for x in existing
+            if isinstance(x, dict)
         ):
-            return False
+            return outcome(
+                execution="already_present",
+                verification="passed",
+                detail="The required root folder is present.",
+            )
         payload = {"path": path}
         if api_version == "v1":
-            payload = _get_lidarr_rootfolder_payload(host, token, path) or payload
-            if payload == {"path": path}:
-                return False
+            payload = _get_lidarr_rootfolder_payload(host, token, path)
+            if not payload:
+                return outcome(
+                    execution="waiting_input",
+                    detail="Create a Lidarr quality profile and metadata profile, then retry.",
+                )
         _arr_req(url, token, "POST", payload)
-        logger.info("Created root folder '%s' on %s", path, host)
-        return True
-    except urllib.error.HTTPError as e:
-        logger.warning("HTTP error ensuring rootfolder %s on %s: %s", path, host, e)
-    except Exception as e:
-        logger.warning("Failed to ensure rootfolder %s on %s: %s", path, host, e)
-    return False
+        saved = _arr_req(url, token, "GET")
+        if not isinstance(saved, list) or not any(
+            _normalize_path(x.get("path", "")) == _normalize_path(path)
+            for x in saved
+            if isinstance(x, dict)
+        ):
+            return outcome(
+                execution="failed",
+                verification="failed",
+                detail="The application did not retain the required root folder.",
+                retryable=True,
+            )
+        return outcome(
+            execution="applied",
+            verification="passed",
+            detail="The root folder was created and read back.",
+            changed=True,
+        )
+    except Exception as exc:
+        return outcome(**request_failure(exc))
 
 
 def _coerce_chmod_value(current_value, desired_value: str):
@@ -512,86 +600,84 @@ def _ensure_arr_permissions(
     set_permissions: bool = True,
     api_version: str = "v3",
     chmod_file: str = "666",
-) -> bool:
+) -> ActionResult:
+    def outcome(**kwargs):
+        return arr_action_result(
+            "infinidysk", "permissions", host, CONFIG_MANAGER, **kwargs
+        )
+
+    if not arr_target_allowed(host, CONFIG_MANAGER):
+        return outcome(
+            execution="skipped",
+            detail="This Arr is outside the selected reconciliation scope.",
+        )
     if not (host and token):
-        return False
+        return outcome(
+            execution="waiting_dependency",
+            detail="Waiting for the Arr API key.",
+            retryable=True,
+        )
     try:
         url = _arr_url(host, api_version, "config/mediamanagement")
-        current = _arr_req(url, token, "GET") or {}
+        current = _arr_req(url, token, "GET")
         if not isinstance(current, dict):
-            return False
+            raise ValueError("Unexpected media management response")
         desired = current.copy()
-        perms_key = "setPermissions"
-        if "setPermissionsLinux" in current and "setPermissions" not in current:
-            perms_key = "setPermissionsLinux"
+        perms_key = (
+            "setPermissionsLinux"
+            if "setPermissionsLinux" in current and "setPermissions" not in current
+            else "setPermissions"
+        )
         desired[perms_key] = bool(set_permissions)
         desired["chmodFolder"] = _coerce_chmod_value(
             current.get("chmodFolder"), chmod_folder
         )
+        owned_fields = [perms_key, "chmodFolder"]
         if "chmodFile" in current:
-            desired["chmodFile"] = _coerce_chmod_value(
-                current.get("chmodFile"), chmod_file
+            desired["chmodFile"] = _coerce_chmod_value(current["chmodFile"], chmod_file)
+            owned_fields.append("chmodFile")
+        if all(desired.get(key) == current.get(key) for key in owned_fields):
+            return outcome(
+                execution="already_present",
+                verification="passed",
+                detail="The required Arr permission settings are present.",
             )
-        updated = (
-            desired.get(perms_key) != current.get(perms_key)
-            or desired.get("chmodFolder") != current.get("chmodFolder")
-            or desired.get("chmodFile") != current.get("chmodFile")
-        )
-        if not updated:
-            return False
         _arr_req(url, token, "PUT", desired)
-        verify = _arr_req(url, token, "GET") or {}
-        if isinstance(verify, dict) and verify.get(perms_key) != desired.get(perms_key):
-            logger.warning(
-                "Arr permissions update did not persist on %s: %s=%s",
-                host,
-                perms_key,
-                verify.get(perms_key),
+        saved = _arr_req(url, token, "GET")
+        if not isinstance(saved, dict) or any(
+            saved.get(key) != desired.get(key) for key in owned_fields
+        ):
+            return outcome(
+                execution="failed",
+                verification="failed",
+                detail="The application did not retain the required permission settings.",
+                retryable=True,
             )
-        logger.info(
-            "Updated Arr permissions on %s: %s=%s chmodFolder=%s",
-            host,
-            perms_key,
-            desired.get(perms_key),
-            desired.get("chmodFolder"),
+        return outcome(
+            execution="applied",
+            verification="passed",
+            detail="The Arr permission settings were applied and read back.",
+            changed=True,
         )
-        return True
-    except urllib.error.HTTPError as e:
-        logger.warning("HTTP error updating Arr permissions on %s: %s", host, e)
-    except Exception as e:
-        logger.warning("Failed to update Arr permissions on %s: %s", host, e)
-    return False
+    except Exception as exc:
+        return outcome(**request_failure(exc))
 
 
 def _ensure_symlink_roots(paths: list[str]) -> None:
     user_id = CONFIG_MANAGER.get("puid")
     group_id = CONFIG_MANAGER.get("pgid")
     for path in paths:
-        os.makedirs(path, exist_ok=True)
-        parent_dir = os.path.dirname(path.rstrip(os.sep))
-        if parent_dir and parent_dir != os.sep:
-            chown_single(parent_dir, user_id, group_id)
-        try:
-            stat_info = os.stat(path)
-        except Exception as e:
-            logger.debug("Failed stat for %s: %s", path, e)
-            stat_info = None
-        chown_single(path, user_id, group_id)
-        try:
-            os.chmod(path, 0o777)
-        except Exception as e:
-            logger.debug("Failed chmod for %s: %s", path, e)
-        if stat_info and stat_info.st_uid == user_id and stat_info.st_gid == group_id:
-            logger.debug(
-                "Skipping recursive chown for %s; owner matches %s:%s",
-                path,
-                user_id,
-                group_id,
+        result = ensure_media_directory(path, user_id, group_id)
+        if result["ownership_mismatch"]:
+            emit_action(
+                ActionResult(
+                    action_id="infinidysk.media_directory_ownership",
+                    service_key="infinidysk",
+                    action="media_directory_ownership",
+                    execution="waiting_input",
+                    detail="An existing media root has different ownership or is a symlink. Review it manually; DUMB did not change existing files or permissions.",
+                )
             )
-            continue
-        ok, err = chown_recursive(path, user_id, group_id)
-        if err:
-            logger.debug("Recursive chown failed for %s: %s", path, err)
 
 
 def ensure_nzbdav_download_client(
@@ -671,73 +757,26 @@ def ensure_nzbdav_download_client(
         "fields": fields,
     }
 
-    if test_before_save:
-        _arr_req(
-            _arr_url(arr_host, api_version, "downloadclient/test"),
-            arr_api_key,
-            "POST",
-            desired,
-        )
-
-    existing = (
-        _arr_req(_arr_url(arr_host, api_version, "downloadclient"), arr_api_key, "GET")
-        or []
+    return _upsert_managed_download_client(
+        arr_host,
+        arr_api_key,
+        desired,
+        provider="infinidysk",
+        managed_fields=set(overrides)
+        | {
+            "category",
+            "movieCategory",
+            "tvCategory",
+            "musicCategory",
+            "useCategory",
+            "useTags",
+        },
+        api_version=api_version,
+        test_connection=test_before_save,
+        request_fn=_arr_req,
+        aliases=("infinidysk", "nzbdav"),
+        config_manager=CONFIG_MANAGER,
     )
-    managed_names = {name.lower(), "infinidysk", "nzbdav"}
-    match = next(
-        (c for c in existing if (c.get("name") or "").strip().lower() in managed_names),
-        None,
-    )
-
-    if match:
-        client_id = match.get("id")
-        put_body = desired.copy()
-        put_body["id"] = client_id
-        try:
-            _arr_req(
-                _arr_url(arr_host, api_version, f"downloadclient/{client_id}"),
-                arr_api_key,
-                "PUT",
-                put_body,
-            )
-        except urllib.error.HTTPError as exc:
-            if "Category does not exist" in getattr(exc, "body", ""):
-                _clear_category_fields(put_body.get("fields"))
-                _arr_req(
-                    _arr_url(arr_host, api_version, f"downloadclient/{client_id}"),
-                    arr_api_key,
-                    "PUT",
-                    put_body,
-                )
-            else:
-                raise
-        return True, client_id
-
-    try:
-        created = (
-            _arr_req(
-                _arr_url(arr_host, api_version, "downloadclient"),
-                arr_api_key,
-                "POST",
-                desired,
-            )
-            or {}
-        )
-        return True, created.get("id")
-    except urllib.error.HTTPError as exc:
-        if "Category does not exist" in getattr(exc, "body", ""):
-            _clear_category_fields(desired.get("fields"))
-            created = (
-                _arr_req(
-                    _arr_url(arr_host, api_version, "downloadclient"),
-                    arr_api_key,
-                    "POST",
-                    desired,
-                )
-                or {}
-            )
-            return True, created.get("id")
-        raise
 
 
 def _wait_for_arr(
@@ -746,15 +785,52 @@ def _wait_for_arr(
     timeout_s: int = 60,
     interval_s: float = 2.0,
     api_version: str = "v3",
+    provider: str = "infinidysk",
 ) -> bool:
-    deadline = time.time() + max(1, timeout_s)
+    if not arr_target_allowed(host, CONFIG_MANAGER):
+        return False
+    deadline = time.monotonic() + max(1, timeout_s)
     url = _arr_url(host, api_version, "system/status")
-    while time.time() < deadline:
+    while time.monotonic() < deadline:
+        if _shutdown_requested():
+            return False
         try:
             _arr_req(url, token, "GET", timeout=5)
+            emit_action(
+                arr_action_result(
+                    provider,
+                    "readiness",
+                    host,
+                    CONFIG_MANAGER,
+                    execution="already_present",
+                    verification="passed",
+                    detail="The authenticated Arr API is ready.",
+                )
+            )
             return True
-        except Exception:
+        except Exception as exc:
+            failure = request_failure(exc)
+            if not failure["retryable"]:
+                emit_action(
+                    arr_action_result(
+                        provider, "readiness", host, CONFIG_MANAGER, **failure
+                    )
+                )
+                return False
             time.sleep(interval_s)
+    emit_action(
+        arr_action_result(
+            provider,
+            "readiness",
+            host,
+            CONFIG_MANAGER,
+            execution="waiting_dependency",
+            detail="Waiting for the Arr API to become ready.",
+            retryable=True,
+        )
+    )
+    if provider == "infinidysk":
+        _schedule_nzbdav_retry()
     return False
 
 
@@ -768,15 +844,32 @@ def _with_retries(
 ):
     last_err = None
     delay = max(0.1, base_delay_s)
-    for i in range(max(1, attempts)):
+    count = max(1, attempts)
+    for index in range(count):
+        if _shutdown_requested():
+            raise RuntimeError("Shutdown requested")
         try:
-            return fn(*args, **kwargs)
-        except Exception as e:
-            last_err = e
-            if i == attempts - 1:
-                break
-            time.sleep(delay)
-            delay *= backoff
+            result = fn(*args, **kwargs)
+            if not isinstance(result, ActionResult):
+                return result
+            if (
+                result.execution not in {"failed", "waiting_dependency"}
+                or not result.retryable
+                or index == count - 1
+            ):
+                emit_action(result)
+                if result.retryable and result.execution in {
+                    "failed",
+                    "waiting_dependency",
+                }:
+                    _schedule_nzbdav_retry()
+                return result
+        except Exception as exc:
+            last_err = exc
+            if not request_failure(exc)["retryable"] or index == count - 1:
+                raise
+        time.sleep(delay)
+        delay *= backoff
     raise last_err if last_err else RuntimeError("retry failed")
 
 
@@ -800,49 +893,96 @@ def _wait_for_nzbdav(
     return False
 
 
-_NZBDAV_RETRY_LOCK = threading.Lock()
-_NZBDAV_RETRY_SCHEDULED = False
+_NZBDAV_RETRY = BoundedIntegrationRetry()
 
 
-def _schedule_nzbdav_retry(delay_s: int = 15) -> None:
-    global _NZBDAV_RETRY_SCHEDULED
-    with _NZBDAV_RETRY_LOCK:
-        if _NZBDAV_RETRY_SCHEDULED:
-            return
-        _NZBDAV_RETRY_SCHEDULED = True
+def _shutdown_requested():
+    try:
+        from utils.dependencies import get_process_handler
 
-    def _runner():
-        global _NZBDAV_RETRY_SCHEDULED
-        try:
-            time.sleep(max(1, delay_s))
-            patch_nzbdav_config()
-        finally:
-            with _NZBDAV_RETRY_LOCK:
-                _NZBDAV_RETRY_SCHEDULED = False
-
-    threading.Thread(target=_runner, daemon=True).start()
+        return bool(getattr(get_process_handler(), "shutting_down", False))
+    except Exception:
+        return False
 
 
-def _merge_instances(existing: list[dict], auto_list: list[dict]) -> list[dict]:
-    merged = {}
-    for item in existing or []:
-        host = (item.get("Host") or "").strip()
-        if host:
-            merged[host.lower()] = item
-    for item in auto_list or []:
-        host = (item.get("Host") or "").strip()
-        if host:
-            merged[host.lower()] = item
-    return sorted(
-        merged.values(),
-        key=lambda item: (
-            (item.get("Host") or "").lower(),
-            (item.get("ApiKey") or ""),
-        ),
+def _schedule_nzbdav_retry(delay_s: int = 15) -> bool:
+    emit_action(
+        ActionResult(
+            action_id="infinidysk.readiness",
+            service_key="infinidysk",
+            action="readiness",
+            execution="waiting_dependency",
+            detail="Setup is waiting for application readiness; automatic retries are bounded.",
+            retryable=True,
+        )
+    )
+    return _NZBDAV_RETRY.schedule(
+        patch_nzbdav_config, _shutdown_requested, delay_s=delay_s
     )
 
 
-def patch_nzbdav_config():
+def _merge_instances(existing, auto_list, owned=None, retain_hosts=()):
+    owned = owned if owned is not None else {}
+    desired = {str(item.get("Host") or "").lower(): item for item in auto_list}
+    merged = []
+    consumed = set()
+    keys = ("Host", "ApiKey", "Category", "Instance")
+    for item in existing or []:
+        if not isinstance(item, dict):
+            merged.append(item)
+            continue
+        host = str(item.get("Host") or "").lower()
+        target = desired.get(host)
+        record = owned.get(host)
+        managed = bool(
+            record
+            and record.get("fingerprint")
+            == fingerprint({key: item.get(key) for key in keys})
+        )
+        if not target:
+            if managed and host not in retain_hosts:
+                owned.pop(host, None)
+            else:
+                merged.append(item)
+            continue
+        consumed.add(host)
+        if not managed:
+            merged.append(item)
+            emit_action(
+                arr_action_result(
+                    "infinidysk",
+                    "arr_registration",
+                    target.get("Host"),
+                    CONFIG_MANAGER,
+                    execution="waiting_input",
+                    detail="An existing Arr registration is unowned or was edited outside DUMB; it was preserved.",
+                )
+            )
+            continue
+        updated = dict(item)
+        updated.update(target)
+        merged.append(updated)
+        owned[host] = {
+            "fingerprint": fingerprint({key: updated.get(key) for key in keys})
+        }
+    for host, target in desired.items():
+        if host in consumed:
+            continue
+        merged.append(target)
+        owned[host] = {
+            "fingerprint": fingerprint({key: target.get(key) for key in keys})
+        }
+    return merged
+
+
+def patch_nzbdav_config(*, result_collector=None):
+    with capture_integration_results(result_collector) as outcomes:
+        result = _patch_nzbdav_config()
+    reset_retry_after_success(_NZBDAV_RETRY, result, outcomes)
+    return result
+
+
+def _patch_nzbdav_config():
     """Synchronize managed settings using the generation-specific contract."""
     from utils.infinidysk_v2_topology import is_v2
 
@@ -908,15 +1048,38 @@ def _patch_nzbdav_config_admitted():
     standalone_symlink_root = _infinidysk_symlink_root(config)
     standalone_mount_root = _infinidysk_mount_root(config)
     backend_port = int(config.get("backend_port") or 8080)
+    ledger_dir = config.get("config_dir") or (
+        os.path.dirname(config["config_file"]) if config.get("config_file") else None
+    )
+    ledger_file = (
+        os.path.join(ledger_dir, ".dumb-arr-links.json") if ledger_dir else None
+    )
+    ownership = read_ownership(ledger_file) if ledger_file else {}
 
     radarr_entries, sonarr_entries, lidarr_entries, whisparr_entries = (
         _collect_arr_entries()
     )
+    retain_hosts = set()
+    for service in ("radarr", "sonarr", "lidarr", "whisparr"):
+        for instance in (
+            (CONFIG_MANAGER.get(service) or {}).get("instances") or {}
+        ).values():
+            if (
+                isinstance(instance, dict)
+                and instance.get("enabled")
+                and has_core_service(instance, "infinidysk")
+            ):
+                port = instance.get("port") or instance.get("host_port")
+                if port:
+                    retain_hosts.add(
+                        _arr_host(port, instance.get("config_file") or "").lower()
+                    )
     if (
         not radarr_entries
         and not sonarr_entries
         and not lidarr_entries
         and not whisparr_entries
+        and not ownership
     ):
         logger.info(
             "No Radarr/Sonarr/Lidarr/Whisparr instances configured for InfiniDysk."
@@ -957,13 +1120,36 @@ def _patch_nzbdav_config_admitted():
     if root_paths:
         try:
             _ensure_symlink_roots(sorted(base_roots) + root_paths)
-        except Exception as e:
-            logger.warning("Failed to ensure InfiniDysk symlink roots: %s", e)
+        except Exception:
+            logger.warning(
+                "Failed to create or inspect required InfiniDysk media roots."
+            )
+            emit_action(
+                ActionResult(
+                    action_id="infinidysk.media_directory_ownership",
+                    service_key="infinidysk",
+                    action="media_directory_ownership",
+                    execution="failed",
+                    detail="A required media root could not be created or inspected. Review the configured storage path.",
+                    retryable=True,
+                )
+            )
 
     config_values, config_error = _read_nzbdav_config_values(
         ("arr.instances", "api.categories", "rclone.mount-dir"), config
     )
     if config_values is None:
+        if "HTTP 401" in str(config_error) or "HTTP 403" in str(config_error):
+            emit_action(
+                ActionResult(
+                    action_id="infinidysk.configuration",
+                    service_key="infinidysk",
+                    action="configuration",
+                    execution="waiting_input",
+                    detail="InfiniDysk rejected its configured API key. Correct the credentials and retry.",
+                )
+            )
+            return False, None
         if _uses_postgres_database(config):
             logger.info(
                 "InfiniDysk PostgreSQL configuration API is not ready; deferring managed settings: %s",
@@ -979,20 +1165,33 @@ def _patch_nzbdav_config_admitted():
         existing_obj = {}
 
     merged_radarr = _merge_instances(
-        existing_obj.get("RadarrInstances", []), radarr_entries
+        existing_obj.get("RadarrInstances", []),
+        radarr_entries,
+        ownership.setdefault("radarr", {}),
+        retain_hosts=retain_hosts,
     )
     merged_sonarr = _merge_instances(
-        existing_obj.get("SonarrInstances", []), sonarr_entries
+        existing_obj.get("SonarrInstances", []),
+        sonarr_entries,
+        ownership.setdefault("sonarr", {}),
+        retain_hosts=retain_hosts,
     )
     merged_lidarr = _merge_instances(
-        existing_obj.get("LidarrInstances", []), lidarr_entries
+        existing_obj.get("LidarrInstances", []),
+        lidarr_entries,
+        ownership.setdefault("lidarr", {}),
+        retain_hosts=retain_hosts,
     )
     merged_whisparr = _merge_instances(
-        existing_obj.get("WhisparrInstances", []), whisparr_entries
+        existing_obj.get("WhisparrInstances", []),
+        whisparr_entries,
+        ownership.setdefault("whisparr", {}),
+        retain_hosts=retain_hosts,
     )
     queue_rules = existing_obj.get("QueueRules", []) or []
 
     new_obj = {
+        **existing_obj,
         "RadarrInstances": merged_radarr,
         "SonarrInstances": merged_sonarr,
         "LidarrInstances": merged_lidarr,
@@ -1025,6 +1224,8 @@ def _patch_nzbdav_config_admitted():
     ok, err = _write_nzbdav_config_values(updates, config)
     if not ok:
         return False, err
+    if ledger_file:
+        write_ownership(ledger_file, ownership)
     updated = bool(updates)
     if "arr.instances" in updates:
         logger.info("Updated InfiniDysk arr.instances configuration.")
@@ -1042,6 +1243,8 @@ def _patch_nzbdav_config_admitted():
     try:
         for entry in radarr_entries:
             host = entry.get("Host")
+            if not arr_target_allowed(host, CONFIG_MANAGER):
+                continue
             api_key = entry.get("ApiKey")
             root_path = entry.get("Category")
             if root_path:
@@ -1087,6 +1290,8 @@ def _patch_nzbdav_config_admitted():
                 )
         for entry in sonarr_entries:
             host = entry.get("Host")
+            if not arr_target_allowed(host, CONFIG_MANAGER):
+                continue
             api_key = entry.get("ApiKey")
             root_path = entry.get("Category")
             if root_path:
@@ -1132,6 +1337,8 @@ def _patch_nzbdav_config_admitted():
                 )
         for entry in lidarr_entries:
             host = entry.get("Host")
+            if not arr_target_allowed(host, CONFIG_MANAGER):
+                continue
             api_key = entry.get("ApiKey")
             root_path = entry.get("Category")
             if root_path:
@@ -1177,6 +1384,8 @@ def _patch_nzbdav_config_admitted():
                 )
         for entry in whisparr_entries:
             host = entry.get("Host")
+            if not arr_target_allowed(host, CONFIG_MANAGER):
+                continue
             api_key = entry.get("ApiKey")
             root_path = entry.get("Category")
             if root_path:
@@ -1230,6 +1439,17 @@ def _patch_nzbdav_config_admitted():
         logger.warning(
             "InfiniDysk API key not found; skipping Arr download client setup."
         )
+        emit_action(
+            ActionResult(
+                action_id="infinidysk.configuration",
+                service_key="infinidysk",
+                action="configuration",
+                execution="waiting_dependency",
+                detail="Waiting for the provider application API key.",
+                retryable=True,
+            )
+        )
+        _schedule_nzbdav_retry()
         return updated, None
 
     if not _wait_for_nzbdav("127.0.0.1", backend_port, timeout_s=10, interval_s=1.0):
@@ -1249,7 +1469,15 @@ def _patch_nzbdav_config_admitted():
             logger.warning(
                 "InfiniDysk rejected its configured API key; deferring Arr download client setup."
             )
-            _schedule_nzbdav_retry()
+            emit_action(
+                ActionResult(
+                    action_id="infinidysk.configuration",
+                    service_key="infinidysk",
+                    action="configuration",
+                    execution="waiting_input",
+                    detail="InfiniDysk rejected its configured API key. Correct the credentials and retry.",
+                )
+            )
             return updated, None
         nzbdav_api_key = _infinidysk_api_key(config)
 
@@ -1261,6 +1489,8 @@ def _patch_nzbdav_config_admitted():
     }
     for entry in radarr_entries:
         host = entry.get("Host")
+        if not arr_target_allowed(host, CONFIG_MANAGER):
+            continue
         api_key = entry.get("ApiKey")
         if not (host and api_key):
             continue
@@ -1286,6 +1516,8 @@ def _patch_nzbdav_config_admitted():
 
     for entry in sonarr_entries:
         host = entry.get("Host")
+        if not arr_target_allowed(host, CONFIG_MANAGER):
+            continue
         api_key = entry.get("ApiKey")
         if not (host and api_key):
             continue
@@ -1311,6 +1543,8 @@ def _patch_nzbdav_config_admitted():
 
     for entry in lidarr_entries:
         host = entry.get("Host")
+        if not arr_target_allowed(host, CONFIG_MANAGER):
+            continue
         api_key = entry.get("ApiKey")
         if not (host and api_key):
             continue
@@ -1336,6 +1570,8 @@ def _patch_nzbdav_config_admitted():
 
     for entry in whisparr_entries:
         host = entry.get("Host")
+        if not arr_target_allowed(host, CONFIG_MANAGER):
+            continue
         api_key = entry.get("ApiKey")
         if not (host and api_key):
             continue

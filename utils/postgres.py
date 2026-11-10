@@ -498,57 +498,55 @@ def create_pgadmin_config(
     pgadmin_default_server,
     pgadmin_port,
 ):
+    from utils.private_files import atomic_write_private_text
+
     pgadmin_install_dirs = glob.glob(
         "/pgadmin/venv/lib/python*/site-packages/pgadmin4/"
     )
-
-    if not pgadmin_install_dirs:
-        return False, "pgAdmin installation directory not found."
-
-    pgadmin_install_dir = pgadmin_install_dirs[0]
-    symlink_path = os.path.join(pgadmin_install_dir, "config_local.py")
-
+    if len(pgadmin_install_dirs) != 1:
+        return False, "A single pgAdmin installation directory was not found."
+    symlink_path = os.path.join(pgadmin_install_dirs[0], "config_local.py")
+    settings = {
+        "SERVER_MODE": True,
+        "DATA_DIR": str(pgadmin_config_dir),
+        "DEFAULT_SERVER": str(pgadmin_default_server),
+        "DEFAULT_SERVER_PORT": int(pgadmin_port),
+        "LOG_FILE": os.path.join(pgadmin_config_dir, "pgadmin4.log"),
+        "CONFIG_DATABASE_URI": str(pgadmin_db_uri),
+        "SESSION_DB_PATH": os.path.join(pgadmin_config_dir, "sessions"),
+        "STORAGE_DIR": os.path.join(pgadmin_config_dir, "storage"),
+        "DEFAULT_BINARY_PATHS": {
+            key: "/usr/bin"
+            for key in ["pg", "ppas"]
+            + [
+                f"{family}-{version}"
+                for family in ("pg", "ppas")
+                for version in range(12, 18)
+            ]
+        },
+    }
+    rendered = "".join(f"{key} = {value!r}\n" for key, value in settings.items())
     try:
-        with open(pgadmin_config_file, "w") as config_file:
-            config_file.write("SERVER_MODE = True\n")
-            config_file.write(f"DATA_DIR = '{pgadmin_config_dir}'\n")
-            config_file.write(f"DEFAULT_SERVER = '{pgadmin_default_server}'\n")
-            config_file.write(f"DEFAULT_SERVER_PORT = {int(pgadmin_port)}\n")
-            config_file.write(f"LOG_FILE = '{pgadmin_config_dir}/pgadmin4.log'\n")
-            config_file.write(f"CONFIG_DATABASE_URI = '{pgadmin_db_uri}'\n")
-            config_file.write(f"SESSION_DB_PATH = '{pgadmin_config_dir}/sessions'\n")
-            config_file.write(f"STORAGE_DIR = '{pgadmin_config_dir}/storage'\n")
-            config_file.write("DEFAULT_BINARY_PATHS = {\n")
-            config_file.write("    'pg': '/usr/bin',\n")
-            config_file.write("    'pg-12': '/usr/bin',\n")
-            config_file.write("    'pg-13': '/usr/bin',\n")
-            config_file.write("    'pg-14': '/usr/bin',\n")
-            config_file.write("    'pg-15': '/usr/bin',\n")
-            config_file.write("    'pg-16': '/usr/bin',\n")
-            config_file.write("    'pg-17': '/usr/bin',\n")
-            config_file.write("    'ppas': '/usr/bin',\n")
-            config_file.write("    'ppas-12': '/usr/bin',\n")
-            config_file.write("    'ppas-13': '/usr/bin',\n")
-            config_file.write("    'ppas-14': '/usr/bin',\n")
-            config_file.write("    'ppas-15': '/usr/bin',\n")
-            config_file.write("    'ppas-16': '/usr/bin',\n")
-            config_file.write("    'ppas-17': '/usr/bin'\n")
-            config_file.write("}\n")
-
-        subprocess.run(
-            ["chown", f"{user_id}:{group_id}", pgadmin_config_file], check=True
+        # The URI contains a database password. Create the replacement inode
+        # privately with the service owner before writing any credential bytes.
+        atomic_write_private_text(
+            pgadmin_config_file,
+            rendered,
+            owner=(int(user_id), int(group_id)),
         )
-        logger.info(f"Created pgAdmin configuration file at {pgadmin_config_file}.")
-    except OSError as e:
-        return False, f"Error creating pgAdmin configuration file: {e}"
-    try:
-        if os.path.exists(symlink_path):
+        if os.path.islink(symlink_path):
+            if os.readlink(symlink_path) == pgadmin_config_file:
+                return pgadmin_config_file
+            os.unlink(symlink_path)
+        elif os.path.exists(symlink_path):
             os.remove(symlink_path)
         os.symlink(pgadmin_config_file, symlink_path)
-        logger.info(f"Created symlink for config_local.py at {symlink_path}.")
-    except OSError as e:
-        return False, f"Error creating symlink for pgAdmin configuration file: {e}"
-
+        logger.info("Prepared private pgAdmin runtime configuration.")
+    except OSError:
+        return (
+            False,
+            "The private pgAdmin configuration or runtime link could not be prepared.",
+        )
     return pgadmin_config_file
 
 
@@ -574,8 +572,13 @@ def start_pgadmin(
             pgadmin_default_server,
             pgadmin_port,
         )
+        if isinstance(config_file, tuple):
+            return (
+                False,
+                config_file[1] or "pgAdmin configuration could not be prepared.",
+            )
         if not config_file:
-            return False
+            return False, "pgAdmin configuration could not be prepared."
         os.environ["PGADMIN_SETUP_EMAIL"] = pgadmin_email
         os.environ["PGADMIN_SETUP_PASSWORD"] = pgadmin_password
         env = os.environ.copy()
@@ -664,94 +667,37 @@ def start_pgagent(process_handler, postgres_user, postgres_host, postgres_port):
 
 
 def add_pgadmin_server_to_db(pgadmin_db_uri, server_details, timeout=60, interval=5):
-    try:
-        sleep(5)
-        logger.info(
-            f"Connecting to pgAdmin database at {pgadmin_db_uri} to add server '{server_details['name']}'..."
-        )
-        conn = psycopg2.connect(pgadmin_db_uri)
-        conn.autocommit = True
-        cur = conn.cursor()
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            cur.execute("""
-                SELECT EXISTS (
-                    SELECT 1 
-                    FROM information_schema.tables 
-                    WHERE table_schema = 'public' 
-                    AND table_name = 'server'
-                );
-            """)
-            table_exists = cur.fetchone()[0]
+    """Compatibility wrapper for the supported pgAdmin server import CLI.
 
-            if table_exists:
-                logger.info(
-                    "pgAdmin 'server' table exists. Proceeding to check server."
-                )
-                break
-            else:
-                logger.info(
-                    f"pgAdmin 'server' table does not exist yet. Waiting for {interval} seconds before retrying..."
-                )
-                time.sleep(interval)
-        else:
-            cur.close()
-            conn.close()
-            return (
-                False,
-                f"Timeout reached after {timeout} seconds. The pgAdmin 'server' table still does not exist.",
-            )
+    The historical URI parameter is retained for callers. The installed
+    pgAdmin runtime reads its own config_local.py; no internal tables or
+    hard-coded user/group IDs are accessed.
+    """
+    del pgadmin_db_uri
+    from utils.arrangement_pgadmin import ensure_server, PgAdminSetupError
 
+    cfg = {
+        **(config.get("pgadmin") or {}),
+        "puid": config.get("puid"),
+        "pgid": config.get("pgid"),
+    }
+    deadline = time.monotonic() + max(0, min(float(timeout), 60))
+    delay = max(0.1, min(float(interval), 5))
+    while True:
         try:
-            server_port = int(server_details["port"])
-        except ValueError:
-            return False, f"Invalid port value: {server_details['port']}"
-        server_name = server_details["name"].strip()
-        server_host = server_details["host"].strip()
-        logger.debug(
-            f"Checking if server '{server_name}' with host '{server_host}' and port '{server_port}' already exists in the database."
-        )
-        cur.execute(
-            """
-            SELECT name, host, port FROM server WHERE name = %s AND host = %s AND port = %s
-        """,
-            (server_name, server_host, server_port),
-        )
-        server_exists = cur.fetchone()
-        logger.debug(f"Query result: {server_exists}")
-        if server_exists:
-            logger.info(f"Server '{server_name}' already exists in pgAdmin database.")
-            cur.close()
-            conn.close()
+            ensure_server(cfg, server_details, apply=True)
+            logger.info(
+                "Registered the PostgreSQL connection through pgAdmin's supported import command."
+            )
             return True, None
-
-        connection_params_json = json.dumps(server_details["connection_parameters"])
-        cur.execute(
-            """
-            INSERT INTO server (user_id, servergroup_id, name, host, port, maintenance_db, username, connection_params)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """,
-            (
-                1,
-                1,
-                server_name,
-                server_host,
-                server_port,
-                server_details["maintenance_db"].strip(),
-                server_details["username"].strip(),
-                connection_params_json,
-            ),
-        )
-        conn.commit()
-        logger.info(
-            f"Server '{server_name}' added successfully to pgAdmin database. The password will need to be entered in pgAdmin 4 upon first connection."
-        )
-        cur.close()
-        conn.close()
-        return True, None
-
-    except Exception as e:
-        return False, f"Error adding server to pgAdmin database: {e}"
+        except (PgAdminSetupError, OSError, subprocess.SubprocessError):
+            if time.monotonic() >= deadline:
+                return False, (
+                    "pgAdmin server import is not ready. Verify its installed runtime, "
+                    "administrator account and configuration database, then retry. "
+                    "Existing server definitions were preserved."
+                )
+            time.sleep(min(delay, max(0, deadline - time.monotonic())))
 
 
 def update_postgresql_conf(config_file, postgres_config):

@@ -404,7 +404,9 @@
       "USER_DB_CONTENT": "/cli_debrid/data/db_content/",
       "CLI_DEBRID_PORT": "{port}"
     },
-    "backup_destination_id": ""
+    "backup_destination_id": "",
+    "battery_mode": "auto",
+    "use_phalanx_db": false
   },
   "cli_battery": {
     "enabled": false,
@@ -968,7 +970,8 @@
           "NEUTARR_PORT": "{port}"
         }
       }
-    }
+    },
+    "arr_instances": null
   },
   "seerr_sync": {
     "enabled": false,
@@ -1035,7 +1038,8 @@
           "PYTHONPATH": "/profilarr/default/backend"
         }
       }
-    }
+    },
+    "arr_instances": null
   },
   "seerr": {
     "instances": {
@@ -1160,7 +1164,8 @@
         "config_file": "/prowlarr/default/config.xml",
         "log_file": "/prowlarr/default/logs/prowlarr.txt",
         "command": [],
-        "env": {}
+        "env": {},
+        "arr_instances": null
       }
     }
   },
@@ -1240,7 +1245,13 @@
     "log_file": "/log/riven_backend.log",
     "env": {},
     "wait_for_dir": "",
-    "backup_destination_id": ""
+    "backup_destination_id": "",
+    "api_keys": {
+      "realdebrid": "",
+      "alldebrid": "",
+      "debridlink": "",
+      "torbox": ""
+    }
   },
   "riven_frontend": {
     "enabled": false,

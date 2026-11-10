@@ -6,6 +6,7 @@ from unittest.mock import patch
 import yaml
 
 from utils import altmount_settings
+from utils.integration_ownership import fingerprint, write_ownership
 
 
 class FakeConfigManager:
@@ -155,6 +156,22 @@ class AltMountSettingsTests(unittest.TestCase):
                 }
             ]
 
+            write_ownership(
+                str(config_file) + ".dumb-arr-links.json",
+                {
+                    "radarr": {
+                        "radarr:Old": {
+                            "fingerprint": fingerprint(
+                                {
+                                    "name": "radarr:Old",
+                                    "url": "http://127.0.0.1:7878",
+                                    "api_key": "old",
+                                }
+                            )
+                        }
+                    }
+                },
+            )
             altmount_settings._sync_altmount_config(config, entries)
 
             rendered = yaml.safe_load(config_file.read_text(encoding="utf-8"))

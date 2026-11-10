@@ -405,7 +405,7 @@ class ProwlarrPayloadHelperTests(unittest.TestCase):
         self.assertEqual(fields["definitionFile"], "Custom/zilean")
         self.assertEqual(fields["apiUrl"], "http://127.0.0.1:8182")
 
-    def test_ensure_stremthru_updates_existing_indexer_missing_managed_tag(self):
+    def test_ensure_stremthru_leaves_unowned_indexer_unchanged(self):
         schema = {
             **INDEXER_SCHEMA,
             "definitionName": "stremthru",
@@ -449,13 +449,15 @@ class ProwlarrPayloadHelperTests(unittest.TestCase):
             mock.patch.object(prowlarr_settings, "_prowlarr_req", side_effect=fake_req),
         ):
             prowlarr_settings.ensure_stremthru_indexer(
-                "http://127.0.0.1:9696", "token", [12]
+                "http://127.0.0.1:9696",
+                "token",
+                [12],
+                ownership={"applications": {}, "indexers": {}},
             )
 
         puts = [request for request in requests if request[2] == "PUT"]
-        self.assertEqual(len(puts), 1)
-        self.assertTrue(puts[0][0].endswith("/api/v1/indexer/99"))
-        self.assertEqual(puts[0][3]["tags"], [12])
+        self.assertEqual(puts, [])
+        self.assertEqual(existing["tags"], [])
 
     def test_find_generic_torznab_schema_prefers_generic_torznab(self):
         self.assertIs(

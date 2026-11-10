@@ -1,7 +1,9 @@
 from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
 from utils.core_services import has_core_service
-from json import load, dump, JSONDecodeError
+from json import load, JSONDecodeError
+from utils.private_files import atomic_write_private_text
+import defusedxml.ElementTree as ET
 import os, time, re, requests, urllib.parse
 
 dumb_config = CONFIG_MANAGER.config.get("dumb")
@@ -27,7 +29,7 @@ def _sanitize_credential(value):
     return decoded
 
 
-def parse_config_keys(config):
+def parse_config_keys(config, provider_data=None):
     config_keys = {
         "DOWNLOADERS_REAL_DEBRID_API_KEY": None,
         "DOWNLOADERS_ALL_DEBRID_API_KEY": None,
@@ -82,10 +84,21 @@ def parse_config_keys(config):
         mount_name = first_instance.get("mount_name", "")
         config_keys["SYMLINK_RCLONE_PATH"] = f"{mount_dir}/{mount_name}/__all__"
 
-    CONFIG_MANAGER.config["riven_backend"]["wait_for_dir"] = config_keys[
-        "SYMLINK_RCLONE_PATH"
-    ]
-
+    # Direct onboarding input must not depend on legacy Zurg/rclone objects.
+    riven = config.get("riven_backend") or {}
+    supplied = provider_data if provider_data is not None else riven.get("api_keys", {})
+    if isinstance(supplied, dict):
+        for provider, value in supplied.items():
+            normalized = re.sub(r"[\s_-]", "", str(provider).strip().lower())
+            field = key_map.get(normalized)
+            if field and isinstance(value, str) and value.strip():
+                config_keys[field] = value.strip()
+    source_mode = bool(
+        riven.get("branch_enabled") or str(riven.get("commit_sha") or "").strip()
+    )
+    config.setdefault("riven_backend", {})["wait_for_dir"] = (
+        None if source_mode else config_keys["SYMLINK_RCLONE_PATH"]
+    )
     return config_keys
 
 
@@ -107,9 +120,12 @@ def save_server_config(backend_url, api_key, config_dir="/config"):
     config_file_path = os.path.join(config_dir, "server.json")
 
     try:
-        with open(config_file_path, "w") as config_file:
-            dump(server_config, config_file, indent=4)
-            logger.info(f"Server config saved to {config_file_path}")
+        import json
+
+        atomic_write_private_text(
+            config_file_path, json.dumps(server_config, indent=4) + "\n"
+        )
+        logger.info("Server config saved to %s", config_file_path)
     except IOError as e:
         logger.error(f"Error saving server config: {e}")
 
@@ -164,6 +180,27 @@ def backend_api_key():
     return api_key
 
 
+def resolve_plex_connection(config):
+    dumb = config.get("dumb") or {}
+    plex = config.get("plex") or {}
+    explicit_url = str(dumb.get("plex_address") or "").strip()
+    explicit_token = str(dumb.get("plex_token") or "").strip()
+    if explicit_url:
+        return explicit_url, explicit_token
+    if not plex.get("enabled"):
+        return None, explicit_token or None
+    token = explicit_token
+    if not token:
+        try:
+            root = ET.parse(
+                plex.get("config_file") or "/plex/Plex Media Server/Preferences.xml"
+            ).getroot()
+            token = root.attrib.get("PlexOnlineToken") or ""
+        except (OSError, ET.ParseError):
+            pass
+    return f"http://127.0.0.1:{int(plex.get('port') or 32400)}", token or None
+
+
 def set_env_variables():
     keys = parse_config_keys(CONFIG_MANAGER.config)
     real_debrid_api_key = keys.get("DOWNLOADERS_REAL_DEBRID_API_KEY")
@@ -211,19 +248,14 @@ def set_env_variables():
         str(postgres_config.get("password", "postgres"))
     )
 
+    plex_url, plex_token = resolve_plex_connection(CONFIG_MANAGER.config)
     env_vars = {
         "RIVEN_DOWNLOADERS_REAL_DEBRID_API_KEY": real_debrid_api_key,
         "RIVEN_DOWNLOADERS_ALL_DEBRID_API_KEY": all_debrid_api_key,
         "RIVEN_DOWNLOADERS_DEBRID_LINK_API_KEY": debrid_link_api_key,
         "RIVEN_DOWNLOADERS_TORBOX_API_KEY": torbox_api_key,
-        "RIVEN_UPDATERS_PLEX_URL": (
-            None
-            if not dumb_config.get("plex_address")
-            else dumb_config.get("plex_address")
-        ),
-        "RIVEN_UPDATERS_PLEX_TOKEN": (
-            None if not dumb_config.get("plex_token") else dumb_config.get("plex_token")
-        ),
+        "RIVEN_UPDATERS_PLEX_URL": plex_url,
+        "RIVEN_UPDATERS_PLEX_TOKEN": plex_token,
         # New Riven settings schema paths.
         "RIVEN_FILESYSTEM_MOUNT_PATH": riven_mount_path,
         "RIVEN_UPDATERS_LIBRARY_PATH": riven_library_path,

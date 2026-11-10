@@ -12,22 +12,23 @@ def atomic_write_private_text(
     content: str,
     *,
     encoding: str = "utf-8",
+    owner: tuple[int, int] | None = None,
 ) -> None:
     """Atomically replace ``path`` with a mode-0600 text file.
 
-    The existing owner and, when permitted, group are retained so a service
-    keeps access when DUMB refreshes its configuration after setup.
+    An explicit owning service may be supplied before any secret is written.
+    Otherwise the existing owner/group are retained so refreshes preserve access.
     """
 
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
 
-    owner: tuple[int, int] | None = None
-    try:
-        stat_result = target.lstat()
-        owner = (stat_result.st_uid, stat_result.st_gid)
-    except FileNotFoundError:
-        pass
+    if owner is None:
+        try:
+            stat_result = target.lstat()
+            owner = (stat_result.st_uid, stat_result.st_gid)
+        except FileNotFoundError:
+            pass
 
     descriptor, temporary_name = tempfile.mkstemp(
         dir=target.parent,

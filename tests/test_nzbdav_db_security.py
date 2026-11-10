@@ -170,6 +170,58 @@ class NzbDavDbSecurityTests(unittest.TestCase):
         )
         connection.close.assert_called_once()
 
+    def test_bounded_native_sqlite_read_enforces_byte_limit_query_only_and_regular_file(
+        self,
+    ):
+        self.assertEqual(
+            "abc",
+            self.nzbdav_db.get_active_config_value(
+                "api.key", {"config_dir": self._tmpdir.name}, max_bytes=3
+            ),
+        )
+        with self.assertRaises(ValueError):
+            self.nzbdav_db.get_active_config_value(
+                "api.key", {"config_dir": self._tmpdir.name}, max_bytes=2
+            )
+        with tempfile.TemporaryDirectory() as root:
+            os.symlink(self.db_path, os.path.join(root, "db.sqlite"))
+            with self.assertRaises(ValueError):
+                self.nzbdav_db.get_active_config_value(
+                    "api.key", {"config_dir": root}, max_bytes=3
+                )
+        with tempfile.TemporaryDirectory() as root:
+            with self.assertRaises(ValueError):
+                self.nzbdav_db.get_active_config_value(
+                    "api.key", {"config_dir": root}, max_bytes=3
+                )
+            self.assertFalse(os.path.exists(os.path.join(root, "db.sqlite")))
+
+    def test_bounded_postgres_read_is_selected_readonly_and_limits_received_bytes(self):
+        for content in (b"abcd", b"abcde"):
+            with self.subTest(content_length=len(content)):
+                connection = mock.MagicMock()
+                cursor = connection.cursor.return_value.__enter__.return_value
+                cursor.fetchone.return_value = (memoryview(content),)
+                with mock.patch("psycopg2.connect", return_value=connection):
+                    if len(content) > 4:
+                        with self.assertRaises(ValueError):
+                            self.nzbdav_db.get_active_config_value(
+                                "arr.instances", {"postgres_enabled": True}, max_bytes=4
+                            )
+                    else:
+                        self.assertEqual(
+                            "abcd",
+                            self.nzbdav_db.get_active_config_value(
+                                "arr.instances", {"postgres_enabled": True}, max_bytes=4
+                            ),
+                        )
+                connection.set_session.assert_called_once_with(
+                    readonly=True, autocommit=True
+                )
+                self.assertEqual((5, "arr.instances"), cursor.execute.call_args.args[1])
+                self.assertIn("substring(convert_to", cursor.execute.call_args.args[0])
+                connection.close.assert_called_once()
+
     def test_postgres_missing_row_or_failure_never_reads_retained_sqlite(self):
         for outcome in (None, OSError("fixture PostgreSQL unavailable")):
             with self.subTest(outcome=type(outcome).__name__):
