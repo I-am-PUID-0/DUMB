@@ -600,6 +600,141 @@ class ManagerTests(unittest.TestCase):
         self.assertEqual(preview["backup"]["archive_path"], str(mounted))
         self.assertNotIn("reference", preview["backup"])
 
+    def test_shared_mounted_archive_consent_is_explicit_and_bound_to_preview(self):
+        job = self.start_backup()
+        mounted = self.root / "shared-import.tar"
+        with self.storage.open_artifact(
+            job["result"]["archive"]["reference"]
+        ) as source:
+            mounted.write_bytes(source.read())
+        mounted.chmod(0o664)
+        before = list(self.handler.events)
+        denied = self.manager.restore_preview({"archive_path": str(mounted)})
+        self.assertFalse(denied["ready"])
+        self.assertIn("0664", " ".join(denied["blockers"]))
+        self.assertIn("explicitly allow", " ".join(denied["blockers"]))
+        preview = self.manager.restore_preview(
+            {"archive_path": str(mounted), "allow_shared_permissions": True}
+        )
+        self.assertTrue(preview["ready"], preview["blockers"])
+        self.assertTrue(preview["backup"]["allow_shared_permissions"])
+        self.assertEqual(preview["observed_permissions"]["file_mode"], "0664")
+        self.assertIn("ACLs", " ".join(preview["warnings"]))
+        record = self.manager._validated_request(
+            "restore",
+            {
+                "preview_token": preview["preview_token"],
+                "confirmation": preview["confirmation_text"],
+                "acknowledgements": {
+                    "downtime": True,
+                    "replace_state": True,
+                    "external_state": True,
+                },
+            },
+        )
+        reviewed_source = record["plan"]["source"]
+        self.assertIs(reviewed_source["allow_shared_permissions"], True)
+        with self.manager._open_source(reviewed_source) as handle:
+            self.assertEqual(handle.read(), mounted.read_bytes())
+        # Consent never permits an archive to change after the reviewed proof.
+        mounted.chmod(0o666)
+        with self.assertRaisesRegex(InstallationBackupError, "changed after preview"):
+            with self.manager._open_source(reviewed_source):
+                self.fail("Changed archive unexpectedly opened")
+        self.assertEqual(self.handler.events, before)
+
+    def test_shared_mounted_archive_consent_does_not_allow_linked_sources(self):
+        job = self.start_backup()
+        mounted = self.root / "shared-import.tar"
+        with self.storage.open_artifact(
+            job["result"]["archive"]["reference"]
+        ) as source:
+            mounted.write_bytes(source.read())
+        mounted.chmod(0o664)
+        alias = self.root / "hardlink.tar"
+        os.link(mounted, alias)
+        preview = self.manager.restore_preview(
+            {"archive_path": str(mounted), "allow_shared_permissions": True}
+        )
+        self.assertFalse(preview["ready"])
+        self.assertIn("hard links", " ".join(preview["blockers"]))
+        alias.unlink()
+        alias.symlink_to(mounted)
+        preview = self.manager.restore_preview(
+            {"archive_path": str(alias), "allow_shared_permissions": True}
+        )
+        self.assertFalse(preview["ready"])
+
+    def test_restore_permission_consent_rejects_coercion_and_reference_overrides(self):
+        for value in ("false", "true", 1, None, {}):
+            with self.subTest(value=value):
+                preview = self.manager.restore_preview(
+                    {
+                        "archive_path": "/reserved-example/archive.tar",
+                        "allow_shared_permissions": value,
+                    }
+                )
+                self.assertFalse(preview["ready"])
+                self.assertIn("must be a boolean", " ".join(preview["blockers"]))
+        preview = self.manager.restore_preview(
+            {
+                "reference": "dumb-backup://fixture/installation/" + "a" * 32,
+                "allow_shared_permissions": True,
+            }
+        )
+        self.assertFalse(preview["ready"])
+        self.assertIn(
+            "destination's reviewed permission policy", " ".join(preview["blockers"])
+        )
+        self.assertEqual(self.handler.events, [])
+
+    def test_shared_mounted_archive_rejects_fifo_replacement_without_blocking(self):
+        mounted = self.root / "shared-import.tar"
+        mounted.write_bytes(b"source before replacement")
+        reviewed = self.manager._restore_source(
+            {"archive_path": str(mounted), "allow_shared_permissions": True}
+        )
+        mounted.unlink()
+        os.mkfifo(mounted, 0o600)
+        original_open = os.open
+
+        def require_nonblocking_leaf(name, flags, *args, **kwargs):
+            if str(name) == mounted.name and not flags & os.O_DIRECTORY:
+                self.assertTrue(flags & os.O_NONBLOCK)
+            return original_open(name, flags, *args, **kwargs)
+
+        with patch(
+            "utils.installation_backup.os.open", side_effect=require_nonblocking_leaf
+        ):
+            with self.assertRaisesRegex(
+                InstallationBackupError, "regular installation archive"
+            ):
+                with self.manager._open_source(reviewed):
+                    self.fail("FIFO unexpectedly accepted")
+
+    def test_registered_shared_archive_restores_with_its_destination_policy(self):
+        root = self.root / "archives"
+        self.storage.save_profile(
+            {
+                "id": "fixture",
+                "name": "Fixture",
+                "path": str(root),
+                "enabled": True,
+                "allow_shared_permissions": True,
+            }
+        )
+        job = self.start_backup()
+        receipt = job["result"]["archive"]
+        artifact = (
+            Path(self.storage.bound_identity("fixture")["artifact_root"])
+            / "installation"
+            / (receipt["artifact_id"] + ".tar")
+        )
+        artifact.chmod(0o664)
+        preview = self.manager.restore_preview({"reference": receipt["reference"]})
+        self.assertTrue(preview["ready"], preview["blockers"])
+        self.assertEqual(preview["backup"]["reference"], receipt["reference"])
+
     def test_interrupted_backup_survives_manager_recreation_and_blocks_mutation(self):
         preview = self.manager.preview({"destination_id": "fixture"})
         record = self.manager._validated_request(

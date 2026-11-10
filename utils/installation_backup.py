@@ -1434,16 +1434,23 @@ class InstallationBackupManager:
                 "The archive mount or parent changed; no fallback is allowed."
             )
         with open_leaf(path) as (parent, leaf):
-            descriptor = os.open(leaf, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=parent)
+            descriptor = os.open(
+                leaf, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent
+            )
             with os.fdopen(descriptor, "rb") as handle:
                 value = os.fstat(handle.fileno())
+                if not stat.S_ISREG(value.st_mode) or value.st_nlink != 1:
+                    raise InstallationBackupError(
+                        "Select a direct regular installation archive with no hard links."
+                    )
                 if (
-                    not stat.S_ISREG(value.st_mode)
-                    or value.st_nlink != 1
-                    or value.st_mode & 0o077
+                    value.st_mode & 0o077
+                    and source.get("allow_shared_permissions") is not True
                 ):
                     raise InstallationBackupError(
-                        "Select a private, unlinked regular installation archive."
+                        f"The mounted archive reports mode {stat.S_IMODE(value.st_mode):04o}. "
+                        "Use a private archive file, or explicitly allow shared archive "
+                        "permissions only if you trust the mounted storage and its access controls."
                     )
                 if source.get("file_identity") != [
                     *identity(value),
@@ -1477,11 +1484,21 @@ class InstallationBackupManager:
             return proof
 
     def _restore_source(self, options):
+        allow_shared = options.get("allow_shared_permissions", False)
+        if type(allow_shared) is not bool:
+            raise InstallationBackupError(
+                "Shared archive permission consent must be a boolean."
+            )
         if bool(options.get("reference")) == bool(options.get("archive_path")):
             raise InstallationBackupError(
                 "Select exactly one owned reference or mounted archive file."
             )
         if options.get("reference"):
+            if allow_shared:
+                raise InstallationBackupError(
+                    "Registered archives use their destination's reviewed permission "
+                    "policy; a mounted-file permission override is not allowed."
+                )
             from utils.backup_storage import parse_backup_reference
 
             profile, namespace, _artifact = parse_backup_reference(options["reference"])
@@ -1501,16 +1518,22 @@ class InstallationBackupManager:
         path = Path(str(options["archive_path"]))
         if not path.is_absolute() or path.is_symlink() or _forbidden(path):
             raise InstallationBackupError(
-                "Choose an existing mounted private archive file outside protected system paths."
+                "Choose an existing mounted archive file outside protected system paths."
             )
         with open_leaf(path) as (parent, leaf):
             value = os.stat(leaf, dir_fd=parent, follow_symlinks=False)
+            observed_permissions = {
+                "directory_mode": f"{stat.S_IMODE(os.fstat(parent).st_mode):04o}",
+                "file_mode": f"{stat.S_IMODE(value.st_mode):04o}",
+            }
             if not stat.S_ISREG(value.st_mode):
                 raise InstallationBackupError(
                     "The import source is not a regular archive file."
                 )
         return {
             "archive_path": str(path),
+            "allow_shared_permissions": allow_shared,
+            "observed_permissions": observed_permissions,
             "binding": _mount_binding(path.parent),
             "file_identity": [
                 *identity(value),
@@ -1638,6 +1661,11 @@ class InstallationBackupManager:
                 "sha256": proof["archive_sha256"],
                 **{k: source[k] for k in ("reference", "archive_path") if k in source},
             }
+            if source.get("archive_path"):
+                public_metadata.update(
+                    allow_shared_permissions=source["allow_shared_permissions"],
+                    observed_permissions=source["observed_permissions"],
+                )
             plan = {
                 "source": source,
                 "metadata": metadata,
@@ -1666,6 +1694,7 @@ class InstallationBackupManager:
             ],
             "inventory": {"roots": details, "excluded": deepcopy(EXCLUSIONS)},
             "backup": public_metadata,
+            "observed_permissions": (public_metadata or {}).get("observed_permissions"),
             "capacity": report,
             "blockers": blockers,
             "warnings": [
@@ -1673,7 +1702,17 @@ class InstallationBackupManager:
                 "All managed writers remain stopped after restore. Restart the container to reload restored settings and authentication.",
                 "Traefik and tunnels may stop too. Use direct frontend/API access before starting.",
                 "External media, external databases and the container image are not restored.",
-            ],
+            ]
+            + (
+                [
+                    "Shared archive permissions were explicitly accepted. The mounted "
+                    "storage and its ACLs control access to credentials and private keys; "
+                    "reported mode bits do not prove confidentiality. DUMB does not change "
+                    "the share's permissions or ownership."
+                ]
+                if plan.get("source", {}).get("allow_shared_permissions") is True
+                else []
+            ),
         }
         return self._preview_record("restore", plan, public)
 

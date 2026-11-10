@@ -63,6 +63,7 @@ class RestorePreviewRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     reference: str | None = Field(default=None, max_length=512)
     archive_path: str | None = Field(default=None, max_length=4096)
+    allow_shared_permissions: StrictBool = False
 
 
 class StartRequest(BaseModel):

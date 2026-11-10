@@ -74,6 +74,9 @@ class BackupStorageAPITests(unittest.TestCase):
                 assert request('GET','/process/backup-storage').json() == storage.profiles.return_value
                 assert request('POST','/process/backup-storage/preview',profile).json()['ready'] is True
                 assert request('POST','/process/backup-storage/profiles',profile).json()['profile']['registered'] is True
+                assert storage.save_profile.call_args.args[0]['allow_shared_permissions'] is False
+                assert request('POST','/process/backup-storage/profiles',{**profile,'allow_shared_permissions':True}).status == 200
+                assert storage.save_profile.call_args.args[0]['allow_shared_permissions'] is True
                 assert request('POST','/process/backup-storage/default',{'destination_id':'nas'}).status == 200
                 assert request('GET','/process/backup-storage/artifacts',query={'destination_id':'nas','namespace':'symlink-example'}).json()['artifacts'] == [{'reference':'opaque'}]
                 storage.list_artifacts.assert_called_once_with('nas','symlink-example')
@@ -82,7 +85,7 @@ class BackupStorageAPITests(unittest.TestCase):
                 assert closed == [reference]
                 assert response.headers[b'cache-control'] == b'no-store'
                 assert b'attachment;' in response.headers[b'content-disposition']
-                for invalid in ({**profile,'enabled':'false'},{**profile,'id':'../escape'},{**profile,'password':'unused'}):
+                for invalid in ({**profile,'enabled':'false'},{**profile,'id':'../escape'},{**profile,'password':'unused'},{**profile,'allow_shared_permissions':'true'},{**profile,'allow_shared_permissions':1}):
                     assert request('POST','/process/backup-storage/profiles',invalid).status == 422
                 with patch.object(router,'get_project_version',return_value='2.23.0'):
                     assert request('POST','/process/backup-storage/profiles',profile).status == 426
@@ -99,6 +102,8 @@ class BackupStorageAPITests(unittest.TestCase):
                 capabilities=request('GET','/process/capabilities').json()
                 assert capabilities['backup_storage_selection'] is True
                 assert capabilities['backup_storage_protocol']==1
+                assert capabilities['backup_storage_shared_permissions'] is True
+                assert capabilities['installation_backup_shared_permissions'] is True
                 assert isinstance(capabilities['backup_storage_kinds'], list)
             """)
         result = subprocess.run(

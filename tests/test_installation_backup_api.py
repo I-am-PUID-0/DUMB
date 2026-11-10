@@ -27,6 +27,7 @@ class Controller:
     def start(self, value):
         return {"protocol":1,"job":{"job_id":"a"*32,"job_type":"installation_backup","status":"queued"}}
     def restore_preview(self, value):
+        self.restore_options = value
         return {"protocol":1,"ready":True,"backup":{"verified":True,"archive_path":value.get("archive_path")}}
     def restore_start(self, value):
         return {"protocol":1,"job":{"job_id":"b"*32,"job_type":"installation_restore","status":"queued"}}
@@ -90,6 +91,12 @@ async def prove():
         assert huge.status_code==413
         restore=await client.post("/process/installation-backups/restore/preview",json={"archive_path":"/reserved-example/installation.tar"})
         assert restore.status_code==200 and restore.json()["backup"]["verified"] is True
+        assert controller.restore_options["allow_shared_permissions"] is False
+        restore=await client.post("/process/installation-backups/restore/preview",json={"archive_path":"/reserved-example/installation.tar","allow_shared_permissions":True})
+        assert restore.status_code==200 and controller.restore_options["allow_shared_permissions"] is True
+        for invalid_consent in ["private-consent-must-not-echo",1,None,{}]:
+            malformed=await client.post("/process/installation-backups/restore/preview",json={"archive_path":"/reserved-example/installation.tar","allow_shared_permissions":invalid_consent})
+            assert malformed.status_code==422 and "private-consent-must-not-echo" not in malformed.text
         schedule=await client.put("/process/installation-backups/schedule",json={"enabled":False,"destination_id":"","interval_hours":24,"keep_last":7})
         assert schedule.status_code==200 and schedule.json()["schedule"]["enabled"] is False
         invalid=await client.put("/process/installation-backups/schedule",json={"enabled":True,"destination_id":"fixture","interval_hours":1.5,"keep_last":7})
