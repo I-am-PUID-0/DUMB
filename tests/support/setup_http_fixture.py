@@ -67,6 +67,7 @@ def _yes(*args, **kwargs):
 # FastAPI, Pydantic, plan/state, runtime dispatch and onboarding orchestration are real.
 _stub("utils.config_loader", CONFIG_MANAGER=MANAGER, find_service_config=_nothing)
 _stub("utils.global_logger", logger=LOGGER)
+_stub("utils.installation_backup", installation_backup_blocker=_nothing)
 _stub(
     "utils.dependencies",
     **{
@@ -314,6 +315,88 @@ class SetupHttpContractTests(unittest.TestCase):
         )
         self.assertEqual(status, 200, run)
         return plan, run
+
+    def test_coordinator_constructor_storage_failures_are_safe_retryable_503(self):
+        self.app.dependency_overrides.pop(setup_router.get_setup_coordinator)
+        marker = "private-credential-must-not-appear"
+        LOGGER.reset_mock()
+        with (
+            mock.patch("utils.dependencies.get_updater", return_value=object()),
+            mock.patch("utils.dependencies.get_api_state", return_value=object()),
+            mock.patch("utils.dependencies.get_logger", return_value=LOGGER),
+            mock.patch("utils.dependencies.get_process_handler", return_value=object()),
+            mock.patch.object(setup_router, "_coordinator", None),
+        ):
+            for failure in (
+                PermissionError(marker),
+                OSError(marker),
+                FileNotFoundError(marker),
+            ):
+                with (
+                    self.subTest(error=type(failure).__name__),
+                    mock.patch.object(
+                        setup_router, "SetupCoordinator", side_effect=failure
+                    ),
+                ):
+                    status, result = self.request("GET", "/runs/latest")
+                    self.assertEqual(status, 503, result)
+                    self.assertEqual(
+                        result["detail"]["code"], "setup_storage_unavailable"
+                    )
+                    self.assertEqual(result["detail"]["controller_uid"], os.geteuid())
+                    self.assertNotIn(marker, json.dumps(result))
+                    self.assertNotIn(marker, repr(LOGGER.warning.call_args_list))
+                    self.assertIsNone(setup_router._coordinator)
+            with mock.patch.object(
+                setup_router, "SetupCoordinator", return_value=self.coordinator
+            ):
+                status, result = self.request("GET", "/runs/latest")
+                self.assertEqual(status, 404, result)
+                self.assertEqual(result["detail"], "No setup run has been created.")
+
+    def test_installation_recovery_hold_never_constructs_or_starts_setup(self):
+        self.app.dependency_overrides.pop(setup_router.get_setup_coordinator)
+        with (
+            mock.patch.object(
+                sys.modules["utils.installation_backup"],
+                "installation_backup_blocker",
+                return_value="Installation recovery owns managed state.",
+            ),
+            mock.patch.object(setup_router, "_coordinator", None),
+            mock.patch.object(setup_router, "SetupCoordinator") as constructor,
+            mock.patch("utils.dependencies.get_updater") as updater,
+        ):
+            status, result = self.request("GET", "/runs/latest")
+        self.assertEqual(status, 409, result)
+        self.assertEqual(result["detail"]["code"], "setup_recovery_hold")
+        self.assertIn("restart DUMB", result["detail"]["message"])
+        constructor.assert_not_called()
+        updater.assert_not_called()
+
+    def test_coordinator_dependencies_unavailable_are_not_no_saved_run(self):
+        self.app.dependency_overrides.pop(setup_router.get_setup_coordinator)
+        with (
+            mock.patch.object(setup_router, "_coordinator", None),
+            mock.patch(
+                "utils.dependencies.get_updater", side_effect=KeyError("private-input")
+            ),
+        ):
+            status, result = self.request("GET", "/runs/latest")
+        self.assertEqual(status, 503)
+        self.assertEqual(result["detail"]["code"], "setup_dependencies_unavailable")
+        self.assertNotIn("private-input", json.dumps(result))
+
+    def test_unreadable_saved_records_do_not_claim_clean_absence(self):
+        self.coordinator.store.write(
+            "run", "a" * 32, {"status": "private-input-not-returned"}
+        )
+        status, result = self.request("GET", "/runs/latest")
+        self.assertEqual(status, 503)
+        self.assertEqual(result["detail"]["code"], "setup_storage_unavailable")
+        self.assertNotIn("private-input", json.dumps(result))
+        self.coordinator.store.remove("run", "a" * 32)
+        status, result = self.request("GET", "/runs/latest")
+        self.assertEqual(status, 404, result)
 
     def test_provider_first_and_arr_first_materialize_full_arr_set_before_first_start(
         self,

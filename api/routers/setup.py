@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import threading
 from contextlib import contextmanager
 from typing import Literal
@@ -84,7 +85,37 @@ def _mutation_guard():
         release_infinidysk_external_mutation(token)
 
 
+def _setup_storage_error(config_manager=None):
+    detail = {
+        "code": "setup_storage_unavailable",
+        "message": (
+            "Private setup state is unavailable. Check controller ownership, "
+            "permissions and free space for /config/.dumb-setup. Preserve existing "
+            "records; repair only reviewed private state, then retry."
+        ),
+        "controller_uid": os.geteuid(),
+    }
+    if config_manager is not None:
+        value = config_manager.get("puid")
+        if type(value) is int and value >= 0:
+            detail["configured_service_uid"] = value
+    return HTTPException(503, detail=detail)
+
+
 def get_setup_coordinator(_user=Depends(get_optional_current_user)):
+    from utils.installation_backup import installation_backup_blocker
+
+    if installation_backup_blocker():
+        raise HTTPException(
+            409,
+            detail={
+                "code": "setup_recovery_hold",
+                "message": (
+                    "Setup is paused while installation backup or recovery owns managed "
+                    "state. Complete recovery, then restart DUMB before retrying setup."
+                ),
+            },
+        )
     global _coordinator
     with _coordinator_lock:
         if _coordinator is None:
@@ -97,25 +128,59 @@ def get_setup_coordinator(_user=Depends(get_optional_current_user)):
                 get_updater,
             )
 
-            runtime = ArrangementRuntime(
-                CONFIG_MANAGER,
-                get_updater(),
-                get_api_state(),
-                get_logger(),
-                get_process_handler(),
-            )
-            _coordinator = SetupCoordinator(
-                "/config/.dumb-setup",
-                configuration=lambda: CONFIG_MANAGER.config,
-                defaults=runtime.defaults,
-                start_services=runtime.start,
-                inspect_action=runtime.inspect,
-                apply_action=runtime.apply,
-                preflight=runtime.preflight,
-                discover_fields=runtime.schema_fields,
-                mutation_guard=_mutation_guard,
-            )
-            runtime.cancel_check = _coordinator._cancelled
+            try:
+                updater = get_updater()
+                api_state = get_api_state()
+                logger = get_logger()
+                handler = get_process_handler()
+            except KeyError:
+                raise HTTPException(
+                    503,
+                    detail={
+                        "code": "setup_dependencies_unavailable",
+                        "message": (
+                            "Setup is waiting for controller dependencies. Retry after "
+                            "DUMB startup; review DUMB logs if this persists."
+                        ),
+                    },
+                ) from None
+            if any(value is None for value in (updater, api_state, logger, handler)):
+                raise HTTPException(
+                    503,
+                    detail={
+                        "code": "setup_dependencies_unavailable",
+                        "message": "Setup controller dependencies are not ready. Retry after DUMB startup.",
+                    },
+                )
+            try:
+                runtime = ArrangementRuntime(
+                    CONFIG_MANAGER, updater, api_state, logger, handler
+                )
+                coordinator = SetupCoordinator(
+                    "/config/.dumb-setup",
+                    configuration=lambda: CONFIG_MANAGER.config,
+                    defaults=runtime.defaults,
+                    start_services=runtime.start,
+                    inspect_action=runtime.inspect,
+                    apply_action=runtime.apply,
+                    preflight=runtime.preflight,
+                    discover_fields=runtime.schema_fields,
+                    mutation_guard=_mutation_guard,
+                )
+            except OSError as error:
+                logger.warning(
+                    "Private setup state unavailable: controller_uid=%s configured_service_uid=%s error_type=%s",
+                    os.geteuid(),
+                    (
+                        CONFIG_MANAGER.get("puid")
+                        if type(CONFIG_MANAGER.get("puid")) is int
+                        else "unavailable"
+                    ),
+                    type(error).__name__,
+                )
+                raise _setup_storage_error(CONFIG_MANAGER) from None
+            runtime.cancel_check = coordinator._cancelled
+            _coordinator = coordinator
         return _coordinator
 
 
@@ -150,10 +215,7 @@ def _call(function, *args, **kwargs):
         # Validation messages are authored locally and contain no supplied values.
         raise HTTPException(400, detail=str(error)) from None
     except (PermissionError, OSError):
-        raise HTTPException(
-            503,
-            detail="Private setup state is unavailable. Check controller storage permissions.",
-        ) from None
+        raise _setup_storage_error() from None
 
 
 @setup_router.post("/plan")
@@ -207,6 +269,11 @@ def latest_setup_run(
 ):
     result = _call(coordinator.latest)
     if result is None:
+        # A retained but unreadable/malformed run is unavailable, not absent.
+        # Check current records rather than historical warnings so repair/retry
+        # can recover without restarting the controller.
+        if _call(coordinator.store.records, "run"):
+            raise _setup_storage_error()
         raise HTTPException(404, detail="No setup run has been created.")
     return result
 

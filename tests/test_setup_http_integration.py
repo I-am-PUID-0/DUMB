@@ -21,5 +21,5 @@ class SetupHttpIntegrationTests(unittest.TestCase):
             timeout=60,
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("Ran 11 tests", result.stderr)
+        self.assertIn("Ran 15 tests", result.stderr)
         self.assertIn("OK", result.stderr)
