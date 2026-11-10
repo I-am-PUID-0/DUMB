@@ -72,6 +72,14 @@ class BackupStorageConfigTests(unittest.TestCase):
                 reread=ConfigManager(file_path=str(path))
                 assert reread.config['backup_storage']==manager.config['backup_storage']
                 assert reread.config['infinidysk']['backup_destination_id']=='@default'
+                assert not list(Draft7Validator(schema).iter_errors(reread.config))
+                reread.config['backup_storage']['profiles']['nas']['allow_shared_permissions']=True
+                reread.save_config()
+                reread=ConfigManager(file_path=str(path))
+                assert reread.config['backup_storage']['profiles']['nas']['allow_shared_permissions'] is True
+                candidate=copy.deepcopy(reread.config)
+                candidate['backup_storage']['profiles']['nas']['allow_shared_permissions']='true'
+                assert list(Draft7Validator(schema).iter_errors(candidate))
                 candidate=copy.deepcopy(reread.config)
                 candidate['backup_storage']['profiles']['../escape']=candidate['backup_storage']['profiles'].pop('nas')
                 assert list(Draft7Validator(schema).iter_errors(candidate))

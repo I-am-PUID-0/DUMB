@@ -29,6 +29,7 @@ class ProfileRequest(BaseModel):
     path: str = Field(min_length=1, max_length=4096)
     enabled: StrictBool = True
     make_default: StrictBool = False
+    allow_shared_permissions: StrictBool = False
 
 
 class DefaultRequest(BaseModel):

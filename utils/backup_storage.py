@@ -218,7 +218,7 @@ def _directory(path, *, create=False, private=False):
 
 
 @contextmanager
-def _child_directory(parent, name, *, create=False):
+def _child_directory(parent, name, *, create=False, private=True):
     try:
         descriptor = os.open(
             name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent
@@ -237,7 +237,7 @@ def _child_directory(parent, name, *, create=False):
             name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent
         )
     try:
-        if stat.S_IMODE(os.fstat(descriptor).st_mode) & 0o077:
+        if private and stat.S_IMODE(os.fstat(descriptor).st_mode) & 0o077:
             raise BackupStorageError(
                 "The owned backup directory must enforce private mode 0700."
             )
@@ -259,6 +259,58 @@ def _private_file(value):
         raise BackupStorageError(
             "The owned backup file must be a private direct regular file."
         )
+
+
+def _shared_permissions(value):
+    allowed = value.get("allow_shared_permissions", False)
+    if not isinstance(allowed, bool):
+        raise BackupStorageError("Shared storage permission consent must be a boolean.")
+    return allowed
+
+
+def _external_permissions(value, *, allow_shared_permissions=False, directory=False):
+    if directory:
+        if not stat.S_ISDIR(value.st_mode):
+            raise BackupStorageError(
+                "The archive directory must be a direct directory."
+            )
+    elif not stat.S_ISREG(value.st_mode) or value.st_nlink != 1:
+        raise BackupStorageError(
+            "The archive file must be a direct single-link regular file."
+        )
+    if not allow_shared_permissions and stat.S_IMODE(value.st_mode) & 0o077:
+        kind = "directory" if directory else "file"
+        required = "0700" if directory else "0600"
+        observed = f"{stat.S_IMODE(value.st_mode):04o}"
+        raise BackupStorageError(
+            f"The external archive {kind} reports mode {observed}; private mode "
+            f"{required} is required unless shared storage permissions are explicitly trusted. "
+            "DUMB does not change mounted storage permissions."
+        )
+
+
+def _permission_warning(allowed):
+    return (
+        [
+            "Shared storage permissions are trusted for external archives. Archives may "
+            "contain credentials and private keys; mount access controls and everyone "
+            "with access must be trusted. DUMB does not secure or encrypt this storage "
+            "and does not change its permissions."
+        ]
+        if allowed
+        else []
+    )
+
+
+@contextmanager
+def _external_child(parent, name, *, create=False, allow_shared_permissions=False):
+    with _child_directory(parent, name, create=create, private=False) as descriptor:
+        _external_permissions(
+            os.fstat(descriptor),
+            allow_shared_permissions=allow_shared_permissions,
+            directory=True,
+        )
+        yield descriptor
 
 
 def _reference(profile, namespace, artifact):
@@ -414,7 +466,9 @@ class BackupStorage:
         if value.st_uid != os.geteuid() or value.st_size > MAX_RECEIPT_BYTES:
             raise BackupStorageError("The local storage receipt is unsafe.")
         with _directory(path.parent, private=True) as parent:
-            descriptor = os.open(path.name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=parent)
+            descriptor = os.open(
+                path.name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent
+            )
             with os.fdopen(descriptor, "rb") as handle:
                 if _identity(os.fstat(handle.fileno())) != _identity(value):
                     raise BackupStorageError(
@@ -512,28 +566,97 @@ class BackupStorage:
             "name": str(request.get("name") or profile)[:120],
             "path": str(request.get("path") or ""),
             "enabled": request.get("enabled", True),
+            "allow_shared_permissions": _shared_permissions(request),
         }
+
+    def _observe_permissions(self, root_fd, profile, allowed):
+        observed = {"directory_mode": None, "file_mode": None}
+        blockers = []
+        descriptors = []
+        descriptor = root_fd
+        try:
+            for name in (".dumb-backups", profile):
+                try:
+                    child = os.open(
+                        name,
+                        os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                        dir_fd=descriptor,
+                    )
+                except FileNotFoundError:
+                    break
+                descriptors.append(child)
+                descriptor = child
+                value = os.fstat(descriptor)
+                mode = f"{stat.S_IMODE(value.st_mode):04o}"
+                if (
+                    observed["directory_mode"] is None
+                    or stat.S_IMODE(value.st_mode) & 0o077
+                ):
+                    observed["directory_mode"] = mode
+                try:
+                    _external_permissions(
+                        value, allow_shared_permissions=allowed, directory=True
+                    )
+                except BackupStorageError as error:
+                    blockers.append(str(error))
+            else:
+                try:
+                    marker = os.open(
+                        ".destination.json",
+                        os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+                        dir_fd=descriptor,
+                    )
+                except FileNotFoundError:
+                    pass
+                else:
+                    try:
+                        value = os.fstat(marker)
+                        observed["file_mode"] = f"{stat.S_IMODE(value.st_mode):04o}"
+                        try:
+                            _external_permissions(
+                                value, allow_shared_permissions=allowed
+                            )
+                        except BackupStorageError as error:
+                            blockers.append(str(error))
+                    finally:
+                        os.close(marker)
+        finally:
+            for child in reversed(descriptors):
+                os.close(child)
+        return observed, list(dict.fromkeys(blockers))
 
     def preview(self, request):
         value = self._requested_profile(request)
         blockers = []
+        observed = {"directory_mode": None, "file_mode": None}
+        warnings = _permission_warning(value["allow_shared_permissions"])
         try:
             inspected = self._inspect(value["path"])
             value.update(
                 {key: inspected[key] for key in ("filesystem_type", "storage_type")}
             )
+            with _directory(value["path"]) as descriptor:
+                observed, blockers = self._observe_permissions(
+                    descriptor, value["id"], value["allow_shared_permissions"]
+                )
         except (BackupStorageError, OSError):
             blockers.append(
                 "The existing container-mounted destination could not be inspected safely; no directory was created."
             )
         value.update(
-            registered=False, ready=not blockers and value["enabled"], blockers=blockers
+            registered=False,
+            ready=not blockers and value["enabled"],
+            blockers=blockers,
+            warnings=warnings,
+            observed_permissions=observed,
         )
         return {
             "protocol": PROTOCOL,
             "ready": value["ready"],
             "profile": value,
             "blockers": blockers,
+            "warnings": warnings,
+            "observed_permissions": observed,
         }
 
     def profiles(self):
@@ -550,9 +673,16 @@ class BackupStorage:
                 "name": str(item.get("name") or profile),
                 "path": str(item.get("path") or ""),
                 "enabled": bool(item.get("enabled")),
+                "allow_shared_permissions": _shared_permissions(item),
             }
             matches = bool(record) and all(
-                current[key] == status.get(key) for key in current
+                current[key]
+                == (
+                    status.get(key, False)
+                    if key == "allow_shared_permissions"
+                    else status.get(key)
+                )
+                for key in current
             )
             values.append(
                 {
@@ -563,6 +693,13 @@ class BackupStorage:
                     "storage_type": status.get("storage_type"),
                     "filesystem_type": status.get("filesystem_type"),
                     "last_checked_at": (record or {}).get("checked_at"),
+                    "warnings": _permission_warning(
+                        current["allow_shared_permissions"]
+                    ),
+                    "observed_permissions": status.get(
+                        "observed_permissions",
+                        {"directory_mode": None, "file_mode": None},
+                    ),
                     "blockers": (
                         []
                         if matches
@@ -612,7 +749,7 @@ class BackupStorage:
                         raise BackupStorageError(
                             "The destination mount changed before registration."
                         )
-                    marker = self._register_marker(
+                    marker, observed = self._register_marker(
                         root_fd, profile, previous, inspected, public
                     )
                 if self._inspect(public["path"]) != inspected:
@@ -630,10 +767,17 @@ class BackupStorage:
                     )
                 }
                 binding["marker"] = marker
+                binding["allow_shared_permissions"] = public["allow_shared_permissions"]
                 public.update(
                     {key: inspected[key] for key in ("filesystem_type", "storage_type")}
                 )
-                public.update(registered=True, ready=True, blockers=[])
+                public.update(
+                    registered=True,
+                    ready=True,
+                    blockers=[],
+                    warnings=_permission_warning(public["allow_shared_permissions"]),
+                    observed_permissions=observed,
+                )
                 # Retain proof of the newly created owned marker even if a raw
                 # configuration edit races the final configuration publication.
                 self._write(
@@ -644,6 +788,7 @@ class BackupStorage:
                         "checked_at": int(time.time()),
                     },
                 )
+                self._clear_pending_registration(profile)
             else:
                 if request.get("make_default"):
                     raise BackupStorageError(
@@ -666,7 +811,8 @@ class BackupStorage:
                     )
                 config = self.config_manager.config.setdefault("backup_storage", {})
                 config.setdefault("profiles", {})[profile] = {
-                    key: public[key] for key in ("name", "path", "enabled")
+                    key: public[key]
+                    for key in ("name", "path", "enabled", "allow_shared_permissions")
                 }
                 if request.get("make_default"):
                     config["default_destination_id"] = profile
@@ -676,17 +822,80 @@ class BackupStorage:
             with self._lock:
                 self._registering.discard(profile)
 
+    def _pending_registration(self, profile, inspected):
+        path = self._state("pending", f"{profile}.json")
+        pending = self._read(path)
+        stable = {
+            key: inspected[key]
+            for key in (
+                "path",
+                "root_identity",
+                "mount_signature",
+                "filesystem_type",
+                "storage_type",
+            )
+        }
+        if pending is not None:
+            if (
+                not isinstance(pending, dict)
+                or not isinstance(pending.get("inspected"), dict)
+                or not isinstance(pending.get("marker"), str)
+                or not re.fullmatch(r"[0-9a-f]{64}", pending["marker"])
+            ):
+                raise BackupStorageError(
+                    "The unfinished storage registration proof is invalid."
+                )
+            original = pending["inspected"]
+            if any(original.get(key) != value for key, value in stable.items()):
+                raise BackupStorageError(
+                    "The unfinished storage registration belongs to a different mounted directory."
+                )
+        return path, pending, stable
+
+    def _clear_pending_registration(self, profile):
+        path = self._state("pending", f"{profile}.json")
+        value = self._read(path)
+        if value is None:
+            return
+        with _directory(path.parent, private=True) as descriptor:
+            current = os.stat(path.name, dir_fd=descriptor, follow_symlinks=False)
+            _private_file(current)
+            if current.st_uid != os.geteuid():
+                raise BackupStorageError(
+                    "The unfinished storage registration owner changed."
+                )
+            os.unlink(path.name, dir_fd=descriptor)
+            os.fsync(descriptor)
+
     def _register_marker(self, root_fd, profile, previous, inspected, public):
-        with _child_directory(root_fd, ".dumb-backups", create=True) as base_fd:
+        allowed = public["allow_shared_permissions"]
+        observed = {"directory_mode": None, "file_mode": None}
+        with _external_child(
+            root_fd, ".dumb-backups", create=True, allow_shared_permissions=allowed
+        ) as base_fd:
+            observed["directory_mode"] = (
+                f"{stat.S_IMODE(os.fstat(base_fd).st_mode):04o}"
+            )
             if self._inspect(public["path"]) != inspected:
                 raise BackupStorageError(
                     "The destination mount changed during registration."
                 )
-            with _child_directory(base_fd, profile, create=True) as descriptor:
+            with _external_child(
+                base_fd, profile, create=True, allow_shared_permissions=allowed
+            ) as descriptor:
+                mode = os.fstat(descriptor).st_mode
+                if (
+                    not int(observed["directory_mode"], 8) & 0o077
+                    or stat.S_IMODE(mode) & 0o077
+                ):
+                    observed["directory_mode"] = f"{stat.S_IMODE(mode):04o}"
+                pending_path, pending, stable = self._pending_registration(
+                    profile, inspected
+                )
                 try:
                     marker_fd = os.open(
                         ".destination.json",
-                        os.O_RDONLY | os.O_NOFOLLOW,
+                        os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
                         dir_fd=descriptor,
                     )
                 except FileNotFoundError:
@@ -694,7 +903,10 @@ class BackupStorage:
                         raise BackupStorageError(
                             "The registered storage identity is missing; no fallback identity was created."
                         ) from None
-                    marker = secrets.token_hex(32)
+                    marker = (pending or {}).get("marker") or secrets.token_hex(32)
+                    # Persist authority before the external O_EXCL write: a fixed
+                    # file-mode mask may reject the newly created marker afterward.
+                    self._write(pending_path, {"inspected": stable, "marker": marker})
                     marker_fd = os.open(
                         ".destination.json",
                         os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
@@ -705,22 +917,27 @@ class BackupStorage:
                         handle.write(json.dumps({"marker": marker}))
                         handle.flush()
                         os.fsync(handle.fileno())
-                        _private_file(os.fstat(handle.fileno()))
+                        value = os.fstat(handle.fileno())
+                        observed["file_mode"] = f"{stat.S_IMODE(value.st_mode):04o}"
+                        _external_permissions(value, allow_shared_permissions=allowed)
                 else:
                     with os.fdopen(marker_fd, "r") as handle:
-                        _private_file(os.fstat(handle.fileno()))
+                        value = os.fstat(handle.fileno())
+                        observed["file_mode"] = f"{stat.S_IMODE(value.st_mode):04o}"
+                        _external_permissions(value, allow_shared_permissions=allowed)
                         raw = handle.read(4097)
                     if len(raw) > 4096:
                         raise BackupStorageError(
                             "The storage marker exceeds its bound."
                         )
                     marker = json.loads(raw).get("marker")
-                    if not previous or marker != previous["binding"]["marker"]:
+                    authority = previous["binding"] if previous else pending
+                    if not authority or marker != authority.get("marker"):
                         raise BackupStorageError(
                             "The destination contains an unowned storage identity."
                         )
                 os.fsync(descriptor)
-                return marker
+                return marker, observed
 
     def set_default(self, profile):
         if profile:
@@ -740,6 +957,11 @@ class BackupStorage:
                 "Register and verify the selected destination first."
             )
         binding = record["binding"]
+        allowed = _shared_permissions(binding)
+        if _shared_permissions(config) != allowed:
+            raise BackupStorageError(
+                "The storage permission policy changed; register and verify this destination again."
+            )
         inspected = self._inspect(config.get("path"))
         if any(
             inspected[key] != binding[key]
@@ -755,12 +977,16 @@ class BackupStorage:
                 "The selected mounted destination is missing or replaced; no local fallback is allowed."
             )
         owned = Path(binding["path"]) / ".dumb-backups" / profile
-        with _directory(owned, private=True) as descriptor:
+        with self._owned_directory(binding, profile) as descriptor:
             marker_fd = os.open(
-                ".destination.json", os.O_RDONLY | os.O_NOFOLLOW, dir_fd=descriptor
+                ".destination.json",
+                os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+                dir_fd=descriptor,
             )
             with os.fdopen(marker_fd, "r") as handle:
-                _private_file(os.fstat(handle.fileno()))
+                _external_permissions(
+                    os.fstat(handle.fileno()), allow_shared_permissions=allowed
+                )
                 raw = handle.read(4097)
                 if (
                     len(raw) > 4096
@@ -770,6 +996,18 @@ class BackupStorage:
                         "The destination ownership marker changed."
                     )
         return profile, config, binding, inspected, owned
+
+    @contextmanager
+    def _owned_directory(self, binding, profile):
+        allowed = _shared_permissions(binding)
+        with _directory(binding["path"]) as root:
+            with _external_child(
+                root, ".dumb-backups", allow_shared_permissions=allowed
+            ) as base:
+                with _external_child(
+                    base, profile, allow_shared_permissions=allowed
+                ) as descriptor:
+                    yield descriptor
 
     def bound_identity(self, profile):
         profile, config, binding, _inspected, owned = self._validate(profile)
@@ -781,6 +1019,7 @@ class BackupStorage:
             "storage_type": binding["storage_type"],
             "filesystem_type": binding["filesystem_type"],
             "binding_fingerprint": _digest(binding),
+            "allow_shared_permissions": _shared_permissions(binding),
         }
 
     @contextmanager
@@ -803,13 +1042,17 @@ class BackupStorage:
                     )
 
             check()
-            with _directory(owned, private=True) as profile_fd:
+            allowed = _shared_permissions(binding)
+            with self._owned_directory(binding, profile) as profile_fd:
                 check()
-                with _child_directory(
-                    profile_fd, namespace, create=create
+                with _external_child(
+                    profile_fd,
+                    namespace,
+                    create=create,
+                    allow_shared_permissions=allowed,
                 ) as descriptor:
                     check()
-                    yield profile, descriptor, check
+                    yield profile, descriptor, check, allowed
                     check()
         finally:
             with self._lock:
@@ -835,6 +1078,7 @@ class BackupStorage:
         } | {
             "artifact_kind": (receipt.get("metadata") or {}).get("kind"),
             "retention_scope": (receipt.get("metadata") or {}).get("retention_scope"),
+            "allow_shared_permissions": _shared_permissions(receipt),
         }
 
     def write_file(
@@ -856,6 +1100,7 @@ class BackupStorage:
             resolved,
             directory_fd,
             lease_check,
+            allowed,
         ):
 
             def check():
@@ -880,12 +1125,19 @@ class BackupStorage:
                         writer.digest.hexdigest(),
                         writer.size,
                     )
-                    _private_file(os.fstat(handle.fileno()))
+                    _external_permissions(
+                        os.fstat(handle.fileno()), allow_shared_permissions=allowed
+                    )
                 check()
                 descriptor = os.open(
-                    temporary, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=directory_fd
+                    temporary,
+                    os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+                    dir_fd=directory_fd,
                 )
                 with os.fdopen(descriptor, "rb") as handle:
+                    _external_permissions(
+                        os.fstat(handle.fileno()), allow_shared_permissions=allowed
+                    )
                     reader = _Reader(handle, check)
                     verification = verifier(reader) if verifier is not None else None
                     while reader.read(1024 * 1024):
@@ -926,6 +1178,7 @@ class BackupStorage:
                     "extension": extension,
                     "metadata": metadata or {},
                     "verification": verification,
+                    "allow_shared_permissions": allowed,
                 }
                 self._write(self._catalog(resolved, namespace, artifact), receipt)
                 return self._public_receipt(receipt)
@@ -968,13 +1221,20 @@ class BackupStorage:
             or receipt.get("namespace") != namespace
         ):
             raise BackupStorageError("The owned backup receipt is unavailable.")
-        with self._lease(profile, namespace) as (_resolved, directory_fd, check):
+        with self._lease(profile, namespace) as (
+            _resolved,
+            directory_fd,
+            check,
+            allowed,
+        ):
             descriptor = os.open(
-                receipt["filename"], os.O_RDONLY | os.O_NOFOLLOW, dir_fd=directory_fd
+                receipt["filename"],
+                os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+                dir_fd=directory_fd,
             )
             with os.fdopen(descriptor, "rb") as handle:
                 value = os.fstat(handle.fileno())
-                _private_file(value)
+                _external_permissions(value, allow_shared_permissions=allowed)
                 reader = _Reader(handle, check)
                 while reader.read(1024 * 1024):
                     pass
@@ -1042,7 +1302,12 @@ class BackupStorage:
         with self.open_artifact(reference) as handle:
             expected = _file_stamp(os.fstat(handle.fileno()))
         receipt = self._read(self._catalog(profile, namespace, artifact))
-        with self._lease(profile, namespace) as (_resolved, descriptor, check):
+        with self._lease(profile, namespace) as (
+            _resolved,
+            descriptor,
+            check,
+            _allowed,
+        ):
             actual = os.stat(
                 receipt["filename"], dir_fd=descriptor, follow_symlinks=False
             )

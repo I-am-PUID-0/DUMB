@@ -5655,6 +5655,9 @@
               },
               "enabled": {
                 "type": "boolean"
+              },
+              "allow_shared_permissions": {
+                "type": "boolean"
               }
             },
             "required": [
