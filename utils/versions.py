@@ -4,6 +4,7 @@ from utils.infinidysk_release_line import infinidysk_commit_on_v1
 from utils.infinidysk_v2_runtime import is_v2, runtime_dir
 from utils.config_loader import CONFIG_MANAGER
 from utils.runtime_paths import pyproject_file
+from utils.frontend_source import read_installed_frontend_source
 import os, subprocess, json, re, requests, shlex, urllib.parse, ast
 
 PROFILARR_LEGACY_RELEASE_VERSION = "v1.1.4"
@@ -87,6 +88,14 @@ class Versions:
         if not sha:
             return None, error or "Unable to resolve release tag commit SHA."
         return f"{release_tag}-{sha[:8]}", None
+
+    @staticmethod
+    def frontend_installed_source(config=None):
+        """Image identity is supplementary; never change version/update policy."""
+        root = (
+            config.get("config_dir") if isinstance(config, dict) else None
+        ) or "/dumb/frontend"
+        return read_installed_frontend_source(root)
 
     @staticmethod
     def display_version(key: str | None, version: str | None) -> str | None:

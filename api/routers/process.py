@@ -1076,6 +1076,11 @@ def fetch_process(
                 "process_name": process_name,
                 "config": config,
                 "version": versions.display_version(config_key, version),
+                "installed_source": (
+                    versions.frontend_installed_source(config)
+                    if config_key == "dumb_frontend"
+                    else None
+                ),
                 "config_key": config_key,
                 "update_status": update_status,
                 "symlink_backup_status": symlink_backup_status,
@@ -4536,6 +4541,11 @@ def _collect_process_entries() -> list[dict]:
                         "enabled": enabled,
                         "config": value,
                         "version": versions.display_version(config_key, version),
+                        "installed_source": (
+                            versions.frontend_installed_source(value)
+                            if config_key == "dumb_frontend"
+                            else None
+                        ),
                         "key": key,
                         "config_key": config_key,
                         "repo_url": repo_url,
