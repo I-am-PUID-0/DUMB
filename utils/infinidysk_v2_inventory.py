@@ -75,7 +75,14 @@ def _content_hash(name, directory_fd, expected):
         os.close(descriptor)
 
 
-def iter_tree(path, *, content=False, role="Source", include_identity=False):
+def iter_tree(
+    path,
+    *,
+    content=False,
+    role="Source",
+    include_identity=False,
+    reject_hardlinks=False,
+):
     """Yield every descendant without following links or collecting directory lists."""
     root = Path(path)
     stack = []
@@ -122,6 +129,10 @@ def iter_tree(path, *, content=False, role="Source", include_identity=False):
             if stat.S_ISLNK(value.st_mode):
                 row["link"] = os.readlink(entry.name, dir_fd=directory_fd)
             elif stat.S_ISREG(value.st_mode):
+                if reject_hardlinks and value.st_nlink != 1:
+                    raise InventoryError(
+                        f"{role} contains a hard-linked file; local storage reuse requires independent files."
+                    )
                 if content:
                     row["sha256"] = _content_hash(entry.name, directory_fd, value)
             elif stat.S_ISDIR(value.st_mode):
