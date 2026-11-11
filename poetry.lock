@@ -45,14 +45,14 @@ trio = ["trio (>=0.32.0)"]
 
 [[package]]
 name = "apprise"
-version = "2.1.0"
+version = "2.2.0"
 description = "Push Notifications that work with just about every platform!"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "apprise-2.1.0-py3-none-any.whl", hash = "sha256:f743f4bc81dc5a68bddab53d420071b45541630dfea8c907a5e8b2b38555c681"},
-    {file = "apprise-2.1.0.tar.gz", hash = "sha256:7eb453b31f37e6b24499b48320bf9d325038bbb1216e24ea7baaf73b062341c5"},
+    {file = "apprise-2.2.0-py3-none-any.whl", hash = "sha256:deac7647c02463f5398f3f5dbba965031a1507adf1b4348ccf5e53e8f0528f51"},
+    {file = "apprise-2.2.0.tar.gz", hash = "sha256:711382b7c366e575276863da72f5473e34db1735a9980f6df464b337a8003ebc"},
 ]
 
 [package.dependencies]
@@ -2598,4 +2598,4 @@ test = ["pytest", "pytest-cov"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4.0"
-content-hash = "bab465c0b02c2df329cfcdbe6bc699191ae938a22e9e0f52789fd426c69523e5"
+content-hash = "466bedb367a89fe0e116538db94728f7b0a5d896c456eb6cc922c35209a74091"
