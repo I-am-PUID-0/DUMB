@@ -4,7 +4,7 @@ import threading
 import time
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from utils.startup import (
     frontend_start_readiness,
@@ -33,6 +33,19 @@ class FrontendStartupTests(unittest.TestCase):
             "branch_enabled": False,
             "release_version_enabled": False,
         }
+
+    def test_major_recovery_skips_preinstall_before_any_installer(self):
+        installer = Mock()
+        with patch(
+            "utils.infinidysk_migration_admission.infinidysk_major_recovery_pending",
+            return_value=True,
+        ):
+            failures, reason = run_migration_aware_preinstall(
+                [("infinidysk", "InfiniDysk"), ("sonarr", "Sonarr")], installer
+            )
+        self.assertEqual(failures, {})
+        self.assertIn("major migration", reason)
+        installer.assert_not_called()
 
     def test_installed_frontend_can_start_before_service_preinstall(self):
         with tempfile.TemporaryDirectory() as temp_dir:

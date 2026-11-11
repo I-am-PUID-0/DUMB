@@ -536,6 +536,12 @@ def _prepare_managed_cli_runtime():
         raise RuntimeError(error)
 
 
+def _major_migration_recovery_pending():
+    from utils.infinidysk_migration_admission import infinidysk_major_recovery_pending
+
+    return infinidysk_major_recovery_pending()
+
+
 def migrate_symlinks():
     data_root = str(config.get("data_root")) or "/data"
     logger.debug(f"Data root for symlinks: {data_root}")
@@ -590,7 +596,16 @@ def migrate_symlinks():
                 or os.path.lexists("/nzbdav")
                 or os.path.exists(legacy_nzbdav_data)
             )
-            if legacy_namespace:
+            if (
+                str(infinidysk_config.get("runtime_generation") or "1") == "2"
+                or _major_migration_recovery_pending()
+            ):
+                # A low-space job may deliberately leave this legacy source
+                # absent. Recreating it here would obstruct archive recovery.
+                logger.debug(
+                    "Preserving legacy InfiniDysk paths during native/recovery boot."
+                )
+            elif legacy_namespace:
                 # Existing installations keep this root until a guarded full
                 # namespace migration is available and explicitly selected.
                 symlink_map.append(("/nzbdav", legacy_nzbdav_data))

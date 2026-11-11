@@ -1115,13 +1115,37 @@ def _initialize_installation_recovery(config_manager, process_handler):
     return controller, hold
 
 
-def _start_recovery_control_plane(process_handler, config_manager, reason):
+def _major_migration_recovery_reason():
+    """Inspect major-job recovery before account/alias setup can touch appdata."""
+    try:
+        from utils.infinidysk_migration_admission import (
+            infinidysk_major_recovery_pending,
+        )
+
+        if infinidysk_major_recovery_pending():
+            return (
+                "An interrupted InfiniDysk major migration needs recovery. Preserve "
+                "the retained archive and job state, restore its mount and use "
+                "the offered migration recovery action."
+            )
+    except Exception as error:
+        logger.error(
+            "InfiniDysk major recovery state could not be inspected (error_type=%s).",
+            type(error).__name__,
+        )
+        return "InfiniDysk major recovery state is unavailable; review private job ownership before normal startup."
+    return None
+
+
+def _start_recovery_control_plane(
+    process_handler, config_manager, reason, *, label="Installation recovery"
+):
     """Serve recovery using installed artifacts; never install or configure apps."""
     dumb_config = config_manager.get("dumb", {}) or {}
     api_config = dumb_config.get("api_service", {}) or {}
     frontend_config = dumb_config.get("frontend", {}) or {}
     expected = []
-    failures = {"Installation recovery": reason}
+    failures = {label: reason}
     if api_config.get("enabled"):
         api_name = api_config.get("process_name") or "DUMB API"
         expected.append(api_name)
@@ -1181,9 +1205,10 @@ def _start_recovery_control_plane(process_handler, config_manager, reason):
     process_handler.set_startup_expected_services(expected)
     process_handler.set_recovery_required(failures)
     logger.warning(
-        "Installation recovery requires attention. Only the configured API and "
-        "installed frontend are started. Complete recovery, then restart DUMB; "
-        "normal services and background workers remain paused."
+        "%s requires attention. Only the configured API and installed frontend "
+        "are started. Complete recovery, then restart DUMB; normal services and "
+        "background workers remain paused.",
+        label,
     )
 
 
@@ -1198,6 +1223,8 @@ def main():
     installation_backups, recovery_hold = _initialize_installation_recovery(
         config, process_handler
     )
+    major_recovery = None if recovery_hold else _major_migration_recovery_reason()
+    recovery_hold = recovery_hold or major_recovery
     initialize_dependencies(
         process_handler=process_handler,
         updater=updater,
@@ -1208,9 +1235,17 @@ def main():
         recovery_only=bool(recovery_hold),
     )
     if recovery_hold:
-        _start_recovery_control_plane(
-            process_handler, config, installation_backups.boot_error
-        )
+        if major_recovery:
+            _start_recovery_control_plane(
+                process_handler,
+                config,
+                major_recovery,
+                label="InfiniDysk migration recovery",
+            )
+        else:
+            _start_recovery_control_plane(
+                process_handler, config, installation_backups.boot_error
+            )
         threading.Event().wait()
         return
 

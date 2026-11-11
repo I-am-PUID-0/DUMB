@@ -42,6 +42,8 @@ class RecoveryBootTests(unittest.TestCase):
         controller.start_scheduler = Mock(
             side_effect=lambda: events.append("scheduler")
         )
+        admission_module = ModuleType("utils.infinidysk_migration_admission")
+        admission_module.infinidysk_major_recovery_pending = Mock(return_value=False)
         manager_module = ModuleType("utils.installation_backup")
         manager_module.get_installation_backup_manager = Mock(return_value=controller)
         hold = [None]
@@ -56,6 +58,7 @@ class RecoveryBootTests(unittest.TestCase):
             sys.modules,
             {
                 "utils.installation_backup": manager_module,
+                "utils.infinidysk_migration_admission": admission_module,
                 "utils.backup_storage": storage_module,
             },
         ).start()
@@ -93,6 +96,7 @@ class RecoveryBootTests(unittest.TestCase):
                 "_repair_boot_controller_state",
                 "_initialize_installation_recovery",
                 "_start_recovery_control_plane",
+                "_major_migration_recovery_reason",
                 "main",
             },
             {
@@ -120,6 +124,48 @@ class RecoveryBootTests(unittest.TestCase):
             },
         )
         return namespace, controller, handler, manager, users, events, hold
+
+    def test_major_migration_recovery_branches_before_user_aliases_and_workers(self):
+        ns, controller, handler, _, users, events, _ = self.namespace()
+        admission = sys.modules["utils.infinidysk_migration_admission"]
+        admission.infinidysk_major_recovery_pending.return_value = True
+        ns["_start_recovery_control_plane"] = Mock(
+            side_effect=lambda *args, **kwargs: events.append("major_recovery_control")
+        )
+        ns["main"]()
+        users.create_system_user.assert_not_called()
+        controller.start_scheduler.assert_not_called()
+        handler.start_auto_restart_monitor.assert_not_called()
+        self.assertTrue(ns["initialize_dependencies"].call_args.kwargs["recovery_only"])
+        self.assertEqual(
+            ns["_start_recovery_control_plane"].call_args.kwargs["label"],
+            "InfiniDysk migration recovery",
+        )
+        self.assertEqual(
+            events,
+            [
+                "initialize_controller",
+                "dependencies_recovery",
+                "major_recovery_control",
+                "wait",
+            ],
+        )
+
+    def test_unreadable_major_recovery_state_holds_normal_startup_without_secrets(self):
+        ns, _, handler, _, users, _, _ = self.namespace()
+        admission = sys.modules["utils.infinidysk_migration_admission"]
+        admission.infinidysk_major_recovery_pending.side_effect = OSError(
+            "private-secret"
+        )
+        ns["_start_recovery_control_plane"] = Mock()
+        ns["main"]()
+        users.create_system_user.assert_not_called()
+        handler.start_auto_restart_monitor.assert_not_called()
+        self.assertTrue(ns["initialize_dependencies"].call_args.kwargs["recovery_only"])
+        self.assertNotIn("private-secret", repr(ns["logger"].mock_calls))
+        self.assertIn(
+            "unavailable", ns["_start_recovery_control_plane"].call_args.args[2]
+        )
 
     def test_private_repair_only_visits_existing_fixed_state(self):
         ns, _, _, manager, users, _, _ = self.namespace()

@@ -62,6 +62,13 @@ def infinidysk_v2_jobs_active():
     )
 
 
+def infinidysk_major_recovery_pending():
+    """Hold boot mutations while an interrupted major import needs recovery."""
+    from utils.infinidysk_v2_migration import INFINIDYSK_V2_MIGRATION_MANAGER
+
+    return INFINIDYSK_V2_MIGRATION_MANAGER.has_recovery_pending_job()
+
+
 def infinidysk_v2_recovery_pending():
     from utils.infinidysk_v2_migration import INFINIDYSK_V2_MIGRATION_MANAGER
     from utils.infinidysk_v2_postgres import INFINIDYSK_V2_POSTGRES_MANAGER

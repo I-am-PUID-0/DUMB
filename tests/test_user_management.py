@@ -68,11 +68,21 @@ class UserManagementSecurityTests(unittest.TestCase):
             user_management.create_system_user()
         reconcile.assert_called_once_with("DUMB")
 
-    def _symlink_migration_calls(self, *, legacy_identity, config_dir):
+    def _symlink_migration_calls(
+        self,
+        *,
+        legacy_identity,
+        config_dir,
+        runtime_generation="1",
+        recovery_pending=False,
+    ):
         config = types.SimpleNamespace(
             get=lambda key, default=None: {
                 "data_root": "/data",
-                "infinidysk": {"config_dir": config_dir},
+                "infinidysk": {
+                    "config_dir": config_dir,
+                    "runtime_generation": runtime_generation,
+                },
             }.get(key, default),
             uses_legacy_infinidysk_identity=lambda: legacy_identity,
         )
@@ -81,6 +91,11 @@ class UserManagementSecurityTests(unittest.TestCase):
             patch.object(user_management, "config", config),
             patch.object(user_management, "is_mount", return_value=True),
             patch.object(user_management, "cleanup_broken_symlinks"),
+            patch.object(
+                user_management,
+                "_major_migration_recovery_pending",
+                return_value=recovery_pending,
+            ),
             patch.object(user_management, "migrate_and_symlink", migrate),
             patch.object(user_management.os.path, "lexists", return_value=False),
             patch.object(user_management.os.path, "exists", return_value=False),
@@ -96,6 +111,26 @@ class UserManagementSecurityTests(unittest.TestCase):
         self.assertIn(("/infinidysk", "/data/infinidysk"), calls)
         self.assertNotIn(("/nzbdav", "/data/nzbdav"), calls)
         self.assertNotIn(("/cli_debrid/data", "/data/cli_debrid"), calls)
+
+    def test_native_generation_reboot_does_not_recreate_legacy_source(self):
+        calls = self._symlink_migration_calls(
+            legacy_identity=False, config_dir="/infinidysk", runtime_generation="2"
+        )
+        self.assertNotIn(("/infinidysk", "/data/infinidysk"), calls)
+        self.assertNotIn(("/nzbdav", "/data/nzbdav"), calls)
+        self.assertIn(("/plex", "/data/plex"), calls)
+
+    def test_interrupted_major_recovery_preserves_both_legacy_namespaces(self):
+        for legacy in (False, True):
+            with self.subTest(legacy=legacy):
+                calls = self._symlink_migration_calls(
+                    legacy_identity=legacy,
+                    config_dir="/nzbdav" if legacy else "/infinidysk",
+                    recovery_pending=True,
+                )
+                self.assertNotIn(("/infinidysk", "/data/infinidysk"), calls)
+                self.assertNotIn(("/nzbdav", "/data/nzbdav"), calls)
+                self.assertIn(("/plex", "/data/plex"), calls)
 
     def test_cli_guard_precedes_broken_link_cleanup_and_other_migrations(self):
         with (

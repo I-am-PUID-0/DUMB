@@ -174,9 +174,16 @@ def run_migration_aware_preinstall(
 
     try:
         from utils.infinidysk_migration_admission import (
+            infinidysk_major_recovery_pending,
             infinidysk_namespace_pre_mutation_interrupted,
         )
 
+        if infinidysk_major_recovery_pending():
+            return (
+                {},
+                "An interrupted InfiniDysk major migration needs recovery; "
+                "service preinstall was skipped.",
+            )
         recovery_boot = infinidysk_namespace_pre_mutation_interrupted()
     except Exception:
         return (
