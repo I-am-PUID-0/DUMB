@@ -711,7 +711,7 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
             2 * source_bytes
             + MAX_TREE_MANIFEST_BYTES
             + 2 * database_bytes
-            + max(64 * 1024**2, database_bytes * 3),
+            + max(64 * 1024**2, database_bytes * 3, source_bytes),
         )
         self.assertEqual(capacity["source"]["root_count"], 1)
         self.assertEqual(capacity["source"]["entries"], 350_000)
@@ -1405,6 +1405,144 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
             any("outside the retained" in value for value in preview["blockers"])
         )
         self.assertEqual(self.executor.calls, [])
+
+    def test_local_reuse_avoids_one_copy_without_inflating_free_space(self):
+        self.archive_profile()
+        source_bytes = 64 * 1024**3
+        with (
+            patch(
+                "utils.infinidysk_v2_migration._source_summary",
+                return_value={"entries": 350_000, "bytes": source_bytes},
+            ),
+            patch(
+                "utils.infinidysk_v2_migration.shutil.disk_usage",
+                return_value=SimpleNamespace(free=400 * 1024**3),
+            ),
+            patch("utils.infinidysk_v2_space_control.preflight_reuse"),
+        ):
+            copied = self.manager._plan(
+                {"mode": "migrate", "backup_destination_id": "nas"}
+            )
+            reused = self.manager._plan(
+                {
+                    "mode": "migrate",
+                    "backup_destination_id": "nas",
+                    "reclaim_source_space": True,
+                }
+            )
+        first = sum(
+            row["base_required_bytes"] for row in copied["capacity"]["filesystems"]
+        )
+        second = sum(
+            row["base_required_bytes"] for row in reused["capacity"]["filesystems"]
+        )
+        self.assertEqual(first - second, source_bytes)
+        self.assertGreaterEqual(second, source_bytes)
+        self.assertEqual(
+            [row["free_bytes"] for row in copied["capacity"]["filesystems"]],
+            [row["free_bytes"] for row in reused["capacity"]["filesystems"]],
+        )
+        self.assertNotEqual(copied["plan_fingerprint"], reused["plan_fingerprint"])
+
+    def test_local_reuse_is_explicit_and_requires_registered_external_archive(self):
+        with self.assertRaisesRegex(InfiniDyskV2MigrationError, "boolean"):
+            self.manager.preview({"reclaim_source_space": "true"})
+        preview = self.manager.preview(
+            {"mode": "migrate", "reclaim_source_space": True}
+        )
+        self.assertFalse(preview["ready"])
+        self.assertTrue(preview["source_storage"]["rollback_requires_archive"])
+        self.assertIn("archive_recovery", preview["required_acknowledgements"])
+        self.assertTrue(
+            any("registered archive" in text for text in preview["blockers"])
+        )
+
+    def test_default_migration_retains_original_source(self):
+        preview, _ = self.preview_request()
+        self.assertEqual(
+            preview["source_storage"],
+            {
+                "mode": "retain_local",
+                "reclaim_source_space": False,
+                "rollback_requires_archive": False,
+            },
+        )
+        self.assertNotIn("archive_recovery", preview["required_acknowledgements"])
+
+    def test_archive_recovery_acknowledgement_is_enforced_by_backend(self):
+        preview, request = self.preview_request()
+        path = next((self.root / "state" / "previews").glob("*.json"))
+        saved = self.manager._read(path)
+        saved["plan"]["options"]["reclaim_source_space"] = True
+        self.manager._write(path, saved)
+        with self.assertRaisesRegex(InfiniDyskV2MigrationError, "Acknowledge"):
+            self.manager.rehearse(request)
+        self.assertFalse(self.executor.calls)
+
+    def _reviewed_skip_rehearsal(self):
+        original = self.executor.receipt
+        summary = {
+            "status": "review_required",
+            "review_required": True,
+            "review_digest": "a" * 64,
+            "imported_files": 0,
+            "skipped_files": 1,
+            "blocking_reasons": [],
+            "reasons": [{"reason": "no metadata blob", "count": 1}],
+            "skipped": [{"path": "/content/movie", "reason": "no metadata blob"}],
+        }
+
+        def receipt(plan):
+            value = original(plan)
+            value["report"].update(
+                skipped_files=1, import_report=copy.deepcopy(summary)
+            )
+            return value
+
+        self.executor.receipt = receipt
+        preview, request, rehearsal = self.rehearsal()
+        request["rehearsal_job_id"] = rehearsal["job_id"]
+        return request, rehearsal, summary
+
+    def test_reviewed_native_skips_require_exact_cutover_consent(self):
+        request, rehearsal, summary = self._reviewed_skip_rehearsal()
+        self.assertEqual(rehearsal["import_report"]["skipped_files"], 1)
+        with self.assertRaisesRegex(InfiniDyskV2MigrationError, "skipped items"):
+            self.manager.start(request)
+        request["acknowledgements"]["skipped_media"] = True
+        request["skip_review_digest"] = "b" * 64
+        with self.assertRaisesRegex(InfiniDyskV2MigrationError, "skipped items"):
+            self.manager.start(request)
+        request["skip_review_digest"] = summary["review_digest"]
+        job = self.wait(self.manager.start(request))
+        self.assertEqual(job["status"], "completed", job)
+
+    def test_changed_omissions_during_cutover_restore_original(self):
+        request, _, summary = self._reviewed_skip_rehearsal()
+        request["acknowledgements"]["skipped_media"] = True
+        request["skip_review_digest"] = summary["review_digest"]
+        summary["review_digest"] = "b" * 64
+        job = self.wait(self.manager.start(request))
+        self.assertEqual(job["status"], "failed_restored", job)
+        self.assertIn("changed after rehearsal", job["error"])
+        self.assertEqual(self.config.config["infinidysk"]["runtime_generation"], "1")
+
+    def test_native_report_remains_available_after_validation_failure_and_redacts(self):
+        _, request = self.preview_request()
+        job = self.wait(self.manager.rehearse(request))
+        private = self.manager._read(self.manager._job_path(job["job_id"]))
+        raw = (
+            "Native report\nprivate-example-key nntp://user:password@example.invalid\n"
+        )
+        self.manager._record_import_report(private, raw, {"status": "blocked"})
+        visible = self.manager.get_report(job["job_id"])
+        self.assertNotIn("private-example-key", visible)
+        self.assertNotIn("password", visible)
+        self.assertIn("Native report", visible)
+        report_path = Path(private["native_report_path"])
+        report_path.chmod(0o644)
+        with self.assertRaisesRegex(InfiniDyskV2MigrationError, "ownership"):
+            self.manager.get_report(job["job_id"])
 
 
 class InfiniDyskV2CapacityTests(unittest.TestCase):

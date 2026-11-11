@@ -601,10 +601,10 @@ class ImportInventoryTests(unittest.TestCase):
                 db.execute("INSERT INTO HistoryItems VALUES(?)", (identifier,))
             with sqlite3.connect(target) as db:
                 db.executescript(
-                    "CREATE TABLE items(id BLOB,name TEXT);CREATE TABLE history(id BLOB);"
+                    "CREATE TABLE items(id BLOB,name TEXT,kind INTEGER);CREATE TABLE history(id BLOB);"
                 )
                 value = bytes.fromhex(identifier.replace("-", ""))
-                db.execute("INSERT INTO items VALUES(?,?)", (value, "movie.mkv"))
+                db.execute("INSERT INTO items VALUES(?,?,?)", (value, "movie.mkv", 2))
                 db.execute("INSERT INTO history VALUES(?)", (value,))
             report = (
                 "Imported 0 directories, 1 files, 0 NZBs, 1 history rows, 0 queued jobs"

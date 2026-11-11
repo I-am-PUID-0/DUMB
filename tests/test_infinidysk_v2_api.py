@@ -53,7 +53,7 @@ class NativeMigrationAPITests(unittest.TestCase):
                         await app(scope, receive, send)
                         start = next(message for message in messages if message['type'] == 'http.response.start')
                         raw = b''.join(message.get('body', b'') for message in messages if message['type'] == 'http.response.body')
-                        return SimpleNamespace(status_code=start['status'], text=raw.decode(), json=lambda: json.loads(raw))
+                        return SimpleNamespace(status_code=start['status'], text=raw.decode(), headers={key.decode(): value.decode() for key, value in start['headers']}, json=lambda: json.loads(raw))
                     return asyncio.run(invoke())
                 def get(self, path):
                     return self.request('GET', path)
@@ -63,6 +63,7 @@ class NativeMigrationAPITests(unittest.TestCase):
                     return self.request('PATCH', path, json)
             manager = Mock()
             manager.status.return_value = {'protocol': 1, 'job': None}
+            manager.get_report.return_value = 'Native fixture report\\n'
             capacity = {
                 'status': 'insufficient', 'complete': True, 'estimated': True,
                 'reserved': False, 'observed_at': 1,
@@ -85,12 +86,21 @@ class NativeMigrationAPITests(unittest.TestCase):
                  patch.object(router.INFINIDYSK_V2_POSTGRES_MANAGER, 'has_blocking_job', return_value=False):
                 client = Client()
                 assert client.get('/process/infinidysk-v2/status').status_code == 401
+                assert client.get('/process/infinidysk-v2/jobs/' + 'a' * 32 + '/report').status_code == 401
+                manager.get_report.assert_not_called()
                 assert client.post('/process/infinidysk-v2/start', json={}).status_code == 401
                 assert client.post('/process/infinidysk-v2/cleanup/preview', json={}).status_code == 401
                 assert client.post('/process/infinidysk-v2/cleanup', json={}).status_code == 401
                 with patch('utils.auth.decode_token', return_value=SimpleNamespace(type='access', sub='example')), patch('utils.auth_config.AuthConfigManager.validate_token_principal', return_value=True):
                     client.headers['Authorization'] = 'Bearer fixture'
                     assert client.get('/process/infinidysk-v2/status').json()['protocol'] == 1
+                    report = client.get('/process/infinidysk-v2/jobs/' + 'a' * 32 + '/report')
+                    assert report.status_code == 200, report.text
+                    assert report.text == 'Native fixture report\\n'
+                    assert report.headers['cache-control'] == 'no-store'
+                    assert report.headers['x-content-type-options'] == 'nosniff'
+                    assert report.headers['content-type'].startswith('text/plain')
+                    manager.get_report.assert_called_once_with('a' * 32)
                     capabilities = client.get('/process/capabilities').json()
                     assert capabilities['api_version'] == app.version
                     assert capabilities['infinidysk_v2'] is True
@@ -124,8 +134,12 @@ class NativeMigrationAPITests(unittest.TestCase):
                         response = client.get('/process/infinidysk-v2/jobs/invalid')
                         assert response.status_code == 409, response.text
                         assert response.json()['detail'] == 'Invalid retained job identifier.'
+                        manager.get_report.side_effect = InfiniDyskV2MigrationError('The native report is unavailable for this job.')
+                        report_missing = client.get('/process/infinidysk-v2/jobs/' + 'b' * 32 + '/report')
+                        assert report_missing.status_code == 409, report_missing.text
+                        assert report_missing.json()['detail'] == 'The native report is unavailable for this job.'
                     paths = app.openapi()['paths']
-                    for path in ('/status', '/preview', '/rehearse', '/start', '/jobs/{job_id}', '/rollback', '/cleanup/preview', '/cleanup', '/postgres/status', '/postgres/preview', '/postgres/start', '/postgres/cutover', '/postgres/cancel', '/postgres/rollback'):
+                    for path in ('/status', '/preview', '/rehearse', '/start', '/jobs/{job_id}', '/jobs/{job_id}/report', '/rollback', '/cleanup/preview', '/cleanup', '/postgres/status', '/postgres/preview', '/postgres/start', '/postgres/cutover', '/postgres/cancel', '/postgres/rollback'):
                         assert '/process/infinidysk-v2' + path in paths, path
                     assert app.version == '2.24.0'
             """)

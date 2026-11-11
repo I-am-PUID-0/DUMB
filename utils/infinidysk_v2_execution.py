@@ -92,47 +92,17 @@ def _uuid(value):
 
 
 def verify_import_inventory(source, destination, report):
-    """Compare preserved public file identities and history, not just health."""
-    match = _SUMMARY.search(report)
-    if not match or "Files not carried over:" in report:
-        raise ContainedImportError(
-            "The native report is incomplete or contains skipped media; v1 was retained."
-        )
-    with sqlite3.connect(f"file:{quote(str(source))}?mode=ro", uri=True) as old:
-        files = old.execute(
-            "SELECT Id, Name FROM DavItems WHERE Type=2 AND Path LIKE '/content/%'"
-        ).fetchall()
-        history = old.execute("SELECT Id FROM HistoryItems").fetchall()
-    with sqlite3.connect(f"file:{quote(str(destination))}?mode=ro", uri=True) as new:
-        if new.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
-            raise ContainedImportError("Native database integrity did not validate.")
-        items = {
-            _uuid(row[0]): row[1] for row in new.execute("SELECT id,name FROM items")
-        }
-        actual_history = {
-            _uuid(row[0]) for row in new.execute("SELECT id FROM history")
-        }
-    if (
-        int(match[2]) != len(files)
-        or int(match[4]) != len(history)
-        or int(match[5]) != 0
-    ):
-        raise ContainedImportError(
-            "The native import totals differ from the retained source."
-        )
-    if any(items.get(_uuid(identifier)) != name for identifier, name in files):
-        raise ContainedImportError(
-            "Existing media identities or names were not preserved."
-        )
-    if any(_uuid(row[0]) not in actual_history for row in history):
-        raise ContainedImportError("Existing history identities were not preserved.")
-    return {
-        "files": len(files),
-        "history": len(history),
-        "skipped_files": 0,
-        "failed_files": 0,
-        "native_report_sha256": hashlib.sha256(report.encode()).hexdigest(),
-    }
+    from utils.infinidysk_v2_import_report import (
+        ImportReportError,
+        verify_import_inventory as verify,
+    )
+
+    try:
+        return verify(source, destination, report)
+    except ImportReportError as error:
+        refused = ContainedImportError(str(error))
+        refused.import_report = error.import_report
+        raise refused from error
 
 
 class NativeCandidate:
@@ -562,16 +532,32 @@ class InfiniDyskV2Executor:
                 "DATABASE_PROVIDER": "sqlite",
             },
         ) as process:
+            child = getattr(process, "process", None)
+            if type(getattr(child, "pid", None)) is int:
+                progress(
+                    "importing",
+                    "The contained native importer is running.",
+                    native_process_group=child.pid,
+                )
             report_text = process.wait_import(plan["mode"] == "migrate", progress)
+        record_report = workspace.get("record_import_report", lambda *args: None)
+        record_report(report_text)
         temporary = candidate / ".dumb-import-tmp"
         if temporary.exists():
             shutil.rmtree(temporary)
         if plan["mode"] == "migrate":
-            report = verify_import_inventory(
-                snapshot["source_database"],
-                candidate / "infinidysk.sqlite",
-                report_text,
-            )
+            try:
+                report = verify_import_inventory(
+                    snapshot["source_database"],
+                    candidate / "infinidysk.sqlite",
+                    report_text,
+                )
+            except ContainedImportError as error:
+                diagnostics = getattr(error, "import_report", None)
+                if diagnostics is not None:
+                    record_report(None, diagnostics)
+                raise
+            record_report(None, report.get("import_report"))
         else:
             with sqlite3.connect(
                 f"file:{quote(str(candidate / 'infinidysk.sqlite'))}?mode=ro", uri=True
@@ -585,7 +571,10 @@ class InfiniDyskV2Executor:
             "plan_fingerprint": plan["plan_fingerprint"],
             "execution_verified": True,
             "isolation_verified": True,
-            "source_untouched": True,
+            "source_untouched": not plan.get("options", {}).get("reclaim_source_space"),
+            "archive_recovery_verified": bool(
+                plan.get("options", {}).get("reclaim_source_space")
+            ),
             "import_complete": True,
             "inventory_verified": True,
             "oidc_policy_verified": True,
@@ -599,6 +588,9 @@ class InfiniDyskV2Executor:
                 raise ContainedImportError(
                     "Native candidate shutdown is unverified; its data was retained."
                 )
+            restore_source = workspace.get("restore_source")
+            if callable(restore_source):
+                restore_source(self._assert_unmounted)
             self._restore_original(plan, was_running)
             receipt["source_restored"] = True
             progress(
@@ -609,7 +601,8 @@ class InfiniDyskV2Executor:
                 "discarding_rehearsal",
                 "Removing only the validated disposable rehearsal candidate; retained backups stay protected.",
             )
-            self._discard_rehearsal_candidate(plan, workspace, snapshot)
+            if not plan.get("options", {}).get("reclaim_source_space"):
+                self._discard_rehearsal_candidate(plan, workspace, snapshot)
             receipt["candidate_discarded"] = True
             return receipt
         target = Path(plan["target"]["data_dir"])
@@ -619,7 +612,16 @@ class InfiniDyskV2Executor:
                     "The native data destination changed; no existing data was replaced."
                 )
             target.rmdir()
-        os.rename(candidate, target)
+        from utils.infinidysk_v2_space_control import identity, rename_exclusive
+
+        parent_identity = identity(candidate.parent)
+        rename_exclusive(
+            candidate,
+            target,
+            snapshot["candidate_identity"],
+            parent_identity,
+            parent_identity,
+        )
         final = copy.deepcopy(plan["target"]["service"])
         final.update(branch_enabled=False, commit_sha="")
         success, _ = configure_v2_runtime(
@@ -702,6 +704,9 @@ class InfiniDyskV2Executor:
                 "The controller rollback checkpoint is unavailable."
             )
         restore()
+        restore_source = job.get("restore_source")
+        if callable(restore_source):
+            restore_source(self._assert_unmounted)
         names = (job.get("execution") or {}).get("original_running_names")
         if not isinstance(names, list):
             names = (

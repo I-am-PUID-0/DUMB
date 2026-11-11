@@ -4,6 +4,7 @@ from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import PlainTextResponse
 
 from utils.config_loader import CONFIG_MANAGER
 from utils.dependencies import (
@@ -233,4 +234,19 @@ async def postgres_rollback(
 ):
     return await run_in_threadpool(
         _invoke, "postgres", "rollback", request, handler, updater, mutation=True
+    )
+
+
+@infinidysk_v2_router.get("/jobs/{job_id}/report", response_class=PlainTextResponse)
+async def major_report(
+    job_id: str,
+    handler=Depends(get_process_handler),
+    updater=Depends(get_updater),
+    current_user=Depends(get_optional_current_user),
+):
+    raw = await run_in_threadpool(
+        _invoke, "major", "get_report", job_id, handler, updater
+    )
+    return PlainTextResponse(
+        raw, headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"}
     )

@@ -374,6 +374,8 @@ class InfiniDyskV2MigrationManager:
             )
         )
         cleanup = self._cleanup_controller().public_state(job)
+        if (job.get("plan", {}).get("options") or {}).get("reclaim_source_space"):
+            cleanup["can_cleanup"] = False
         rollback = (
             rollback
             and not cleanup["rollback_retired"]
@@ -386,6 +388,8 @@ class InfiniDyskV2MigrationManager:
                 "job_type",
                 "protocol",
                 "mode",
+                "import_report",
+                "source_storage",
                 "stage",
                 "message",
                 "created_at",
@@ -412,6 +416,13 @@ class InfiniDyskV2MigrationManager:
             return self._cleanup
 
     def cleanup_preview(self, request):
+        job = self._read(self._job_path(request.get("job_id")))
+        if ((job or {}).get("plan", {}).get("options") or {}).get(
+            "reclaim_source_space"
+        ):
+            raise InfiniDyskV2MigrationError(
+                "Local v1 data was reused. Keep the retained archive for recovery; original-tree retirement does not apply."
+            )
         return self._cleanup_controller().preview(request)
 
     def cleanup(self, request):
@@ -576,7 +587,12 @@ class InfiniDyskV2MigrationManager:
                 )
             database_bytes = postgres_size * 4
         candidate = sizes.get(str(data), 0) + database_bytes
-        headroom = max(64 * 1024 * 1024, database_bytes * 3)
+        if plan.get("options", {}).get("reclaim_source_space") is True:
+            candidate = database_bytes
+        # Native import writes a new metadata/blob database while retaining
+        # its legacy inputs. Compression/schema changes prevent an exact bound;
+        # budget at least another source tree as well as database growth.
+        headroom = max(64 * 1024 * 1024, database_bytes * 3, sizes.get(str(data), 0))
         requirements = [
             (
                 self.state_root,
@@ -692,6 +708,11 @@ class InfiniDyskV2MigrationManager:
             or ("postgres" if service.get("postgres_enabled") else "sqlite")
         ).lower()
         mode = str(options.get("mode") or "migrate")
+        reclaim = options.get("reclaim_source_space", False)
+        if type(reclaim) is not bool:
+            raise InfiniDyskV2MigrationError(
+                "Local storage reuse must be an explicit boolean choice."
+            )
         blockers = []
         if old != "1":
             blockers.append(
@@ -930,6 +951,19 @@ class InfiniDyskV2MigrationManager:
                 plan["blockers"].append(
                     "The selected backup destination is unavailable or its mounted identity changed; no local fallback is allowed."
                 )
+        if reclaim:
+            from utils.infinidysk_v2_space_control import preflight_reuse
+
+            plan["options"]["reclaim_source_space"] = True
+            try:
+                preflight_reuse(plan)
+            except (ValueError, OSError, BackupStorageError) as error:
+                plan["blockers"].append(str(error))
+        plan["source_storage"] = {
+            "mode": "archive_recovery" if reclaim else "retain_local",
+            "reclaim_source_space": reclaim,
+            "rollback_requires_archive": reclaim,
+        }
         binding = copy.deepcopy(
             {
                 key: plan[key]
@@ -1148,6 +1182,7 @@ class InfiniDyskV2MigrationManager:
                         "backups_retained": True,
                     }
                 ),
+                "source_storage": copy.deepcopy(plan["source_storage"]),
                 "capacity": copy.deepcopy(plan["capacity"]),
                 "checks": [
                     {
@@ -1186,7 +1221,12 @@ class InfiniDyskV2MigrationManager:
                     "Verify external media/Arr mount paths, remote mappings and existing symlink/STRM origins, and stop external writers and scanners during the upgrade. Managed mount readiness does not qualify external playback.",
                 ],
                 "inventory": plan["inventory"],
-                "required_acknowledgements": list(ACKNOWLEDGEMENTS),
+                "required_acknowledgements": list(ACKNOWLEDGEMENTS)
+                + (
+                    ["archive_recovery"]
+                    if plan["options"].get("reclaim_source_space")
+                    else []
+                ),
                 "rehearsal_required": plan["mode"] == "migrate",
             }
 
@@ -1216,14 +1256,23 @@ class InfiniDyskV2MigrationManager:
             raise InfiniDyskV2MigrationError(f"Type {confirmation} to continue.")
         acknowledgements = request.get("acknowledgements") or {}
         if not isinstance(acknowledgements, dict) or any(
-            acknowledgements.get(name) is not True for name in ACKNOWLEDGEMENTS
+            acknowledgements.get(name) is not True
+            for name in (
+                list(ACKNOWLEDGEMENTS)
+                + (
+                    ["archive_recovery"]
+                    if plan["options"].get("reclaim_source_space")
+                    else []
+                )
+            )
         ):
             raise InfiniDyskV2MigrationError(
                 "Acknowledge backup, downtime, beta, login policy and downstream paths/playback."
             )
         current = self._plan(plan["options"])
         if (
-            current["plan_fingerprint"] != plan["plan_fingerprint"]
+            current["plan_fingerprint"]
+            != plan.get("restored_plan_fingerprint", plan["plan_fingerprint"])
             or current["execution_identity_fingerprint"]
             != plan["execution_identity_fingerprint"]
         ):
@@ -1278,6 +1327,7 @@ class InfiniDyskV2MigrationManager:
                     "Owned configuration changed before job admission; preview again."
                 )
             saved = latest
+            reviewed_report = None
             if mode == "cutover" and plan["mode"] == "migrate":
                 rehearsal = self._read(self._job_path(request.get("rehearsal_job_id")))
                 if (
@@ -1290,12 +1340,33 @@ class InfiniDyskV2MigrationManager:
                     raise InfiniDyskV2MigrationError(
                         "A successful contained rehearsal for this exact plan is required."
                     )
+                reviewed_report = rehearsal.get("import_report")
+                if reviewed_report and reviewed_report.get("review_required"):
+                    if (
+                        reviewed_report.get("status") != "review_required"
+                        or (request.get("acknowledgements") or {}).get("skipped_media")
+                        is not True
+                        or request.get("skip_review_digest")
+                        != reviewed_report.get("review_digest")
+                    ):
+                        raise InfiniDyskV2MigrationError(
+                            "Review and explicitly acknowledge the exact skipped items from this rehearsal before cutover."
+                        )
             job_id = secrets.token_hex(16)
             job = {
                 "protocol": PROTOCOL,
                 "job_type": JOB_TYPE,
                 "job_id": job_id,
                 "mode": mode,
+                "source_storage": copy.deepcopy(
+                    plan.get("source_storage")
+                    or {
+                        "mode": "retain_local",
+                        "reclaim_source_space": False,
+                        "rollback_requires_archive": False,
+                    }
+                ),
+                "reviewed_skip_digest": (reviewed_report or {}).get("review_digest"),
                 "status": "queued",
                 "stage": "queued",
                 "message": "Waiting for the guarded native migration worker.",
@@ -1800,15 +1871,40 @@ class InfiniDyskV2MigrationManager:
                 raise InfiniDyskV2MigrationError(
                     "An original source changed after its complete archive was verified."
                 )
+        snapshot = {
+            "format_version": 2,
+            "backup_format": "pax_tar_v1",
+            "source_snapshot": str(root),
+            "config_backup": workspace["config_backup"],
+            "source_schema": schema,
+            "source_database": str(database) if schema else None,
+            "original_fingerprints": originals,
+            "snapshot_fingerprint": _digest(originals),
+            "postgres_snapshot": postgres_snapshot,
+            "cold_archive": archived["receipt"],
+            "archive_roots": archived["archive_roots"],
+            "candidate_identity": None,
+            "source_logical_bytes": _source_summary(
+                plan["source"]["data_dir"], validate_links=True
+            )["bytes"],
+        }
+
         candidate = Path(workspace["candidate_data"])
         _path(candidate.parent)
         candidate.parent.mkdir(parents=True, exist_ok=True)
         if candidate.exists() or candidate.is_symlink():
             raise InfiniDyskV2MigrationError("The private candidate path is occupied.")
-        candidate.mkdir(mode=0o700)
         source_data = Path(plan["source"]["data_dir"])
-        if source_data.exists():
-            shutil.copytree(source_data, candidate, symlinks=True, dirs_exist_ok=True)
+        if plan["options"].get("reclaim_source_space"):
+            from utils.infinidysk_v2_space_control import SpaceReuse
+
+            SpaceReuse(self).prepare(job, workspace, snapshot, owner_check)
+        else:
+            candidate.mkdir(mode=0o700)
+            if source_data.exists():
+                shutil.copytree(
+                    source_data, candidate, symlinks=True, dirs_exist_ok=True
+                )
         os.chmod(candidate, 0o700)
         candidate_identity = _identity(candidate)
         self._progress(
@@ -1824,29 +1920,19 @@ class InfiniDyskV2MigrationManager:
             raise InfiniDyskV2MigrationError(
                 "The independent local candidate did not match its complete retained source."
             )
+        if snapshot.get("space_recovery"):
+            snapshot["space_recovery"]["native_mutations_authorized"] = True
+            self._write(self._job_path(job["job_id"]), job)
         if schema and plan["source"]["provider"] in {"postgres", "postgresql"}:
             self._stage_candidate_database(candidate, database, candidate_identity)
         owner_check()
-        return {
-            "format_version": 2,
-            "backup_format": "pax_tar_v1",
-            "source_snapshot": str(root),
-            "config_backup": workspace["config_backup"],
-            "source_schema": schema,
-            "source_database": str(database) if schema else None,
-            "original_fingerprints": originals,
-            "snapshot_fingerprint": _digest(originals),
-            "postgres_snapshot": postgres_snapshot,
-            "cold_archive": archived["receipt"],
-            "archive_roots": archived["archive_roots"],
-            "candidate_identity": candidate_identity,
-        }
+        snapshot["candidate_identity"] = candidate_identity
+        return snapshot
 
     def _validate_receipt(self, job, receipt):
         required = (
             "execution_verified",
             "isolation_verified",
-            "source_untouched",
             "import_complete",
             "inventory_verified",
         )
@@ -1856,6 +1942,15 @@ class InfiniDyskV2MigrationManager:
             raise InfiniDyskV2MigrationError(
                 "Native execution did not supply its complete verified acceptance receipt."
             )
+        protection = (
+            "archive_recovery_verified"
+            if job["plan"]["options"].get("reclaim_source_space")
+            else "source_untouched"
+        )
+        if receipt.get(protection) is not True:
+            raise InfiniDyskV2MigrationError(
+                "The original source or its archive recovery was not verified."
+            )
         if receipt.get("plan_fingerprint") != job["plan_fingerprint"]:
             raise InfiniDyskV2MigrationError(
                 "Native execution was not bound to this exact plan."
@@ -1863,12 +1958,38 @@ class InfiniDyskV2MigrationManager:
         report = receipt.get("report")
         if (
             not isinstance(report, dict)
-            or report.get("skipped_files") != 0
             or report.get("failed_files") != 0
+            or type(report.get("skipped_files")) is not int
+            or report["skipped_files"] < 0
         ):
             raise InfiniDyskV2MigrationError(
                 "The native import report contains skipped/failed files or is incomplete."
             )
+        diagnostics = report.get("import_report")
+        if report["skipped_files"]:
+            if (
+                not isinstance(diagnostics, dict)
+                or diagnostics.get("status") != "review_required"
+                or diagnostics.get("review_required") is not True
+                or diagnostics.get("blocking_reasons")
+                or not re.fullmatch(
+                    r"[0-9a-f]{64}", str(diagnostics.get("review_digest") or "")
+                )
+            ):
+                raise InfiniDyskV2MigrationError(
+                    "The skipped media do not have a complete reconciled native report."
+                )
+        if job["mode"] == "cutover":
+            expected = job.get("reviewed_skip_digest")
+            actual = (
+                (diagnostics or {}).get("review_digest")
+                if report["skipped_files"]
+                else None
+            )
+            if expected != actual:
+                raise InfiniDyskV2MigrationError(
+                    "Skipped items changed after rehearsal; cutover was refused. Review a new rehearsal."
+                )
         return receipt
 
     def _assert_job_owner(self, job):
@@ -1885,6 +2006,8 @@ class InfiniDyskV2MigrationManager:
     def _accept(self, job, receipt):
         self._assert_job_owner(job)
         self._validate_receipt(job, receipt)
+        if (receipt.get("report") or {}).get("import_report") is not None:
+            job["import_report"] = copy.deepcopy(receipt["report"]["import_report"])
         snapshot = job.get("snapshot")
         if not snapshot:
             raise InfiniDyskV2MigrationError("No verified retained v1 snapshot exists.")
@@ -1895,7 +2018,20 @@ class InfiniDyskV2MigrationManager:
                 "The migrated OIDC policy has not been verified."
             )
         self._assert_stopped(job["plan"])
+        if snapshot.get("space_recovery"):
+            from utils.infinidysk_v2_space_control import SpaceReuse
+
+            SpaceReuse(self).verify(job)
+            if _identity(job["plan"]["source"]["data_dir"]) is not None:
+                raise InfiniDyskV2MigrationError(
+                    "The reused v1 source path was unexpectedly recreated."
+                )
         for source, fingerprint in snapshot["original_fingerprints"].items():
+            data = Path(job["plan"]["source"]["data_dir"])
+            if snapshot.get("space_recovery") and (
+                Path(source) == data or data in Path(source).parents
+            ):
+                continue
             if (
                 _source_fingerprint(
                     source,
@@ -2037,11 +2173,98 @@ class InfiniDyskV2MigrationManager:
             job, workspace, postgres_snapshot
         )
         workspace["accept_import"] = lambda receipt: self._accept(job, receipt)
+        workspace["record_import_report"] = (
+            lambda raw, diagnostics=None: self._record_import_report(
+                job, raw, diagnostics
+            )
+        )
+        workspace["restore_source"] = (
+            lambda assert_unmounted: self._restore_reused_source(job, assert_unmounted)
+        )
         workspace["activate_config"] = (
             lambda prepared_service=None: self._activate_config(job, prepared_service)
         )
         workspace["restore_config"] = lambda: self._restore_config(job)
         return workspace
+
+    def _restore_reused_source(self, job, assert_unmounted):
+        from utils.infinidysk_v2_space_control import SpaceReuse
+
+        SpaceReuse(self).restore(job, assert_unmounted)
+
+    def _record_import_report(self, job, raw, diagnostics=None):
+        from utils.private_files import atomic_write_private_text
+
+        if raw is not None:
+            if not isinstance(raw, str) or len(raw.encode()) > 8_000_000:
+                raise InfiniDyskV2MigrationError(
+                    "Native report exceeds its supported size."
+                )
+            path = (
+                self._directory(Path(self._workspace(job)["root"]))
+                / "native-import-report.txt"
+            )
+            atomic_write_private_text(path, raw)
+            job["native_report_path"] = str(path)
+        if diagnostics is not None:
+            job["import_report"] = copy.deepcopy(diagnostics)
+        self._write(self._job_path(job["job_id"]), job)
+
+    def get_report(self, job_id):
+        job = self._read(self._job_path(job_id))
+        if not job:
+            raise InfiniDyskV2MigrationError("No migration report exists for this job.")
+        path = Path(self._workspace(job)["root"]) / "native-import-report.txt"
+        if job.get("native_report_path") != str(path):
+            raise InfiniDyskV2MigrationError(
+                "The native report is unavailable for this job."
+            )
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        with os.fdopen(descriptor, "rb") as handle:
+            value = os.fstat(handle.fileno())
+            if (
+                not stat.S_ISREG(value.st_mode)
+                or value.st_nlink != 1
+                or value.st_uid != os.geteuid()
+                or value.st_mode & 0o077
+                or value.st_size > 8_000_000
+            ):
+                raise InfiniDyskV2MigrationError("Native report ownership is invalid.")
+            raw = handle.read(8_000_001)
+        text = raw.decode("utf-8")
+
+        def redact(value):
+            nonlocal text
+            if isinstance(value, dict):
+                for key, item in value.items():
+                    if (
+                        any(
+                            word in key.lower()
+                            for word in (
+                                "password",
+                                "secret",
+                                "token",
+                                "api_key",
+                                "connection_string",
+                                "database_url",
+                            )
+                        )
+                        and isinstance(item, str)
+                        and len(item) >= 4
+                    ):
+                        text = text.replace(item, "[REDACTED]")
+                    else:
+                        redact(item)
+            elif isinstance(value, list):
+                for item in value:
+                    redact(item)
+
+        redact(job["plan"]["config_snapshot"])
+        return re.sub(
+            r"(?i)(?:https?|postgres(?:ql)?|nntps?)://[^\s<>\"']+",
+            "[URL omitted]",
+            text,
+        )
 
     def _error(self, error, plan):
         message = str(error)[:2000]
@@ -2116,9 +2339,21 @@ class InfiniDyskV2MigrationManager:
                     )
                 current = self._plan(job["plan"]["options"])
                 if current["plan_fingerprint"] != job["plan_fingerprint"]:
-                    raise InfiniDyskV2MigrationError(
-                        "The source plan changed during rehearsal."
-                    )
+                    from utils.infinidysk_v2_space_control import restored_plan_matches
+
+                    if (
+                        not job["plan"]["options"].get("reclaim_source_space")
+                        or not restored_plan_matches(job["plan"], current)
+                        or (job.get("snapshot", {}).get("space_recovery") or {}).get(
+                            "state"
+                        )
+                        != "restored"
+                    ):
+                        raise InfiniDyskV2MigrationError(
+                            "The source plan changed during rehearsal."
+                        )
+                    current["restored_plan_fingerprint"] = current["plan_fingerprint"]
+                    current["plan_fingerprint"] = job["plan_fingerprint"]
                 saved = self._read(Path(job["preview_record"]))
                 if saved:
                     saved["plan"] = current
@@ -2150,10 +2385,16 @@ class InfiniDyskV2MigrationManager:
             )
         except Exception as error:
             restored = False
+            recovery_error = None
             if acquired:
                 try:
                     recovery_job = copy.deepcopy(job)
                     recovery_job["restore_config"] = lambda: self._restore_config(job)
+                    recovery_job["restore_source"] = (
+                        lambda assert_unmounted: self._restore_reused_source(
+                            job, assert_unmounted
+                        )
+                    )
                     from utils.infinidysk_migration_admission import v2_migration_owner
 
                     with v2_migration_owner("major"):
@@ -2165,7 +2406,8 @@ class InfiniDyskV2MigrationManager:
                         and recovery.get("source_restored") is True
                         and recovery.get("generation_2_stopped") is True
                     )
-                except Exception:
+                except Exception as recovery_failure:
+                    recovery_error = self._error(recovery_failure, job["plan"])
                     restored = False
             job.update(
                 status=(
@@ -2184,7 +2426,12 @@ class InfiniDyskV2MigrationManager:
                     if restored
                     else "Inspect retained recovery state before continuing."
                 ),
-                error=self._error(error, job["plan"]),
+                error=self._error(error, job["plan"])
+                + (
+                    f" Recovery remains pending: {recovery_error}"
+                    if recovery_error
+                    else ""
+                ),
                 result={
                     "validated": False,
                     "execution_verified": False,
@@ -2228,6 +2475,11 @@ class InfiniDyskV2MigrationManager:
         try:
             private = copy.deepcopy(job)
             private["restore_config"] = lambda: self._restore_config(job)
+            private["restore_source"] = (
+                lambda assert_unmounted: self._restore_reused_source(
+                    job, assert_unmounted
+                )
+            )
             from utils.infinidysk_migration_admission import v2_migration_owner
 
             with v2_migration_owner("major"):
