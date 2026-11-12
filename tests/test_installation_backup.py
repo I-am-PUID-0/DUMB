@@ -19,7 +19,11 @@ import unittest
 from unittest.mock import patch
 
 from utils.backup_storage import BackupStorage, BackupStorageError
-from utils.installation_backup import InstallationBackupManager, InstallationBackupError
+from utils.installation_backup import (
+    InstallationBackupManager,
+    InstallationBackupError,
+    _owned_child,
+)
 from utils.installation_backup_archive import (
     FORMAT,
     SCHEMA,
@@ -83,6 +87,70 @@ class Handler:
         self.events.append(("start", name))
         self.process_names[name] = Process()
         return True, None
+
+
+class PrivateControllerDirectoryTests(unittest.TestCase):
+    def test_new_control_directories_clear_inherited_sgid_without_changing_parent(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary) / "config"
+            parent.mkdir(mode=0o700)
+            parent.chmod(0o2700)
+            descriptor = os.open(parent, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                with _owned_child(descriptor, "installation-backups") as root:
+                    value = os.fstat(root)
+                    self.assertEqual(stat.S_IMODE(value.st_mode), 0o700)
+                    self.assertEqual(
+                        (value.st_uid, value.st_gid), (os.geteuid(), os.getegid())
+                    )
+                    with _owned_child(root, "jobs") as jobs:
+                        self.assertEqual(stat.S_IMODE(os.fstat(jobs).st_mode), 0o700)
+                self.assertEqual(stat.S_IMODE(parent.stat().st_mode), 0o2700)
+            finally:
+                os.close(descriptor)
+
+    @unittest.skipUnless(
+        os.geteuid() == 0, "Requires root only to simulate inherited foreign parent GID"
+    )
+    def test_new_private_root_uses_controller_group_instead_of_inherited_parent_group(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary) / "config"
+            parent.mkdir(mode=0o700)
+            os.chown(parent, os.geteuid(), os.getegid() + 1)
+            parent.chmod(0o2700)
+            descriptor = os.open(parent, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                with _owned_child(descriptor, "installation-backups") as root:
+                    value = os.fstat(root)
+                    self.assertEqual(
+                        (value.st_uid, value.st_gid), (os.geteuid(), os.getegid())
+                    )
+                    self.assertEqual(stat.S_IMODE(value.st_mode), 0o700)
+                self.assertEqual(parent.stat().st_gid, os.getegid() + 1)
+                self.assertEqual(stat.S_IMODE(parent.stat().st_mode), 0o2700)
+            finally:
+                os.close(descriptor)
+
+    def test_existing_shared_or_unsupported_special_directory_is_never_changed(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            descriptor = os.open(parent, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                for mode in (0o750, 0o770, 0o1700, 0o4700):
+                    child = parent / ("state-" + str(mode))
+                    child.mkdir(mode=0o700)
+                    child.chmod(mode)
+                    with (
+                        self.subTest(mode=oct(mode)),
+                        self.assertRaises(InstallationBackupError),
+                    ):
+                        with _owned_child(descriptor, child.name):
+                            self.fail("Unsafe state was accepted")
+                    self.assertEqual(stat.S_IMODE(child.stat().st_mode), mode)
+            finally:
+                os.close(descriptor)
 
 
 class ArchiveTests(unittest.TestCase):

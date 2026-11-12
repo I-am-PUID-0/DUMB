@@ -406,6 +406,92 @@ class UserManagementSecurityTests(unittest.TestCase):
             <= user_management.CONTROLLER_OWNED_CONFIG_ENTRIES
         )
 
+    def test_private_controller_sgid_inheritance_is_normalized_after_safe_preflight(
+        self,
+    ):
+        for name in (".dumb-setup", "installation-backups", "backup-storage"):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                parent = Path(temporary) / "config"
+                parent.mkdir(mode=0o700)
+                parent.chmod(0o2700)
+                root = parent / name
+                root.mkdir(mode=0o700)
+                nested = root / "jobs"
+                nested.mkdir(mode=0o700)
+                record = nested / "retained.json"
+                payload = b'{"retained":"private-state"}'
+                record.write_bytes(payload)
+                record.chmod(0o600)
+                self.assertEqual(root.stat().st_mode & 0o7777, 0o2700)
+                self.assertEqual(nested.stat().st_mode & 0o7777, 0o2700)
+                with patch.object(user_management.os, "fchown") as ownership:
+                    ok, message = user_management._repair_private_controller_tree(
+                        str(root),
+                        os.geteuid(),
+                        os.getegid(),
+                        os.geteuid(),
+                        os.getegid(),
+                    )
+                self.assertTrue(ok, message)
+                ownership.assert_not_called()
+                self.assertEqual(root.stat().st_mode & 0o7777, 0o700)
+                self.assertEqual(nested.stat().st_mode & 0o7777, 0o700)
+                self.assertEqual(record.stat().st_mode & 0o7777, 0o600)
+                self.assertEqual(record.read_bytes(), payload)
+                self.assertEqual(parent.stat().st_mode & 0o7777, 0o2700)
+
+    def test_sgid_directory_never_authorizes_shared_or_special_payload_repair(self):
+        for mode in (0o640, 0o604, 0o2600, 0o4600):
+            with (
+                self.subTest(mode=oct(mode)),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                root = Path(temporary) / "installation-backups"
+                root.mkdir(mode=0o700)
+                root.chmod(0o2700)
+                record = root / "active.json"
+                payload = b'{"retained":"private-value"}'
+                record.write_bytes(payload)
+                record.chmod(mode)
+                with (
+                    patch.object(user_management.os, "fchown") as ownership,
+                    patch.object(user_management.os, "fchmod") as permissions,
+                ):
+                    ok, message = user_management._repair_private_controller_tree(
+                        str(root),
+                        os.geteuid(),
+                        os.getegid(),
+                        os.geteuid(),
+                        os.getegid(),
+                    )
+                self.assertFalse(ok)
+                self.assertIn(f"mode {mode:04o}", message)
+                self.assertNotIn("private-value", message)
+                ownership.assert_not_called()
+                permissions.assert_not_called()
+                self.assertEqual(root.stat().st_mode & 0o7777, 0o2700)
+                self.assertEqual(record.stat().st_mode & 0o7777, mode)
+                self.assertEqual(record.read_bytes(), payload)
+
+    def test_private_owner_diagnostics_distinguish_uid_from_gid(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "installation-backups"
+            root.mkdir(mode=0o700)
+            for uid, gid, expected in (
+                (os.geteuid() + 1, os.getegid(), "owner UID"),
+                (os.geteuid(), os.getegid() + 1, "owner GID"),
+            ):
+                with (
+                    self.subTest(expected=expected),
+                    patch.object(user_management.os, "fchown") as ownership,
+                ):
+                    ok, message = user_management._repair_private_controller_tree(
+                        str(root), uid, gid, uid + 1, gid
+                    )
+                self.assertFalse(ok)
+                self.assertIn(expected, message)
+                ownership.assert_not_called()
+
     def test_private_tree_preflight_refuses_unsafe_entries_before_any_chown(self):
         for unsafe in ("symlink", "hardlink", "shared_mode", "special"):
             with self.subTest(unsafe=unsafe), tempfile.TemporaryDirectory() as temp:
@@ -512,11 +598,13 @@ class UserManagementSecurityTests(unittest.TestCase):
             record.chmod(0o600)
             os.chown(record, 1001, 1001)
             os.chown(root, 1001, 1001)
+            root.chmod(0o2700)
             ok, error = user_management._repair_private_controller_tree(
                 str(root), os.geteuid(), os.getegid(), 1001, 1001
             )
             self.assertTrue(ok, error)
             self.assertEqual(root.stat().st_uid, os.geteuid())
+            self.assertEqual(root.stat().st_mode & 0o7777, 0o700)
             self.assertEqual(record.stat().st_uid, os.geteuid())
             self.assertEqual(record.read_bytes(), payload)
             self.assertEqual(record.stat().st_mode & 0o777, 0o600)

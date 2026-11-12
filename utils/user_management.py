@@ -68,6 +68,8 @@ def _repair_private_controller_tree(
     Old startup ownership traversal could assign these trees to the configured
     service UID. That known owner is eligible for migration; links, mounts,
     foreign owners, shared permissions and malformed file types are not.
+    A private directory may inherit SGID from the config mount: remove only
+    that harmless inheritance after the entire tree passes validation.
     Record bytes and the SetupStore validation contract remain unchanged.
     """
     root_fd = -1
@@ -77,13 +79,29 @@ def _repair_private_controller_tree(
 
     def inspect(descriptor, mount_id):
         info = os.fstat(descriptor)
-        if (
-            info.st_uid not in allowed_uids
-            or info.st_gid not in allowed_gids
-            or stat.S_IMODE(info.st_mode) & 0o7077
-            or _controller_state_mount_id(descriptor) != mount_id
-        ):
-            raise ValueError("Unsafe owner, permissions or mount identity.")
+        kind = "Directory" if stat.S_ISDIR(info.st_mode) else "State file"
+        if info.st_uid not in allowed_uids:
+            raise ValueError(
+                f"{kind} owner UID {info.st_uid} is not an eligible controller or configured service owner."
+            )
+        if info.st_gid not in allowed_gids:
+            raise ValueError(
+                f"{kind} owner GID {info.st_gid} is not an eligible controller or configured service group."
+            )
+        mode = stat.S_IMODE(info.st_mode)
+        if mode & 0o077:
+            raise ValueError(
+                f"{kind} mode {mode:04o} grants group or other access; private controller state must remain private."
+            )
+        special = mode & 0o7000
+        if special and not (stat.S_ISDIR(info.st_mode) and special == stat.S_ISGID):
+            raise ValueError(
+                f"{kind} mode {mode:04o} has unsupported special permission bits."
+            )
+        if _controller_state_mount_id(descriptor) != mount_id:
+            raise ValueError(
+                "Private state crosses a mounted filesystem or its mount identity changed."
+            )
         if stat.S_ISREG(info.st_mode):
             if info.st_nlink != 1 or info.st_size > 8 * 1024 * 1024:
                 raise ValueError("Unsafe hard link or oversized state file.")
@@ -153,6 +171,8 @@ def _repair_private_controller_tree(
                     raise ValueError("Private state changed before ownership repair.")
                 if (info.st_uid, info.st_gid) != (owner_uid, owner_gid):
                     os.fchown(descriptor, owner_uid, owner_gid)
+                if stat.S_ISDIR(info.st_mode) and info.st_mode & stat.S_ISGID:
+                    os.fchmod(descriptor, stat.S_IMODE(info.st_mode) & ~stat.S_ISGID)
             finally:
                 os.close(descriptor)
         return True, None

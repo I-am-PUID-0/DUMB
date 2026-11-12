@@ -240,11 +240,18 @@ def _owned_child(parent, name):
     )
     try:
         value = os.fstat(descriptor)
-        if value.st_uid != os.geteuid() or stat.S_IMODE(value.st_mode) & 0o077:
+        if value.st_uid != os.geteuid() or stat.S_IMODE(value.st_mode) & 0o5077:
             raise InstallationBackupError(
                 "Installation control/workspace directories must be private and controller-owned."
             )
         if created:
+            # mkdir(0700) still inherits SGID and its group from a setgid
+            # config parent. New control roots must satisfy the same private
+            # ownership/mode contract used on the next controller boot.
+            if value.st_gid != os.getegid():
+                os.fchown(descriptor, os.geteuid(), os.getegid())
+            os.fchmod(descriptor, 0o700)
+            os.fsync(descriptor)
             os.fsync(parent)
         yield descriptor
     finally:
