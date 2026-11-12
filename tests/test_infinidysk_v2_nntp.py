@@ -306,31 +306,49 @@ class NntpBridgeTests(unittest.TestCase):
                         {"Providers": [{**self.provider, "Type": 0, **changes}]}
                     )
 
-    def test_tls_uses_original_hostname_and_default_certificate_validation(self):
+    def test_tls_uses_original_hostname_and_preserves_stricter_verified_policy(self):
         secured = {**self.provider, "UseSsl": True, "Host": "provider.example.invalid"}
         bridge = self.bridge([secured])
-        raw = Mock()
-        wrapped = Mock()
-        context = Mock()
-        context.wrap_socket.return_value = wrapped
-        with (
-            patch(
-                "utils.infinidysk_v2_nntp.socket.create_connection", return_value=raw
-            ),
-            patch(
-                "utils.infinidysk_v2_nntp._resolve_targets", return_value=("127.0.0.1",)
-            ),
-            patch(
-                "utils.infinidysk_v2_nntp.ssl.create_default_context",
-                return_value=context,
-            ),
+        for minimum in (
+            ssl.TLSVersion.TLSv1,
+            ssl.TLSVersion.TLSv1_1,
+            ssl.TLSVersion.TLSv1_2,
+            ssl.TLSVersion.TLSv1_3,
         ):
-            self.assertIs(bridge._connect(secured), wrapped)
-        context.wrap_socket.assert_called_once_with(
-            raw, server_hostname="provider.example.invalid"
-        )
-        with bridge._lock:
-            bridge._sockets.clear()
+            with self.subTest(minimum=minimum.name):
+                raw = Mock()
+                wrapped = Mock()
+                context = Mock(
+                    minimum_version=minimum,
+                    check_hostname=True,
+                    verify_mode=ssl.CERT_REQUIRED,
+                )
+                context.wrap_socket.return_value = wrapped
+                with (
+                    patch(
+                        "utils.infinidysk_v2_nntp.socket.create_connection",
+                        return_value=raw,
+                    ),
+                    patch(
+                        "utils.infinidysk_v2_nntp._resolve_targets",
+                        return_value=("127.0.0.1",),
+                    ),
+                    patch(
+                        "utils.infinidysk_v2_nntp.ssl.create_default_context",
+                        return_value=context,
+                    ),
+                ):
+                    self.assertIs(bridge._connect(secured), wrapped)
+                self.assertEqual(
+                    context.minimum_version, max(minimum, ssl.TLSVersion.TLSv1_2)
+                )
+                self.assertTrue(context.check_hostname)
+                self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
+                context.wrap_socket.assert_called_once_with(
+                    raw, server_hostname="provider.example.invalid"
+                )
+                with bridge._lock:
+                    bridge._sockets.clear()
 
     def test_idle_primary_connections_release_budget_for_third_provider(self):
         bridge = self.bridge(

@@ -449,6 +449,12 @@ class NntpBridge:
             raise NntpBridgeError("The captured NNTP endpoint could not be reached.")
         if provider["UseSsl"]:
             context = ssl.create_default_context()
+            # Retain hostname/certificate verification and stricter platform
+            # policy while making the TLS 1.2 floor explicit.
+            minimum = context.minimum_version
+            context.minimum_version = (
+                ssl.TLSVersion.TLSv1_2 if minimum < ssl.TLSVersion.TLSv1_2 else minimum
+            )
             try:
                 wrapped = context.wrap_socket(stream, server_hostname=provider["Host"])
             except BaseException:
