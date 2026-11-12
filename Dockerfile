@@ -314,6 +314,19 @@ LABEL name="DUMB" \
       io.github.dumb.frontend.revision="${DUMB_FRONTEND_SHA}" \
       io.github.dumb.frontend.package-version="${DUMB_FRONTEND_PACKAGE_VERSION}"
 
+# Intel OpenCL is an image dependency, not a per-start installation. Ubuntu
+# publishes these GPU runtimes only for amd64. The legacy package is explicit:
+# --no-install-recommends must not silently omit older supported Intel GPUs.
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    if [ "$(dpkg --print-architecture)" = "amd64" ]; then \
+      apt-get -o Acquire::Retries=5 -o Acquire::https::Timeout=30 -o APT::Update::Error-Mode=any update && \
+      apt-get install -y --no-install-recommends \
+        ocl-icd-libopencl1 clinfo intel-opencl-icd intel-opencl-icd-legacy && \
+      dpkg-query -W -f='${Package} ${Version}\n' \
+        ocl-icd-libopencl1 clinfo intel-opencl-icd intel-opencl-icd-legacy && \
+      rm -rf /var/lib/apt/lists/*; \
+    fi
+
 # Copy artifacts from builder stages ---------------------------------------------------------------------------------------------------------------
 COPY --from=requirements-builder /venv /venv
 COPY --from=pgadmin-builder /pgadmin/venv /pgadmin/venv

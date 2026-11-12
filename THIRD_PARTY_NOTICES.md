@@ -41,6 +41,32 @@ components and transitive dependencies.
 
 ---
 
+## Intel GPU OpenCL runtime packages
+
+- Projects:
+  <https://github.com/intel/compute-runtime>,
+  <https://github.com/intel/intel-graphics-compiler>,
+  <https://github.com/intel/gmmlib>
+- Upstream licenses: MIT, with additional third-party notices supplied by each
+  package and its compiler dependencies.
+- Note: AMD64 images install Ubuntu's current and legacy Intel GPU OpenCL
+  runtimes. Package-specific copyright and license material remains under
+  `/usr/share/doc/intel-opencl-icd*/copyright`,
+  `/usr/share/doc/libigc*/copyright`, `/usr/share/doc/libigdfcl*/copyright`
+  and `/usr/share/doc/libigdgmm12/copyright`.
+
+The distribution's generic ICD loader is
+[ocl-icd](https://github.com/OCL-dev/ocl-icd), licensed under BSD-2-Clause,
+with Apache-2.0 Khronos headers. Its authoritative notice is retained at
+`/usr/share/doc/ocl-icd-libopencl1/copyright`. The diagnostic
+[`clinfo`](https://github.com/Oblomov/clinfo) is covered by its distribution
+copyright file at `/usr/share/doc/clinfo/copyright`.
+
+These packages do not install a host GPU kernel driver or change the licenses
+of the media servers that use them.
+
+---
+
 ## Traefik
 
 - Project: <https://github.com/traefik/traefik>
