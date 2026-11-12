@@ -297,6 +297,7 @@ FROM rclone/rclone:${RCLONE_TAG} AS rclone-binary
 FROM base AS final-stage
 ARG TARGETARCH
 ARG DEV_VERSION
+ARG DUMB_API_VERSION
 ARG ZURG_REF=main
 ARG DUMB_FRONTEND_SOURCE_KIND
 ARG DUMB_FRONTEND_REF
@@ -338,6 +339,12 @@ RUN sed -i 's/^on_library_update: sh plex_update.sh.*$/# &/' /zurg/config.yml
 # Project code
 COPY LICENSE THIRD_PARTY_NOTICES.md /usr/share/doc/dumb/
 COPY . /./
+# A dev build derives this once from its stable baseline and requested source.
+# The SDK and its dependencies are not installed in the runtime image.
+RUN if [ -n "$DUMB_API_VERSION" ]; then \
+      python3 /scripts/sync_dev_version.py --root / --stamp-image --version "$DUMB_API_VERSION"; \
+    fi
+
 
 ENV XDG_CONFIG_HOME=/config \
     TERM=xterm \

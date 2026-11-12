@@ -15,6 +15,8 @@ on:
       - "pyproject.toml"
       - "poetry.lock"
       - ".github/workflows/**"
+      - ".github/.release-please-manifest.json"
+      - ".github/release-please-config.json"
   push:
     branches:
       - dev
@@ -28,6 +30,8 @@ on:
       - "pyproject.toml"
       - "poetry.lock"
       - ".github/workflows/**"
+      - ".github/.release-please-manifest.json"
+      - ".github/release-please-config.json"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -92,3 +96,24 @@ jobs:
 
       - name: Security checks
         run: make security
+
+  dev-version-checks:
+    name: Dev version automation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+
+      - name: Install the pinned release calculator
+        run: npm ci --prefix scripts/dev-version --ignore-scripts
+
+      - name: Dev release calculation regressions
+        run: npm test --prefix scripts/dev-version
+
+      - name: Release calculator dependency audit
+        run: npm audit --prefix scripts/dev-version --audit-level=moderate

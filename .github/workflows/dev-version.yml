@@ -1,0 +1,95 @@
+name: Sync dev version
+
+on:
+  push:
+    branches: [dev]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Calculate the dev version without committing it
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: dev-version-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: >-
+      github.event_name != 'release' ||
+      (github.event.release.draft == false && github.event.release.prerelease == false)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout the requested dev revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event_name == 'push' && github.sha || 'dev' }}
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install the pinned release calculator
+        run: npm ci --prefix scripts/dev-version --ignore-scripts
+
+      - name: Validate version automation before preparing a commit
+        run: |
+          npm test --prefix scripts/dev-version
+          python3 -m unittest tests.test_dev_version_sync tests.test_verify_project -q
+
+      - name: Calculate from the actual stable master release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -Eeuo pipefail
+          git fetch --no-tags origin master:refs/remotes/origin/master
+          SOURCE_SHA=$(git rev-parse HEAD)
+          node scripts/dev-version/calculate.mjs \
+            --repository "$REPOSITORY" --head "$SOURCE_SHA" \
+            > "$RUNNER_TEMP/dev-version-plan.json"
+          python3 scripts/sync_dev_version.py \
+            --plan "$RUNNER_TEMP/dev-version-plan.json"
+
+      - name: Commit only changed dev version metadata
+        id: sync
+        if: github.event_name != 'workflow_dispatch' || inputs.dry_run != true
+        env:
+          # A normal push event must run CI on the generated commit. The
+          # repository GITHUB_TOKEN would suppress those follow-up workflows.
+          DEV_VERSION_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+        run: |
+          python3 scripts/sync_dev_version.py \
+            --plan "$RUNNER_TEMP/dev-version-plan.json" \
+            --publish --github-output "$GITHUB_OUTPUT"
+
+      - name: Summarize the version plan
+        run: |
+          python3 - "$RUNNER_TEMP/dev-version-plan.json" <<'PY'
+          import json, os, sys
+          from pathlib import Path
+          plan = json.loads(Path(sys.argv[1]).read_text())
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as output:
+              output.write("## Dev version synchronization\n\n")
+              output.write(f"Released baseline: {plan['stableTag']}\n\n")
+              output.write(f"Upcoming API version: {plan['coreVersion']}\n\n")
+              output.write(f"Source revision: {plan['sourceHead']}\n\n")
+              output.write("Only dev metadata is eligible for an update. No image, tag or release is created.\n")
+          PY

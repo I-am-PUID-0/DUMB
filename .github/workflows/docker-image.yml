@@ -44,12 +44,16 @@ jobs:
       (github.event.pull_request.merged == true &&
       startsWith(github.event.pull_request.title, 'chore(master): release '))
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       VERSION: ${{ steps.setup_env_vars.outputs.VERSION }}
       REPO_OWNER_LOWER: ${{ steps.setup_env_vars.outputs.REPO_OWNER_LOWER }}
       REPO_NAME: ${{ steps.setup_env_vars.outputs.REPO_NAME }}
       BRANCH_NAME: ${{ steps.setup_env_vars.outputs.BRANCH_NAME }}
       DEV_VERSION: ${{ steps.setup_env_vars.outputs.DEV_VERSION }}
+      RELEASE_BASELINE: ${{ steps.dev_version.outputs.released_version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -61,22 +65,49 @@ jobs:
           FRONTEND_SOURCE_INPUT: ${{ inputs.frontend_source || 'Latest release' }}
           FRONTEND_COMMIT_INPUT: ${{ inputs.frontend_commit || '' }}
         run: python3 scripts/resolve_frontend_build.py --validate-only
-      - name: Extract version and set environment variables
-        id: setup_env_vars        
+      - name: Set up Node for dev version calculation
+        if: github.ref_name == 'dev'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+
+      - name: Install the pinned dev release calculator
+        if: github.ref_name == 'dev'
+        run: npm ci --prefix scripts/dev-version --ignore-scripts
+
+      - name: Calculate the dev version once for both architectures
+        id: dev_version
+        if: github.ref_name == 'dev'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          SOURCE_SHA: ${{ github.sha }}
         run: |
+          set -Eeuo pipefail
+          git fetch --no-tags origin master:refs/remotes/origin/master
+          node scripts/dev-version/calculate.mjs \
+            --repository "$REPOSITORY" --head "$SOURCE_SHA" \
+            > "$RUNNER_TEMP/dev-version-plan.json"
+          python3 scripts/sync_dev_version.py \
+            --plan "$RUNNER_TEMP/dev-version-plan.json" --github-output "$GITHUB_OUTPUT"
+
+      - name: Extract version and set environment variables
+        id: setup_env_vars
+        env:
+          CALCULATED_VERSION: ${{ steps.dev_version.outputs.version }}
+          CALCULATED_DEV_VERSION: ${{ steps.dev_version.outputs.dev_version }}
+        run: |
+          set -Eeuo pipefail
           VERSION=$(grep -E '^version *= *' pyproject.toml | head -n 1 | cut -d '"' -f2)
           REPO_OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           REPO_NAME=$(basename "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           BRANCH_NAME=$(echo "${{ github.ref_name }}" | tr '/' '-')
           DEV_VERSION=""
           if [ "${{ github.ref_name }}" = "dev" ]; then
-            LAST_TAG=$(git tag -l --sort=-v:refname | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || true)
-            if [ -n "$LAST_TAG" ]; then
-              DEV_COUNT=$(git rev-list --count "${LAST_TAG}..HEAD")
-            else
-              DEV_COUNT=$(git rev-list --count HEAD)
-            fi
-            DEV_VERSION="${VERSION}-dev.${DEV_COUNT}"
+            test -n "$CALCULATED_VERSION"
+            test -n "$CALCULATED_DEV_VERSION"
+            VERSION="$CALCULATED_VERSION"
+            DEV_VERSION="$CALCULATED_DEV_VERSION"
           fi
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "REPO_OWNER_LOWER=$REPO_OWNER_LOWER" >> $GITHUB_OUTPUT
@@ -271,6 +302,7 @@ jobs:
             APT_REFRESH=${{ needs.fetch-latest-tags.outputs.APT_REFRESH }}
             DUMB_DOCS_REF=${{ needs.fetch-latest-tags.outputs.DUMB_DOCS_REF }}
             DEV_VERSION=${{ needs.setup.outputs.DEV_VERSION }}
+            DUMB_API_VERSION=${{ github.ref_name == 'dev' && needs.setup.outputs.VERSION || '' }}
 
   build-arm64-digest:
     name: Build linux/arm64 → Docker Hub (by digest)
@@ -349,6 +381,7 @@ jobs:
             APT_REFRESH=${{ needs.fetch-latest-tags.outputs.APT_REFRESH }}
             DUMB_DOCS_REF=${{ needs.fetch-latest-tags.outputs.DUMB_DOCS_REF }}
             DEV_VERSION=${{ needs.setup.outputs.DEV_VERSION }}
+            DUMB_API_VERSION=${{ github.ref_name == 'dev' && needs.setup.outputs.VERSION || '' }}
 
   build-and-push:
     needs: [setup, fetch-latest-tags, build-amd64-digest, build-arm64-digest]
@@ -434,6 +467,8 @@ jobs:
       - name: Extract Versions from Image
         env:
           IMAGE_TAG: temp-local-image
+          EXPECTED_API_VERSION: ${{ needs.setup.outputs.VERSION }}
+          EXPECTED_DISPLAY_VERSION: ${{ needs.setup.outputs.DEV_VERSION }}
           FRONTEND_SHA: ${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_SHA }}
           FRONTEND_SOURCE_KIND: ${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_SOURCE_KIND }}
           FRONTEND_REF: ${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_REF }}
@@ -446,6 +481,9 @@ jobs:
             -e EXPECTED_REF="$FRONTEND_REF" -e EXPECTED_VERSION="$FRONTEND_PACKAGE_VERSION" \
             "$CONTAINER_ID" /venv/bin/python -c \
             'import os; from utils.frontend_source import read_installed_frontend_source; source=read_installed_frontend_source("/dumb/frontend"); assert source, "Missing or invalid built frontend provenance"; assert (source["commit_sha"],source["source_kind"],source["requested_ref"],source["package_version"]) == (os.environ["EXPECTED_SHA"],os.environ["EXPECTED_KIND"],os.environ["EXPECTED_REF"],os.environ["EXPECTED_VERSION"]), "Built frontend source differs from resolved inputs"'
+          docker exec -w / -e EXPECTED_API_VERSION="$EXPECTED_API_VERSION" \
+            -e EXPECTED_DISPLAY_VERSION="$EXPECTED_DISPLAY_VERSION" "$CONTAINER_ID" /venv/bin/python -c \
+            'import os; from utils.project_metadata import get_project_version; assert get_project_version("/pyproject.toml") == os.environ["EXPECTED_API_VERSION"], "Built API version differs from the resolved candidate"; assert os.environ.get("DUMB_VERSION", "") == os.environ["EXPECTED_DISPLAY_VERSION"], "Built display version differs from the resolved candidate"'
           docker exec $CONTAINER_ID test -s /usr/share/doc/dumb/LICENSE
           docker exec $CONTAINER_ID test -s /usr/share/doc/dumb/THIRD_PARTY_NOTICES.md
           docker exec $CONTAINER_ID grep -q "## Apprise" /usr/share/doc/dumb/THIRD_PARTY_NOTICES.md
@@ -478,7 +516,7 @@ jobs:
       - name: Add Job Summary for Build
         env:
           DOCKER_TAGS_ALL: ${{ env.DH_VERSION }}${{ env.DH_LATEST && ', ' || '' }}${{ env.DH_LATEST }}${{ env.GH_VERSION && ', ' || '' }}${{ env.GH_VERSION }}${{ env.GH_LATEST && ', ' || '' }}${{ env.GH_LATEST }}
-          VERSION: ${{ env.VERSION }}
+          VERSION: ${{ needs.setup.outputs.DEV_VERSION || env.VERSION }}
           FRONTEND_SOURCE: ${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_SOURCE }}
           FRONTEND_REF: ${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_REF }}
           FRONTEND_SHA: ${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_SHA }}
