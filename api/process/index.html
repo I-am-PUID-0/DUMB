@@ -6416,9 +6416,14 @@ Paths below are relative to the API; browser requests use its <code>/api</code> 
 <p>Preview authorization is short-lived and bound to the reviewed source, targets
 and storage identity. A restore can select an owned catalog reference or a
 container-visible archive path, allowing recovery without the original local
-catalog. Archive integrity, paths and file types are validated before replacement.
-The operation preserves rollback evidence and leaves a successful restore
-stopped with a container restart required to reload configuration and auth.</p>
+catalog. Backends advertising <code>installation_backup_shared_permissions=true</code>
+accept the strict boolean <code>allow_shared_permissions</code> (default <code>false</code>) for that
+mounted-file choice. Set it to <code>true</code> only with <code>archive_path</code> after explicit
+consent to the source's shared access controls; <code>true</code> with an owned reference is
+rejected because its registered profile supplies the policy. The choice is
+bound into the reviewed source. Archive integrity, paths and file types are
+validated before replacement. The operation preserves rollback evidence and
+leaves a successful restore stopped with a container restart required to reload configuration and auth.</p>
 <p>The preview states the actual inventory and exclusions. These archives cover
 managed installation state, not host deployment files, media or external systems.
 Failed admission, capacity, storage or compatibility checks do not authorize a
@@ -6488,6 +6493,18 @@ explicit opt-in; the dedicated default route accepts
 replaced mounts and invalid receipts return a conflict; no local fallback is
 created. Catalog readiness reflects saved registration, while each artifact
 operation revalidates the mounted identity.</p>
+<p>Backends advertising <code>backup_storage_shared_permissions=true</code> also accept
+the strict boolean <code>allow_shared_permissions</code> in preview/registration requests.
+It defaults to <code>false</code>, including for existing profiles without the field.
+Explicit <code>true</code> permits fixed/shared mode bits on external managed directories
+and artifacts; it acknowledges trust in storage access controls rather than
+proving privacy. The saved profile and private binding retain this choice.
+Private local controller/catalog state remains strict. Older backends must not
+receive the new field.</p>
+<p>Preview and catalog records can include <code>warnings</code> and
+<code>observed_permissions</code>, with <code>directory_mode</code> and <code>file_mode</code> strings such as
+<code>"0777"</code> and <code>"0666"</code>, or <code>null</code> when not observed. These describe visible
+modes, not server ACL verification; cached catalog reads do not probe the NAS.</p>
 <p>Symlink backup requests accept optional <code>backup_destination_id</code>; <code>backup_path</code>
 is required only for the legacy/path choice. Supplying a registered identifier
 or <code>@default</code> explicitly selects managed storage. An empty or omitted selection
@@ -6780,6 +6797,16 @@ of those new-operation controls.</p>
 <td>Retrieve one persisted job as <code>{"job": {...}}</code></td>
 </tr>
 <tr>
+<td><code>GET</code></td>
+<td><code>/process/infinidysk-v2/jobs/{job_id}/report</code></td>
+<td>Read the retained native import report as plain text with <code>Cache-Control: no-store</code></td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/process/infinidysk-v2/cancel</code></td>
+<td>Request cooperative cancellation of the exact active major job and protected source recovery</td>
+</tr>
+<tr>
 <td><code>POST</code></td>
 <td><code>/process/infinidysk-v2/rollback</code></td>
 <td>Restore the exact retained major-migration source when authorized</td>
@@ -6808,6 +6835,27 @@ of those new-operation controls.</p>
 only <code>import_strategy: "preserve"</code>; it does not regenerate existing outputs.
 The exact consumer-visible mount path is retained. Generation 2 uses separate
 runtime/data directories and the verified beta artifact.</p>
+<p>A supporting backend advertises
+<code>infinidysk_v2_low_space_migration: true</code>. For an existing-data migration only,
+the optional boolean <code>reclaim_source_space: true</code> selects guarded reuse of the
+local v1 data tree after full archive verification. It requires an explicit
+registered <code>backup_destination_id</code> on a different filesystem and a supported
+local source/candidate layout. Omit the field or use <code>false</code> to retain the
+default local-source recovery. Clients must not send this option to older
+backends or treat archive selection alone as permission to reuse source data.</p>
+<p>A low-space preview includes <code>source_storage</code> with
+<code>mode: "archive_recovery"</code>, <code>reclaim_source_space: true</code> and
+<code>rollback_requires_archive: true</code>. Its <code>required_acknowledgements</code> additionally
+requires <code>archive_recovery</code>. Both rehearsal and rollback can release the exact
+owned candidate before restoring original v1 files from the retained archive.
+Recovery refuses an unavailable/replaced archive or changed owned path.
+The capacity review retains actual free-space readings and includes remaining
+local database, verification and safety requirements. Reuse removes a complete
+candidate-copy allocation; it does not remove native output growth. New v2
+metadata and retained v1 blobs can coexist, so native headroom also includes at
+least a comparable full source-tree logical allocation. This remains an estimate
+because the native metadata/compression formats differ. Recovery checks local
+restore capacity before releasing the owned candidate and again after removal.</p>
 <p>The preview returns <code>protocol</code>, <code>ready</code>, <code>preview_token</code>, <code>expires_at</code>,
 <code>plan_fingerprint</code>, <code>confirmation_text</code>, <code>current</code>, <code>target</code>, <code>checks</code>,
 <code>blockers</code>, <code>warnings</code>, <code>inventory</code>, <code>required_acknowledgements</code> and
@@ -6841,10 +6889,20 @@ that does not require one. Always use the backend's exact confirmation text;
 fresh mode has a different phrase. A major cutover requires a successful
 rehearsal with <code>status: "rehearsed"</code>, <code>mode: "rehearsal"</code>,
 <code>result.validated: true</code> and the matching
-<code>plan_fingerprint</code>. Changed source facts, failed containment, skipped native
-media, an unsupported source adapter or failed identity/policy proof block
-activation. External NNTP reads are denied during the contained import, and
-there is no automatic online fallback.
+<code>plan_fingerprint</code>. A successful rehearsal refreshes its reviewed preview's
+expiry for 30 minutes and exposes <code>preview_expires_at</code> as Unix seconds; clients
+can update that preview's countdown without treating a changed plan as approved.
+Changed source facts, failed containment, unexplained native omissions, an
+unsupported source adapter or failed identity/policy proof block
+activation. General external networking remains denied during the contained
+import. Supporting builds permit read-only NNTP article reads only through a
+relay bound to the configured source providers, capped at two connections per
+provider or its lower configured limit, and four overall with one request in
+flight per connection. Active TLS-enabled upstream connections retain certificate and
+hostname verification; insecure legacy TLS overrides are refused. Source and
+affected managed consumers remain quiesced. Temporary relay configuration must
+not replace the normal provider settings used after import; there is no
+unrestricted network fallback.
 The required <code>downstream</code> review covers current Arr/media mount paths, remote
 path mappings, symlinks/STRM origins and stopped external writers/scanners.
 OIDC-configured sources remain blocked until their target policy is verified;
@@ -6856,18 +6914,58 @@ confirms the source was restored and permits a fresh preview; recovery flags
 remain authoritative for available actions. Rollback is available only when
 <code>can_rollback</code> or <code>actions.rollback</code> is explicitly true.
 Send <code>job_id</code> and the exact <code>rollback_confirmation_text</code> as <code>confirmation</code> to
-the rollback route. Recovery retains the original source; later 2.x writes
-are not merged back into v1.</p>
+the rollback route. The default mode retains the original local source;
+low-space recovery restores it from the retained archive. Later 2.x writes are
+not merged back into v1.</p>
+<p>The <code>infinidysk_v2_cancel: true</code> capability gates new cancellation requests.
+For a job advertising <code>can_cancel: true</code> or <code>actions.cancel: true</code>, send
+<code>{"job_id": "SERVER_JOB_ID", "confirmation": "SERVER_CANCEL_CONFIRMATION"}</code> to
+<code>/process/infinidysk-v2/cancel</code>, using its exact <code>cancel_confirmation_text</code>.
+The response can set <code>cancel_requested: true</code> while the owned worker reaches a
+checkpoint and restores the source. Repeating that same accepted cancellation
+is idempotent. Do not treat the acknowledgement as completed recovery: poll the
+job until its terminal state and recovery flags confirm the outcome. If source
+recovery fails, retain the evidence and use the offered rollback action.</p>
+<p><code>status.job</code> prioritizes a retained blocking job over newer completed attempts;
+<code>blocking_job_count</code> explains when other blocked jobs also remain. Updated jobs
+can expose <code>import_progress</code> with a native <code>stage</code>, <code>elapsed_seconds</code>, and
+<code>processed</code>/<code>total</code> counts when the native API provides them. These describe
+native conversion rather than the entire validation/cutover/recovery pipeline.
+The outer <code>stage</code> and <code>message</code> describe the current DUMB phase.</p>
+<p>Native execution uses a 30-minute inactivity watchdog rather than the old
+five-minute total deadline. Native progress changes and provider-read activity
+refresh it; publishing polling heartbeats alone does not. Long progressing
+imports can exceed 30 minutes in total. Timeouts and cancellation stop owned
+writers before protected source recovery; they do not bypass admission or data
+validation.</p>
+<p>Updated jobs can expose <code>import_report</code> with <code>status</code> equal to <code>accepted</code>,
+<code>review_required</code> or <code>blocked</code>, <code>imported_files</code>, <code>skipped_files</code>,
+<code>reasons</code> entries <code>{reason, count}</code>, <code>skipped</code> entries <code>{path, reason}</code>,
+<code>review_required</code>, <code>review_digest</code> and <code>blocking_reasons</code>.
+The optional sample counts and truncation flags explain bounded public details;
+the complete native report remains in private job storage.</p>
+<p>Known source incompatibilities may complete a validated rehearsal with
+<code>import_report.status: "review_required"</code>. Starting its cutover also requires
+<code>acknowledgements.skipped_media: true</code> and <code>skip_review_digest</code> matching that
+rehearsal's server-issued <code>review_digest</code>. The digest covers every omitted
+identity, path and reason, including entries beyond a public sample. Actual
+cutover omissions must match the reviewed set. Unknown/provider failures,
+ambiguous identities and unrecognized reports remain blockers; the
+acknowledgement is not a general skip override.</p>
 <p>A successful rehearsal can record <code>candidate_discarded=true</code> after the native
 candidate/group is proven stopped and v1 plus managed consumers are restored.
 Only its full job-owned candidate is removed; receipts, the source archive or
-backup and minimal database proof remain. Failed rehearsal candidates are kept.
-The later cutover still needs local candidate capacity and fresh source checks.</p>
+backup and minimal database proof remain. Default-mode failed rehearsal
+candidates are kept. Low-space recovery can remove its candidate before archive
+restoration. The later cutover still needs its mode's local capacity and fresh
+source checks.</p>
 <h3 id="retire-a-completed-v1-installation">Retire a completed v1 installation<a class="headerlink" href="#retire-a-completed-v1-installation" title="Permanent link">&para;</a></h3>
 <p>This separate workflow also requires <code>infinidysk_v2_cleanup=true</code> and numeric
 <code>infinidysk_v2_cleanup_protocol=1</code>. It is available only for an eligible completed
 v1-to-v2 cutover, with healthy owned v2 delivery and verified retained backups.
-A fresh generation 2 installation has no old v1 installation to retire.</p>
+A fresh generation 2 installation has no old v1 installation to retire.
+Low-space jobs also withhold original-tree cleanup because their source data was
+reused; their archive remains required for rollback.</p>
 <p>Preview with <code>{"job_id": "SERVER_JOB_ID"}</code>. The response supplies the exact
 removal/retention lists, estimated reclaim, expiring <code>preview_token</code>, typed
 <code>confirmation_text</code> and acknowledgement names. Start using those server values:</p>
@@ -7265,10 +7363,13 @@ are updated when their exact process names are renamed.</p>
 <span class="w">  </span><span class="nt">&quot;symlink_manifest_file_list&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;backup_storage_selection&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;backup_storage_protocol&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;backup_storage_shared_permissions&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;backup_storage_kinds&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;symlink_manifest&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;infinidysk_v2_archive&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;installation_backup&quot;</span><span class="p">],</span>
 <span class="w">  </span><span class="nt">&quot;installation_backup&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;installation_backup_protocol&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;installation_backup_shared_permissions&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;infinidysk_v2_migration_backup_storage&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;infinidysk_v2_low_space_migration&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;infinidysk_v2_cleanup&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;infinidysk_v2_cleanup_protocol&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;arr_postgres_migration&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
@@ -7498,6 +7599,10 @@ are updated when their exact process names are renamed.</p>
 <td>Exact supported registered-storage protocol; currently numeric <code>1</code></td>
 </tr>
 <tr>
+<td><code>backup_storage_shared_permissions</code></td>
+<td>Explicit per-profile consent for fixed/shared external permissions; local control state remains private</td>
+</tr>
+<tr>
 <td><code>backup_storage_kinds</code></td>
 <td>Supported producers: <code>symlink_manifest</code>, <code>infinidysk_v2_archive</code> and <code>installation_backup</code></td>
 </tr>
@@ -7506,8 +7611,16 @@ are updated when their exact process names are renamed.</p>
 <td>Managed installation archive, schedule and restore workflow; exact supported protocol is numeric <code>1</code></td>
 </tr>
 <tr>
+<td><code>installation_backup_shared_permissions</code></td>
+<td>Explicit shared permissions consent for an existing mounted restore archive; registered references use their profile policy</td>
+</tr>
+<tr>
 <td><code>infinidysk_v2_migration_backup_storage</code></td>
 <td>Explicit registered backup destination in the major-migration preview</td>
+</tr>
+<tr>
+<td><code>infinidysk_v2_low_space_migration</code></td>
+<td>Explicit reuse of local v1 data after verified external archive capture, with archive-based rollback</td>
 </tr>
 <tr>
 <td><code>infinidysk_v2_cleanup</code></td>

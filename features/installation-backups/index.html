@@ -1033,6 +1033,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#startup-and-private-recovery-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Startup and private recovery state
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#related-tools" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5436,6 +5447,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#startup-and-private-recovery-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Startup and private recovery state
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#related-tools" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5548,16 +5570,22 @@ as independent files. Extended attributes, ACLs, special permission bits and
 unresolved nested mounts are blockers. Nested controller-auth paths or an
 inventory that exceeds the restorable transaction budget also require review;
 the utility does not silently discard that state.</p>
-<p>Archives contain credentials and private keys. They are private files, not
-encrypted exports. Restrict access to the destination and downloaded copies.</p>
+<p>Archives contain credentials and private keys and are not encrypted.
+Restrict access to the destination, partial exports and downloaded copies;
+shared storage permission consent does not prove confidentiality.</p>
 <h2 id="choose-storage">Choose storage<a class="headerlink" href="#choose-storage" title="Permanent link">&para;</a></h2>
-<p>In <strong>Backup destination</strong>, expand <strong>Register destinations and manage the global
-default</strong>. Register an existing container-visible directory, then explicitly
-select that destination or <strong>Use global default</strong>. See
+<p>In <strong>Backup destination</strong>, expand <strong>Register a backup destination</strong>.
+Register an existing container-visible directory, then explicitly select that
+destination or <strong>Use global default</strong>. The separate <strong>Global default</strong> controls
+show, set or clear the saved preference. See
 <a href="../backup-storage/">Backup storage</a> for registration and mount requirements.</p>
 <p>An already-mounted NFS/SMB directory can hold closed archives when it passes the
-storage checks. DUMB does not mount shares. Active database and recovery working
-files remain local. A missing or replaced destination mount blocks the operation;
+storage checks. Enable <strong>Allow shared archive permissions</strong> during registration
+only when you trust the destination's access controls; it starts unchecked and
+restrictive POSIX checks remain the default.
+DUMB does not mount shares or change their existing ownership/permissions.
+Active database and private recovery working files remain local. A missing or
+replaced destination mount blocks the operation;
 DUMB does not write into an underlying local directory as a fallback.</p>
 <h2 id="create-a-backup">Create a backup<a class="headerlink" href="#create-a-backup" title="Permanent link">&para;</a></h2>
 <p>Use the container's direct frontend/API access before starting. Managed reverse
@@ -5610,7 +5638,11 @@ Restore only archives whose origin you trust.</p>
    onboarding or enabling application services.</li>
 <li>Select a catalogued archive, or enter the container-visible path of an
    installation archive already mounted into the container. The mounted-file
-   option does not require the old installation's local catalog receipts.</li>
+   option does not require the old installation's local catalog receipts.
+   If that file has fixed/shared permissions, review its origin and access
+   controls before enabling <strong>Allow shared archive permissions</strong>. This is an
+   independent checkbox for the mounted file and starts unchecked.
+   Catalogued archives use their registered destination's permission policy.</li>
 <li>Request a restore preview. Review archive integrity, application data roots,
    container/database compatibility, destination identity, space requirements,
    and any existing data that would be replaced.</li>
@@ -5639,6 +5671,26 @@ operation fails. Once replacement has started, or if the previous running set
 cannot be safely resumed, DUMB keeps applications blocked for recovery instead
 of starting them against a mixture of old and restored data. Use the offered
 rollback/recovery action and retain its files until recovery completes.</p>
+<h2 id="startup-and-private-recovery-state">Startup and private recovery state<a class="headerlink" href="#startup-and-private-recovery-state" title="Permanent link">&para;</a></h2>
+<p>DUMB checks its local installation-recovery records before normal applications
+start. If those records require recovery or cannot be trusted, only the API and
+already-installed frontend start. Service actions can return <code>409</code> while this
+installation-wide hold is active; the recovery banner identifies the blocked
+controller rather than an individual application's startup failure.</p>
+<p>Some configuration mounts give new directories a group-inheritance bit
+(<strong>SGID</strong>), even when DUMB creates them with private <code>0700</code> permissions. Current
+builds recognize that inheritance on otherwise private, eligible controller
+state and clear it after a complete safety check. New installation-control
+folders are created with controller ownership and mode <code>0700</code>. This repair does
+not make shared or writable recovery payloads trustworthy: unexpected owners,
+shared/special file permissions, links and changed mounts still require review.
+The diagnostic distinguishes ownership, permission and mount failures.</p>
+<p>Preserve <code>/config/installation-backups</code>, its job records and referenced backups
+when investigating a hold. Use the relevant retained recovery action, then
+restart when instructed. Do not delete the directory, purge databases or apply
+recursive ownership/permission changes to clear the banner. A
+<a href="../infinidysk-v2-migration/#progress-cancellation-and-recovery">major InfiniDysk migration</a>
+has its own job, cancellation and rollback flow.</p>
 <h2 id="related-tools">Related tools<a class="headerlink" href="#related-tools" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../symlinks/">Symlink operations</a> provides smaller link snapshots and schedules.</li>

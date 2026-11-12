@@ -6,7 +6,7 @@
   
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Register local or already-mounted NAS archive destinations for InfiniDysk upgrades and symlink snapshots while preserving local database and recovery state.">
+  <meta name="description" content="Register local or mounted NAS storage for installation backups, InfiniDysk upgrades and symlink snapshots while keeping active databases and recovery state local.">
   
     <meta name="author" content="DUMB Team">
   
@@ -110,7 +110,7 @@
     <meta property="og:locale" content="en_US">
     <meta property="og:site_name" content="DUMB — Distributed Unlimited Media Bridge">
     <meta property="og:title" content="Backup Storage">
-    <meta property="og:description" content="Register local or already-mounted NAS archive destinations for InfiniDysk upgrades and symlink snapshots while preserving local database and recovery state.">
+    <meta property="og:description" content="Register local or mounted NAS storage for installation backups, InfiniDysk upgrades and symlink snapshots while keeping active databases and recovery state local.">
     <meta property="og:url" content="https://dumbarr.com/features/backup-storage/">
     <meta property="og:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta property="og:image:secure_url" content="https://dumbarr.com/assets/images/DUMB.png">
@@ -120,7 +120,7 @@
     <meta property="og:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Backup Storage">
-    <meta name="twitter:description" content="Register local or already-mounted NAS archive destinations for InfiniDysk upgrades and symlink snapshots while preserving local database and recovery state.">
+    <meta name="twitter:description" content="Register local or mounted NAS storage for installation backups, InfiniDysk upgrades and symlink snapshots while keeping active databases and recovery state local.">
     <meta name="twitter:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta name="twitter:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     
@@ -5471,14 +5471,19 @@ is insufficient. Mount NFS/SMB storage on the host and expose it to the containe
 through your normal deployment configuration before registration. DUMB does not
 mount network shares or request their credentials.</p>
 <ol>
-<li>Open <strong>Register destinations and manage the global default</strong> in
+<li>Expand <strong>Register a backup destination</strong> in
    <strong>Settings → Backups and restore</strong>, the InfiniDysk migration panel or the
    Symlink operations panel.</li>
-<li>Enter a unique identifier, display name and existing container-visible path.</li>
-<li>Select <strong>Preview destination</strong>, review its checks, then <strong>Register destination</strong>.</li>
-<li>Select the destination for the current operation. Use <strong>Save global default</strong>
-   only when you want to save a shared preference; registration alone does not
-   change that preference or any service's backup selection.</li>
+<li>Enter a unique identifier, an optional display name and an existing
+   container-visible path.
+   For a trusted destination with fixed/shared permissions, review
+   <strong>Allow shared archive permissions</strong>, described below. It starts unchecked.</li>
+<li>Select <strong>Preview destination</strong>, review its checks, then <strong>Register destination</strong>.
+   A failed check stays visible so you can correct it and retry.</li>
+<li>Select the destination for the current operation. The separate <strong>Global default</strong>
+   controls show the saved destination; use <strong>Set global default</strong> or
+   <strong>Clear global default</strong> deliberately. Registration alone changes neither
+   that preference nor any service's backup selection.</li>
 </ol>
 <p><strong>Use global default</strong> explicitly adopts that saved preference. Clearing the
 global default blocks future operations using that choice until you select a
@@ -5489,11 +5494,23 @@ changing a draft selection does not save it. Use a new identifier when moving
 an existing registered root to another directory or filesystem.</p>
 <h2 id="cold-archives-and-local-working-storage">Cold archives and local working storage<a class="headerlink" href="#cold-archives-and-local-working-storage" title="Permanent link">&para;</a></h2>
 <p>Local directories and already-mounted NFS/SMB directories can hold closed
-archive files when they pass DUMB's ownership, private-permission and readback
-checks. The destination must support private directories and files; a share
-that cannot enforce those permissions does not qualify. Archives can contain
-configuration credentials, identity/signing keys and database data. Restrict
-access and keep an independent backup with a tested restore procedure.</p>
+archive files. DUMB requires restrictive POSIX permissions by default. A trusted
+mount or deliberately shared local directory can instead use
+<strong>Allow shared archive permissions</strong> when the backend supports it. This applies
+only to the selected destination, including its managed markers, temporary exports and
+completed artifacts; existing profiles keep the restrictive default.</p>
+<p>Some SMB mounts report fixed directory/file modes even when the server applies
+separate access controls. Observed modes and registration warnings are not proof
+of NAS ACL privacy. See the
+<a href="https://docs.kernel.org/admin-guide/cifs/usage.html#samba-considerations">Linux CIFS documentation</a>.
+Enabling the option acknowledges that you trust the mount/share's
+access controls. DUMB does not change the existing mount's ownership or
+permissions, verify server ACLs, or encrypt these exports.</p>
+<p>Archives and partial exports can contain configuration credentials,
+identity/signing keys and database data. Restrict access to the share and its
+clients before registering it, protect downloaded copies, and keep an independent
+backup with a tested restore procedure. DUMB's local catalog and controller
+recovery state still require private local permissions.</p>
 <p>Active SQLite databases, migration control state, the inventory manifest and
 import/database-restore scratch stay on verified local storage. SQLite WAL
 requires local shared-memory and locking behavior and does not support network
@@ -5511,9 +5528,10 @@ remain separate tools. Protect host deployment files, external systems and media
 through their independent backup/restore plans.</p>
 <h2 id="verification-and-recovery">Verification and recovery<a class="headerlink" href="#verification-and-recovery" title="Permanent link">&para;</a></h2>
 <p>DUMB records the selected root's identity and writes only its own managed
-artifacts. Exports use private temporary files, complete-byte checksum/readback
-verification and atomic publication. The manifest browser lists registered
-artifacts rather than browsing arbitrary NAS files. Opening or downloading a
+artifacts. Exports use newly created temporary files, complete-byte
+checksum/readback verification and atomic publication. The selected permission
+policy does not bypass file-type, owned-identity or checksum checks. The manifest
+browser lists registered artifacts rather than browsing arbitrary NAS files. Opening or downloading a
 managed artifact verifies its content again; the list's checksum records the
 completed export verification.</p>
 <p>For registered destinations, a missing or replaced mount blocks use instead of
@@ -5524,9 +5542,17 @@ then restore storage availability and review the offered recovery action.
 Network availability and server durability still depend on your deployment.</p>
 <p>Managed backups use opaque references. Select them through the picker or use
 the authenticated download API; the reference is not a website URL or a
-filesystem path. InfiniDysk creates its local import candidate from the original
-source; the archive provides retained data for manual recovery. Automated major
-rollback starts the retained originals until that rollback is explicitly retired.</p>
+filesystem path. By default, InfiniDysk creates its local import candidate from
+the original source; automated major rollback starts the retained originals
+until that rollback is explicitly retired.</p>
+<p>The separate <strong>Reuse local v1 storage</strong> migration option changes that recovery
+contract. It requires a supporting backend, an explicitly reviewed plan and a
+registered archive on a different filesystem. The verified archive becomes the
+v1 recovery source while the original local data tree is reused for migration.
+Rollback restores v1 from the archive and can remove the owned v2 candidate to
+make room first. Keep the destination available throughout migration, rehearsal
+and any later rollback. This option does not move an active database onto NAS.
+See <a href="../infinidysk-v2-migration/#reuse-local-v1-storage">the migration guide</a>.</p>
 <p>Scheduled symlink retention removes only that process's scheduled managed
 snapshots. Manual snapshots are retained separately from automatic pruning.
 A symlink snapshot records link paths and targets; protect the referenced
