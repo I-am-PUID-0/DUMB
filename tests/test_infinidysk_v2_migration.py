@@ -414,6 +414,126 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
         self.assertTrue(replacement.has_blocking_job())
         self.assertTrue(replacement.has_recovery_pending_job())
 
+    def test_unconfirmed_helper_cleanup_holds_recovery_across_restart(self):
+        class CleanupFailure(RuntimeError):
+            cleanup_complete = False
+            cleanup_evidence = {
+                "process_group": 987654,
+                "private_output": "do not expose",
+            }
+
+        def fail(plan, workspace, progress):
+            self.executor.calls.append("rehearse")
+            raise CleanupFailure("private helper details")
+
+        with (
+            patch.object(self.executor, "rehearse", side_effect=fail),
+            patch(
+                "utils.infinidysk_v2_migration.migration_process_cleanup_complete",
+                return_value=False,
+            ) as cleanup_probe,
+        ):
+            _, request = self.preview_request()
+            job = self.wait(self.manager.rehearse(request))
+            self.assertEqual("recovery_required", job["status"])
+            self.assertFalse(job["can_rollback"])
+            self.assertFalse(job["result"]["source_restored"])
+            self.assertEqual(["rehearse"], self.executor.calls)
+            self.assertNotIn("owned_process_cleanup", job)
+            self.assertNotIn("987654", json.dumps(job))
+            self.assertNotIn("private helper details", json.dumps(job))
+            private = self.manager._read(self.manager._job_path(job["job_id"]))
+            self.assertEqual(
+                {"process_group": 987654, "private_output": "do not expose"},
+                private["owned_process_cleanup"],
+            )
+            self.assertTrue(self.manager.has_blocking_job())
+            self.assertTrue(self.manager.has_recovery_pending_job())
+            replacement = self.new_manager()
+            self.managers.append(replacement)
+            self.assertTrue(replacement.has_blocking_job())
+            self.assertFalse(replacement.get_job(job["job_id"])["job"]["can_rollback"])
+            with self.assertRaisesRegex(InfiniDyskV2MigrationError, "termination"):
+                replacement.rollback(
+                    {
+                        "job_id": job["job_id"],
+                        "confirmation": job["rollback_confirmation_text"],
+                    }
+                )
+            self.assertEqual(["rehearse"], self.executor.calls)
+            cleanup_probe.assert_called_with(
+                {"process_group": 987654, "private_output": "do not expose"}
+            )
+        with sqlite3.connect(self.source / "db.sqlite") as database:
+            self.assertEqual(
+                database.execute("SELECT Value FROM OriginalData").fetchone()[0],
+                "original",
+            )
+
+    def test_missing_or_oversized_cleanup_evidence_stays_bounded_and_held(self):
+        for evidence in (
+            None,
+            {"process_group": 987654, "payload": "x" * (65 * 1024)},
+            {"process_group": 987654, "payload": object()},
+        ):
+            with self.subTest(evidence_type=type(evidence).__name__):
+                private = {}
+                error = SimpleNamespace(
+                    cleanup_complete=False, cleanup_evidence=evidence
+                )
+                self.assertTrue(
+                    self.manager._retain_owned_process_cleanup(private, error)
+                )
+                self.assertLess(
+                    len(json.dumps(private["owned_process_cleanup"])), 64 * 1024
+                )
+                self.assertTrue(private["owned_process_cleanup"]["evidence_incomplete"])
+                with patch(
+                    "utils.infinidysk_v2_migration.migration_process_cleanup_complete",
+                    return_value=False,
+                ):
+                    self.assertFalse(
+                        self.manager._owned_process_cleanup_complete(private)
+                    )
+
+    def test_confirmed_helper_exit_allows_explicit_rollback_and_clears_hold(self):
+        class CleanupFailure(RuntimeError):
+            cleanup_complete = False
+            cleanup_evidence = {"process_group": 987654}
+
+        with (
+            patch.object(self.executor, "rehearse", side_effect=CleanupFailure("held")),
+            patch(
+                "utils.infinidysk_v2_migration.migration_process_cleanup_complete",
+                return_value=False,
+            ),
+        ):
+            _, request = self.preview_request()
+            job = self.wait(self.manager.rehearse(request))
+            self.assertEqual("recovery_required", job["status"])
+        self.assertNotIn("rollback", self.executor.calls)
+        with patch(
+            "utils.infinidysk_v2_migration.migration_process_cleanup_complete",
+            return_value=True,
+        ):
+            current = self.manager.get_job(job["job_id"])["job"]
+            self.assertTrue(current["can_rollback"])
+            self.assertIn("Helper termination is confirmed", current["message"])
+            self.assertTrue(self.manager.has_blocking_job())
+            private_before = self.manager._read(self.manager._job_path(job["job_id"]))
+            self.assertIn("unconfirmed", private_before["message"])
+            result = self.manager.rollback(
+                {
+                    "job_id": job["job_id"],
+                    "confirmation": current["rollback_confirmation_text"],
+                }
+            )["job"]
+        self.assertEqual("rolled_back", result["status"])
+        self.assertEqual(["rollback"], self.executor.calls)
+        self.assertFalse(self.manager.has_blocking_job())
+        private = self.manager._read(self.manager._job_path(job["job_id"]))
+        self.assertNotIn("owned_process_cleanup", private)
+
     def test_successful_long_rehearsal_renews_only_its_revalidated_preview(self):
         self.executor.gate = threading.Event()
         preview, request = self.preview_request()

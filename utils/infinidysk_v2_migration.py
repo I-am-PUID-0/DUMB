@@ -34,6 +34,7 @@ from utils.infinidysk_v2_proxy import (
     compatibility_auth_environment,
     compatibility_auth_policy,
 )
+from utils.infinidysk_v2_subprocess import migration_process_cleanup_complete
 from utils.infinidysk_v2_support import V2_RELEASE, generation, v1_data_root
 from utils.infinidysk_v2_topology import associated_rclone, rclone_mount_path
 
@@ -377,6 +378,34 @@ class InfiniDyskV2MigrationManager:
             return "interrupted"
         return job.get("status")
 
+    @staticmethod
+    def _owned_process_cleanup_complete(job):
+        return "owned_process_cleanup" not in job or migration_process_cleanup_complete(
+            job["owned_process_cleanup"]
+        )
+
+    @staticmethod
+    def _retain_owned_process_cleanup(job, error):
+        if getattr(error, "cleanup_complete", None) is not False:
+            return False
+        evidence = getattr(error, "cleanup_evidence", None)
+        group = evidence.get("process_group") if isinstance(evidence, dict) else None
+        # Keep bounded cleanup evidence private, including any retained scratch
+        # identity. Never publish it or infer termination from missing metadata.
+        retained = {
+            "process_group": group if type(group) is int and group > 0 else None,
+            "evidence_incomplete": True,
+        }
+        if isinstance(evidence, dict):
+            try:
+                encoded = json.dumps(evidence, ensure_ascii=True, allow_nan=False)
+                if len(encoded) <= 64 * 1024:
+                    retained = json.loads(encoded)
+            except (TypeError, ValueError, OverflowError):
+                pass
+        job["owned_process_cleanup"] = retained
+        return True
+
     def _public_job(self, job):
         if not job:
             return None
@@ -403,10 +432,11 @@ class InfiniDyskV2MigrationManager:
             cleanup["can_cleanup"] = False
         rollback = (
             rollback
+            and self._owned_process_cleanup_complete(job)
             and not cleanup["rollback_retired"]
             and not self._cleanup_controller().has_blocking_job(job)
         )
-        return {
+        public = {
             key: copy.deepcopy(job.get(key))
             for key in (
                 "job_id",
@@ -440,6 +470,12 @@ class InfiniDyskV2MigrationManager:
             "rollback_confirmation_text": f"ROLLBACK INFINIDYSK V2 {job['job_id']}",
             **cleanup,
         }
+        if "owned_process_cleanup" in job and rollback:
+            public["message"] = (
+                "Helper termination is confirmed. Review and run rollback "
+                "to restore the retained v1 service."
+            )
+        return public
 
     def _cleanup_controller(self):
         with self._lock:
@@ -2494,9 +2530,15 @@ class InfiniDyskV2MigrationManager:
             restored = False
             recovery_error = None
             cancelled = isinstance(error, InfiniDyskV2Cancelled)
+            cleanup_pending = self._retain_owned_process_cleanup(job, error)
             if cancelled:
                 job["cancel_requested"] = True
-            if acquired and job.get("execution_started"):
+            if cleanup_pending:
+                recovery_error = (
+                    "Owned helper termination is unconfirmed; private recovery "
+                    "files and migration admission remain retained."
+                )
+            elif acquired and job.get("execution_started"):
                 try:
                     self._recovery_progress(
                         job,
@@ -2525,18 +2567,30 @@ class InfiniDyskV2MigrationManager:
                         and recovery.get("generation_2_stopped") is True
                     )
                 except Exception as recovery_failure:
-                    recovery_error = self._error(recovery_failure, job["plan"])
+                    cleanup_pending = (
+                        self._retain_owned_process_cleanup(job, recovery_failure)
+                        or cleanup_pending
+                    )
+                    recovery_error = (
+                        "Owned helper termination remains unconfirmed."
+                        if cleanup_pending
+                        else self._error(recovery_failure, job["plan"])
+                    )
                     restored = False
             elif cancelled and not job.get("execution_started"):
                 restored = True
             job.update(
                 status=(
-                    ("cancelled" if cancelled else "failed_restored")
-                    if restored
+                    "recovery_required"
+                    if cleanup_pending
                     else (
-                        "recovery_required"
-                        if job.get("execution_started")
-                        else "failed"
+                        ("cancelled" if cancelled else "failed_restored")
+                        if restored
+                        else (
+                            "recovery_required"
+                            if job.get("execution_started")
+                            else "failed"
+                        )
                     )
                 ),
                 stage="cancelled" if cancelled and restored else "failed",
@@ -2546,11 +2600,19 @@ class InfiniDyskV2MigrationManager:
                     else "Migration did not pass acceptance. "
                 )
                 + (
-                    "Original v1 service was restored."
-                    if restored
-                    else "Inspect retained recovery state before continuing."
+                    "Owned helper termination is unconfirmed; recovery remains held."
+                    if cleanup_pending
+                    else (
+                        "Original v1 service was restored."
+                        if restored
+                        else "Inspect retained recovery state before continuing."
+                    )
                 ),
-                error=self._error(error, job["plan"])
+                error=(
+                    "The owned migration helper could not be confirmed stopped."
+                    if cleanup_pending
+                    else self._error(error, job["plan"])
+                )
                 + (
                     f" Recovery remains pending: {recovery_error}"
                     if recovery_error
@@ -2579,6 +2641,10 @@ class InfiniDyskV2MigrationManager:
     def rollback(self, request):
         with INFINIDYSK_MIGRATION_ADMISSION_LOCK, self._lock:
             job = self._read(self._job_path(request.get("job_id")))
+            if job and not self._owned_process_cleanup_complete(job):
+                raise InfiniDyskV2MigrationError(
+                    "Owned helper termination is unconfirmed; retain recovery state before rollback."
+                )
             if not job or not self._public_job(job)["can_rollback"]:
                 raise InfiniDyskV2MigrationError(
                     "This job has no retained major-migration rollback."
@@ -2625,6 +2691,7 @@ class InfiniDyskV2MigrationManager:
                 raise InfiniDyskV2MigrationError(
                     "The executor did not verify rollback ownership and v1 restoration."
                 )
+            job.pop("owned_process_cleanup", None)
             job.update(
                 status="rolled_back",
                 stage="rolled_back",
@@ -2632,6 +2699,7 @@ class InfiniDyskV2MigrationManager:
                 result={"validated": True, "reverse_copy_performed": False},
             )
         except Exception as error:
+            self._retain_owned_process_cleanup(job, error)
             job.update(
                 status="recovery_required",
                 stage="recovery_required",

@@ -9,6 +9,7 @@ import unittest
 from unittest.mock import patch
 from types import SimpleNamespace
 
+import utils.infinidysk_v2_pg_snapshot as snapshot_module
 from utils.infinidysk_v2_pg_snapshot import (
     InfiniDyskV2PostgresSnapshotError,
     LEGACY_TABLES,
@@ -102,6 +103,10 @@ class Cursor:
             self.results = []
         elif "set_config('TimeZone'" in sql:
             self.results = [(values[0],)]
+        elif sql == "SELECT current_setting('transaction_timeout', true)":
+            self.results = [
+                ("0" if data.get("server_version_num", 160015) >= 170000 else None,)
+            ]
         elif "transaction_read_only" in sql:
             self.results = [("on" if self.connection.readonly else "off",)]
         elif sql == "SHOW TimeZone":
@@ -140,7 +145,7 @@ class Cursor:
         elif "inet_server_addr()" in sql:
             self.results = [("192.0.2.10", 5432)]
         elif "server_version_num" in sql:
-            self.results = [(160015,)]
+            self.results = [(data.get("server_version_num", 160015),)]
         elif "pg_export_snapshot()" in sql:
             self.results = [("00000003-00000019-1",)]
             self.connection.exported = True
@@ -244,8 +249,9 @@ class PostgresSnapshotTests(unittest.TestCase):
     def runner(self, command, **kwargs):
         self.commands.append((command, kwargs))
         if command[-1] == "--version":
+            major = self.data.get("server_version_num", 160015) // 10000
             return subprocess.CompletedProcess(
-                command, 0, stdout=b"pg_dump (PostgreSQL) 16.15\n"
+                command, 0, stdout=f"pg_dump (PostgreSQL) {major}.15\n".encode()
             )
         self.assertTrue(self.connections[-1].exported)
         self.assertFalse(self.connections[-1].closed)
@@ -521,6 +527,309 @@ class PostgresSnapshotTests(unittest.TestCase):
         for connection in self.connections:
             for sql, _ in connection.queries:
                 self.assertTrue(sql.startswith(("SELECT ", "SHOW ", "SET LOCAL ")), sql)
+
+    def test_only_active_bulk_snapshot_disables_server_elapsed_timeouts(self):
+        preflight = self.connections[-1]
+        self.assertFalse(
+            any("statement_timeout = 0" in sql for sql, _ in preflight.queries)
+        )
+        self.snapshot()
+        queries = [sql for sql, _ in self.connections[-1].queries]
+        self.assertIn("SET LOCAL statement_timeout = 0", queries)
+        self.assertIn("SET LOCAL idle_in_transaction_session_timeout = 0", queries)
+        self.assertIn("SET LOCAL lock_timeout = '30s'", queries)
+        version_options = self.commands[0][1]["env"]["PGOPTIONS"]
+        dump_options = self.commands[-1][1]["env"]["PGOPTIONS"]
+        self.assertNotIn("statement_timeout=0", version_options)
+        self.assertIn("statement_timeout=0", dump_options)
+        self.assertIn("idle_in_transaction_session_timeout=0", dump_options)
+        self.assertIn("default_transaction_read_only=on", dump_options)
+        self.assertIn("lock_timeout=30000", dump_options)
+        self.assertNotIn("SET LOCAL transaction_timeout = 0", queries)
+        self.assertNotIn("transaction_timeout=0", dump_options)
+        self.assertEqual(self.commands[0][1]["timeout"], 15)
+        self.assertIsNone(self.commands[-1][1]["timeout"])
+
+    def test_postgres17_disables_total_transaction_timeout_only_for_bulk_work(self):
+        self.data["server_version_num"] = 170006
+        self.bind()
+        preflight = self.connections[-1]
+        self.snapshot()
+        queries = [sql for sql, _ in self.connections[-1].queries]
+        self.assertIn("SET LOCAL transaction_timeout = 0", queries)
+        self.assertFalse(
+            any("transaction_timeout" in sql for sql, _ in preflight.queries)
+        )
+        self.assertNotIn(
+            "transaction_timeout=0", self.commands[0][1]["env"]["PGOPTIONS"]
+        )
+        self.assertIn(
+            " -c transaction_timeout=0", self.commands[-1][1]["env"]["PGOPTIONS"]
+        )
+        self.assertIn("SET LOCAL lock_timeout = '30s'", queries)
+        self.assertTrue(self.connections[-1].closed)
+        self.assertTrue(self.connections[-1].rolled_back)
+
+    def test_production_dump_uses_cancellable_monitor_without_total_deadline(self):
+        updates = []
+
+        def watched(command, **kwargs):
+            self.assertNotIn("timeout", kwargs)
+            self.assertEqual(
+                kwargs["activity_paths"], (self.root / "job" / "v1-postgres.partial",)
+            )
+            kwargs["check_cancel"]()
+            kwargs["progress"](
+                {"elapsed_seconds": 100000, "idle_seconds": 1801, "stall_warning": True}
+            )
+            return self.runner(command, env=kwargs["env"])
+
+        with (
+            patch.object(snapshot_module.subprocess, "run", side_effect=self.runner),
+            patch.object(
+                snapshot_module, "run_migration_process", side_effect=watched
+            ) as monitor,
+        ):
+            receipt = create_postgres_snapshot(
+                self.plan,
+                {"root": str(self.root / "job")},
+                connect=self.connect,
+                verify_restore=self.restore,
+                progress=lambda stage, message, **detail: updates.append(
+                    (stage, message, detail)
+                ),
+                pg_dump="/usr/bin/pg_dump",
+            )
+        self.assertTrue(receipt["verified_restore"])
+        self.assertEqual(monitor.call_count, 1)
+        warning = next(
+            detail for stage, _, detail in updates if detail.get("stall_warning")
+        )
+        self.assertEqual(warning["elapsed_seconds"], 100000)
+        self.assertIn(
+            "still running",
+            next(
+                message
+                for stage, message, detail in updates
+                if detail.get("stall_warning")
+            ),
+        )
+
+    def test_progress_cancellation_preserves_exact_exception_and_closes_source(self):
+        class CancelRequested(RuntimeError):
+            pass
+
+        cancelled = CancelRequested("migration cancelled")
+
+        def report(stage, message, **detail):
+            if stage == "postgres_snapshot":
+                raise cancelled
+
+        with self.assertRaises(CancelRequested) as caught:
+            self.snapshot(progress=report)
+        self.assertIs(caught.exception, cancelled)
+        self.assertTrue(self.connections[-1].closed)
+        self.assertTrue(self.connections[-1].rolled_back)
+        self.assertFalse(self.commands)
+        self.assertFalse((self.root / "job" / "v1-postgres.partial").exists())
+
+    def test_staging_cancellation_is_checked_before_a_thousand_rows(self):
+        class CancelRequested(RuntimeError):
+            pass
+
+        cancelled = CancelRequested("migration cancelled")
+        requested = False
+        original = Cursor.__iter__
+
+        def rows(cursor):
+            nonlocal requested
+            for row in original(cursor):
+                if str(cursor.name or "").startswith("dumb_v2_stage_"):
+                    requested = True
+                yield row
+
+        def check():
+            if requested:
+                raise cancelled
+
+        with patch.object(Cursor, "__iter__", rows):
+            with self.assertRaises(CancelRequested) as caught:
+                self.snapshot(check_cancel=check)
+        self.assertIs(caught.exception, cancelled)
+        self.assertTrue(self.connections[-1].closed)
+        self.assertTrue(self.connections[-1].rolled_back)
+        self.assertFalse((self.root / "job" / "v1-postgres-import.partial").exists())
+        self.assertEqual(len(self.commands), 1)
+
+    def test_file_hashing_remains_cancellable_between_blocks(self):
+        class CancelRequested(RuntimeError):
+            pass
+
+        source = self.root / "hash-source"
+        source.write_bytes(b"x" * (2 * 1024 * 1024))
+        calls = 0
+        cancelled = CancelRequested("migration cancelled")
+
+        def check():
+            nonlocal calls
+            calls += 1
+            if calls == 3:
+                raise cancelled
+
+        with self.assertRaises(CancelRequested) as caught:
+            snapshot_module._file_digest(source, check_cancel=check)
+        self.assertIs(caught.exception, cancelled)
+
+    def test_failed_monitored_dump_never_reaches_restore_verification(self):
+        def failed(command, **kwargs):
+            self.runner(command, env=kwargs["env"])
+            return subprocess.CompletedProcess(
+                command, 1, stdout=b"", stderr=b"private;source-secret"
+            )
+
+        with (
+            patch.object(snapshot_module.subprocess, "run", side_effect=self.runner),
+            patch.object(snapshot_module, "run_migration_process", side_effect=failed),
+        ):
+            with self.assertRaises(InfiniDyskV2PostgresSnapshotError) as caught:
+                create_postgres_snapshot(
+                    self.plan,
+                    {"root": str(self.root / "job")},
+                    connect=self.connect,
+                    verify_restore=self.restore,
+                    pg_dump="/usr/bin/pg_dump",
+                )
+        self.assertNotIn("source-secret", str(caught.exception))
+        self.assertFalse(self.restore_calls)
+        self.assertTrue(self.connections[-1].closed)
+        self.assertFalse((self.root / "job" / "v1-postgres.partial").exists())
+
+    def test_dump_cancellation_preserves_original_signal_and_closes_transaction(self):
+        class CancelRequested(RuntimeError):
+            pass
+
+        requested = False
+        cancelled = CancelRequested("migration cancelled")
+
+        def check():
+            if requested:
+                raise cancelled
+
+        def watched(command, **kwargs):
+            nonlocal requested
+            self.runner(command, env=kwargs["env"])
+            requested = True
+            kwargs["check_cancel"]()
+
+        with (
+            patch.object(snapshot_module.subprocess, "run", side_effect=self.runner),
+            patch.object(snapshot_module, "run_migration_process", side_effect=watched),
+        ):
+            with self.assertRaises(CancelRequested) as caught:
+                create_postgres_snapshot(
+                    self.plan,
+                    {"root": str(self.root / "job")},
+                    connect=self.connect,
+                    verify_restore=self.restore,
+                    check_cancel=check,
+                    pg_dump="/usr/bin/pg_dump",
+                )
+        self.assertIs(caught.exception, cancelled)
+        self.assertTrue(self.connections[-1].closed)
+        self.assertTrue(self.connections[-1].rolled_back)
+        self.assertFalse((self.root / "job" / "v1-postgres.partial").exists())
+        self.assertFalse(self.restore_calls)
+
+    def test_incomplete_dump_cleanup_retains_private_artifact_and_critical_signal(self):
+        incomplete = snapshot_module.MigrationProcessCleanupError(
+            "The private helper still needs recovery."
+        )
+
+        def watched(command, **kwargs):
+            self.runner(command, env=kwargs["env"])
+            raise incomplete
+
+        with (
+            patch.object(snapshot_module.subprocess, "run", side_effect=self.runner),
+            patch.object(snapshot_module, "run_migration_process", side_effect=watched),
+        ):
+            with self.assertRaises(
+                snapshot_module.MigrationProcessCleanupError
+            ) as caught:
+                create_postgres_snapshot(
+                    self.plan,
+                    {"root": str(self.root / "job")},
+                    connect=self.connect,
+                    verify_restore=self.restore,
+                    pg_dump="/usr/bin/pg_dump",
+                )
+        self.assertIs(caught.exception, incomplete)
+        self.assertFalse(caught.exception.cleanup_complete)
+        self.assertTrue((self.root / "job" / "v1-postgres.partial").exists())
+        self.assertEqual(
+            (self.root / "job" / "v1-postgres.partial").stat().st_mode & 0o777, 0o600
+        )
+        self.assertTrue(self.connections[-1].closed)
+        self.assertTrue(self.connections[-1].rolled_back)
+        self.assertFalse(self.restore_calls)
+
+    def test_database_cleanup_failure_cannot_mask_cancel_or_owned_worker_recovery(self):
+        class CancelRequested(RuntimeError):
+            pass
+
+        class BrokenCleanup(Connection):
+            def rollback(self):
+                super().rollback()
+                raise RuntimeError("private;source-secret driver cleanup detail")
+
+            def close(self):
+                super().close()
+                raise RuntimeError("private;source-secret driver cleanup detail")
+
+        for mode in ("cancel", "owned_worker"):
+            with self.subTest(mode=mode):
+                signal = (
+                    CancelRequested("migration cancelled")
+                    if mode == "cancel"
+                    else snapshot_module.MigrationProcessCleanupError(
+                        "The private helper still needs recovery."
+                    )
+                )
+
+                def connect(**kwargs):
+                    connection = BrokenCleanup(self.data)
+                    self.connections.append(connection)
+                    return connection
+
+                def report(stage, message, **detail):
+                    if mode == "cancel":
+                        raise signal
+
+                def watched(command, **kwargs):
+                    self.runner(command, env=kwargs["env"])
+                    raise signal
+
+                with (
+                    patch.object(
+                        snapshot_module.subprocess, "run", side_effect=self.runner
+                    ),
+                    patch.object(
+                        snapshot_module, "run_migration_process", side_effect=watched
+                    ),
+                ):
+                    with self.assertRaises(type(signal)) as caught:
+                        create_postgres_snapshot(
+                            self.plan,
+                            {"root": str(self.root / mode)},
+                            connect=connect,
+                            verify_restore=self.restore,
+                            progress=report,
+                            pg_dump="/usr/bin/pg_dump",
+                        )
+                self.assertIs(caught.exception, signal)
+                self.assertTrue(self.connections[-1].rolled_back)
+                self.assertTrue(self.connections[-1].closed)
+                self.assertNotIn("source-secret", str(caught.exception))
 
     def test_existing_artifacts_and_symlink_job_storage_are_refused(self):
         job = self.root / "job"

@@ -5,10 +5,13 @@ from pathlib import Path
 import shutil
 import sqlite3
 import stat
+import subprocess
 import tempfile
 import unittest
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
+
+from utils.infinidysk_v2_subprocess import MigrationProcessCleanupError
 
 from utils.infinidysk_v2_execution import (
     ContainedImportError,
@@ -555,8 +558,15 @@ class NativeShutdownTests(unittest.TestCase):
                     "utils.infinidysk_v2_execution.time.monotonic", side_effect=[0, 4]
                 ),
             ):
-                with self.assertRaisesRegex(ContainedImportError, "live writers"):
+                with self.assertRaisesRegex(
+                    MigrationProcessCleanupError, "live writers"
+                ) as caught:
                     candidate.__exit__()
+            self.assertFalse(caught.exception.cleanup_complete)
+            self.assertEqual(
+                caught.exception.cleanup_evidence["process_group"],
+                candidate.process.pid,
+            )
             self.assertFalse(candidate.stopped)
             candidate.output.close.assert_called_once()
             self.assertFalse(candidate.payload_path.exists())
@@ -632,7 +642,7 @@ class NativeImportWatchdogTests(unittest.TestCase):
         value.timeout = 1800
         value.check_cancel = Mock()
         value.record_report = Mock()
-        value.process = SimpleNamespace(pid=987654)
+        value.process = SimpleNamespace(pid=987654, poll=Mock(return_value=None))
         proof = root / "proof.json"
         proof.write_text(
             json.dumps(
@@ -648,7 +658,14 @@ class NativeImportWatchdogTests(unittest.TestCase):
         return value
 
     def run_wait(self, candidate, states, times):
-        replies = [{"status": 200, "body": state} for state in states]
+        replies = [
+            (
+                state
+                if state is None or isinstance(state, BaseException)
+                else {"status": 200, "body": state}
+            )
+            for state in states
+        ]
         replies.append({"status": 200, "body": {"report": "verified native report"}})
         if getattr(candidate, "nntp_bridge", None) is not None:
             replies.append({"status": 200, "body": {"profiles": []}})
@@ -665,7 +682,7 @@ class NativeImportWatchdogTests(unittest.TestCase):
             report = candidate.wait_import(True, progress)
         return report, progress
 
-    def test_advancing_import_is_allowed_past_the_old_five_minute_cutoff(self):
+    def test_advancing_import_is_allowed_beyond_previous_elapsed_cutoffs(self):
         with tempfile.TemporaryDirectory() as temporary:
             candidate = self.candidate(Path(temporary))
             report, progress = self.run_wait(
@@ -684,54 +701,123 @@ class NativeImportWatchdogTests(unittest.TestCase):
                         "progress": {"stage": "done", "processed": 3, "total": 3},
                     },
                 ],
-                [0, 0, 301, 601],
+                [0, 0, 7201, 14401],
             )
             self.assertEqual("verified native report", report)
             self.assertEqual(
-                601, progress.call_args.kwargs["import_progress"]["elapsed_seconds"]
+                14401, progress.call_args.kwargs["import_progress"]["elapsed_seconds"]
             )
             self.assertEqual(
                 3, progress.call_args.kwargs["import_progress"]["processed"]
             )
 
-    def test_watchdog_refuses_a_stalled_import_with_a_specific_recovery_message(self):
+    def test_silent_import_warns_without_aborting_and_recovers_on_real_progress(self):
         with tempfile.TemporaryDirectory() as temporary:
             candidate = self.candidate(Path(temporary))
-            with self.assertRaisesRegex(
-                ContainedImportError, "no progress or provider reads for 1800"
-            ):
-                self.run_wait(
-                    candidate,
-                    [{"state": "importing", "progress": {"stage": "files"}}],
-                    [0, 0, 1801],
-                )
+            report, progress = self.run_wait(
+                candidate,
+                [
+                    {"state": "importing", "progress": {"stage": "files", "done": 1}},
+                    {"state": "importing", "progress": {"stage": "files", "done": 1}},
+                    {"state": "importing", "progress": {"stage": "files", "done": 1}},
+                    {"state": "importing", "progress": {"stage": "files", "done": 2}},
+                    {"state": "done", "progress": {"stage": "done", "done": 3}},
+                ],
+                [0, 0, 1801, 2200, 2300, 2400],
+            )
+            self.assertEqual("verified native report", report)
+            messages = [call.args[1] for call in progress.call_args_list]
+            self.assertIn("No observable native progress", messages[1])
+            self.assertIn("Cancel migration", messages[1])
+            self.assertIn("No observable native progress", messages[2])
+            self.assertEqual("Contained native stage: files", messages[3])
+            self.assertEqual(
+                2400, progress.call_args.kwargs["import_progress"]["elapsed_seconds"]
+            )
 
-    def test_eta_changes_do_not_count_as_import_progress(self):
+    def test_eta_or_poll_heartbeats_do_not_clear_stall_warning(self):
         with tempfile.TemporaryDirectory() as temporary:
             candidate = self.candidate(Path(temporary))
-            with self.assertRaisesRegex(ContainedImportError, "no progress"):
-                self.run_wait(
-                    candidate,
-                    [
-                        {
-                            "state": "importing",
-                            "progress": {
-                                "stage": "files",
-                                "done": 1,
-                                "eta_seconds": 100,
-                            },
-                        },
-                        {
-                            "state": "importing",
-                            "progress": {
-                                "stage": "files",
-                                "done": 1,
-                                "eta_seconds": 1000,
-                            },
-                        },
-                    ],
-                    [0, 0, 1000, 1801],
-                )
+            _, progress = self.run_wait(
+                candidate,
+                [
+                    {
+                        "state": "importing",
+                        "progress": {"stage": "files", "done": 1, "eta_seconds": 100},
+                    },
+                    {
+                        "state": "importing",
+                        "progress": {"stage": "files", "done": 1, "eta_seconds": 1000},
+                    },
+                    {
+                        "state": "importing",
+                        "progress": {"stage": "files", "done": 1, "eta_seconds": 2000},
+                    },
+                    {"state": "done", "progress": {"stage": "done", "done": 2}},
+                ],
+                [0, 0, 1801, 2200, 3000],
+            )
+            messages = [call.args[1] for call in progress.call_args_list]
+            self.assertIn("No observable native progress", messages[1])
+            self.assertIn("No observable native progress", messages[2])
+
+    def test_status_probe_timeout_warns_and_keeps_live_importer_running(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            candidate = self.candidate(Path(temporary))
+            report, progress = self.run_wait(
+                candidate,
+                [
+                    {"state": "importing", "progress": {"stage": "files"}},
+                    subprocess.TimeoutExpired("contained status probe", 8),
+                    OSError("temporary unavailable"),
+                    {"state": "done", "progress": {"stage": "done"}},
+                ],
+                [0, 0, 1801, 2200, 2400],
+            )
+            self.assertEqual("verified native report", report)
+            messages = [call.args[1] for call in progress.call_args_list]
+            self.assertIn("No observable native progress", messages[1])
+            self.assertIn("currently unavailable", messages[1])
+            self.assertIn("No observable native progress", messages[2])
+            self.assertEqual("Contained native stage: done", messages[-1])
+
+    def test_cancellation_still_interrupts_an_import_after_a_stall_warning(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            candidate = self.candidate(Path(temporary))
+            candidate.check_cancel.side_effect = [
+                None,
+                None,
+                ContainedImportError("cancel after warning"),
+            ]
+            candidate.probe = Mock(
+                return_value={"status": 200, "body": {"state": "importing"}}
+            )
+            progress = Mock()
+            with (
+                patch(
+                    "utils.infinidysk_v2_execution.time.monotonic",
+                    side_effect=[0, 0, 1900],
+                ),
+                patch("utils.infinidysk_v2_execution.time.sleep"),
+                self.assertRaisesRegex(ContainedImportError, "cancel after warning"),
+            ):
+                candidate.wait_import(True, progress)
+            self.assertIn("No observable native progress", progress.call_args.args[1])
+            self.assertEqual(2, candidate.probe.call_count)
+
+    def test_probe_failure_does_not_hide_importer_process_exit(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            candidate = self.candidate(Path(temporary))
+            candidate.process.poll.return_value = 1
+            candidate.probe = Mock(side_effect=subprocess.TimeoutExpired("status", 8))
+            with self.assertRaisesRegex(ContainedImportError, "importer exited"):
+                candidate.wait_import(True, Mock())
+
+    def test_native_failed_state_is_still_rejected_immediately(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            candidate = self.candidate(Path(temporary))
+            with self.assertRaisesRegex(ContainedImportError, "native import failed"):
+                self.run_wait(candidate, [{"state": "failed"}], [0, 99999])
 
     def test_provider_traffic_keeps_long_running_file_recovery_alive(self):
         with tempfile.TemporaryDirectory() as temporary:

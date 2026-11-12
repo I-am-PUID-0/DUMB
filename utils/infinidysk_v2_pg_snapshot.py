@@ -18,7 +18,13 @@ import shutil
 import sqlite3
 import stat
 import subprocess
+import sys
 import tempfile
+
+from utils.infinidysk_v2_subprocess import (
+    MigrationProcessCleanupError,
+    run_migration_process,
+)
 
 NATIVE_SOURCE_COMMIT = "6363f4a4a3f1bcbc3308142b66ec3e7d7127f853"
 LEGACY_TABLES = (
@@ -219,12 +225,22 @@ def connection_settings(plan):
     return params
 
 
-def _readonly(connection, timezone=None):
+def _readonly(connection, timezone=None, *, long_running=False):
     connection.set_session(
         isolation_level="REPEATABLE READ", readonly=True, autocommit=False
     )
     with connection.cursor() as cursor:
         cursor.execute("SET LOCAL lock_timeout = '30s'")
+        if long_running:
+            # This transaction exports a snapshot for independently streamed
+            # bulk work. Server defaults must not expire it merely for duration.
+            cursor.execute("SET LOCAL statement_timeout = 0")
+            cursor.execute("SET LOCAL idle_in_transaction_session_timeout = 0")
+            cursor.execute("SELECT current_setting('transaction_timeout', true)")
+            if cursor.fetchone()[0] is not None:
+                # PostgreSQL 17+ can bound the entire transaction separately.
+                # missing_ok keeps the bulk policy compatible with older servers.
+                cursor.execute("SET LOCAL transaction_timeout = 0")
         cursor.execute("SET LOCAL DateStyle = 'ISO, YMD'")
         cursor.execute("SET LOCAL IntervalStyle = 'postgres'")
         cursor.execute("SET LOCAL bytea_output = 'hex'")
@@ -238,10 +254,14 @@ def _readonly(connection, timezone=None):
             )
 
 
-def _rows_digest(rows):
+def _rows_digest(rows, *, check_cancel=None, progress=None):
+    cancel = check_cancel or (lambda: None)
+    report = progress or (lambda count: None)
+    cancel()
     count, xor, total = 0, 0, 0
     modulus = 1 << 256
     for row in rows:
+        cancel()
         if any(value is not None and not isinstance(value, str) for value in row):
             raise InfiniDyskV2PostgresSnapshotError(
                 "The PostgreSQL text snapshot codec returned an unexpected value."
@@ -255,6 +275,9 @@ def _rows_digest(rows):
         xor ^= digest
         total = (total + digest) % modulus
         count += 1
+        if count % 1000 == 0:
+            report(count)
+    report(count)
     return {"count": count, "xor": f"{xor:064x}", "sum": f"{total:064x}"}
 
 
@@ -310,7 +333,10 @@ def _schema_objects(connection):
     }
 
 
-def _database_inventory(connection, *, rows):
+def _database_inventory(connection, *, rows, check_cancel=None, progress=None):
+    cancel = check_cancel or (lambda: None)
+    report = progress or (lambda *args, **kwargs: None)
+    cancel()
     with connection.cursor() as cursor:
         cursor.execute("SHOW TimeZone")
         timezone = cursor.fetchone()[0]
@@ -337,6 +363,7 @@ def _database_inventory(connection, *, rows):
             )
         catalog = {}
         for schema, name in tables:
+            cancel()
             cursor.execute(
                 "SELECT a.attname,format_type(a.atttypid,a.atttypmod),a.attnotnull,"
                 "pg_get_expr(d.adbin,d.adrelid),a.attidentity,a.attgenerated,"
@@ -372,7 +399,8 @@ def _database_inventory(connection, *, rows):
     objects = _schema_objects(connection)
     content = {}
     if rows:
-        for key, table in catalog.items():
+        for index, (key, table) in enumerate(catalog.items(), start=1):
+            cancel()
             columns = ",".join(
                 f"{_quote(column[0])}::text" for column in table["columns"]
             )
@@ -381,7 +409,17 @@ def _database_inventory(connection, *, rows):
                 cursor.execute(
                     f"SELECT {columns} FROM {_quote(table['schema'])}.{_quote(table['name'])}"
                 )
-                content[key] = _rows_digest(cursor)
+                content[key] = _rows_digest(
+                    cursor,
+                    check_cancel=cancel,
+                    progress=lambda count: report(
+                        "postgres_snapshot",
+                        "Validating source database contents.",
+                        table_index=index,
+                        table_count=len(catalog),
+                        rows=count,
+                    ),
+                )
     return {
         "session_timezone": timezone,
         "database_characteristics": database_characteristics,
@@ -465,7 +503,9 @@ def _native_column(name, data_type):
     return f"{column}::text", "TEXT", "text"
 
 
-def _stage_legacy(connection, destination, binding, progress):
+def _stage_legacy(connection, destination, binding, progress, *, check_cancel=None):
+    cancel = check_cancel or (lambda: None)
+    cancel()
     temporary = destination.with_suffix(".partial")
     descriptor = os.open(
         temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600
@@ -478,6 +518,7 @@ def _stage_legacy(connection, destination, binding, progress):
             sqlite.execute("PRAGMA synchronous=OFF")
             sqlite.execute("BEGIN")
             for name in LEGACY_TABLES:
+                cancel()
                 table = binding["tables"].get(f"public.{name}")
                 if not table:
                     raise InfiniDyskV2PostgresSnapshotError(
@@ -499,6 +540,7 @@ def _stage_legacy(connection, destination, binding, progress):
                     cursor.execute(f"SELECT {select} FROM public.{_quote(name)}")
                     count = 0
                     for row in cursor:
+                        cancel()
                         for value, mapping in zip(row, mapped):
                             if value is not None and (
                                 (mapping[2] == "int" and type(value) is not int)
@@ -570,10 +612,13 @@ def verify_restored_connection(connection, source_binding):
         connection.rollback()
 
 
-def _file_digest(path):
+def _file_digest(path, *, check_cancel=None):
+    cancel = check_cancel or (lambda: None)
+    cancel()
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            cancel()
             digest.update(chunk)
     return digest.hexdigest()
 
@@ -622,6 +667,7 @@ def create_postgres_snapshot(
     progress=None,
     pg_dump=None,
     timeout=1800,
+    check_cancel=None,
 ):
     if not callable(verify_restore):
         raise InfiniDyskV2PostgresSnapshotError(
@@ -646,7 +692,44 @@ def create_postgres_snapshot(
             "A compatible pg_dump binary is unavailable."
         )
     runner = run or subprocess.run
-    report = progress or (lambda *args, **kwargs: None)
+    cancel_callback = check_cancel or (lambda: None)
+    progress_callback = progress or (lambda *args, **kwargs: None)
+    callback_error = None
+
+    def check():
+        nonlocal callback_error
+        try:
+            cancel_callback()
+        except Exception as error:
+            callback_error = error
+            raise
+
+    def report(*args, **kwargs):
+        nonlocal callback_error
+        check()
+        try:
+            progress_callback(*args, **kwargs)
+        except Exception as error:
+            # Cancellation can also be raised by the manager's retained
+            # progress callback. Preserve that trusted callback's exact error.
+            callback_error = error
+            raise
+
+    def dump_progress(status):
+        warning = bool(status.get("stall_warning"))
+        report(
+            "postgres_dump",
+            (
+                "No recent PostgreSQL dump activity was observed. The backup is "
+                "still running; slow storage can take longer. You can cancel the migration."
+                if warning
+                else "Writing a full PostgreSQL backup from the same read-only snapshot."
+            ),
+            elapsed_seconds=int(status["elapsed_seconds"]),
+            idle_seconds=int(status["idle_seconds"]),
+            stall_warning=warning,
+        )
+
     environment = {
         "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
         "LANG": "C.UTF-8",
@@ -669,11 +752,15 @@ def create_postgres_snapshot(
             environment[variable] = str(params[key])
     connection = None
     temporary = dump.with_suffix(".partial")
+    retain_partial = False
     try:
+        check()
         connection = (connect or _connect_default)(**params)
-        _readonly(connection)
+        _readonly(connection, long_running=True)
         physical, server = _physical(connection)
-        binding = _database_inventory(connection, rows=True)
+        binding = _database_inventory(
+            connection, rows=True, check_cancel=check, progress=report
+        )
         binding.update(physical_identity=physical, server=server)
         for key in (
             "physical_identity",
@@ -717,7 +804,9 @@ def create_postgres_snapshot(
             raise InfiniDyskV2PostgresSnapshotError(
                 "pg_dump must match the PostgreSQL source major version."
             )
-        staged_counts = _stage_legacy(connection, staged, binding, report)
+        staged_counts = _stage_legacy(
+            connection, staged, binding, report, check_cancel=check
+        )
         _space_check([(root, database_size * 2)])
         descriptor = os.open(
             temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600
@@ -730,21 +819,47 @@ def create_postgres_snapshot(
             "postgres_dump",
             "Writing a full PostgreSQL backup from the same read-only snapshot.",
         )
-        runner(
-            [
-                str(program),
-                "--format=custom",
-                "--no-password",
-                "--snapshot",
-                exported,
-                "--file",
-                str(temporary),
-            ],
-            capture_output=True,
-            check=True,
-            timeout=timeout,
-            env=environment,
-        )
+        command = [
+            str(program),
+            "--format=custom",
+            "--no-password",
+            "--snapshot",
+            exported,
+            "--file",
+            str(temporary),
+        ]
+        child_environment = dict(environment)
+        child_environment["PGOPTIONS"] = (
+            str(child_environment.get("PGOPTIONS") or "")
+            + " -c statement_timeout=0 -c idle_in_transaction_session_timeout=0"
+        ).strip()
+        if server_major >= 17:
+            child_environment["PGOPTIONS"] += " -c transaction_timeout=0"
+        check()
+        if run is None:
+            dumped = run_migration_process(
+                command,
+                env=child_environment,
+                check_cancel=check,
+                progress=dump_progress,
+                activity_paths=(temporary,),
+                idle_warning_seconds=timeout,
+            )
+        else:
+            # Explicit test/adapter injection remains synchronous. Production
+            # always uses the owned, cancellable process monitor above.
+            dumped = runner(
+                command,
+                capture_output=True,
+                check=True,
+                timeout=None,
+                env=child_environment,
+            )
+        check()
+        if dumped.returncode:
+            raise InfiniDyskV2PostgresSnapshotError(
+                "The PostgreSQL backup process failed; original data was unchanged."
+            )
         if not temporary.is_file() or temporary.stat().st_size == 0:
             raise InfiniDyskV2PostgresSnapshotError("The PostgreSQL backup is empty.")
         with temporary.open("rb") as handle:
@@ -759,6 +874,7 @@ def create_postgres_snapshot(
             "Restoring and validating the independent PostgreSQL backup.",
         )
         _space_check([(tempfile.gettempdir(), dump.stat().st_size + database_size * 2)])
+        check()
         proof = verify_restore(
             str(dump), copy_binding := json.loads(json.dumps(binding)), dict(params)
         )
@@ -770,6 +886,7 @@ def create_postgres_snapshot(
             raise InfiniDyskV2PostgresSnapshotError(
                 "The PostgreSQL backup has no matching successful isolated restore proof."
             )
+        check()
         receipt = {
             "dump_path": str(dump),
             "staged_sqlite": str(staged),
@@ -777,8 +894,8 @@ def create_postgres_snapshot(
             "source_read_only": True,
             "physical_identity": physical,
             "source_binding": binding,
-            "dump_sha256": _file_digest(dump),
-            "staged_sha256": _file_digest(staged),
+            "dump_sha256": _file_digest(dump, check_cancel=check),
+            "staged_sha256": _file_digest(staged, check_cancel=check),
             "staged_table_counts": staged_counts,
             "native_source_commit": NATIVE_SOURCE_COMMIT,
             "restore_proof": proof,
@@ -797,17 +914,34 @@ def create_postgres_snapshot(
         finally:
             os.close(directory)
         return receipt
+    except MigrationProcessCleanupError:
+        # The owned writer could not be proven reaped. Keep its private
+        # artifact and let the coordinator retain the mutation admission.
+        retain_partial = True
+        raise
     except InfiniDyskV2PostgresSnapshotError:
         raise
-    except Exception:
+    except Exception as error:
+        if error is callback_error:
+            raise
         # Driver/tool exceptions can contain credentials or row values.
         raise InfiniDyskV2PostgresSnapshotError(
             "The PostgreSQL source snapshot or isolated restore verification failed."
         ) from None
     finally:
-        temporary.unlink(missing_ok=True)
+        if not retain_partial:
+            temporary.unlink(missing_ok=True)
         if connection is not None:
-            try:
-                connection.rollback()
-            finally:
-                connection.close()
+            # A lost server/connection must not replace a cancellation or an
+            # unreaped-worker signal with a driver error containing credentials.
+            active_error = sys.exc_info()[0] is not None
+            cleanup_failed = False
+            for cleanup in (connection.rollback, connection.close):
+                try:
+                    cleanup()
+                except Exception:
+                    cleanup_failed = True
+            if cleanup_failed and not active_error:
+                raise InfiniDyskV2PostgresSnapshotError(
+                    "The read-only PostgreSQL snapshot connection did not close cleanly."
+                ) from None

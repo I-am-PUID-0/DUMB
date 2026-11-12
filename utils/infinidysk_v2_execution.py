@@ -36,6 +36,7 @@ from utils.infinidysk_v2_pg_snapshot import (
     inspect_postgres_source,
 )
 from utils.infinidysk_v2_restore import postgres_tools, verify_postgres_restore
+from utils.infinidysk_v2_subprocess import MigrationProcessCleanupError
 from utils.infinidysk_v2_topology import (
     delivery_mount_ready,
     mount_records,
@@ -246,6 +247,8 @@ class NativeCandidate:
         last_activity = started
         last_state = None
         last_published = float("-inf")
+        native_progress = {}
+        stage = "starting"
         while True:
             self.check_cancel()
             now = time.monotonic()
@@ -253,11 +256,18 @@ class NativeCandidate:
             activity = getattr(bridge, "last_activity", None)
             if isinstance(activity, (int, float)) and activity <= now:
                 last_activity = max(last_activity, activity)
-            if now - last_activity >= self.timeout:
-                raise ContainedImportError(
-                    f"The contained import made no progress or provider reads for {self.timeout} seconds. Cancel or review the retained job; v1 recovery remains protected."
-                )
-            reply = self.probe("/api/v1/upgrade/status")
+            try:
+                reply = self.probe("/api/v1/upgrade/status")
+            except (OSError, subprocess.TimeoutExpired):
+                if self.process.poll() is not None:
+                    raise ContainedImportError(
+                        "The contained importer exited; inspect its private report."
+                    ) from None
+                # A bounded status request can fail while the importer is busy.
+                # Missing observations and polling heartbeats are not progress.
+                reply = None
+            state = None
+            changed = False
             if reply and reply["status"] == 200:
                 state = reply["body"]
                 if state.get("state") == "failed":
@@ -292,60 +302,71 @@ class NativeCandidate:
                 )
                 if not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_-]{0,63}", stage):
                     stage = "importing"
-                if changed or now - last_published >= 2:
-                    safe = {"stage": stage, "elapsed_seconds": int(now - started)}
-                    for public, alternatives in (
-                        ("processed", ("processed", "done", "current", "files_done")),
-                        ("total", ("total", "files_total")),
-                    ):
-                        for key in alternatives:
-                            value = native_progress.get(key)
-                            if type(value) is int and 0 <= value <= 2**63 - 1:
-                                safe[public] = value
-                                break
-                    if bridge is not None:
-                        stats = bridge.stats
-                        safe["provider_connections"] = stats["active_connections"]
-                        safe["provider_requests"] = stats["commands"]
-                    progress(
-                        "importing",
-                        f"Contained native stage: {stage}",
-                        import_progress=safe,
+            if changed or now - last_published >= 2:
+                safe = {"stage": stage, "elapsed_seconds": int(now - started)}
+                for public, alternatives in (
+                    ("processed", ("processed", "done", "current", "files_done")),
+                    ("total", ("total", "files_total")),
+                ):
+                    for key in alternatives:
+                        value = native_progress.get(key)
+                        if type(value) is int and 0 <= value <= 2**63 - 1:
+                            safe[public] = value
+                            break
+                if bridge is not None:
+                    stats = bridge.stats
+                    safe["provider_connections"] = stats["active_connections"]
+                    safe["provider_requests"] = stats["commands"]
+                inactive = now - last_activity
+                if inactive >= self.timeout:
+                    message = (
+                        f"No observable native progress or provider reads for {int(inactive)} seconds. "
+                        "The importer is still running; review its progress or use Cancel migration to stop it and restore v1."
                     )
-                    last_published = now
-                if state.get("state") == ("done" if migrate else "none"):
-                    proof = json.loads(Path(self.payload["proof_path"]).read_text())
-                    actual_namespace = os.readlink(f"/proc/{self.process.pid}/ns/net")
+                    if state is None:
+                        message += " Native progress status is currently unavailable."
+                elif state is None:
+                    message = (
+                        "Native progress status is currently unavailable; the importer is still running. "
+                        "DUMB is waiting for another bounded status check."
+                    )
+                else:
+                    message = f"Contained native stage: {stage}"
+                progress("importing", message, import_progress=safe)
+                last_published = now
+            if state and state.get("state") == ("done" if migrate else "none"):
+                proof = json.loads(Path(self.payload["proof_path"]).read_text())
+                actual_namespace = os.readlink(f"/proc/{self.process.pid}/ns/net")
+                if (
+                    proof.get("pid") != self.process.pid
+                    or proof.get("landlock_abi", 0) < 3
+                    or proof.get("external_network") is not False
+                    or actual_namespace != proof.get("network_namespace")
+                    or actual_namespace == os.readlink("/proc/self/ns/net")
+                ):
+                    raise ContainedImportError(
+                        "The native importer confinement proof did not validate."
+                    )
+                if migrate:
+                    report = self.probe("/api/v1/upgrade/report")
                     if (
-                        proof.get("pid") != self.process.pid
-                        or proof.get("landlock_abi", 0) < 3
-                        or proof.get("external_network") is not False
-                        or actual_namespace != proof.get("network_namespace")
-                        or actual_namespace == os.readlink("/proc/self/ns/net")
+                        not report
+                        or report["status"] != 200
+                        or not isinstance(report["body"].get("report"), str)
                     ):
                         raise ContainedImportError(
-                            "The native importer confinement proof did not validate."
+                            "The authenticated native import report is unavailable."
                         )
-                    if migrate:
-                        report = self.probe("/api/v1/upgrade/report")
-                        if (
-                            not report
-                            or report["status"] != 200
-                            or not isinstance(report["body"].get("report"), str)
-                        ):
+                    self.record_report(report["body"]["report"])
+                    if bridge is not None:
+                        catalog = self.probe("/api/v1/catalog")
+                        if not catalog or catalog["status"] != 200:
                             raise ContainedImportError(
-                                "The authenticated native import report is unavailable."
+                                "The native provider catalog is unavailable; original provider settings cannot be restored safely."
                             )
-                        self.record_report(report["body"]["report"])
-                        if bridge is not None:
-                            catalog = self.probe("/api/v1/catalog")
-                            if not catalog or catalog["status"] != 200:
-                                raise ContainedImportError(
-                                    "The native provider catalog is unavailable; original provider settings cannot be restored safely."
-                                )
-                            self.native_catalog = catalog["body"]
-                        return report["body"]["report"]
-                    return ""
+                        self.native_catalog = catalog["body"]
+                    return report["body"]["report"]
+                return ""
             time.sleep(0.25)
 
     def __exit__(self, *unused):
@@ -374,11 +395,19 @@ class NativeCandidate:
                 deadline = time.monotonic() + 3
                 while _native_group_has_live_members(self.process.pid):
                     if time.monotonic() >= deadline:
-                        raise ContainedImportError(
-                            "The native candidate still has live writers; its data was retained."
+                        raise MigrationProcessCleanupError(
+                            "The native candidate still has live writers; its data was retained.",
+                            process_group=self.process.pid,
                         )
                     time.sleep(0.05)
                 self.stopped = self.process.poll() is not None
+        except (OSError, subprocess.SubprocessError, ContainedImportError):
+            if self.process is not None:
+                raise MigrationProcessCleanupError(
+                    "Native helper termination could not be confirmed; retain recovery state.",
+                    process_group=self.process.pid,
+                ) from None
+            raise
         finally:
             bridge = getattr(self, "nntp_bridge", None)
             if bridge is not None:
@@ -576,18 +605,54 @@ class InfiniDyskV2Executor:
                 f"Disposable rehearsal cleanup stopped; retain the candidate for review: {error}"
             ) from error
 
+    @staticmethod
+    def _postgres_snapshot(plan, workspace, progress):
+        # Keep trusted cancellation/progress failures recognizable across the
+        # legacy three-argument restore callback and snapshot error redaction.
+        callback_error = None
+        cancel = workspace.get("check_cancel") or (lambda: None)
+
+        def guarded(callback, *args, **kwargs):
+            nonlocal callback_error
+            try:
+                return callback(*args, **kwargs)
+            except Exception as error:
+                callback_error = error
+                raise
+
+        def check_cancel():
+            return guarded(cancel)
+
+        def report(*args, **kwargs):
+            return guarded(progress, *args, **kwargs)
+
+        def verify_restore(dump, binding, settings):
+            return verify_postgres_restore(
+                dump, binding, settings, check_cancel=check_cancel, progress=report
+            )
+
+        try:
+            return create_postgres_snapshot(
+                plan,
+                workspace,
+                verify_restore=verify_restore,
+                pg_dump=postgres_tools() / "pg_dump",
+                progress=report,
+                check_cancel=check_cancel,
+            )
+        except Exception as error:
+            if getattr(error, "cleanup_complete", True) is False:
+                raise
+            if callback_error is not None:
+                raise callback_error
+            raise
+
     def _execute(self, plan, workspace, progress, *, cutover):
         uid, gid = self._execution_ids()
         was_running = self._quiesce(plan, progress)
         postgres_snapshot = None
         if plan["source"].get("provider") in {"postgres", "postgresql"}:
-            postgres_snapshot = create_postgres_snapshot(
-                plan,
-                workspace,
-                verify_restore=verify_postgres_restore,
-                pg_dump=postgres_tools() / "pg_dump",
-                progress=progress,
-            )
+            postgres_snapshot = self._postgres_snapshot(plan, workspace, progress)
         snapshot = workspace["capture_source"](postgres_snapshot=postgres_snapshot)
         if (snapshot.get("source_schema") or {}).get("oidc_configured"):
             raise ContainedImportError(
