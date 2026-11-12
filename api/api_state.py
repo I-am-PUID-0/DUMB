@@ -113,6 +113,8 @@ class APIState:
             "previous_version",
             "available_version",
             "releases_behind",
+            "configured_target_kind",
+            "configured_target_installed",
             "checked_at",
             "applied_at",
             "release_url",

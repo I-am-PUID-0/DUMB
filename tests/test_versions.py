@@ -192,6 +192,37 @@ class VersionsHelperTests(unittest.TestCase):
         self.assertFalse(update_needed)
         self.assertIn("ahead", info["message"])
 
+    def test_frontend_stable_updates_require_a_newer_version(self):
+        cases = (
+            ("v1.92.0", "v1.91.0", False),
+            ("1.92.0-dev.6", "v1.91.0", False),
+            ("v1.92.0+dev.abcdef12", "1.92.0", False),
+            ("v1.92.0", "1.92.0", False),
+            ("1.92.0-dev.6", "v1.92.0", True),
+            ("v1.92.0", "v1.93.0", True),
+            ("v1.9.0", "v1.10.0", True),
+            ("v2.0.0-dev.1", "v1.99.0", False),
+            ("dev-abcdef12", "v1.91.0", True),
+        )
+        for current, latest, expected in cases:
+            with self.subTest(current=current, latest=latest):
+                versions = Versions()
+                versions.version_check = lambda *args, **kwargs: (current, None)
+                versions.downloader.get_latest_release = lambda *args, **kwargs: (
+                    latest,
+                    None,
+                )
+                versions.downloader.count_releases_behind = lambda *args, **kwargs: (
+                    1,
+                    None,
+                )
+                needed, info = versions.compare_versions(
+                    "DUMB Frontend", "I-am-PUID-0", "dmbdb", None, "dumb_frontend"
+                )
+                self.assertEqual(expected, needed, info)
+                if not expected:
+                    self.assertEqual(0, info["releases_behind"])
+
     def test_is_latest_release_gt_uses_cache_after_first_lookup(self):
         versions = Versions()
 

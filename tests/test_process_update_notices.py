@@ -126,6 +126,22 @@ class FakeUpdater:
 
 
 class ProcessUpdateNoticeHelperTests(unittest.TestCase):
+    def test_notice_preserves_explicit_source_target_evidence(self):
+        for installed in (True, False):
+            with self.subTest(installed=installed):
+                notice = process_router._build_update_notice_entry(
+                    {
+                        "process_name": "DUMB Frontend",
+                        "status": "blocked",
+                        "current_version": "v1.92.0",
+                        "available_version": "v1.91.0",
+                        "configured_target_kind": "release",
+                        "configured_target_installed": installed,
+                    }
+                )
+                self.assertEqual("release", notice["configured_target_kind"])
+                self.assertIs(installed, notice["configured_target_installed"])
+
     def test_process_list_includes_dashboard_update_metadata(self):
         api_state = FakeAPIState()
         api_state.statuses = [

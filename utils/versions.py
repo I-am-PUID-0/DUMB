@@ -837,6 +837,31 @@ class Versions:
             else:
                 normalized_current = current_version
                 normalized_latest = latest_release_version
+            if key == "dumb_frontend" and not (nightly or prerelease):
+                # Image builds can contain the next frontend version before a
+                # stable tag exists. Branch/commit and explicit release targets
+                # are handled separately by the updater.
+                current_semver = re.fullmatch(
+                    r"v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?"
+                    r"(?:\+[0-9A-Za-z.-]+)?",
+                    str(current_version or "").strip(),
+                )
+                stable_semver = re.fullmatch(
+                    r"v?(\d+)\.(\d+)\.(\d+)(?:\+[0-9A-Za-z.-]+)?",
+                    str(latest_release_version or "").strip(),
+                )
+                if current_semver and stable_semver:
+                    current_base = tuple(map(int, current_semver.group(1, 2, 3)))
+                    latest_base = tuple(map(int, stable_semver.group(1, 2, 3)))
+                    if current_base > latest_base or (
+                        current_base == latest_base and not current_semver.group(4)
+                    ):
+                        return False, {
+                            "message": "Installed frontend is current or ahead of the latest stable release",
+                            "current_version": current_version,
+                            "latest_version": latest_release_version,
+                            "releases_behind": 0,
+                        }
             if key == "dumb_api_service" and re.match(
                 r"^v?\d+(?:\.\d+){1,3}-dev\.\d+$",
                 str(current_version or "").strip(),

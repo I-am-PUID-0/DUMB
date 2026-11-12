@@ -183,6 +183,33 @@ class APIStateHelperTests(unittest.TestCase):
             restarted.get_update_status("DUMB API")["available_version"],
         )
 
+    def test_project_update_status_retains_configured_source_evidence(self):
+        state = self._state()
+        state._is_project_update_process = lambda name: True
+        state._persist_project_update_status(
+            "DUMB Frontend",
+            {
+                "process_name": "DUMB Frontend",
+                "status": "update_available",
+                "current_version": "dev-abcdef12",
+                "available_version": "dev-fedcba98",
+                "configured_target_kind": "branch",
+                "configured_target_installed": False,
+                "unrelated_secret": "must not persist",
+            },
+        )
+        retained = state._update_notices["project_statuses"]["dumbfrontend"]
+        self.assertEqual("branch", retained["configured_target_kind"])
+        self.assertIs(False, retained["configured_target_installed"])
+        self.assertNotIn("unrelated_secret", retained)
+        restarted = self._state()
+        restarted._update_notices["project_statuses"] = {"dumbfrontend": retained}
+        restarted._restore_project_update_statuses()
+        self.assertEqual(
+            "branch",
+            restarted.get_update_status("DUMB Frontend")["configured_target_kind"],
+        )
+
     def test_failed_project_recheck_keeps_known_available_notice(self):
         state = self._state()
         state.set_update_status(

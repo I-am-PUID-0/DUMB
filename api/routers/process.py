@@ -2875,6 +2875,8 @@ def _build_update_notice_entry(status: dict, process_entry: dict | None = None) 
         "previous_version": status.get("previous_version"),
         "available_version": available_version,
         "releases_behind": status.get("releases_behind"),
+        "configured_target_kind": status.get("configured_target_kind"),
+        "configured_target_installed": status.get("configured_target_installed"),
         "checked_at": status.get("checked_at"),
         "last_check_error": status.get("last_check_error"),
         "last_check_failed_at": status.get("last_check_failed_at"),
