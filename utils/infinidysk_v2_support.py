@@ -38,6 +38,7 @@ def versioned_capabilities(version):
         "infinidysk_v2_postgres": supported,
         "infinidysk_v2_low_space_migration": supported,
         "infinidysk_v2_reviewed_skips": supported,
+        "infinidysk_v2_cancel": supported,
         "infinidysk_v2_rclone_optimizer": False,
         "infinidysk_v2_minimum_api_version": API_MINIMUM,
         "infinidysk_v2_mount_backends": ["rclone", "fuse"],

@@ -3,6 +3,7 @@
 import os
 from pathlib import Path
 import sqlite3
+import threading
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -133,6 +134,16 @@ class LowSpacePipelineTests(unittest.TestCase):
                 return self
 
             def wait_import(self, migrate, progress):
+                if getattr(owner, "native_started", None) is not None:
+                    (self.path / "partial-native-output").write_text(
+                        "disposable v2 output"
+                    )
+                    owner.native_started.set()
+                    if not owner.native_release.wait(timeout=5):
+                        raise TimeoutError(
+                            "native fixture cancellation was not released"
+                        )
+                    options["check_cancel"]()
                 with sqlite3.connect(self.path / "infinidysk.sqlite") as database:
                     database.executescript(
                         "CREATE TABLE items(id BLOB,name TEXT,kind INTEGER);"
@@ -228,6 +239,31 @@ class LowSpacePipelineTests(unittest.TestCase):
             original, tree_fingerprint(self.source, scratch_root=self.fixture.root)
         )
         self.assertTrue(list(self.archive.rglob("*.tar")))
+
+    def test_cancelled_native_import_restores_reclaimed_v1_from_verified_archive(self):
+        self.native_started = threading.Event()
+        self.native_release = threading.Event()
+        self.addCleanup(self.native_release.set)
+        original = tree_fingerprint(self.source, scratch_root=self.fixture.root)
+        _, request = self.preview()
+        response = self.manager.rehearse(request)
+        self.assertTrue(self.native_started.wait(timeout=5))
+        self.assertFalse(self.source.exists())
+        job = self.manager.get_job(response["job"]["job_id"])["job"]
+        self.manager.cancel(
+            {"job_id": job["job_id"], "confirmation": job["cancel_confirmation_text"]}
+        )
+        self.native_release.set()
+        restored = self.wait(response)
+        self.assertEqual("cancelled", restored["status"], restored)
+        self.assertTrue(restored["result"]["source_restored"])
+        self.assertFalse(self.manager.has_blocking_job())
+        self.assertEqual(
+            original, tree_fingerprint(self.source, scratch_root=self.fixture.root)
+        )
+        self.assertFalse(self.native_candidates[-1].exists())
+        self.assertTrue(list(self.archive.rglob("*.tar")))
+        self.assertEqual("1", self.config.config["infinidysk"]["runtime_generation"])
 
     def test_provider_required_skip_keeps_diagnostics_and_restores_v1_archive(self):
         self.bad_report = True

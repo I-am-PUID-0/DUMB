@@ -64,6 +64,10 @@ class InfiniDyskV2MigrationError(RuntimeError):
     """A refused or interrupted guarded major-version operation."""
 
 
+class InfiniDyskV2Cancelled(InfiniDyskV2MigrationError):
+    """Cooperative cancellation at an owned migration checkpoint."""
+
+
 def _digest(value):
     return hashlib.sha256(
         json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
@@ -247,6 +251,7 @@ class InfiniDyskV2MigrationManager:
         self._thread = None
         self._active_id = None
         self._rollback_active = False
+        self._cancel_requested = set()
         self._cleanup = None
 
     def configure(
@@ -275,27 +280,38 @@ class InfiniDyskV2MigrationManager:
         return path
 
     def _write(self, path, payload):
-        self._directory(path.parent)
-        raw = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
-        if len(raw) > MAX_STATE_BYTES:
-            raise InfiniDyskV2MigrationError(
-                "Migration state exceeds its supported bound."
-            )
-        temporary = path.parent / f".{path.name}.{secrets.token_hex(8)}.tmp"
-        try:
-            descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-            with os.fdopen(descriptor, "wb") as handle:
-                handle.write(raw)
-                handle.flush()
-                os.fsync(handle.fileno())
-            os.replace(temporary, path)
-            directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+        with self._lock:
+            path = Path(path)
+            if (
+                path.parent == self.state_root / "jobs"
+                and payload.get("job_id") in self._cancel_requested
+            ):
+                # A report/recovery checkpoint may hold an older in-memory job.
+                # Never erase a cancellation already accepted by the API.
+                payload["cancel_requested"] = True
+            self._directory(path.parent)
+            raw = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+            if len(raw) > MAX_STATE_BYTES:
+                raise InfiniDyskV2MigrationError(
+                    "Migration state exceeds its supported bound."
+                )
+            temporary = path.parent / f".{path.name}.{secrets.token_hex(8)}.tmp"
             try:
-                os.fsync(directory)
+                descriptor = os.open(
+                    temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600
+                )
+                with os.fdopen(descriptor, "wb") as handle:
+                    handle.write(raw)
+                    handle.flush()
+                    os.fsync(handle.fileno())
+                os.replace(temporary, path)
+                directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+                try:
+                    os.fsync(directory)
+                finally:
+                    os.close(directory)
             finally:
-                os.close(directory)
-        finally:
-            temporary.unlink(missing_ok=True)
+                temporary.unlink(missing_ok=True)
 
     def _read(self, path):
         try:
@@ -365,6 +381,15 @@ class InfiniDyskV2MigrationManager:
         if not job:
             return None
         state = self._effective_status(job)
+        cancel_requested = bool(
+            job.get("cancel_requested") or job.get("job_id") in self._cancel_requested
+        )
+        can_cancel = bool(
+            state in ACTIVE
+            and state != "rolling_back"
+            and not self._rollback_active
+            and not cancel_requested
+        )
         rollback = bool(
             state in RECOVERY
             or (
@@ -397,12 +422,21 @@ class InfiniDyskV2MigrationManager:
                 "plan_fingerprint",
                 "result",
                 "error",
+                "import_progress",
+                "preview_expires_at",
             )
         } | {
             "status": state,
             "state": state,
             "can_rollback": rollback,
-            "actions": {"rollback": rollback, "cleanup": cleanup["can_cleanup"]},
+            "can_cancel": can_cancel,
+            "cancel_requested": cancel_requested,
+            "cancel_confirmation_text": f"CANCEL INFINIDYSK V2 {job['job_id']}",
+            "actions": {
+                "rollback": rollback,
+                "cancel": can_cancel,
+                "cleanup": cleanup["can_cleanup"],
+            },
             "rollback_confirmation_text": f"ROLLBACK INFINIDYSK V2 {job['job_id']}",
             **cleanup,
         }
@@ -1053,7 +1087,12 @@ class InfiniDyskV2MigrationManager:
                 self._jobs(),
                 key=lambda item: item.get("created_at_ns", item.get("created_at", 0)),
             )
-            latest = self._public_job(jobs[-1]) if jobs else None
+            blocking = [
+                job for job in jobs if self._effective_status(job) in ACTIVE | RECOVERY
+            ]
+            # A newer finished attempt must never hide older recovery evidence.
+            selected = blocking[0] if blocking else (jobs[-1] if jobs else None)
+            latest = self._public_job(selected)
             inventory = self._inventory(config, service)
             current_mount = (
                 inventory["mounts"][0]["path"]
@@ -1103,6 +1142,7 @@ class InfiniDyskV2MigrationManager:
                 },
                 "supported_mount_backends": ["rclone", "fuse"],
                 "job": latest,
+                "blocking_job_count": len(blocking),
                 "eligibility": {"ready": not blockers, "blockers": blockers},
             }
 
@@ -1407,7 +1447,10 @@ class InfiniDyskV2MigrationManager:
 
     def _progress(self, job, stage, message=None, **detail):
         with self._lock:
+            self._check_cancel(job)
             job.setdefault("execution", {}).update(copy.deepcopy(detail))
+            if "import_progress" in detail:
+                job["import_progress"] = copy.deepcopy(detail["import_progress"])
             job.update(
                 status="running",
                 stage=str(stage),
@@ -1415,6 +1458,56 @@ class InfiniDyskV2MigrationManager:
                 updated_at=int(time.time()),
             )
             self._write(self._job_path(job["job_id"]), job)
+
+    def _check_cancel(self, job):
+        with self._lock:
+            if (
+                job["job_id"] in self._cancel_requested
+                and job.get("status") != "rolling_back"
+                and not self._rollback_active
+            ):
+                job["cancel_requested"] = True
+                raise InfiniDyskV2Cancelled(
+                    "Cancellation requested; stop the owned importer and restore v1."
+                )
+
+    def _recovery_progress(self, job, stage, message=None, **detail):
+        # Cancellation must not interrupt the recovery that it requested.
+        with self._lock:
+            job.setdefault("execution", {}).update(copy.deepcopy(detail))
+            job.update(
+                status="rolling_back",
+                stage=str(stage),
+                message=str(message or "Restoring the retained v1 service.")[:1000],
+                updated_at=int(time.time()),
+            )
+            self._write(self._job_path(job["job_id"]), job)
+
+    def cancel(self, request):
+        with INFINIDYSK_MIGRATION_ADMISSION_LOCK, self._lock:
+            job = self._read(self._job_path(request.get("job_id")))
+            if (
+                not job
+                or request.get("confirmation")
+                != f"CANCEL INFINIDYSK V2 {job['job_id']}"
+            ):
+                raise InfiniDyskV2MigrationError(
+                    "Confirm the exact running major migration to cancel."
+                )
+            if job.get("cancel_requested"):
+                return {"job": self._public_job(job)}
+            if not self._public_job(job)["can_cancel"]:
+                raise InfiniDyskV2MigrationError(
+                    "This migration is not cancellable. Use its retained rollback when recovery is required."
+                )
+            job.update(
+                cancel_requested=True,
+                message="Cancellation requested. Waiting for the owned worker to stop and restore v1; recovery remains protected.",
+                updated_at=int(time.time()),
+            )
+            self._write(self._job_path(job["job_id"]), job)
+            self._cancel_requested.add(job["job_id"])
+            return {"job": self._public_job(job)}
 
     def _assert_stopped(self, plan):
         if self.process_handler is None:
@@ -1994,6 +2087,7 @@ class InfiniDyskV2MigrationManager:
 
     def _assert_job_owner(self, job):
         with self._lock:
+            self._check_cancel(job)
             if (
                 self._active_id != job["job_id"]
                 or job.get("worker_id") != self._worker_id
@@ -2185,6 +2279,7 @@ class InfiniDyskV2MigrationManager:
             lambda prepared_service=None: self._activate_config(job, prepared_service)
         )
         workspace["restore_config"] = lambda: self._restore_config(job)
+        workspace["check_cancel"] = lambda: self._check_cancel(job)
         return workspace
 
     def _restore_reused_source(self, job, assert_unmounted):
@@ -2303,8 +2398,8 @@ class InfiniDyskV2MigrationManager:
     def _run(self, job):
         update_lock = getattr(self.updater, "updating", None)
         acquired = update_lock is not None and update_lock.acquire(blocking=False)
-        workspace = self._workspace(job)
         try:
+            workspace = self._workspace(job)
             if not acquired:
                 raise InfiniDyskV2MigrationError(
                     "A service update already owns lifecycle admission."
@@ -2327,6 +2422,7 @@ class InfiniDyskV2MigrationManager:
                         job, stage, message, **detail
                     ),
                 )
+            self._check_cancel(job)
             self._validate_receipt(job, receipt)
             if not job.get("accepted_import"):
                 raise InfiniDyskV2MigrationError(
@@ -2357,6 +2453,9 @@ class InfiniDyskV2MigrationManager:
                 saved = self._read(Path(job["preview_record"]))
                 if saved:
                     saved["plan"] = current
+                    # A long, verified rehearsal must leave time to review cutover.
+                    saved["expires_at"] = int(time.time()) + PREVIEW_TTL
+                    job["preview_expires_at"] = saved["expires_at"]
                     self._write(Path(job["preview_record"]), saved)
                 state = "rehearsed"
             else:
@@ -2368,26 +2467,42 @@ class InfiniDyskV2MigrationManager:
                     )
                 state = "completed"
             self._write(Path(workspace["receipt_path"]), receipt)
-            job.update(
-                status=state,
-                stage=state,
-                message=(
-                    "Contained rehearsal verified; v1 is retained."
-                    if state == "rehearsed"
-                    else "Generation 2 cutover verified; retained v1 rollback is available."
-                ),
-                result={
-                    "validated": True,
-                    "execution_verified": True,
-                    "plan_fingerprint": job["plan_fingerprint"],
-                    "import_strategy": "preserve",
-                },
-            )
+            with self._lock:
+                self._check_cancel(job)
+                job.update(
+                    status=state,
+                    stage=state,
+                    message=(
+                        "Contained rehearsal verified; v1 is retained."
+                        if state == "rehearsed"
+                        else "Generation 2 cutover verified; retained v1 rollback is available."
+                    ),
+                    result={
+                        "validated": True,
+                        "execution_verified": True,
+                        "plan_fingerprint": job["plan_fingerprint"],
+                        "import_strategy": "preserve",
+                    },
+                )
+                self._write(self._job_path(job["job_id"]), job)
+                self._active_id = None
+                self._cancel_requested.discard(job["job_id"])
+                # Publish completion and release admission in the same lane.
+                update_lock.release()
+                acquired = False
         except Exception as error:
             restored = False
             recovery_error = None
-            if acquired:
+            cancelled = isinstance(error, InfiniDyskV2Cancelled)
+            if cancelled:
+                job["cancel_requested"] = True
+            if acquired and job.get("execution_started"):
                 try:
+                    self._recovery_progress(
+                        job,
+                        "rolling_back",
+                        "Stopping native writers and restoring retained v1 state.",
+                    )
                     recovery_job = copy.deepcopy(job)
                     recovery_job["restore_config"] = lambda: self._restore_config(job)
                     recovery_job["restore_source"] = (
@@ -2399,7 +2514,10 @@ class InfiniDyskV2MigrationManager:
 
                     with v2_migration_owner("major"):
                         recovery = self.executor.rollback(
-                            recovery_job, lambda *args, **kwargs: None
+                            recovery_job,
+                            lambda stage, message=None, **detail: self._recovery_progress(
+                                job, stage, message, **detail
+                            ),
                         )
                     restored = (
                         isinstance(recovery, dict)
@@ -2409,9 +2527,11 @@ class InfiniDyskV2MigrationManager:
                 except Exception as recovery_failure:
                     recovery_error = self._error(recovery_failure, job["plan"])
                     restored = False
+            elif cancelled and not job.get("execution_started"):
+                restored = True
             job.update(
                 status=(
-                    "failed_restored"
+                    ("cancelled" if cancelled else "failed_restored")
                     if restored
                     else (
                         "recovery_required"
@@ -2419,8 +2539,12 @@ class InfiniDyskV2MigrationManager:
                         else "failed"
                     )
                 ),
-                stage="failed",
-                message="Migration did not pass acceptance. "
+                stage="cancelled" if cancelled and restored else "failed",
+                message=(
+                    "Migration cancelled. "
+                    if cancelled
+                    else "Migration did not pass acceptance. "
+                )
                 + (
                     "Original v1 service was restored."
                     if restored
@@ -2439,14 +2563,18 @@ class InfiniDyskV2MigrationManager:
                 },
             )
         finally:
-            try:
-                with self._lock:
-                    job["updated_at"] = int(time.time())
-                    self._write(self._job_path(job["job_id"]), job)
-                    self._active_id = None
-            finally:
-                if acquired:
-                    update_lock.release()
+            with self._lock:
+                try:
+                    # A completed worker must not overwrite a later rollback or
+                    # clear a newer worker's ownership after releasing its lane.
+                    if self._active_id == job["job_id"]:
+                        job["updated_at"] = int(time.time())
+                        self._write(self._job_path(job["job_id"]), job)
+                        self._active_id = None
+                        self._cancel_requested.discard(job["job_id"])
+                finally:
+                    if acquired:
+                        update_lock.release()
 
     def rollback(self, request):
         with INFINIDYSK_MIGRATION_ADMISSION_LOCK, self._lock:
@@ -2485,7 +2613,7 @@ class InfiniDyskV2MigrationManager:
             with v2_migration_owner("major"):
                 receipt = self.executor.rollback(
                     private,
-                    lambda stage, message=None, **detail: self._progress(
+                    lambda stage, message=None, **detail: self._recovery_progress(
                         job, stage, message, **detail
                     ),
                 )

@@ -414,6 +414,111 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
         self.assertTrue(replacement.has_blocking_job())
         self.assertTrue(replacement.has_recovery_pending_job())
 
+    def test_successful_long_rehearsal_renews_only_its_revalidated_preview(self):
+        self.executor.gate = threading.Event()
+        preview, request = self.preview_request()
+        response = self.manager.rehearse(request)
+        self.assertTrue(self.executor.started.wait(timeout=1))
+        with patch(
+            "utils.infinidysk_v2_migration.time.time",
+            return_value=preview["expires_at"] + 60,
+        ):
+            self.executor.gate.set()
+            job = self.wait(response)
+        self.assertEqual("rehearsed", job["status"], job)
+        self.assertGreater(job["preview_expires_at"], preview["expires_at"])
+        private = self.manager._read(self.manager._job_path(job["job_id"]))
+        saved = self.manager._read(Path(private["preview_record"]))
+        self.assertEqual(job["preview_expires_at"], saved["expires_at"])
+        self.assertEqual(preview["plan_fingerprint"], saved["plan"]["plan_fingerprint"])
+
+    def test_cancel_waits_for_owned_worker_then_restores_and_releases_admission(self):
+        self.executor.gate = threading.Event()
+        _, request = self.preview_request()
+        response = self.manager.rehearse(request)
+        self.assertTrue(self.executor.started.wait(timeout=1))
+        job = self.manager.get_job(response["job"]["job_id"])["job"]
+        self.assertTrue(job["can_cancel"])
+        self.assertFalse(job["can_rollback"])
+        with self.assertRaisesRegex(InfiniDyskV2MigrationError, "exact running"):
+            self.manager.cancel({"job_id": job["job_id"], "confirmation": "wrong"})
+        cancel = {
+            "job_id": job["job_id"],
+            "confirmation": job["cancel_confirmation_text"],
+        }
+        pending = self.manager.cancel(cancel)["job"]
+        self.assertTrue(pending["cancel_requested"])
+        self.assertFalse(pending["can_cancel"])
+        self.assertTrue(self.manager.has_blocking_job())
+        self.assertTrue(self.manager.cancel(cancel)["job"]["cancel_requested"])
+        self.assertFalse(self.updater.updating.acquire(blocking=False))
+        self.executor.gate.set()
+        finished = self.wait(response)
+        self.assertEqual("cancelled", finished["status"], finished)
+        self.assertTrue(finished["result"]["source_restored"])
+        self.assertFalse(self.manager.has_blocking_job())
+        self.assertEqual(["rehearse", "rollback"], self.executor.calls)
+        self.assertTrue(self.updater.updating.acquire(blocking=False))
+        self.updater.updating.release()
+        with sqlite3.connect(self.source / "db.sqlite") as database:
+            self.assertEqual(
+                database.execute("SELECT Value FROM OriginalData").fetchone()[0],
+                "original",
+            )
+
+    def test_cancel_recovery_failure_keeps_retained_rollback_available(self):
+        self.executor.gate = threading.Event()
+        self.executor.fail_recovery = True
+        _, request = self.preview_request()
+        response = self.manager.rehearse(request)
+        self.assertTrue(self.executor.started.wait(timeout=1))
+        job = self.manager.get_job(response["job"]["job_id"])["job"]
+        self.manager.cancel(
+            {"job_id": job["job_id"], "confirmation": job["cancel_confirmation_text"]}
+        )
+        self.executor.gate.set()
+        finished = self.wait(response)
+        self.assertEqual("recovery_required", finished["status"], finished)
+        self.assertTrue(finished["can_rollback"])
+        self.assertTrue(finished["cancel_requested"])
+        self.assertTrue(self.manager.has_recovery_pending_job())
+        self.assertFalse(finished["can_cancel"])
+
+    def test_status_prioritizes_older_recovery_over_newer_finished_job(self):
+        self.executor.skipped = 1
+        self.executor.fail_recovery = True
+        _, request = self.preview_request()
+        older = self.wait(self.manager.rehearse(request))
+        private = self.manager._read(self.manager._job_path(older["job_id"]))
+        newer = copy.deepcopy(private)
+        newer.update(
+            job_id="f" * 32, status="failed", created_at_ns=private["created_at_ns"] + 1
+        )
+        self.manager._write(self.manager._job_path(newer["job_id"]), newer)
+        status = self.manager.status()
+        self.assertEqual(older["job_id"], status["job"]["job_id"])
+        self.assertEqual(1, status["blocking_job_count"])
+        self.assertTrue(status["job"]["can_rollback"])
+
+    def test_interrupted_worker_offers_rollback_instead_of_cancellation(self):
+        _, _, job = self.rehearsal()
+        private = self.manager._read(self.manager._job_path(job["job_id"]))
+        private.update(status="running", stage="importing")
+        self.manager._write(self.manager._job_path(job["job_id"]), private)
+        replacement = self.new_manager()
+        self.managers.append(replacement)
+        public = replacement.status()["job"]
+        self.assertEqual("interrupted", public["status"])
+        self.assertTrue(public["can_rollback"])
+        self.assertFalse(public["can_cancel"])
+        with self.assertRaisesRegex(InfiniDyskV2MigrationError, "not cancellable"):
+            replacement.cancel(
+                {
+                    "job_id": public["job_id"],
+                    "confirmation": public["cancel_confirmation_text"],
+                }
+            )
+
     def test_fresh_install_cannot_discard_existing_v1_data(self):
         result = self.manager.preview({"mode": "fresh"})
         self.assertFalse(result["ready"])
