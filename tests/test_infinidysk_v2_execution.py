@@ -624,3 +624,138 @@ class ImportInventoryTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NativeImportWatchdogTests(unittest.TestCase):
+    def candidate(self, root):
+        value = object.__new__(NativeCandidate)
+        value.timeout = 1800
+        value.check_cancel = Mock()
+        value.record_report = Mock()
+        value.process = SimpleNamespace(pid=987654)
+        proof = root / "proof.json"
+        proof.write_text(
+            json.dumps(
+                {
+                    "pid": 987654,
+                    "landlock_abi": 3,
+                    "external_network": False,
+                    "network_namespace": "native",
+                }
+            )
+        )
+        value.payload = {"proof_path": str(proof)}
+        return value
+
+    def run_wait(self, candidate, states, times):
+        replies = [{"status": 200, "body": state} for state in states]
+        replies.append({"status": 200, "body": {"report": "verified native report"}})
+        if getattr(candidate, "nntp_bridge", None) is not None:
+            replies.append({"status": 200, "body": {"profiles": []}})
+        candidate.probe = Mock(side_effect=replies)
+        progress = Mock()
+        with (
+            patch("utils.infinidysk_v2_execution.time.monotonic", side_effect=times),
+            patch("utils.infinidysk_v2_execution.time.sleep"),
+            patch(
+                "utils.infinidysk_v2_execution.os.readlink",
+                side_effect=lambda path: "native" if "987654" in path else "controller",
+            ),
+        ):
+            report = candidate.wait_import(True, progress)
+        return report, progress
+
+    def test_advancing_import_is_allowed_past_the_old_five_minute_cutoff(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            candidate = self.candidate(Path(temporary))
+            report, progress = self.run_wait(
+                candidate,
+                [
+                    {
+                        "state": "importing",
+                        "progress": {"stage": "files", "processed": 1, "total": 3},
+                    },
+                    {
+                        "state": "importing",
+                        "progress": {"stage": "files", "processed": 2, "total": 3},
+                    },
+                    {
+                        "state": "done",
+                        "progress": {"stage": "done", "processed": 3, "total": 3},
+                    },
+                ],
+                [0, 0, 301, 601],
+            )
+            self.assertEqual("verified native report", report)
+            self.assertEqual(
+                601, progress.call_args.kwargs["import_progress"]["elapsed_seconds"]
+            )
+            self.assertEqual(
+                3, progress.call_args.kwargs["import_progress"]["processed"]
+            )
+
+    def test_watchdog_refuses_a_stalled_import_with_a_specific_recovery_message(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            candidate = self.candidate(Path(temporary))
+            with self.assertRaisesRegex(
+                ContainedImportError, "no progress or provider reads for 1800"
+            ):
+                self.run_wait(
+                    candidate,
+                    [{"state": "importing", "progress": {"stage": "files"}}],
+                    [0, 0, 1801],
+                )
+
+    def test_eta_changes_do_not_count_as_import_progress(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            candidate = self.candidate(Path(temporary))
+            with self.assertRaisesRegex(ContainedImportError, "no progress"):
+                self.run_wait(
+                    candidate,
+                    [
+                        {
+                            "state": "importing",
+                            "progress": {
+                                "stage": "files",
+                                "done": 1,
+                                "eta_seconds": 100,
+                            },
+                        },
+                        {
+                            "state": "importing",
+                            "progress": {
+                                "stage": "files",
+                                "done": 1,
+                                "eta_seconds": 1000,
+                            },
+                        },
+                    ],
+                    [0, 0, 1000, 1801],
+                )
+
+    def test_provider_traffic_keeps_long_running_file_recovery_alive(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            candidate = self.candidate(Path(temporary))
+            candidate.nntp_bridge = SimpleNamespace(
+                last_activity=1899, stats={"active_connections": 1, "commands": 10}
+            )
+            report, _ = self.run_wait(
+                candidate,
+                [
+                    {"state": "importing", "progress": {"stage": "files"}},
+                    {"state": "done", "progress": {"stage": "done"}},
+                ],
+                [0, 0, 1900],
+            )
+            self.assertEqual("verified native report", report)
+
+    def test_cancellation_is_checked_before_another_native_probe(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            candidate = self.candidate(Path(temporary))
+            candidate.check_cancel.side_effect = ContainedImportError(
+                "cancel checkpoint"
+            )
+            candidate.probe = Mock()
+            with self.assertRaisesRegex(ContainedImportError, "cancel checkpoint"):
+                candidate.wait_import(True, Mock())
+            candidate.probe.assert_not_called()

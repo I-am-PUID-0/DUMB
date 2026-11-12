@@ -113,6 +113,7 @@ def probe(payload, method, path):
     if method != "GET" or path not in {
         "/api/v1/upgrade/status",
         "/api/v1/upgrade/report",
+        "/api/v1/catalog",
         "/healthz",
     }:
         raise ValueError("Unsupported contained probe")
@@ -199,6 +200,13 @@ def main():
         "TMPDIR": str(temporary),
         **payload["environment"],
     }
+    if payload.get("nntp_bridge"):
+        # This packaged helper is trusted code. Import before chdir-dependent
+        # resolution, retaining the same private namespace and process group.
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+        from utils.infinidysk_v2_nntp import run_contained_native
+
+        raise SystemExit(run_contained_native(payload, environment))
     os.execve(payload["binary"], [payload["binary"]], environment)
 
 

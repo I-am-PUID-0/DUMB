@@ -119,7 +119,9 @@ class LowSpacePipelineTests(unittest.TestCase):
             self.processes.pop(name, None)
             self.calls.append(("stop", name))
 
-    def native(self, service, candidate, private, uid, gid, timezone, legacy_env):
+    def native(
+        self, service, candidate, private, uid, gid, timezone, legacy_env, **options
+    ):
         owner = self
 
         class Native:

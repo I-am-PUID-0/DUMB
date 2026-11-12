@@ -29,6 +29,7 @@ from utils.infinidysk_v2_runtime import (
 )
 from utils.private_files import atomic_write_private_text
 from utils.infinidysk_v2_rehearsal_cleanup import discard_rehearsal_candidate
+from utils.infinidysk_v2_nntp import NntpBridge, NntpBridgeError, read_source_providers
 from utils.infinidysk_v2_pg_snapshot import (
     InfiniDyskV2PostgresSnapshotError,
     create_postgres_snapshot,
@@ -118,7 +119,9 @@ class NativeCandidate:
         timezone,
         legacy_env,
         *,
-        timeout=300,
+        timeout=30 * 60,
+        check_cancel=None,
+        record_report=None,
     ):
         self.service, self.candidate, self.private = (
             service,
@@ -126,6 +129,8 @@ class NativeCandidate:
             Path(private),
         )
         self.uid, self.gid, self.timeout = uid, gid, timeout
+        self.check_cancel = check_cancel or (lambda: None)
+        self.record_report = record_report or (lambda *args: None)
         self.process = None
         self.stopped = False
         self.output = None
@@ -134,6 +139,13 @@ class NativeCandidate:
         self.temporary = self.candidate / ".dumb-import-tmp"
         self.temporary.mkdir(mode=0o700)
         os.chown(self.temporary, uid, gid)
+        self.nntp_bridge = None
+        self.native_catalog = None
+        database = self.candidate / "db.sqlite"
+        if database.is_file():
+            providers = read_source_providers(database, legacy_env)
+            if providers:
+                self.nntp_bridge = NntpBridge(providers, self.temporary, uid, gid)
         environment = build_v2_environment(service, uid=uid, gid=gid)
         environment.update(
             {
@@ -173,11 +185,14 @@ class NativeCandidate:
         }
 
     def __enter__(self):
-        atomic_write_private_text(self.payload_path, json.dumps(self.payload))
-        path = self.private / "candidate.log"
-        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        self.output = os.fdopen(descriptor, "wb")
         try:
+            if self.nntp_bridge is not None:
+                self.nntp_bridge.start()
+                self.payload["nntp_bridge"] = self.nntp_bridge.payload
+            atomic_write_private_text(self.payload_path, json.dumps(self.payload))
+            path = self.private / "candidate.log"
+            descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            self.output = os.fdopen(descriptor, "wb")
             self.process = subprocess.Popen(
                 namespace_command(
                     self.uid,
@@ -194,8 +209,11 @@ class NativeCandidate:
             )
             return self
         except BaseException:
-            self.output.close()
+            if self.output is not None:
+                self.output.close()
             self.payload_path.unlink(missing_ok=True)
+            if self.nntp_bridge is not None:
+                self.nntp_bridge.close()
             raise
 
     def probe(self, path):
@@ -224,9 +242,21 @@ class NativeCandidate:
         return json.loads(result.stdout)
 
     def wait_import(self, migrate, progress):
-        deadline = time.monotonic() + self.timeout
-        last = None
-        while time.monotonic() < deadline:
+        started = time.monotonic()
+        last_activity = started
+        last_state = None
+        last_published = float("-inf")
+        while True:
+            self.check_cancel()
+            now = time.monotonic()
+            bridge = getattr(self, "nntp_bridge", None)
+            activity = getattr(bridge, "last_activity", None)
+            if isinstance(activity, (int, float)) and activity <= now:
+                last_activity = max(last_activity, activity)
+            if now - last_activity >= self.timeout:
+                raise ContainedImportError(
+                    f"The contained import made no progress or provider reads for {self.timeout} seconds. Cancel or review the retained job; v1 recovery remains protected."
+                )
             reply = self.probe("/api/v1/upgrade/status")
             if reply and reply["status"] == 200:
                 state = reply["body"]
@@ -234,13 +264,55 @@ class NativeCandidate:
                     raise ContainedImportError(
                         "The isolated native import failed; provider access may be required. No original data was changed."
                     )
-                stage = (state.get("progress") or {}).get("stage")
-                if stage != last:
+                native_progress = state.get("progress") or {}
+                signature = json.dumps(
+                    {
+                        "state": state.get("state"),
+                        "progress": {
+                            key: native_progress.get(key)
+                            for key in (
+                                "stage",
+                                "done",
+                                "total",
+                                "skipped",
+                                "processed",
+                                "files_done",
+                                "files_total",
+                            )
+                        },
+                    },
+                    sort_keys=True,
+                )
+                changed = signature != last_state
+                if changed:
+                    last_activity = now
+                    last_state = signature
+                stage = str(
+                    native_progress.get("stage") or state.get("state") or "starting"
+                )
+                if not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_-]{0,63}", stage):
+                    stage = "importing"
+                if changed or now - last_published >= 2:
+                    safe = {"stage": stage, "elapsed_seconds": int(now - started)}
+                    for public, alternatives in (
+                        ("processed", ("processed", "done", "current", "files_done")),
+                        ("total", ("total", "files_total")),
+                    ):
+                        for key in alternatives:
+                            value = native_progress.get(key)
+                            if type(value) is int and 0 <= value <= 2**63 - 1:
+                                safe[public] = value
+                                break
+                    if bridge is not None:
+                        stats = bridge.stats
+                        safe["provider_connections"] = stats["active_connections"]
+                        safe["provider_requests"] = stats["commands"]
                     progress(
                         "importing",
-                        f"Contained native stage: {stage or state.get('state', 'starting')}",
+                        f"Contained native stage: {stage}",
+                        import_progress=safe,
                     )
-                    last = stage
+                    last_published = now
                 if state.get("state") == ("done" if migrate else "none"):
                     proof = json.loads(Path(self.payload["proof_path"]).read_text())
                     actual_namespace = os.readlink(f"/proc/{self.process.pid}/ns/net")
@@ -264,43 +336,53 @@ class NativeCandidate:
                             raise ContainedImportError(
                                 "The authenticated native import report is unavailable."
                             )
+                        self.record_report(report["body"]["report"])
+                        if bridge is not None:
+                            catalog = self.probe("/api/v1/catalog")
+                            if not catalog or catalog["status"] != 200:
+                                raise ContainedImportError(
+                                    "The native provider catalog is unavailable; original provider settings cannot be restored safely."
+                                )
+                            self.native_catalog = catalog["body"]
                         return report["body"]["report"]
                     return ""
             time.sleep(0.25)
-        raise ContainedImportError(
-            "The contained import did not finish within its bound; original v1 data was retained."
-        )
 
     def __exit__(self, *unused):
         try:
+            try:
+                if self.process is not None:
+                    try:
+                        os.killpg(self.process.pid, signal.SIGTERM)
+                    except ProcessLookupError:
+                        pass
+                    try:
+                        self.process.wait(timeout=10)
+                    except subprocess.TimeoutExpired:
+                        os.killpg(self.process.pid, signal.SIGKILL)
+                        self.process.wait(timeout=5)
+                    # Terminate descendants, then prove no writer survived the signal.
+                    try:
+                        os.killpg(self.process.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+            finally:
+                if self.output:
+                    self.output.close()
+                self.payload_path.unlink(missing_ok=True)
             if self.process is not None:
-                try:
-                    os.killpg(self.process.pid, signal.SIGTERM)
-                except ProcessLookupError:
-                    pass
-                try:
-                    self.process.wait(timeout=10)
-                except subprocess.TimeoutExpired:
-                    os.killpg(self.process.pid, signal.SIGKILL)
-                    self.process.wait(timeout=5)
-                # Terminate descendants, then prove no writer survived the signal.
-                try:
-                    os.killpg(self.process.pid, signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
+                deadline = time.monotonic() + 3
+                while _native_group_has_live_members(self.process.pid):
+                    if time.monotonic() >= deadline:
+                        raise ContainedImportError(
+                            "The native candidate still has live writers; its data was retained."
+                        )
+                    time.sleep(0.05)
+                self.stopped = self.process.poll() is not None
         finally:
-            if self.output:
-                self.output.close()
-            self.payload_path.unlink(missing_ok=True)
-        if self.process is not None:
-            deadline = time.monotonic() + 3
-            while _native_group_has_live_members(self.process.pid):
-                if time.monotonic() >= deadline:
-                    raise ContainedImportError(
-                        "The native candidate still has live writers; its data was retained."
-                    )
-                time.sleep(0.05)
-            self.stopped = self.process.poll() is not None
+            bridge = getattr(self, "nntp_bridge", None)
+            if bridge is not None:
+                bridge.close()
 
 
 class InfiniDyskV2Executor:
@@ -369,6 +451,22 @@ class InfiniDyskV2Executor:
             except (OSError, ValueError, subprocess.SubprocessError):
                 blockers.append(
                     "A real private user/network/mount namespace and loopback confinement probe failed; no source was stopped."
+                )
+        if (
+            not blockers
+            and plan.get("mode") == "migrate"
+            and plan["source"].get("provider") == "sqlite"
+        ):
+            try:
+                read_source_providers(
+                    Path(plan["source"]["data_dir"]) / "db.sqlite",
+                    plan["source"]["service"].get("env"),
+                )
+            except NntpBridgeError as error:
+                blockers.append(str(error))
+            except (OSError, sqlite3.Error):
+                blockers.append(
+                    "Captured provider configuration could not be read safely before stopping v1."
                 )
         result = {"blockers": blockers}
         if plan["source"].get("provider") in {"postgres", "postgresql"}:
@@ -518,7 +616,7 @@ class InfiniDyskV2Executor:
         native_auth(service, create=True, uid=uid, gid=gid, allow_v1_import=True)
         progress(
             "rehearsing",
-            "Running the native importer with external network and original writes denied.",
+            "Running the isolated native importer. Only read-only requests to captured NNTP providers are permitted; original library writes and other network access remain denied.",
         )
         with NativeCandidate(
             service,
@@ -531,6 +629,8 @@ class InfiniDyskV2Executor:
                 **(plan["source"]["service"].get("env") or {}),
                 "DATABASE_PROVIDER": "sqlite",
             },
+            check_cancel=workspace.get("check_cancel"),
+            record_report=workspace.get("record_import_report"),
         ) as process:
             child = getattr(process, "process", None)
             if type(getattr(child, "pid", None)) is int:
@@ -540,6 +640,17 @@ class InfiniDyskV2Executor:
                     native_process_group=child.pid,
                 )
             report_text = process.wait_import(plan["mode"] == "migrate", progress)
+        bridge = getattr(process, "nntp_bridge", None)
+        if isinstance(bridge, NntpBridge):
+            bridge.restore_native_providers(
+                candidate / "infinidysk.sqlite",
+                process.native_catalog,
+                native_stopped=process.stopped,
+            )
+        progress(
+            "validating",
+            "Native import finished. Verifying the complete report, database inventory and retained source before acceptance.",
+        )
         record_report = workspace.get("record_import_report", lambda *args: None)
         record_report(report_text)
         temporary = candidate / ".dumb-import-tmp"
@@ -703,6 +814,9 @@ class InfiniDyskV2Executor:
             raise ContainedImportError(
                 "The controller rollback checkpoint is unavailable."
             )
+        progress(
+            "restoring_source", "Restoring the retained v1 configuration and data."
+        )
         restore()
         restore_source = job.get("restore_source")
         if callable(restore_source):
