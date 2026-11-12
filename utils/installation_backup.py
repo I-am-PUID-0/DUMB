@@ -46,6 +46,8 @@ from utils.installation_backup_inventory import (
     verify_cold_postgres,
 )
 
+from utils.installation_backup_limits import paired_workspace_bytes
+
 PROTOCOL = 1
 NAMESPACE = "installation"
 MAX_STATE = 4 * 1024 * 1024
@@ -788,7 +790,22 @@ class InstallationBackupManager:
                     )
         return rows
 
+    @contextmanager
+    def _preview_scan(self, *, blocking=False):
+        if not self._preview_reader.acquire(blocking=blocking):
+            raise InstallationBackupError(
+                "An installation preview or admission is already inspecting managed state; wait for it to finish."
+            )
+        try:
+            yield
+        finally:
+            self._preview_reader.release()
+
     def preview(self, options):
+        with self._preview_scan():
+            return self._backup_preview(options)
+
+    def _backup_preview(self, options):
         blockers, roots, details = [], [], []
         report = {
             "status": "unavailable",
@@ -1044,36 +1061,40 @@ class InstallationBackupManager:
             return {"protocol": PROTOCOL, "job": self._public(job)}
 
     def start(self, request):
+        return self._start_backup(request)
+
+    def _start_backup(self, request, *, scheduled=False):
         replay = self._replay("backup", request)
         if replay is not None:
             return replay
-        try:
-            record = self._validated_request("backup", request)
-        except InstallationBackupError:
+        with self._preview_scan(blocking=True):
+            # A duplicate may have been admitted while this caller waited. It
+            # must return that job without allocating another census ledger.
             replay = self._replay("backup", request)
             if replay is not None:
                 return replay
-            raise
-        # Re-scan capacity and identity, not mutable live content, immediately before admission.
-        plan = record["plan"]
-        if (
-            self.storage.bound_identity(plan["destination"]["destination_id"])
-            != plan["destination"]
-        ):
-            raise InstallationBackupError(
-                "The destination changed; review a new preview."
+            if self.has_blocking_job():
+                raise InstallationBackupError(_BLOCKER)
+            record = self._validated_request("backup", request)
+            plan = record["plan"]
+            if (
+                self.storage.bound_identity(plan["destination"]["destination_id"])
+                != plan["destination"]
+            ):
+                raise InstallationBackupError(
+                    "The destination changed; review a new preview."
+                )
+            report, _ = capacity(
+                plan["roots"],
+                self._workspace("preview"),
+                plan["destination"]["path"],
+                plan["exclusions"],
             )
-        report, _ = capacity(
-            plan["roots"],
-            self._workspace("preview"),
-            plan["destination"]["path"],
-            plan["exclusions"],
-        )
-        if report["status"] != "sufficient":
-            raise InstallationBackupError(
-                "Available space changed; the complete backup is blocked before quiescence."
-            )
-        return self._admit("backup", record)
+            if report["status"] != "sufficient":
+                raise InstallationBackupError(
+                    "Available space changed; the complete backup is blocked before quiescence."
+                )
+            return self._admit("backup", record, scheduled=scheduled)
 
     @staticmethod
     def _pid_alive(pid):
@@ -1727,35 +1748,33 @@ class InstallationBackupManager:
         replay = self._replay("restore", request)
         if replay is not None:
             return replay
-        try:
-            record = self._validated_request("restore", request)
-        except InstallationBackupError:
+        with self._preview_scan(blocking=True):
             replay = self._replay("restore", request)
             if replay is not None:
                 return replay
-            raise
-        plan = record["plan"]
-        for root in plan["roots"]:
-            path = Path(root["path"])
+            if self.has_blocking_job():
+                raise InstallationBackupError(_BLOCKER)
+            record = self._validated_request("restore", request)
+            plan = record["plan"]
+            for root in plan["roots"]:
+                path = Path(root["path"])
+                if (
+                    _mount_binding(path.parent if root["kind"] != "directory" else path)
+                    != plan["bindings"][root["id"]]
+                ):
+                    raise InstallationBackupError(
+                        "A restore filesystem changed; review a new preview."
+                    )
             if (
-                _mount_binding(path.parent if root["kind"] != "directory" else path)
-                != plan["bindings"][root["id"]]
+                self._restore_capacity(
+                    plan["proof"], plan["roots"], self._workspace("restore-preview")
+                )["status"]
+                != "sufficient"
             ):
                 raise InstallationBackupError(
-                    "A restore filesystem changed; review a new preview."
+                    "Restore capacity changed; review a new preview."
                 )
-        if (
-            self._restore_capacity(
-                plan["proof"],
-                plan["roots"],
-                self._workspace("restore-preview"),
-            )["status"]
-            != "sufficient"
-        ):
-            raise InstallationBackupError(
-                "Restore capacity changed; review a new preview."
-            )
-        return self._admit("restore", record)
+            return self._admit("restore", record)
 
     def _restore_capacity(self, proof, roots, scratch):
         groups = {}
@@ -1763,7 +1782,8 @@ class InstallationBackupManager:
             (
                 scratch,
                 "local_verification",
-                proof["logical_bytes"] + 2 * 512 * 1024 * 1024,
+                proof["logical_bytes"]
+                + paired_workspace_bytes(proof.get("ledger_bytes")),
             )
         ]
         for root in roots:
@@ -2146,9 +2166,8 @@ class InstallationBackupManager:
                     "external_state": True,
                 },
             }
-            record = self._validated_request("backup", request)
             self._write(self._state("schedule.json"), previous)
-            self._admit("backup", record, scheduled=True)
+            self._start_backup(request, scheduled=True)
             return
         except (
             InstallationBackupError,

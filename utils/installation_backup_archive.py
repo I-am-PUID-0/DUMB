@@ -9,29 +9,78 @@ import hashlib
 import io
 import json
 import os
+import shutil
 from pathlib import Path, PurePosixPath
 import sqlite3
 import stat
 import tarfile
 import tempfile
+import time
 
 from utils.backup_storage import mount_records, require_local_path
 from utils.infinidysk_v2_archive import _BoundedTarInfo, ArchiveError as _TarSafetyError
 from utils.infinidysk_v2_inventory import (
-    MAX_TREE_DEPTH,
-    MAX_TREE_ENTRIES,
-    MAX_TREE_MANIFEST_BYTES,
     _open_directory,
     _close_directory,
     _content_hash,
     _file_identity,
 )
 
+from utils.installation_backup_limits import (
+    MAX_INSTALLATION_DEPTH,
+    MAX_INSTALLATION_ROOTS,
+    MAX_INSTALLATION_METADATA_BYTES,
+    MAX_INSTALLATION_RECORD_BYTES,
+    SQLITE_PAGE_BYTES,
+    SQLITE_CACHE_KIB,
+    paired_workspace_bytes,
+    safe_ledger_budget,
+)
+
 FORMAT = "dumb-installation-backup"
 SCHEMA = 1
-MAX_METADATA = 4 * 1024 * 1024
-MAX_RECORD = 65536
+MAX_METADATA = MAX_INSTALLATION_METADATA_BYTES
+MAX_RECORD = MAX_INSTALLATION_RECORD_BYTES
 FOOTER = "installation-manifest.jsonl"
+
+# Literal files commonly generated beside managed library links. Video/audio
+# payload files still require a separate media backup; no links are followed.
+LIBRARY_SIDECAR_SUFFIXES = frozenset(
+    {
+        ".strm",
+        ".srt",
+        ".ass",
+        ".ssa",
+        ".vtt",
+        ".sub",
+        ".idx",
+        ".sup",
+        ".smi",
+        ".sami",
+        ".ttml",
+        ".dfxp",
+        ".nfo",
+        ".xml",
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".webp",
+        ".gif",
+        ".bif",
+    }
+)
+
+
+def _unsupported_library_file(path):
+    value = json.dumps(str(path), ensure_ascii=True)
+    if len(value) > 900:
+        value = value[:900] + "... [path truncated]"
+    return (
+        "A managed library link directory contains an unsupported regular file "
+        + value
+        + "; recognized STRM, subtitle, metadata and artwork sidecars are included. "
+        "Media payloads need a separate media backup; no entries were omitted."
+    )
 
 
 class InstallationArchiveError(RuntimeError):
@@ -58,7 +107,7 @@ def safe_member(name):
         )
     if (
         len(name.encode("utf-8", "surrogatepass")) > 16384
-        or len(path.parts) > MAX_TREE_DEPTH + 3
+        or len(path.parts) > MAX_INSTALLATION_DEPTH + 3
     ):
         raise InstallationArchiveError(
             "Archive member path exceeds its resource bound."
@@ -67,24 +116,87 @@ def safe_member(name):
 
 
 @contextmanager
-def manifest(scratch):
+def manifest(scratch, *, max_bytes=None):
     require_local_path(scratch)
-    with tempfile.TemporaryDirectory(
-        prefix=".installation-manifest-", dir=scratch
-    ) as temporary:
-        with closing(sqlite3.connect(Path(temporary) / "entries.sqlite")) as database:
-            database.execute("PRAGMA journal_mode=OFF")
-            database.execute("PRAGMA temp_store=MEMORY")
-            database.execute("PRAGMA cache_size=-2048")
-            database.execute(f"PRAGMA max_page_count={MAX_TREE_MANIFEST_BYTES // 4096}")
-            database.execute(
-                "CREATE TABLE entries (name BLOB PRIMARY KEY, payload BLOB NOT NULL, source BLOB, stamp BLOB, matched INTEGER NOT NULL DEFAULT 0) WITHOUT ROWID"
-            )
-            yield database
+    try:
+        available = safe_ledger_budget(shutil.disk_usage(scratch).free)
+    except ValueError as error:
+        raise InstallationArchiveError(str(error)) from None
+    requested = available if max_bytes is None else max_bytes
+    if type(requested) is not int or requested <= 0:
+        raise InstallationArchiveError("The installation ledger budget is invalid.")
+    budget = min(requested, available)
+    pages = budget // SQLITE_PAGE_BYTES
+    if pages < 2:
+        raise InstallationArchiveError("Insufficient local verification ledger space.")
+    try:
+        with tempfile.TemporaryDirectory(
+            prefix=".installation-manifest-", dir=scratch
+        ) as temporary:
+            with closing(
+                sqlite3.connect(Path(temporary) / "entries.sqlite")
+            ) as database:
+                database.execute(f"PRAGMA page_size={SQLITE_PAGE_BYTES}")
+                database.execute("PRAGMA journal_mode=OFF")
+                database.execute("PRAGMA temp_store=MEMORY")
+                database.execute(f"PRAGMA cache_size=-{SQLITE_CACHE_KIB}")
+                accepted = database.execute(
+                    f"PRAGMA max_page_count={pages}"
+                ).fetchone()[0]
+                budget = accepted * SQLITE_PAGE_BYTES
+                database.execute(
+                    "CREATE TABLE entries (name BLOB PRIMARY KEY, payload BLOB NOT NULL, source BLOB, stamp BLOB, matched INTEGER NOT NULL DEFAULT 0) WITHOUT ROWID"
+                )
+                yield database
+    except sqlite3.Error as error:
+        raise InstallationArchiveError(
+            f"The installation verification ledger could not be completed within {budget:,} bytes of safe local workspace assigned from available local space. No entries were omitted."
+        ) from error
 
 
-def _insert(database, row, source=None, stamp=None):
+def ledger_quota(database):
+    return (
+        database.execute("PRAGMA max_page_count").fetchone()[0]
+        * database.execute("PRAGMA page_size").fetchone()[0]
+    )
+
+
+def ledger_footprint(database):
+    database.commit()
+    return (
+        database.execute("PRAGMA page_count").fetchone()[0]
+        * database.execute("PRAGMA page_size").fetchone()[0]
+    )
+
+
+def reserved_manifest_row(row):
+    return row | {"sha256": "0" * 64} if stat.S_ISREG(row["mode"]) else row
+
+
+def footer_record_bytes(row):
+    amount = len(canonical(reserved_manifest_row(row)))
+    if amount > MAX_RECORD:
+        raise InstallationArchiveError(
+            "An installation manifest record exceeds its supported size."
+        )
+    return amount + 1
+
+
+def archive_entry_bytes(row):
+    # Use the exact producer's PAX encoding for Unicode/raw names, links, uid,
+    # timestamps and large sizes. This reads no payload and retains no members.
+    header = _header(row)
+    encoded = header.tobuf(
+        format=tarfile.PAX_FORMAT, encoding="utf-8", errors="surrogateescape"
+    )
+    return len(encoded) + ((header.size + 511) // 512) * 512
+
+
+def _insert(database, row, source=None, stamp=None, *, reserve_hash=False):
     safe_member(row["name"])
+    footer_record_bytes(row)
+    if reserve_hash:
+        row = reserved_manifest_row(row)
     if len(canonical(row)) > MAX_RECORD:
         raise InstallationArchiveError("An archive record exceeds its bounded size.")
     try:
@@ -97,7 +209,7 @@ def _insert(database, row, source=None, stamp=None):
                 canonical(stamp) if stamp is not None else None,
             ),
         )
-    except (sqlite3.Error, UnicodeError) as error:
+    except (sqlite3.IntegrityError, UnicodeError) as error:
         raise InstallationArchiveError(
             "The bounded archive inventory is full or contains duplicate members."
         ) from error
@@ -141,7 +253,6 @@ def source_rows(root, exclusions=(), *, content=False):
     excluded = {os.path.normpath(str(x)) for x in exclusions}
     nested_mounts = {os.path.normpath(x["path"]) for x in mount_records()}
     stack = []
-    count = 0
     try:
         value = root_path.lstat()
         if root.get("identity") and identity(value) != root["identity"]:
@@ -152,6 +263,12 @@ def source_rows(root, exclusions=(), *, content=False):
             )
         link = os.readlink(root_path) if stat.S_ISLNK(value.st_mode) else None
         first = _row("roots/" + root["id"], value, link)
+        if (
+            root.get("link_only")
+            and stat.S_ISREG(value.st_mode)
+            and root_path.suffix.lower() not in LIBRARY_SIDECAR_SUFFIXES
+        ):
+            raise InstallationArchiveError(_unsupported_library_file(root_path))
         if content and stat.S_ISREG(value.st_mode):
             with open_leaf(root_path) as (parent, leaf):
                 first["sha256"] = _content_hash(leaf, parent, value)
@@ -173,11 +290,6 @@ def source_rows(root, exclusions=(), *, content=False):
                 raise InstallationArchiveError(
                     "A persistent tree contains a nested mount; its coverage must be resolved before backup."
                 )
-            count += 1
-            if count > MAX_TREE_ENTRIES:
-                raise InstallationArchiveError(
-                    "Installation inventory exceeds its bounded work budget; no entries were skipped."
-                )
             value = os.stat(entry.name, dir_fd=descriptor, follow_symlinks=False)
             if os.listxattr(path, follow_symlinks=False):
                 raise InstallationArchiveError(
@@ -193,16 +305,17 @@ def source_rows(root, exclusions=(), *, content=False):
                     else None
                 ),
             )
-            if root.get("link_only") and stat.S_ISREG(value.st_mode):
-                if path.suffix.lower() != ".strm" or value.st_size > 1024 * 1024:
-                    raise InstallationArchiveError(
-                        "A link namespace contains payload files; media is excluded and complete link-only coverage cannot be proved."
-                    )
+            if (
+                root.get("link_only")
+                and stat.S_ISREG(value.st_mode)
+                and path.suffix.lower() not in LIBRARY_SIDECAR_SUFFIXES
+            ):
+                raise InstallationArchiveError(_unsupported_library_file(path))
             if content and stat.S_ISREG(value.st_mode):
                 row["sha256"] = _content_hash(entry.name, descriptor, value)
             yield row, path, list(_file_identity(value))
             if stat.S_ISDIR(value.st_mode):
-                if depth + 1 > MAX_TREE_DEPTH:
+                if depth + 1 > MAX_INSTALLATION_DEPTH:
                     raise InstallationArchiveError(
                         "Installation inventory exceeds its supported directory depth."
                     )
@@ -237,18 +350,20 @@ def open_leaf(path):
 
 
 def inventory(roots, scratch, exclusions=(), *, content=False):
-    entries = size = 0
+    entries = size = footer_bytes = 0
     digest = hashlib.sha256()
     with manifest(scratch) as database:
+        footer_limit = ledger_quota(database)
         for root in roots:
             with closing(source_rows(root, exclusions, content=content)) as rows:
                 for row, source, stamp in rows:
                     entries += 1
-                    if entries > MAX_TREE_ENTRIES:
-                        raise InstallationArchiveError(
-                            "The complete installation entry budget was exceeded."
-                        )
                     size += row["size"]
+                    footer_bytes += footer_record_bytes(row)
+                    if footer_bytes > footer_limit:
+                        raise InstallationArchiveError(
+                            "The complete installation footer exceeds the verification space assigned from current local capacity."
+                        )
                     _insert(database, row, source, stamp)
         for (payload,) in database.execute("SELECT payload FROM entries ORDER BY name"):
             digest.update(payload + b"\n")
@@ -315,17 +430,30 @@ def write_archive(handle, metadata, roots, scratch, exclusions=(), owner_check=N
     if len(canonical(metadata)) > MAX_METADATA:
         raise InstallationArchiveError("Installation metadata exceeds its bound.")
     check = owner_check or (lambda: None)
-    with manifest(scratch) as database:
-        count = 0
+    with manifest(
+        scratch,
+        max_bytes=safe_ledger_budget(shutil.disk_usage(scratch).free, paired=True),
+    ) as database:
+        footer_limit = ledger_quota(database)
+        count = footer_bytes = 0
         for root in roots:
             with closing(source_rows(root, exclusions)) as rows:
                 for row, path, stamp in rows:
                     count += 1
-                    if count > MAX_TREE_ENTRIES:
+                    footer_bytes += footer_record_bytes(row)
+                    if footer_bytes > footer_limit:
                         raise InstallationArchiveError(
-                            "The complete installation entry budget was exceeded."
+                            "The complete installation footer exceeds the verification space assigned from current local capacity."
                         )
-                    _insert(database, row, path, stamp)
+                    _insert(database, row, path, stamp, reserve_hash=True)
+        ledger_bytes = ledger_footprint(database)
+        # The producer keeps this ledger while building the second full content
+        # verification ledger. Recheck remaining local headroom before emission.
+        remaining = paired_workspace_bytes(ledger_bytes) - ledger_bytes
+        if shutil.disk_usage(scratch).free < remaining + (remaining + 9) // 10:
+            raise InstallationArchiveError(
+                "Insufficient local space for the complete second verification ledger."
+            )
         with tarfile.open(
             fileobj=handle,
             mode="w|",
@@ -394,6 +522,10 @@ def write_archive(handle, metadata, roots, scratch, exclusions=(), owner_check=N
             length = database.execute(
                 "SELECT COALESCE(SUM(length(payload)+1),0) FROM entries"
             ).fetchone()[0]
+            if length > footer_limit:
+                raise InstallationArchiveError(
+                    "The complete installation footer exceeds the verification space assigned from current local capacity."
+                )
             _add(
                 archive,
                 {
@@ -468,6 +600,7 @@ def _inspect_archive(handle, scratch, *, extract_root=None, owner_check=None):
     controller_sha256 = {}
     root_ids = set()
     with manifest(scratch) as database:
+        footer_limit = ledger_quota(database)
         with tarfile.open(
             fileobj=handle,
             mode="r|",
@@ -504,7 +637,11 @@ def _inspect_archive(handle, scratch, *, extract_root=None, owner_check=None):
                             "The installation archive format is unsupported."
                         )
                     roots = metadata.get("roots")
-                    if not isinstance(roots, list) or not roots or len(roots) > 256:
+                    if (
+                        not isinstance(roots, list)
+                        or not roots
+                        or len(roots) > MAX_INSTALLATION_ROOTS
+                    ):
                         raise InstallationArchiveError(
                             "Invalid installation root inventory."
                         )
@@ -520,12 +657,16 @@ def _inspect_archive(handle, scratch, *, extract_root=None, owner_check=None):
                         )
                     continue
                 if info.name == FOOTER:
-                    if not info.isreg() or info.size > MAX_TREE_MANIFEST_BYTES:
+                    if not info.isreg() or info.size > footer_limit:
                         raise InstallationArchiveError(
-                            "The installation manifest exceeds its bound."
+                            "The installation manifest exceeds the verification space assigned from current local capacity."
                         )
                     with archive.extractfile(info) as stream:
+                        next_owner_check = 0.0
                         while raw := stream.readline(MAX_RECORD + 2):
+                            if time.monotonic() >= next_owner_check:
+                                check()
+                                next_owner_check = time.monotonic() + 1
                             if len(raw) > MAX_RECORD + 1 or not raw.endswith(b"\n"):
                                 raise InstallationArchiveError(
                                     "Invalid bounded installation manifest record."
@@ -581,10 +722,6 @@ def _inspect_archive(handle, scratch, *, extract_root=None, owner_check=None):
                             "An archive member has an unsafe or absent parent."
                         )
                 count += 1
-                if count > MAX_TREE_ENTRIES:
-                    raise InstallationArchiveError(
-                        "Installation archive exceeds its entry bound."
-                    )
                 logical += row["size"]
                 root_sizes[parts[1]] = root_sizes.get(parts[1], 0) + row["size"]
                 destination = (
@@ -693,6 +830,7 @@ def _inspect_archive(handle, scratch, *, extract_root=None, owner_check=None):
             "entries": count,
             "logical_bytes": logical,
             "root_sizes": root_sizes,
+            "ledger_bytes": ledger_footprint(database),
             "controller_sha256": controller_sha256,
             "fingerprint": digest.hexdigest(),
         }

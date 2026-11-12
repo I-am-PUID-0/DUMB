@@ -1,6 +1,6 @@
 """Disposable complete-state and hostile-input proofs; never use managed live paths."""
 
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 from importlib import import_module
 import io
 import json
@@ -602,6 +602,9 @@ class ManagerTests(unittest.TestCase):
         (unknown / "payload").write_text("never sweep media")
         preview = self.manager.preview({"destination_id": "fixture"})
         self.assertFalse(preview["ready"])
+        self.assertTrue(any(str(unknown) in message for message in preview["blockers"]))
+        self.assertTrue(any("directory" in message for message in preview["blockers"]))
+        self.assertEqual(self.handler.events, [])
         (
             unknown.rmdir()
             if not any(unknown.iterdir())
@@ -1233,6 +1236,89 @@ class ManagerTests(unittest.TestCase):
             self.assertIsNotNone(module.installation_backup_blocker())
             active.unlink()
             self.assertIsNone(module.installation_backup_blocker())
+
+    def test_backup_preview_reader_lane_blocks_and_releases_after_failed_census(self):
+        self.assertTrue(self.manager._preview_reader.acquire(blocking=False))
+        try:
+            with self.assertRaisesRegex(InstallationBackupError, "already inspecting"):
+                self.manager.preview({"destination_id": "fixture"})
+        finally:
+            self.manager._preview_reader.release()
+        with patch(
+            "utils.installation_backup.capacity",
+            side_effect=InstallationArchiveError("fixture ledger quota"),
+        ):
+            preview = self.manager.preview({"destination_id": "fixture"})
+        self.assertFalse(preview["ready"])
+        self.assertEqual(self.handler.events, [])
+        self.assertTrue(self.manager._preview_reader.acquire(blocking=False))
+        self.manager._preview_reader.release()
+
+    def test_admission_reader_lane_waits_before_allocating_another_ledger(self):
+        request = self.backup_request()
+        entered = threading.Event()
+        results, errors = [], []
+        original = self.manager._preview_scan
+
+        @contextmanager
+        def observed_lane(**kwargs):
+            entered.set()
+            with original(**kwargs):
+                yield
+
+        def start():
+            try:
+                results.append(self.manager.start(request))
+            except BaseException as error:
+                errors.append(error)
+
+        self.assertTrue(self.manager._preview_reader.acquire(blocking=False))
+        with patch.object(self.manager, "_preview_scan", observed_lane):
+            thread = threading.Thread(target=start)
+            try:
+                thread.start()
+                self.assertTrue(entered.wait(5))
+                self.assertTrue(thread.is_alive())
+                self.assertIn(request["preview_token"], self.manager._previews)
+                self.assertEqual(self.handler.events, [])
+            finally:
+                self.manager._preview_reader.release()
+                thread.join(timeout=20)
+                self.assertFalse(thread.is_alive())
+                self.join_worker()
+        self.assertEqual(errors, [])
+        self.assertEqual(len(results), 1)
+
+    def test_different_token_is_blocked_before_census_for_an_active_writer(self):
+        first, second = self.backup_request(), self.backup_request()
+        entered, release = threading.Event(), threading.Event()
+        original = self.manager._backup
+
+        def held(identifier):
+            entered.set()
+            self.assertTrue(release.wait(10))
+            return original(identifier)
+
+        with patch.object(self.manager, "_backup", held):
+            try:
+                self.manager.start(first)
+                self.assertTrue(entered.wait(5))
+                with patch(
+                    "utils.installation_backup.capacity",
+                    side_effect=AssertionError(
+                        "No second ledger during an active writer"
+                    ),
+                ):
+                    with self.assertRaisesRegex(
+                        InstallationBackupError, "owns managed state"
+                    ):
+                        self.manager.start(second)
+            finally:
+                release.set()
+                self.join_worker()
+        self.assertIn(second["preview_token"], self.manager._previews)
+        self.assertTrue(self.manager._preview_reader.acquire(blocking=False))
+        self.manager._preview_reader.release()
 
     def test_restore_preview_reader_lane_blocks_duplicate_kernel_io(self):
         self.assertTrue(self.manager._preview_reader.acquire(blocking=False))

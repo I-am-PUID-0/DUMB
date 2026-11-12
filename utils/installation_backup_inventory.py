@@ -2,6 +2,7 @@
 
 from contextlib import closing
 import os
+import json
 from pathlib import Path
 import platform
 import shutil
@@ -14,9 +15,22 @@ from utils.installation_backup_archive import (
     InstallationArchiveError,
     identity,
     source_rows,
+    manifest,
+    _insert,
+    ledger_footprint,
+    ledger_quota,
+    footer_record_bytes,
+    archive_entry_bytes,
 )
 from utils.service_reset import PERSISTENT_DATA_NAMES
-from utils.infinidysk_v2_inventory import MAX_TREE_ENTRIES
+from utils.installation_backup_limits import (
+    MAX_INSTALLATION_ROOTS,
+    MIN_PAIRED_WORKSPACE_BYTES,
+    ARCHIVE_FIXED_OVERHEAD_BYTES,
+    paired_workspace_bytes,
+    safe_ledger_budget,
+    installation_limits,
+)
 from urllib.parse import unquote
 
 PERSISTENT_FIELDS = {
@@ -113,6 +127,48 @@ def _code_version():
     return get_project_version(pyproject_file())
 
 
+def _plex_dbrepair_directories(service):
+    """Plex owns DBRepair's native paths even when scheduled repair is disabled."""
+    settings = service.get("dbrepair")
+    if settings is None:
+        settings = {}
+    if not isinstance(settings, dict):
+        raise InstallationArchiveError(
+            "Plex DBRepair settings must be an object before complete backup."
+        )
+    directories = []
+    # Match setup.py and plex_dbrepair.py, including the literal install default.
+    # work_dir is only a subprocess cwd, not ownership of all its contents.
+    for field, default in (
+        ("install_dir", "/data/dbrepair"),
+        ("databases_path", "/plex/Plex Media Server/Plug-in Support/Databases"),
+    ):
+        value = settings.get(field, default)
+        if (
+            not isinstance(value, str)
+            or not os.path.isabs(value)
+            or "\x00" in value
+            or ".." in Path(value).parts
+        ):
+            raise InstallationArchiveError(
+                f"Plex DBRepair {field} must use an absolute direct path before complete backup."
+            )
+        directories.append(value)
+    return directories
+
+
+def _unclassified_message(path, kind):
+    shown = json.dumps(str(path), ensure_ascii=True)
+    if len(shown) > 900:
+        shown = shown[:900] + "... [path truncated]"
+    return (
+        f"Unclassified state exists under data_root at {shown} ({kind}). "
+        "DUMB cannot identify this path as managed application state; a complete "
+        "installation backup is blocked. Review this path and its owning service "
+        "configuration before retrying."
+    )
+
+
 def _effective_persistence(key, service, data_root):
     """Reuse known native selectors, never crawl arbitrary environment values."""
     from utils.database_health import DatabaseHealthCollector, SQLITE_SERVICE_KEYS
@@ -120,6 +176,8 @@ def _effective_persistence(key, service, data_root):
     env = service.get("env") or {}
     directories = []
     databases = []
+    if key == "plex":
+        directories.extend(_plex_dbrepair_directories(service))
     if key in {"cli_debrid", "cli_battery"}:
         directories.extend(
             env[x] for x in ("USER_CONFIG", "USER_DB_CONTENT") if env.get(x)
@@ -302,7 +360,7 @@ def collect_roots(config, config_path, state_root, storage):
             continue
         row["id"] = f"root_{len(selected):03d}"
         selected.append(row)
-    if not selected or len(selected) > 256:
+    if not selected or len(selected) > MAX_INSTALLATION_ROOTS:
         raise InstallationArchiveError(
             "The complete persistence root inventory exceeds its bound."
         )
@@ -330,39 +388,23 @@ def collect_roots(config, config_path, state_root, storage):
                 or physical in Path(row["path"]).parents
                 for row in selected
             ):
-                raise InstallationArchiveError(
-                    "Unclassified state exists under data_root; assign its managed persistence or media scope before a complete installation backup."
+                mode = child.lstat().st_mode
+                kind = (
+                    "directory"
+                    if stat.S_ISDIR(mode)
+                    else (
+                        "symlink"
+                        if stat.S_ISLNK(mode)
+                        else "file" if stat.S_ISREG(mode) else "special file"
+                    )
                 )
+                raise InstallationArchiveError(_unclassified_message(child, kind))
     return selected, exclusions
 
 
-def capacity(roots, scratch, destination, exclusions=()):
-    entries = logical = 0
-    details = []
-    for root in roots:
-        count = size = 0
-        with closing(
-            source_rows(root, exclusions or root.get("exclusions", ()))
-        ) as rows:
-            for row, _path, _stamp in rows:
-                count += 1
-                if entries + count > MAX_TREE_ENTRIES:
-                    raise InstallationArchiveError(
-                        "The complete installation exceeds the supported total entry budget; no roots were omitted."
-                    )
-                size += row["size"]
-        entries += count
-        logical += size
-        details.append(
-            {k: root[k] for k in ("id", "path", "kind", "roles")}
-            | {"entries": count, "logical_bytes": size}
-        )
+def _capacity_filesystems(allocations):
     groups = {}
-    # SQLite manifests are local. Archive bytes go directly to the selected destination.
-    for path, role, required in [
-        (scratch, "local_verification", 2 * 512 * 1024 * 1024),
-        (destination, "cold_archive", logical + entries * 2048 + 4 * 1024 * 1024),
-    ]:
+    for path, role, required in allocations:
         anchor = Path(path)
         while not anchor.exists():
             anchor = anchor.parent
@@ -375,7 +417,8 @@ def capacity(roots, scratch, destination, exclusions=()):
                 "free_bytes": shutil.disk_usage(anchor).free,
             },
         )
-        group["roles"].append(role)
+        if role not in group["roles"]:
+            group["roles"].append(role)
         group["base_required_bytes"] += required
     rows = []
     for group in groups.values():
@@ -392,6 +435,65 @@ def capacity(roots, scratch, destination, exclusions=()):
                 "sufficient": group["free_bytes"] >= required,
             }
         )
+    return rows
+
+
+def capacity(roots, scratch, destination, exclusions=()):
+    anchor = Path(scratch)
+    while not anchor.exists():
+        anchor = anchor.parent
+    free = shutil.disk_usage(anchor).free
+    minimum = MIN_PAIRED_WORKSPACE_BYTES
+    if free < minimum + (minimum + 9) // 10:
+        # Do not allocate a census ledger when even the legacy minimum pair
+        # cannot fit. The incomplete report cannot authorize a backup.
+        return {
+            "status": "insufficient",
+            "complete": False,
+            "estimated": True,
+            "reserved": False,
+            "source": None,
+            "limits": installation_limits(),
+            "filesystems": _capacity_filesystems(
+                [(scratch, "local_verification", minimum)]
+            ),
+        }, []
+    entries = logical = footer_bytes = tar_bytes = 0
+    details = []
+    with manifest(scratch, max_bytes=safe_ledger_budget(free, paired=True)) as database:
+        quota = ledger_quota(database)
+        for root in roots:
+            count = size = 0
+            with closing(
+                source_rows(root, exclusions or root.get("exclusions", ()))
+            ) as rows:
+                for row, path, stamp in rows:
+                    count += 1
+                    size += row["size"]
+                    footer_bytes += footer_record_bytes(row)
+                    if footer_bytes > quota:
+                        raise InstallationArchiveError(
+                            f"The complete installation manifest needs at least {footer_bytes:,} bytes; current local capacity assigns {quota:,} bytes to its verification ledger. No entries were omitted."
+                        )
+                    tar_bytes += archive_entry_bytes(row)
+                    _insert(database, row, path, stamp, reserve_hash=True)
+            entries += count
+            logical += size
+            details.append(
+                {k: root[k] for k in ("id", "path", "kind", "roles")}
+                | {"entries": count, "logical_bytes": size}
+            )
+        ledger_bytes = ledger_footprint(database)
+    # The census file has been removed before observing free space again, so
+    # its measured allocation is not subtracted and then counted twice.
+    local_required = paired_workspace_bytes(ledger_bytes)
+    archive_required = tar_bytes + footer_bytes + ARCHIVE_FIXED_OVERHEAD_BYTES
+    rows = _capacity_filesystems(
+        [
+            (scratch, "local_verification", local_required),
+            (destination, "cold_archive", archive_required),
+        ]
+    )
     return {
         "status": (
             "sufficient" if all(x["sufficient"] for x in rows) else "insufficient"
@@ -403,7 +505,16 @@ def capacity(roots, scratch, destination, exclusions=()):
             "entries": entries,
             "logical_bytes": logical,
             "root_count": len(roots),
+            "estimated_archive_bytes": archive_required,
         },
+        "verification": {
+            "ledger_bytes": ledger_bytes,
+            "paired_workspace_bytes": local_required,
+            "footer_bytes": footer_bytes,
+            "ledger_verified": True,
+            "ledger_quota_bytes": quota,
+        },
+        "limits": installation_limits(),
         "filesystems": rows,
     }, details
 
