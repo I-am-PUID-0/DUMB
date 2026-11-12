@@ -98,7 +98,7 @@ Use Poetry-managed commands unless a task is explicitly independent of dependenc
 - Update `README.md`, `CONTRIBUTING.md`, or docs-facing generated files when behavior, setup, ports, config, or user-visible APIs change.
 - Conventional Commit style is expected for commits and PR titles.
 - Normal feature/bugfix PRs target `dev`; `master` is production/release.
-- Keep `pyproject.toml` version and `.github/.release-please-manifest.json` aligned if a task explicitly changes the project version.
+- Keep `.github/.release-please-manifest.json` at the last actually released stable version; `pyproject.toml` holds the source/API candidate and may be equal to or newer than that baseline. Both use plain stable SemVer. Development display suffixes belong in `DUMB_VERSION`; only the normal release process advances the manifest.
 
 ## Operational cautions
 

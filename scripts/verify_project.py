@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import sys
 import tomllib
 from pathlib import Path
@@ -39,9 +40,28 @@ def check_release_manifest() -> None:
     manifest_path = ROOT / ".github" / ".release-please-manifest.json"
     with manifest_path.open("r", encoding="utf-8") as handle:
         manifest = json.load(handle)
-    if manifest.get(".") != project_version:
+    released_version = manifest.get(".") if isinstance(manifest, dict) else None
+    versions = []
+    for label, value in (
+        ("pyproject.toml project.version", project_version),
+        (
+            ".github/.release-please-manifest.json last released version",
+            released_version,
+        ),
+    ):
+        if not isinstance(value, str) or not re.fullmatch(
+            r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)", value
+        ):
+            fail(
+                f"{label} must be plain stable SemVer (MAJOR.MINOR.PATCH); "
+                "keep dev suffixes in DUMB_VERSION"
+            )
+        versions.append(tuple(int(part) for part in value.split(".")))
+    if versions[0] < versions[1]:
         fail(
-            "release-please manifest version must match pyproject.toml project.version"
+            "pyproject.toml project.version must not be older than the last "
+            "released version in .github/.release-please-manifest.json; "
+            "advance the source candidate and preserve the actual release baseline"
         )
 
 

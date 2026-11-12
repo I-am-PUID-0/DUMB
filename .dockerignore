@@ -21,6 +21,7 @@ __pycache__/
 htmlcov/
 
 # Local virtual environments and package caches
+**/node_modules/
 .venv/
 venv/
 poetry.toml
