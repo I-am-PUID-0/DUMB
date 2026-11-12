@@ -56,6 +56,11 @@ class BackupStorageAPITests(unittest.TestCase):
             storage.preview.return_value = {'protocol':1,'ready':True,'profile':{'id':'nas'}}
             storage.save_profile.return_value = {'protocol':1,'profile':{'id':'nas','registered':True}}
             storage.set_default.return_value = {'protocol':1,'default_destination_id':'nas'}
+            storage.update_profile.return_value = {'protocol':1,'profile':{'id':'nas','name':'Edited'}}
+            storage.remove_profile.return_value = {'protocol':1,'destination_id':'nas','removed':True,'archives_preserved':True,'receipts_preserved':True}
+            storage.check_profile.return_value = {'protocol':1,'profile':{'id':'nas','ready':True,'live_checked':True,'validation_state':'ready','revalidation_required':False},'checked_at':123,'usage':[]}
+            storage.preview_revalidation.return_value = {'protocol':1,'ready':True,'token':'a'*64,'expires_at':999,'revalidation_required':True,'changes':['mount_id'],'blockers':[]}
+            storage.revalidate_profile.return_value = storage.check_profile.return_value
             storage.list_artifacts.return_value = [{'reference':'opaque'}]
             closed = []
             @contextmanager
@@ -68,7 +73,7 @@ class BackupStorageAPITests(unittest.TestCase):
             reference = 'dumb-backup://nas/symlink-example/' + 'a'*32
             profile = {'id':'nas','name':'Mounted backup','path':'/backup-volume','enabled':True}
             with patch.object(router,'get_backup_storage',return_value=storage), patch('utils.auth_config.AuthConfigManager.is_auth_enabled',return_value=True), patch('utils.auth.decode_token',return_value=SimpleNamespace(type='access',sub='example')), patch('utils.auth_config.AuthConfigManager.validate_token_principal',return_value=True):
-                for method, suffix in [('GET',''),('POST','/preview'),('POST','/profiles'),('POST','/default'),('GET','/artifacts'),('GET','/download')]:
+                for method, suffix in [('GET',''),('POST','/preview'),('POST','/profiles'),('POST','/default'),('GET','/artifacts'),('GET','/download'),('PUT','/profiles/nas'),('DELETE','/profiles/nas'),('POST','/profiles/nas/check'),('POST','/profiles/nas/revalidate/preview'),('POST','/profiles/nas/revalidate')]:
                     assert request(method,'/process/backup-storage'+suffix,profile,False).status == 401, suffix
                 storage.profiles.assert_not_called()
                 assert request('GET','/process/backup-storage').json() == storage.profiles.return_value
@@ -78,6 +83,17 @@ class BackupStorageAPITests(unittest.TestCase):
                 assert request('POST','/process/backup-storage/profiles',{**profile,'allow_shared_permissions':True}).status == 200
                 assert storage.save_profile.call_args.args[0]['allow_shared_permissions'] is True
                 assert request('POST','/process/backup-storage/default',{'destination_id':'nas'}).status == 200
+                assert request('PUT','/process/backup-storage/profiles/nas',profile).json()['profile']['name']=='Edited'
+                assert storage.update_profile.call_args.args[0]=='nas'
+                assert storage.update_profile.call_args.args[1]['id']=='nas'
+                assert request('DELETE','/process/backup-storage/profiles/nas').json()['archives_preserved'] is True
+                storage.remove_profile.assert_called_once_with('nas')
+                assert request('POST','/process/backup-storage/profiles/nas/check').json()['profile']['live_checked'] is True
+                assert request('POST','/process/backup-storage/profiles/nas/revalidate/preview').json()['revalidation_required'] is True
+                assert request('POST','/process/backup-storage/profiles/nas/revalidate',{'token':'a'*64,'confirm':True}).status==200
+                storage.revalidate_profile.assert_called_once_with('nas',{'token':'a'*64,'confirm':True})
+                for invalid in ({'token':'short','confirm':True},{'token':'a'*64,'confirm':'true'},{'token':'a'*64,'confirm':True,'path':'/other'}):
+                    assert request('POST','/process/backup-storage/profiles/nas/revalidate',invalid).status==422
                 assert request('GET','/process/backup-storage/artifacts',query={'destination_id':'nas','namespace':'symlink-example'}).json()['artifacts'] == [{'reference':'opaque'}]
                 storage.list_artifacts.assert_called_once_with('nas','symlink-example')
                 response=request('GET','/process/backup-storage/download',query={'reference':reference})
@@ -90,6 +106,8 @@ class BackupStorageAPITests(unittest.TestCase):
                 with patch.object(router,'get_project_version',return_value='2.23.0'):
                     assert request('POST','/process/backup-storage/profiles',profile).status == 426
                     assert request('GET','/process/backup-storage').status == 200
+                    for method,suffix,payload in [('PUT','/profiles/nas',profile),('DELETE','/profiles/nas',None),('POST','/profiles/nas/check',None),('POST','/profiles/nas/revalidate/preview',None),('POST','/profiles/nas/revalidate',{'token':'a'*64,'confirm':True})]:
+                        assert request(method,'/process/backup-storage'+suffix,payload).status==426
                 storage.set_default.side_effect=BackupStorageError('The destination is missing.')
                 result=request('POST','/process/backup-storage/default',{'destination_id':'nas'})
                 assert result.status==409 and result.json()['detail']=='The destination is missing.'
@@ -103,6 +121,9 @@ class BackupStorageAPITests(unittest.TestCase):
                 assert capabilities['backup_storage_selection'] is True
                 assert capabilities['backup_storage_protocol']==1
                 assert capabilities['backup_storage_shared_permissions'] is True
+                assert capabilities['backup_storage_profile_management'] is True
+                assert capabilities['backup_storage_revalidation'] is True
+                assert capabilities['backup_storage_management_protocol']==1
                 assert capabilities['installation_backup_shared_permissions'] is True
                 assert isinstance(capabilities['backup_storage_kinds'], list)
             """)

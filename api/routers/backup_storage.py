@@ -37,6 +37,12 @@ class DefaultRequest(BaseModel):
     destination_id: str = Field(max_length=64)
 
 
+class RevalidationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str = Field(pattern=r"^[0-9a-f]{64}$")
+    confirm: StrictBool
+
+
 def _invoke(operation, *args, mutation=False):
     if mutation and not api_version_supported(get_project_version(pyproject_file())):
         raise HTTPException(
@@ -71,6 +77,49 @@ def storage_register(
     request: ProfileRequest, current_user=Depends(get_optional_current_user)
 ):
     return _invoke("save_profile", request.model_dump(), mutation=True)
+
+
+@backup_storage_router.put("/profiles/{destination_id}")
+def storage_update(
+    destination_id: ProfileId,
+    request: ProfileRequest,
+    current_user=Depends(get_optional_current_user),
+):
+    return _invoke(
+        "update_profile", destination_id, request.model_dump(), mutation=True
+    )
+
+
+@backup_storage_router.delete("/profiles/{destination_id}")
+def storage_remove(
+    destination_id: ProfileId, current_user=Depends(get_optional_current_user)
+):
+    return _invoke("remove_profile", destination_id, mutation=True)
+
+
+@backup_storage_router.post("/profiles/{destination_id}/check")
+def storage_check(
+    destination_id: ProfileId, current_user=Depends(get_optional_current_user)
+):
+    return _invoke("check_profile", destination_id, mutation=True)
+
+
+@backup_storage_router.post("/profiles/{destination_id}/revalidate/preview")
+def storage_revalidation_preview(
+    destination_id: ProfileId, current_user=Depends(get_optional_current_user)
+):
+    return _invoke("preview_revalidation", destination_id, mutation=True)
+
+
+@backup_storage_router.post("/profiles/{destination_id}/revalidate")
+def storage_revalidate(
+    destination_id: ProfileId,
+    request: RevalidationRequest,
+    current_user=Depends(get_optional_current_user),
+):
+    return _invoke(
+        "revalidate_profile", destination_id, request.model_dump(), mutation=True
+    )
 
 
 @backup_storage_router.post("/default")

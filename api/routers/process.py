@@ -6396,6 +6396,9 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "backup_storage_selection": True,
         "backup_storage_protocol": 1,
         "backup_storage_shared_permissions": True,
+        "backup_storage_profile_management": True,
+        "backup_storage_revalidation": True,
+        "backup_storage_management_protocol": 1,
         "backup_storage_kinds": [
             "symlink_manifest",
             "infinidysk_v2_archive",
