@@ -1,6 +1,8 @@
 from contextlib import contextmanager
+import errno
 import json
 import os
+import stat
 from pathlib import Path
 import tempfile
 import threading
@@ -11,6 +13,8 @@ from unittest.mock import Mock, patch
 from utils.backup_storage import (
     BackupStorage,
     BackupStorageError,
+    _path_ancestry,
+    _ancestry_label,
     get_backup_storage,
     is_backup_reference,
     parse_backup_reference,
@@ -645,6 +649,160 @@ class BackupStorageTests(unittest.TestCase):
                 paths_overlap("/mnt/archive", "/data/infinidysk/blobs/future")
             )
             self.assertFalse(paths_overlap("/data/other", "/mnt/archive"))
+
+    def _owned_ancestry_descriptors(self):
+        owned = []
+        for descriptor in Path("/proc/self/fd").iterdir():
+            try:
+                target = os.readlink(descriptor)
+            except FileNotFoundError:
+                continue
+            if target.startswith(str(self.root)):
+                owned.append(target)
+        return owned
+
+    def test_literal_regular_file_containment_requires_operand_opt_in(self):
+        source = self.root / "settings.json"
+        source.write_text("{}")
+        with self.assertRaisesRegex(BackupStorageError, "not a direct directory"):
+            paths_overlap(self.destination, source)
+        self.assertFalse(
+            paths_overlap(self.destination, source, second_leaf_object=True)
+        )
+        self.assertFalse(
+            paths_overlap(source, self.destination, first_leaf_object=True)
+        )
+        nested = self.destination / "settings.json"
+        nested.write_text("{}")
+        self.assertTrue(
+            paths_overlap(self.destination, nested, second_leaf_object=True)
+        )
+        self.assertEqual(self._owned_ancestry_descriptors(), [])
+
+    def test_literal_symlink_leaf_is_pinned_without_following_its_target(self):
+        directory = self.root / "managed"
+        directory.mkdir()
+        for name, target in (
+            ("directory-alias", directory),
+            ("missing-alias", self.root / "absent"),
+            ("cyclic-alias", self.root / "cyclic-alias"),
+        ):
+            with self.subTest(name=name):
+                alias = self.root / name
+                alias.symlink_to(target, target_is_directory=True)
+                value = alias.lstat()
+                pinned, _parents = _path_ancestry(alias, leaf_object=True)
+                self.assertEqual(pinned, (value.st_dev, value.st_ino))
+                self.assertFalse(
+                    paths_overlap(self.destination, alias, second_leaf_object=True)
+                )
+                self.assertFalse(
+                    paths_overlap(alias, self.destination, first_leaf_object=True)
+                )
+        self.assertEqual(self._owned_ancestry_descriptors(), [])
+
+    def test_leaf_opt_in_does_not_allow_symlink_parent_components(self):
+        directory = self.root / "managed"
+        directory.mkdir()
+        (directory / "settings.json").write_text("{}")
+        alias = self.root / "parent-alias"
+        alias.symlink_to(directory, target_is_directory=True)
+        selected = alias / "settings.json"
+        for _ in range(3):
+            with self.assertRaisesRegex(
+                BackupStorageError, "parent-alias.*not a direct directory"
+            ):
+                paths_overlap(self.destination, selected, second_leaf_object=True)
+            with self.assertRaises(BackupStorageError):
+                paths_overlap(selected, self.destination, first_leaf_object=True)
+        self.assertEqual(self._owned_ancestry_descriptors(), [])
+
+    def test_literal_special_leaf_is_refused_without_blocking_or_leaking(self):
+        fifo = self.root / "named-pipe"
+        os.mkfifo(fifo)
+        for _ in range(3):
+            with self.assertRaisesRegex(BackupStorageError, "unsupported file type"):
+                paths_overlap(self.destination, fifo, second_leaf_object=True)
+        self.assertEqual(self._owned_ancestry_descriptors(), [])
+
+    def test_literal_leaf_inode_alias_still_overlaps_and_closes_descriptors(self):
+        first, second = self.root / "original.json", self.root / "alias.json"
+        first.write_text("{}")
+        os.link(first, second)
+        self.assertTrue(
+            paths_overlap(
+                first, second, first_leaf_object=True, second_leaf_object=True
+            )
+        )
+        self.assertEqual(self._owned_ancestry_descriptors(), [])
+
+    def test_ancestry_failure_names_and_escapes_the_failing_component(self):
+        directory = self.root / "line\n\U0001f600"
+        directory.mkdir()
+        selected = directory / "settings.json"
+        original_open = os.open
+
+        def inaccessible(path, flags, *args, **kwargs):
+            if path == directory.name:
+                raise PermissionError(errno.EACCES, "must-not-publish-driver-detail")
+            return original_open(path, flags, *args, **kwargs)
+
+        with patch("utils.backup_storage.os.open", inaccessible):
+            with self.assertRaises(BackupStorageError) as caught:
+                paths_overlap(self.destination, selected, second_leaf_object=True)
+        message = str(caught.exception)
+        self.assertIn(r"line\n\ud83d\ude00", message)
+        self.assertIn("permission denied (errno 13)", message)
+        self.assertNotIn("must-not-publish-driver-detail", message)
+        self.assertNotIn("\n", message)
+        self.assertLess(len(message), 1200)
+        self.assertEqual(self._owned_ancestry_descriptors(), [])
+
+    def test_ancestry_diagnostics_bound_escaped_unicode_paths(self):
+        shown = _ancestry_label("\U0001f600" * 5000)
+        self.assertIn("path truncated", shown)
+        self.assertTrue(shown.isascii())
+        self.assertLess(len(shown), 450)
+
+    def test_literal_leaf_metadata_failure_closes_its_pinned_descriptor(self):
+        selected = self.root / "settings.json"
+        selected.write_text("{}")
+        original_fstat = os.fstat
+
+        def unavailable(descriptor):
+            value = original_fstat(descriptor)
+            if stat.S_ISREG(value.st_mode):
+                raise OSError(errno.EIO, "must-not-publish-driver-detail")
+            return value
+
+        with patch("utils.backup_storage.os.fstat", unavailable):
+            with self.assertRaisesRegex(BackupStorageError, "errno 5") as caught:
+                paths_overlap(self.destination, selected, second_leaf_object=True)
+        self.assertNotIn("must-not-publish-driver-detail", str(caught.exception))
+        self.assertEqual(self._owned_ancestry_descriptors(), [])
+
+    def test_literal_leaf_requires_no_follow_path_descriptor_support(self):
+        selected = self.root / "settings.json"
+        selected.write_text("{}")
+        with patch("utils.backup_storage.os.O_PATH", None):
+            with self.assertRaisesRegex(BackupStorageError, "Linux O_PATH"):
+                paths_overlap(self.destination, selected, second_leaf_object=True)
+        self.assertEqual(self._owned_ancestry_descriptors(), [])
+
+    def test_missing_literal_tail_keeps_existing_ancestor_overlap_proof(self):
+        missing = self.destination / "future" / "settings.json"
+        self.assertTrue(
+            paths_overlap(self.destination, missing, second_leaf_object=True)
+        )
+        self.assertFalse(
+            paths_overlap(
+                self.root / "other" / "future",
+                self.root / "unrelated" / "settings.json",
+                first_leaf_object=True,
+                second_leaf_object=True,
+            )
+        )
+        self.assertEqual(self._owned_ancestry_descriptors(), [])
 
     def test_physical_containment_refuses_links_without_leaking_descriptors(self):
         source, alias = self.root / "source", self.root / "alias"

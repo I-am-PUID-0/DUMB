@@ -2,6 +2,7 @@
 
 from contextlib import contextmanager
 import copy
+import errno
 import hashlib
 import json
 import os
@@ -104,39 +105,81 @@ def _mount(path):
     return max(matches, key=lambda row: len(Path(row["path"]).parts))
 
 
-def _path_ancestry(path):
+def _ancestry_label(path):
+    shown = json.dumps(str(path), ensure_ascii=True)
+    return shown if len(shown) <= 400 else shown[:400] + "... [path truncated]"
+
+
+def _ancestry_failure(path, component, reason):
+    return BackupStorageError(
+        "Storage ancestry could not be verified without following links at "
+        f"{_ancestry_label(component)} while checking {_ancestry_label(path)}: "
+        f"{reason}."
+    )
+
+
+def _path_ancestry(path, *, leaf_object=False):
     path = Path(path)
     if not path.is_absolute() or ".." in path.parts:
         raise BackupStorageError(
             "Storage containment requires an absolute direct path."
         )
-    descriptor = os.open("/", os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    descriptor = None
+    component = Path("/")
     identities = []
     complete = True
     try:
+        descriptor = os.open("/", os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
         value = os.fstat(descriptor)
         identities.append((value.st_dev, value.st_ino))
-        for part in path.parts[1:]:
+        parts = path.parts[1:]
+        for index, part in enumerate(parts):
+            component /= part
+            terminal_object = leaf_object and index == len(parts) - 1
+            flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+            if terminal_object:
+                path_flag = getattr(os, "O_PATH", None)
+                if not path_flag:
+                    raise _ancestry_failure(
+                        path,
+                        component,
+                        "literal leaf verification requires Linux O_PATH support",
+                    )
+                # Pin the literal object without reading its contents or
+                # following a terminal symlink. Parents remain direct directories.
+                flags = path_flag | os.O_NOFOLLOW
             try:
-                child = os.open(
-                    part,
-                    os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
-                    dir_fd=descriptor,
-                )
+                child = os.open(part, flags, dir_fd=descriptor)
             except FileNotFoundError:
                 complete = False
                 break
-            os.close(descriptor)
-            descriptor = child
+            previous, descriptor = descriptor, child
+            os.close(previous)
             value = os.fstat(descriptor)
+            if terminal_object and not (
+                stat.S_ISDIR(value.st_mode)
+                or stat.S_ISREG(value.st_mode)
+                or stat.S_ISLNK(value.st_mode)
+            ):
+                raise _ancestry_failure(
+                    path, component, "the literal leaf has an unsupported file type"
+                )
             identities.append((value.st_dev, value.st_ino))
         return (identities[-1] if complete else None), tuple(identities)
     except OSError as error:
-        raise BackupStorageError(
-            "Storage ancestry could not be verified without following links."
-        ) from error
+        reasons = {
+            errno.EACCES: "permission denied",
+            errno.EPERM: "permission denied",
+            errno.ELOOP: "a symbolic link was refused",
+            errno.ENOTDIR: "the component is not a direct directory",
+        }
+        reason = reasons.get(error.errno, "the operating system refused this component")
+        if type(error.errno) is int:
+            reason += f" (errno {error.errno})"
+        raise _ancestry_failure(path, component, reason) from error
     finally:
-        os.close(descriptor)
+        if descriptor is not None:
+            os.close(descriptor)
 
 
 def _filesystem_coordinate(path, records):
@@ -154,15 +197,23 @@ def _filesystem_coordinate(path, records):
     return record["device"], Path(record["root"]) / relative
 
 
-def paths_overlap(first, second):
-    """Compare direct paths, including bind aliases and not-yet-created tails."""
+def paths_overlap(first, second, *, first_leaf_object=False, second_leaf_object=False):
+    """Compare direct paths; opt in to literal file/symlink leaves per operand."""
     first, second = Path(first), Path(second)
     if any(not path.is_absolute() or ".." in path.parts for path in (first, second)):
         raise BackupStorageError("Storage containment requires absolute direct paths.")
     if first == second or first in second.parents or second in first.parents:
         return True
-    first_root, first_ancestors = _path_ancestry(first)
-    second_root, second_ancestors = _path_ancestry(second)
+    first_root, first_ancestors = (
+        _path_ancestry(first, leaf_object=True)
+        if first_leaf_object
+        else _path_ancestry(first)
+    )
+    second_root, second_ancestors = (
+        _path_ancestry(second, leaf_object=True)
+        if second_leaf_object
+        else _path_ancestry(second)
+    )
     if (first_root is not None and first_root in second_ancestors) or (
         second_root is not None and second_root in first_ancestors
     ):

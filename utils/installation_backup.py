@@ -832,7 +832,11 @@ class InstallationBackupManager:
             retained = self._retained_holders()
             exclusions.extend(row["path"] for row in retained)
             if any(
-                paths_overlap(destination["artifact_root"], root["path"])
+                paths_overlap(
+                    destination["artifact_root"],
+                    root["path"],
+                    second_leaf_object=root["kind"] in {"file", "symlink"},
+                )
                 for root in roots
                 if root["path"]
                 not in {
@@ -1627,7 +1631,11 @@ class InstallationBackupManager:
                     not path.is_absolute()
                     or str(path) != os.path.normpath(str(path))
                     or _forbidden(path)
-                    or paths_overlap(path, self.state_root)
+                    or paths_overlap(
+                        path,
+                        self.state_root,
+                        first_leaf_object=root["kind"] in {"file", "symlink"},
+                    )
                 ):
                     # /config contains control state intentionally; its known child is protected below.
                     if path != self.state_root.parent or _forbidden(path):
