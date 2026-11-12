@@ -2199,6 +2199,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#frontend-development-versions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Frontend development versions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#build-a-development-image-with-a-chosen-frontend" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2206,6 +2217,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Build a development image with a chosen frontend">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#image-selection-and-saved-frontend-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Image selection and saved frontend settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2218,10 +2246,27 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration Settings in dumb_config.json">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-key-descriptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration Key Descriptions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
-  <a href="#commit-branch-version-targeting" class="md-nav__link">
+  <a href="#commit--branch--version-targeting" class="md-nav__link">
     <span class="md-ellipsis">
       
         Commit / Branch / Version Targeting
@@ -5450,6 +5495,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#frontend-development-versions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Frontend development versions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#build-a-development-image-with-a-chosen-frontend" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5457,6 +5513,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Build a development image with a chosen frontend">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#image-selection-and-saved-frontend-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Image selection and saved frontend settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -5469,10 +5542,27 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration Settings in dumb_config.json">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-key-descriptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration Key Descriptions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
-  <a href="#commit-branch-version-targeting" class="md-nav__link">
+  <a href="#commit--branch--version-targeting" class="md-nav__link">
     <span class="md-ellipsis">
       
         Commit / Branch / Version Targeting
@@ -5662,12 +5752,41 @@ and metrics in a single interface.</p>
 </ul>
 </div>
 <hr />
-<h2 id="build-and-update-requirements">Build and update requirements<a class="headerlink" href="#build-and-update-requirements" title="Permanent link">&para;</a></h2>
+<h2 id="build-and-update-requirements">Build and update requirements<a class="headerlink" href="#build-and-update-requirements" title="Permanent link">#</a></h2>
 <p>Installing or rebuilding the current frontend requires <strong>Node.js <code>&gt;=24.15.0 &lt;25</code></strong> and <strong>pnpm 10</strong>. This matches the <a href="https://github.com/nuxt/nuxt/releases/tag/v4.6.0">Nuxt 4.6 toolchain requirements</a>. An older frontend pin follows the engine requirement declared by that selected source.</p>
 <p>New DUMB image builds and release validation enforce the current Node range. Frontend updates use the runtime already bundled in the running image; updating frontend source alone does not upgrade Node. Before rebuilding from an older image with Node below 24.15, update the DUMB image and recreate its container using your existing persistent volumes. Separately deployed frontends must provide a compatible Node and pnpm installation.</p>
 <p>The frontend source includes a dependency-free Node check in its install and build commands, so those commands can detect an incompatible runtime even on an older DUMB backend. The check reads that source's own <code>package.json</code>; with strict engine validation, pnpm may reject the requirement first with an expected/actual version error. Neither check upgrades Node.</p>
 <p>Production starts the compiled Nitro server with <code>node .output/server/index.mjs</code>, which does not run the source check. The version floor above applies to dependency installation and source builds; it does not establish the minimum runtime for every previously compiled frontend.</p>
-<h2 id="build-a-development-image-with-a-chosen-frontend">Build a development image with a chosen frontend<a class="headerlink" href="#build-a-development-image-with-a-chosen-frontend" title="Permanent link">&para;</a></h2>
+<h2 id="frontend-development-versions">Frontend development versions<a class="headerlink" href="#frontend-development-versions" title="Permanent link">#</a></h2>
+<p>The frontend has its own release history. dmbdb releases from <code>main</code>; DUMB API
+releases from <code>master</code>. Their candidate versions are calculated independently.
+For example, with frontend stable <code>1.91.0</code>, dmbdb <code>dev</code> can declare <code>1.92.0</code> in
+<code>package.json</code> while <code>.github/.release-please-manifest.json</code> stays at <code>1.91.0</code>.
+Normal promotion through <code>main</code> then releases <code>1.92.0</code>. The DUMB API version
+does not determine the frontend version.</p>
+<p>The dmbdb <strong>Sync dev version</strong> workflow runs after <code>dev</code> pushes, published
+stable frontend releases, and manual requests. It uses dmbdb's actual stable
+release and subsequent commits to update only the candidate package version
+and stable release-manifest baseline. After <code>1.92.0</code> is released, the next
+candidate is normally <code>1.92.1</code>, or <code>1.93.0</code> when later feature commits require
+it. Repeating the same plan creates no commit.</p>
+<p>Maintainers can open <strong>Actions → Sync dev version → Run workflow</strong> in the
+<strong>dmbdb repository</strong>, select <strong>dev</strong>, and enable
+<strong>Calculate the dev version without committing it</strong> to preview the plan.
+Leave that option disabled to apply a needed update. The existing
+<code>RELEASE_PLEASE_TOKEN</code> supplies the authenticated GitHub commit identity and
+must have repository-content access permitted by the <code>dev</code> branch rules.
+Head checks prevent an outdated plan from replacing newer branch work.
+Token-created commits run normal CI; the follow-on synchronization makes no
+further version change.</p>
+<p>This workflow creates no image, release PR, stable tag, or GitHub release.
+DUMB image builds still use the released frontend by default; select
+<strong>dmbdb dev</strong> or an exact frontend commit when testing unreleased changes.
+In <strong>Settings → About</strong>, the frontend row shows the candidate package version
+with its <strong>Dev build</strong> badge and branch/SHA when the installed source metadata
+matches that package and compiled output. Backend and frontend build identities
+remain separate.</p>
+<h2 id="build-a-development-image-with-a-chosen-frontend">Build a development image with a chosen frontend<a class="headerlink" href="#build-a-development-image-with-a-chosen-frontend" title="Permanent link">#</a></h2>
 <p>Maintainers with workflow access can build a DUMB <code>dev</code> image containing
 unreleased frontend changes without creating a frontend release tag.</p>
 <ol>
@@ -5719,7 +5838,15 @@ with that digest and your existing persistent volumes. The frontend package
 version can remain the same across unreleased commits. In <strong>Settings → About</strong>,
 the <strong>DUMB Frontend</strong> row shows the <strong>Dev build</strong> badge and source/SHA details
 when the installed development build has verified source metadata.</p>
-<h3 id="image-selection-and-saved-frontend-settings">Image selection and saved frontend settings<a class="headerlink" href="#image-selection-and-saved-frontend-settings" title="Permanent link">&para;</a></h3>
+<p>Both architecture builds also use one calculated DUMB API version for the
+requested immutable backend commit. The calculated API core is passed to both
+architecture builds and stamped inside each final image, even before the
+branch's version-synchronization commit lands. The selected backend SHA stays
+unchanged. <strong>Build Summary</strong> records the source identity and
+version. Source-version synchronization does not automatically build an image.
+See <a href="../api/#development-and-release-versions">development and release versions</a>
+for how the candidate version and stable release baseline relate.</p>
+<h3 id="image-selection-and-saved-frontend-settings">Image selection and saved frontend settings<a class="headerlink" href="#image-selection-and-saved-frontend-settings" title="Permanent link">#</a></h3>
 <p>The build choice sets the frontend baked into the image. It leaves your saved
 <code>dumb.frontend</code> configuration intact. A saved commit, branch or release target
 can trigger a different frontend installation at startup, even with
@@ -5733,7 +5860,7 @@ SHA and install that configured target using the
 <a href="#commit--branch--version-targeting">commit targeting settings</a>. This rebuilds
 the frontend using the image's existing Node runtime and leaves the backend
 image unchanged.</p>
-<h2 id="configuration-settings-in-dumb_configjson">Configuration Settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">&para;</a></h2>
+<h2 id="configuration-settings-in-dumb_configjson">Configuration Settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">#</a></h2>
 <p>This block is nested at <code>dumb.frontend</code> in <code>/config/dumb_config.json</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;frontend&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
@@ -5764,7 +5891,7 @@ image unchanged.</p>
 <span class="w">    </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span><span class="w">            </span>
 <span class="p">}</span>
 </code></pre></div>
-<h3 id="configuration-key-descriptions">Configuration Key Descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">&para;</a></h3>
+<h3 id="configuration-key-descriptions">Configuration Key Descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">#</a></h3>
 <ul>
 <li><strong><code>enabled</code></strong>: Determines whether the DUMB Frontend service is active.</li>
 <li><strong><code>process_name</code></strong>: Name used in logs and process tracking.</li>
@@ -5786,7 +5913,7 @@ image unchanged.</p>
 <li><strong><code>env</code></strong>: Environment variables for the frontend.</li>
 </ul>
 <hr />
-<h2 id="commit-branch-version-targeting">Commit / Branch / Version Targeting<a class="headerlink" href="#commit-branch-version-targeting" title="Permanent link">&para;</a></h2>
+<h2 id="commit--branch--version-targeting">Commit / Branch / Version Targeting<a class="headerlink" href="#commit--branch--version-targeting" title="Permanent link">#</a></h2>
 <p>You can control which source revision of the frontend is deployed by setting:</p>
 <ul>
 <li><code>commit_sha</code> to a full 40-character SHA for an immutable source pin</li>
@@ -5796,14 +5923,14 @@ image unchanged.</p>
 <p><code>commit_sha</code> takes precedence over release and branch settings. Automatic
 updates remain disabled until the commit pin is changed or cleared.</p>
 <hr />
-<h2 id="accessing-the-dumb-frontend">Accessing the DUMB Frontend<a class="headerlink" href="#accessing-the-dumb-frontend" title="Permanent link">&para;</a></h2>
+<h2 id="accessing-the-dumb-frontend">Accessing the DUMB Frontend<a class="headerlink" href="#accessing-the-dumb-frontend" title="Permanent link">#</a></h2>
 <ul>
 <li>Navigate to: <code>http://&lt;host&gt;:&lt;port&gt;</code><ul>
 <li>default port <code>3005</code></li>
 </ul>
 </li>
 </ul>
-<h2 id="startup-behavior">Startup behavior<a class="headerlink" href="#startup-behavior" title="Permanent link">&para;</a></h2>
+<h2 id="startup-behavior">Startup behavior<a class="headerlink" href="#startup-behavior" title="Permanent link">#</a></h2>
 <p>DUMB starts its API before the enabled-service preinstall phase. When the
 frontend runtime is already built and its configured version does not require a
 new install, DUMB also starts the frontend before that phase. This makes the UI
@@ -5818,7 +5945,7 @@ following applies:</p>
 </ul>
 <p>In those cases, DUMB keeps the existing install/update path and starts the
 frontend after its runtime is ready.</p>
-<h2 id="self-update-behavior">Self-update behavior<a class="headerlink" href="#self-update-behavior" title="Permanent link">&para;</a></h2>
+<h2 id="self-update-behavior">Self-update behavior<a class="headerlink" href="#self-update-behavior" title="Permanent link">#</a></h2>
 <p>Current DUMB releases prepare manual and scheduled frontend updates transactionally.
 DUMB downloads, builds, and validates the candidate in an adjacent directory while
 the installed frontend continues serving the dashboard. Only the final atomic
@@ -5834,7 +5961,7 @@ wait for the proxy to return, read the final update status retained by the DUMB
 API, and reload to pick up the new assets. If automatic confirmation times out,
 refresh the page and reopen <strong>Updates</strong>; do not assume the installation failed
 solely from the interrupted browser request.</p>
-<h2 id="frontend-usage-guides">Frontend usage guides<a class="headerlink" href="#frontend-usage-guides" title="Permanent link">&para;</a></h2>
+<h2 id="frontend-usage-guides">Frontend usage guides<a class="headerlink" href="#frontend-usage-guides" title="Permanent link">#</a></h2>
 <p>For UI walkthroughs, use the frontend section:</p>
 <ul>
 <li><a href="../../../frontend/dashboard/">Dashboard</a> - Service cards, toolbar, and logs</li>
@@ -5844,13 +5971,13 @@ solely from the interrupted browser request.</p>
 <li><a href="../../../frontend/metrics/">Metrics</a> - System monitoring</li>
 </ul>
 <hr />
-<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">&para;</a></h2>
+<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">#</a></h2>
 <ul>
 <li><strong>Automatic Updates</strong>: Enable <code>auto_update</code> to keep the frontend up-to-date with the latest features.</li>
 <li><strong>Log Monitoring</strong>: Utilize the service logs functionality for effective monitoring and troubleshooting.</li>
 </ul>
 <hr />
-<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">&para;</a></h2>
+<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="https://github.com/nicocapalbo/dmbdb">DUMB Frontend GitHub Repository</a></li>
 <li><a href="https://github.com/nicocapalbo/dmbdb/blob/main/CHANGELOG.md">DUMB Frontend CHANGELOG</a></li>

@@ -1338,6 +1338,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Choose archive storage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reuse-local-v1-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reuse local v1 storage
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1348,6 +1365,34 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Review and run">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#progress-cancellation-and-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Progress, cancellation and recovery
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#review-native-import-omissions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Review native import omissions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -5444,6 +5489,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Choose archive storage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reuse-local-v1-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reuse local v1 storage
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -5454,6 +5516,34 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Review and run">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#progress-cancellation-and-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Progress, cancellation and recovery
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#review-native-import-omissions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Review native import omissions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -5591,7 +5681,7 @@
   
 
 
-<h1 id="infinidysk-2-installation-and-upgrade">InfiniDysk 2 installation and upgrade<a class="headerlink" href="#infinidysk-2-installation-and-upgrade" title="Permanent link">&para;</a></h1>
+<h1 id="infinidysk-2-installation-and-upgrade">InfiniDysk 2 installation and upgrade<a class="headerlink" href="#infinidysk-2-installation-and-upgrade" title="Permanent link">#</a></h1>
 <p>DUMB keeps InfiniDysk 1.x as the default. InfiniDysk 2 uses a different native
 runtime, configuration and data layout. Install it or move existing data through
 <strong>Service tools → InfiniDysk 2 migration</strong> on the InfiniDysk service page.
@@ -5602,7 +5692,7 @@ and migration protocol <strong>1</strong>. An older, unknown or temporarily unav
 backend cannot start a migration. Previously discovered job identities and
 recovery information remain visible. The supported native artifact is currently
 <strong><code>v2.0.0-beta.6</code></strong>; selecting 2.x through a 1.x release or source field is refused.</p>
-<h2 id="separate-the-choices">Separate the choices<a class="headerlink" href="#separate-the-choices" title="Permanent link">&para;</a></h2>
+<h2 id="separate-the-choices">Separate the choices<a class="headerlink" href="#separate-the-choices" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -5638,7 +5728,7 @@ Generation 2 program files and data use separate directories. The native runtime
 uses its verified artifact; active 1.x branch/commit selectors are cleared in
 the prepared 2.x configuration while the original selection stays in recovery.
 Do not toggle the generation or provider fields to bypass the wizard.</p>
-<h2 id="before-starting">Before starting<a class="headerlink" href="#before-starting" title="Permanent link">&para;</a></h2>
+<h2 id="before-starting">Before starting<a class="headerlink" href="#before-starting" title="Permanent link">#</a></h2>
 <p>Keep independent backups of the source database, configuration, identity and
 signing keys, symlink trees and existing STRM files. DUMB's retained migration
 state is useful recovery evidence, not a replacement for those backups.</p>
@@ -5676,7 +5766,7 @@ media still prevent activation. There is no unrestricted network fallback.</p>
 and successful dump/restore proof. If that path is unavailable or unverified,
 the preview blocks it. The major importer does not directly reuse the v1
 PostgreSQL database as a generation 2 database.</p>
-<h2 id="choose-archive-storage">Choose archive storage<a class="headerlink" href="#choose-archive-storage" title="Permanent link">&para;</a></h2>
+<h2 id="choose-archive-storage">Choose archive storage<a class="headerlink" href="#choose-archive-storage" title="Permanent link">#</a></h2>
 <p>The migration panel's <strong>Backup destination</strong> selects the legacy local backup
 tree or <a href="../backup-storage/">registered local/NAS archive storage</a> for this job.
 Expand <strong>Register a backup destination</strong> to register an existing
@@ -5687,7 +5777,7 @@ in each new preview.</p>
 <p>A registered destination holds a closed, verified source archive. Active v2
 SQLite data, job/control state and import/database-restore scratch remain local.
 Keep independent backups even when DUMB retains and verifies its own archive.</p>
-<h3 id="reuse-local-v1-storage">Reuse local v1 storage<a class="headerlink" href="#reuse-local-v1-storage" title="Permanent link">&para;</a></h3>
+<h3 id="reuse-local-v1-storage">Reuse local v1 storage<a class="headerlink" href="#reuse-local-v1-storage" title="Permanent link">#</a></h3>
 <p>For an existing installation with limited local space, a supporting backend can
 offer <strong>Reuse local v1 storage</strong>. This is a separate, unchecked migration option;
 selecting an archive destination alone keeps the original v1 installation local.
@@ -5714,7 +5804,7 @@ Reusing the source does not increase the filesystem's reported free space or
 eliminate the space needed for that new database. After an
 interruption, keep the job state and archive, restore the archive mount and use
 the offered recovery action before restarting normal services.</p>
-<h2 id="review-and-run">Review and run<a class="headerlink" href="#review-and-run" title="Permanent link">&para;</a></h2>
+<h2 id="review-and-run">Review and run<a class="headerlink" href="#review-and-run" title="Permanent link">#</a></h2>
 <p>The preview inventories the complete source data and runtime trees and checks
 copy capacity. Filesystem entry counts include application blob stores and any
 build or dependency directories inside those trees; they are not counts of
@@ -5767,23 +5857,30 @@ The global notice reopens progress or recovery after navigation and reload.
 Only job identities are saved for browser recovery; preview authorizations and
 database passwords are not. A transport error does not prove that a job stopped.
 Refresh status before retrying, and retain an unconfirmed job's recovery evidence.</p>
-<h3 id="progress-cancellation-and-recovery">Progress, cancellation and recovery<a class="headerlink" href="#progress-cancellation-and-recovery" title="Permanent link">&para;</a></h3>
+<h3 id="progress-cancellation-and-recovery">Progress, cancellation and recovery<a class="headerlink" href="#progress-cancellation-and-recovery" title="Permanent link">#</a></h3>
 <p>The displayed phase distinguishes native import, DUMB validation and source
 recovery. Native counts and any time estimate describe that phase only; unknown
 counts do not establish completion. <strong>Native stage: done</strong> means the upstream conversion finished; DUMB
 still needs to reconcile its report and database identities. A rehearsal then
 restores v1 and its previous consumers, while a cutover must validate the target
 before starting normal v2 work.</p>
-<p>Large imports may run for more than 30 minutes when they keep progressing.
-Current builds use a <strong>30-minute inactivity watchdog</strong>, replacing the old
-five-minute total import limit. Native progress changes or provider-read activity
-reset the watchdog. A status polling heartbeat alone does not count as import
-progress. A timeout stops the owned importer and attempts protected v1 recovery;
-it does not authorize ignoring failed provider reads.</p>
+<p>Bulk migration work has <strong>no fixed overall time limit</strong>. Large file copies,
+PostgreSQL dump and restore verification, and native import can take longer on
+slow local or network storage. DUMB does not stop a running worker just because
+an elapsed-time or inactivity threshold was reached.</p>
+<p>After 30 minutes without observable native progress or provider-read activity,
+DUMB shows a warning and keeps waiting. A status polling heartbeat or changing
+time estimate does not clear that warning; observed progress does. PostgreSQL
+steps similarly warn when their activity cannot be observed. A warning is a
+reason to review the current stage, not proof that the operation has failed.
+Actual process failure, a failed native report or failed verification still
+stops acceptance and preserves the recovery path.</p>
 <p>A supporting backend offers <strong>Cancel migration</strong> for a cancellable running job.
 Use that job's exact confirmation. Cancellation is cooperative: DUMB records the
 request, waits for an owned checkpoint, stops the native writer and restores v1
 before reporting completion. Closing the panel does not request cancellation.
+A slow or blocked operating-system I/O call can delay a cancellation checkpoint;
+wait for the job to confirm recovery rather than assuming the request completed.
 Keep imports, scans and playback stopped while cancellation or recovery runs.</p>
 <p>After a controller restart, or if recovery fails, use the offered <strong>Rollback</strong>
 action for the retained job and its exact confirmation. A job that still blocks
@@ -5791,8 +5888,11 @@ new work takes priority over newer completed attempts in the migration panel;
 its current recovery actions determine what can proceed. Low-space recovery
 also requires the original archive destination to be mounted and readable.
 Preserve the job files, native report, archives and any retained candidate.
+If DUMB cannot confirm that its owned helper stopped, recovery remains held.
+Rollback becomes available only after helper termination is confirmed; retain
+the private recovery files while reviewing that state.
 Deleting a database or job file to clear a lock can destroy the recovery path.</p>
-<h3 id="review-native-import-omissions">Review native import omissions<a class="headerlink" href="#review-native-import-omissions" title="Permanent link">&para;</a></h3>
+<h3 id="review-native-import-omissions">Review native import omissions<a class="headerlink" href="#review-native-import-omissions" title="Permanent link">#</a></h3>
 <p>The job's import report distinguishes imported files, omitted files and their
 reported reasons. Omitted files are absent from v2; a completed native import does
 not establish that those files will be repaired or replaced automatically.</p>
@@ -5814,7 +5914,7 @@ API. Preserve that report and the retained candidate when investigating a
 blocked import.
 In low-space mode, recovery can need to release the candidate's storage before
 restoring v1; the retained archive and diagnostic report remain protected.</p>
-<h2 id="mount-and-library-continuity">Mount and library continuity<a class="headerlink" href="#mount-and-library-continuity" title="Permanent link">&para;</a></h2>
+<h2 id="mount-and-library-continuity">Mount and library continuity<a class="headerlink" href="#mount-and-library-continuity" title="Permanent link">#</a></h2>
 <p>Both mount choices expose InfiniDysk's virtual filesystem. Keeping
 <code>/mnt/debrid/infinidysk</code> alone is insufficient: existing relative paths such as
 <code>content/&lt;category&gt;/...</code>, completed-download paths, categories and link semantics
@@ -5850,7 +5950,7 @@ configuration. A global STRM selection still produces symlinks for music and
 book jobs. Validate playback from the actual media server/player network;
 STRM does not establish compatibility with every media server or remove all
 filesystem requirements.</p>
-<h2 id="native-postgresql-conversion">Native PostgreSQL conversion<a class="headerlink" href="#native-postgresql-conversion" title="Permanent link">&para;</a></h2>
+<h2 id="native-postgresql-conversion">Native PostgreSQL conversion<a class="headerlink" href="#native-postgresql-conversion" title="Permanent link">#</a></h2>
 <p>After generation 2 is validated, open <strong>Service tools → InfiniDysk 2 database
 conversion</strong>. This uses the native copy, synchronization and cutover engine,
 not DUMB's generation 1 SQLite-to-PostgreSQL adapter.</p>
@@ -5900,7 +6000,7 @@ DUMB records the restored file identity before restarting it. If mount recovery
 is delayed, retrying verifies that same SQLite file and its health without
 restoring over writes accepted since the first restart. A missing or replaced
 file remains blocked for investigation.</p>
-<h2 id="authentication-with-the-retained-backend-port">Authentication with the retained backend port<a class="headerlink" href="#authentication-with-the-retained-backend-port" title="Permanent link">&para;</a></h2>
+<h2 id="authentication-with-the-retained-backend-port">Authentication with the retained backend port<a class="headerlink" href="#authentication-with-the-retained-backend-port" title="Permanent link">#</a></h2>
 <p>When <code>backend_port</code> differs from <code>frontend_port</code>, DUMB runs a compatibility
 relay so existing SAB, WebDAV and signed-stream URLs can retain their port.
 The relay cannot preserve the original network peer identity, so DUMB locks
@@ -5915,7 +6015,7 @@ while compatibility forwarding is enabled, including after native UI/API changes
 backend and frontend ports. Review and update existing client and stream origins
 before removing the old port. Authentication requirements on the native listener
 then follow its own configuration.</p>
-<h2 id="validate-and-recover">Validate and recover<a class="headerlink" href="#validate-and-recover" title="Permanent link">&para;</a></h2>
+<h2 id="validate-and-recover">Validate and recover<a class="headerlink" href="#validate-and-recover" title="Permanent link">#</a></h2>
 <p>Before resuming normal work, verify queue/history/provider settings, timezone,
 login and OIDC policy, virtual categories, existing symlinks, representative
 file/range/seek reads, signed STRM playback and paths from each real consumer.
@@ -5931,7 +6031,7 @@ rollback and exact job confirmation. Major rollback restores the retained v1
 runtime/configuration; later generation 2 writes are not copied back. A failed
 rollback or unavailable recovery action needs investigation before restarting
 imports, scans or services. Do not delete retained state to clear a banner.</p>
-<h2 id="retire-the-old-v1-installation">Retire the old v1 installation<a class="headerlink" href="#retire-the-old-v1-installation" title="Permanent link">&para;</a></h2>
+<h2 id="retire-the-old-v1-installation">Retire the old v1 installation<a class="headerlink" href="#retire-the-old-v1-installation" title="Permanent link">#</a></h2>
 <p>After a verified cutover and real-library validation, the same migration panel
 can offer <strong>Retire the old v1 installation</strong> for a migration that retained the
 original local tree. Low-space migrations have already reused that data and do

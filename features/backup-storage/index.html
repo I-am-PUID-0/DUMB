@@ -959,6 +959,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#manage-saved-destinations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manage saved destinations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Manage saved destinations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mount-checks-after-a-container-update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mount checks after a container update
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#cold-archives-and-local-working-storage" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5359,6 +5387,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#manage-saved-destinations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manage saved destinations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Manage saved destinations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mount-checks-after-a-container-update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mount checks after a container update
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#cold-archives-and-local-working-storage" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5459,13 +5515,13 @@
   
 
 
-<h1 id="backup-storage">Backup storage<a class="headerlink" href="#backup-storage" title="Permanent link">&para;</a></h1>
+<h1 id="backup-storage">Backup storage<a class="headerlink" href="#backup-storage" title="Permanent link">#</a></h1>
 <p>Register a named destination for <strong>installation backups</strong>, <strong>InfiniDysk 2
 major-migration archives</strong> or <strong>standalone and scheduled symlink snapshots</strong>.
 Open <strong>Settings → Backups and restore</strong> for the central controls. These appear when the
 backend advertises the corresponding storage capabilities. Existing backup
 paths remain the default until you explicitly select a registered destination.</p>
-<h2 id="register-an-existing-destination">Register an existing destination<a class="headerlink" href="#register-an-existing-destination" title="Permanent link">&para;</a></h2>
+<h2 id="register-an-existing-destination">Register an existing destination<a class="headerlink" href="#register-an-existing-destination" title="Permanent link">#</a></h2>
 <p>The directory must already exist inside the DUMB container. A host-only path
 is insufficient. Mount NFS/SMB storage on the host and expose it to the container
 through your normal deployment configuration before registration. DUMB does not
@@ -5492,7 +5548,52 @@ active when the legacy/local choice is selected.
 Saving a symlink schedule applies its selected destination to that schedule;
 changing a draft selection does not save it. Use a new identifier when moving
 an existing registered root to another directory or filesystem.</p>
-<h2 id="cold-archives-and-local-working-storage">Cold archives and local working storage<a class="headerlink" href="#cold-archives-and-local-working-storage" title="Permanent link">&para;</a></h2>
+<h2 id="manage-saved-destinations">Manage saved destinations<a class="headerlink" href="#manage-saved-destinations" title="Permanent link">#</a></h2>
+<p>Backends supporting destination management show <strong>Registered destinations</strong>
+with each destination's path, default badge, last check and any blockers.
+<strong>Not checked</strong>, <strong>Available at last check</strong> and <strong>Unavailable at last check</strong>
+describe the latest explicit check; listing or refreshing the catalog does not
+probe the NAS. Select <strong>Check availability</strong> to check the current mount.
+An operation error stays with its destination until you address it.</p>
+<ul>
+<li><strong>Edit</strong> changes the display name, enabled state and, when supported, shared
+  archive-permission consent. The identifier and path stay fixed. Select
+  <strong>Save changes</strong> or <strong>Cancel</strong>; editing does not move files or change another
+  operation's destination/default. A name change can be saved without reaching
+  the storage.</li>
+<li><strong>Remove registration</strong> opens a review. <strong>Confirm remove registration</strong>
+  removes the saved choice, while archive files, the owned marker and local
+  ownership/catalog receipts remain. It does not delete backups.</li>
+<li>Disabling or removing a destination is blocked while a saved default,
+  configured consumer, active operation or retained recovery still needs it.
+  Review the listed reason: change the relevant selection or finish/recover
+  the operation first. Do not purge recovery records to bypass a blocker.</li>
+</ul>
+<p>To use a removed destination's retained catalog again with the same DUMB
+configuration, register the same identifier and original storage path.
+The original identifier stays associated with that owned storage; use a new
+identifier for a different root. If the old controller state/catalog is
+unavailable, installation restore also supports an existing
+<a href="../installation-backups/#restore-an-existing-or-fresh-installation">mounted archive file</a>.</p>
+<h3 id="mount-checks-after-a-container-update">Mount checks after a container update<a class="headerlink" href="#mount-checks-after-a-container-update" title="Permanent link">#</a></h3>
+<p>Linux can assign a different device number to the same mounted share after a
+container is recreated. Current backends can recognize that change when the
+registered storage coordinates, directory identity/permissions and owned
+marker still match. Existing archive ownership and references stay intact;
+you do not need to remove the destination for this device-number change alone.</p>
+<p>A mount change while the same controller is running remains blocked until
+reviewed. After <strong>Check availability</strong>, an eligible destination offers
+<strong>Review mount change</strong>. Compare the registered and observed storage, confirm
+that it is the same archive storage containing the retained backups, then
+select <strong>Confirm controller mount check</strong>. A review expires after five minutes;
+changed storage or settings require a fresh review. A disabled destination can
+be reviewed without enabling it, then enabled separately.</p>
+<p>This refreshes the controller's check for the same owned storage. It cannot
+adopt a different share, directory or marker, move backups, or bypass permission
+checks. Missing/replaced storage remains blocked. Check the host mount and
+container-visible path before retrying; DUMB never writes into the local
+directory underneath an absent registered mount.</p>
+<h2 id="cold-archives-and-local-working-storage">Cold archives and local working storage<a class="headerlink" href="#cold-archives-and-local-working-storage" title="Permanent link">#</a></h2>
 <p>Local directories and already-mounted NFS/SMB directories can hold closed
 archive files. DUMB requires restrictive POSIX permissions by default. A trusted
 mount or deliberately shared local directory can instead use
@@ -5526,7 +5627,7 @@ see <a href="../installation-backups/">Installation backup and restore</a>. Conf
 <code>.bak</code> copies, service-reset configuration backups and migration recovery bundles
 remain separate tools. Protect host deployment files, external systems and media
 through their independent backup/restore plans.</p>
-<h2 id="verification-and-recovery">Verification and recovery<a class="headerlink" href="#verification-and-recovery" title="Permanent link">&para;</a></h2>
+<h2 id="verification-and-recovery">Verification and recovery<a class="headerlink" href="#verification-and-recovery" title="Permanent link">#</a></h2>
 <p>DUMB records the selected root's identity and writes only its own managed
 artifacts. Exports use newly created temporary files, complete-byte
 checksum/readback verification and atomic publication. The selected permission
