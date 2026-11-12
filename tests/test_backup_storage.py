@@ -220,6 +220,9 @@ class BackupStorageTests(unittest.TestCase):
         )
         self.assertTrue(self.storage.profiles()["destinations"][0]["ready"])
         legacy = self.storage.bound_identity("nas")
+        self.assertNotEqual(
+            before["binding_fingerprint"], legacy["binding_fingerprint"]
+        )
         self.assertFalse(legacy["allow_shared_permissions"])
         self.assertEqual(
             legacy["binding_fingerprint"],
@@ -234,7 +237,8 @@ class BackupStorageTests(unittest.TestCase):
         self.storage.save_profile(self.shared_request())
         after = self.storage.bound_identity("nas")
         self.assertTrue(after["allow_shared_permissions"])
-        self.assertNotEqual(before["binding_fingerprint"], after["binding_fingerprint"])
+        # Permission consent is operational policy; original storage ownership stays stable.
+        self.assertEqual(legacy["binding_fingerprint"], after["binding_fingerprint"])
 
     def test_shared_external_policy_never_relaxes_local_control_or_link_checks(self):
         self.storage.save_profile(self.shared_request())
