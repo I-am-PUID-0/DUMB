@@ -47,6 +47,7 @@ from utils.installation_backup_inventory import (
 )
 
 from utils.installation_backup_limits import paired_workspace_bytes
+from utils.installation_backup_lifecycle import BackupLifecycleError, order_resume_rows
 
 PROTOCOL = 1
 NAMESPACE = "installation"
@@ -500,13 +501,19 @@ class InstallationBackupManager:
             if (
                 active
                 and job
-                and job.get("session") != self._session
                 and job["status"] in {"queued", "running"}
+                and (
+                    job.get("session") != self._session
+                    or (
+                        not self._rollback_running
+                        and (self._worker is None or not self._worker.is_alive())
+                    )
+                )
             ):
                 job.update(
                     status="recovery_required",
                     stage="interrupted",
-                    message="The previous controller stopped during this operation. Review the retained recovery before starting services.",
+                    message="The installation worker is no longer live. Review retained recovery before starting services.",
                     can_rollback=True,
                     rollback_confirmation_text=f"ROLL BACK {identifier}",
                 )
@@ -1110,9 +1117,19 @@ class InstallationBackupManager:
         except FileNotFoundError:
             return False
 
-    def _running(self):
+    def _ordered_lifecycle_rows(self, rows):
         from utils.dependency_map import build_conditional_dependency_map
 
+        configuration = self.config
+        dependencies = build_conditional_dependency_map(
+            lambda key: configuration.get(key) or {}
+        )
+        try:
+            return order_resume_rows(rows, configuration, dependencies)
+        except BackupLifecycleError as error:
+            raise InstallationBackupError(str(error)) from None
+
+    def _running(self):
         configured = {}
         for key, service in service_entries(self.config):
             name = service.get("process_name")
@@ -1137,26 +1154,7 @@ class InstallationBackupManager:
             key, name = configured[internal]
             if key not in CONTROL_KEYS:
                 running[name] = {"key": key, "name": name, "pid": pid}
-        dependencies = build_conditional_dependency_map(
-            lambda key: self.config.get(key) or {}
-        )
-        remaining = set(running)
-        ordered = []
-        while remaining:
-            pending_keys = {running[name]["key"] for name in remaining}
-            ready = sorted(
-                name
-                for name in remaining
-                if not (dependencies.get(running[name]["key"], set()) & pending_keys)
-            )
-            if not ready:
-                raise InstallationBackupError(
-                    "The running service dependencies contain a cycle; no services were stopped."
-                )
-            for name in ready:
-                ordered.append(running[name])
-                remaining.remove(name)
-        return ordered
+        return self._ordered_lifecycle_rows(list(running.values()))
 
     def _quiesce(self, identifier):
         running = self._running()
@@ -1200,7 +1198,7 @@ class InstallationBackupManager:
     def _resume(self, identifier):
         job = self._job(identifier)
         failures = []
-        for row in job.get("running_before") or []:
+        for row in self._ordered_lifecycle_rows(job.get("running_before") or []):
             name = row["name"]
             process = self.handler.process_names.get(self.handler._prefixed_name(name))
             external = getattr(self.handler, "external_processes", {}).get(name)
@@ -1219,6 +1217,15 @@ class InstallationBackupManager:
                 raise InstallationBackupError(
                     "An original writer or child group remains live without a managed registration; duplicate restart is refused."
                 )
+            label = json.dumps(name, ensure_ascii=True)
+            if len(label) > 400:
+                label = label[:400] + "... [name truncated]"
+            self._progress(
+                identifier,
+                "resuming",
+                f"Resuming retained service {label}; its dependencies must be ready first.",
+                status="running",
+            )
             success, _error = self.handler.start_process(name)
             if not success:
                 failures.append(name)
@@ -1358,7 +1365,21 @@ class InstallationBackupManager:
                     else "An unexpected filesystem or lifecycle error occurred."
                 )
                 message = "The complete installation operation did not finish. Review retained recovery evidence."
-                self._progress(identifier, "failed", message, errors=[detail])
+                self._progress(
+                    identifier,
+                    (
+                        "resuming"
+                        if job["job_type"] == "installation_backup"
+                        else "failed"
+                    ),
+                    (
+                        "The archive was not accepted; resuming the previous running services."
+                        if job["job_type"] == "installation_backup"
+                        else message
+                    ),
+                    status="running",
+                    errors=[detail],
+                )
                 if job.get("scheduled"):
                     runtime = self._schedule_runtime()
                     runtime.update(
@@ -1371,14 +1392,19 @@ class InstallationBackupManager:
                 if job["job_type"] == "installation_backup":
                     try:
                         self._resume(identifier)
-                    except Exception:
+                    except Exception as resume_error:
                         self._finish(
                             identifier,
                             status="recovery_required",
                             stage="resume_required",
                             message=message,
                             errors=[
-                                "Backup failed and the previous running set could not be fully resumed."
+                                detail,
+                                (
+                                    str(resume_error)
+                                    if isinstance(resume_error, InstallationBackupError)
+                                    else "Backup failed and the previous running set could not be fully resumed."
+                                ),
                             ],
                             can_rollback=True,
                             rollback_confirmation_text=f"ROLL BACK {identifier}",
@@ -2000,6 +2026,7 @@ class InstallationBackupManager:
                         raise InstallationBackupError(
                             "Another managed mutation or migration recovery blocks rollback."
                         )
+                same_boot = job.get("boot_identity") == self._boot
                 self._rollback_running = True
                 try:
                     job.update(
@@ -2024,7 +2051,7 @@ class InstallationBackupManager:
                     self._rollback_roots(identifier, job)
                 if (
                     job.get("job_type") == "installation_backup"
-                    and job.get("boot_identity") == self._boot
+                    and same_boot
                     and not self.boot_error
                     and not _BOOT_HOLD
                 ):

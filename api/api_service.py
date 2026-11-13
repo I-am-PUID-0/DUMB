@@ -183,19 +183,22 @@ def create_app() -> FastAPI:
             return JSONResponse(
                 status_code=409,
                 content={
-                    "detail": "Installation recovery owns persistence; use its status and recovery controls."
+                    "detail": "An installation backup, restore or recovery is controlling persistence. Use Backup and restore for status."
                 },
             )
         if (
             request.method.upper() in _UNSAFE_HTTP_METHODS
             and not request.url.path.startswith("/process/installation-backups/")
             and request.url.path not in {"/auth/login", "/auth/refresh", "/auth/logout"}
+            and not (
+                request.method.upper() == "POST" and request.url.path == "/auth/verify"
+            )
             and installation_backup_blocker()
         ):
             return JSONResponse(
                 status_code=409,
                 content={
-                    "detail": "Installation backup/restore recovery owns managed state."
+                    "detail": "An installation backup, restore or recovery is controlling persistence. Use Backup and restore for status."
                 },
             )
         if not _requires_namespace_mutation_reservation(

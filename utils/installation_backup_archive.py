@@ -247,6 +247,22 @@ def _row(name, value, link=None):
     return row
 
 
+def _changed_entry(path, expected, actual, message, *, extra=()):
+    fields = ("device", "inode", "mode", "size", "mtime_ns", "ctime_ns")
+    changed = [
+        field
+        for field, before, after in zip(fields, expected, _file_identity(actual))
+        if before != after
+    ]
+    changed.extend(extra)
+    shown = json.dumps(str(path), ensure_ascii=True)
+    if len(shown) > 900:
+        shown = shown[:450] + "... [path truncated] ..." + shown[-450:]
+    return InstallationArchiveError(
+        f"{message} at {shown}; changed metadata: {', '.join(changed) or 'identity'}."
+    )
+
+
 def source_rows(root, exclusions=(), *, content=False):
     """Descriptor walk; never follows a link or enters a nested mount."""
     root_path = Path(root["path"])
@@ -483,8 +499,11 @@ def write_archive(handle, metadata, roots, scratch, exclusions=(), owner_check=N
                 with open_leaf(path) as (parent, leaf):
                     value = os.stat(leaf, dir_fd=parent, follow_symlinks=False)
                     if list(_file_identity(value)) != expected:
-                        raise InstallationArchiveError(
-                            "A persistent entry changed during the cold archive."
+                        raise _changed_entry(
+                            path,
+                            expected,
+                            value,
+                            "A persistent entry changed during the cold archive",
                         )
                     if stat.S_ISREG(value.st_mode):
                         descriptor = os.open(
@@ -494,8 +513,11 @@ def write_archive(handle, metadata, roots, scratch, exclusions=(), owner_check=N
                         )
                         try:
                             if list(_file_identity(os.fstat(descriptor))) != expected:
-                                raise InstallationArchiveError(
-                                    "A persistent file changed while being opened."
+                                raise _changed_entry(
+                                    path,
+                                    expected,
+                                    os.fstat(descriptor),
+                                    "A persistent file changed while being opened",
                                 )
                             reader = _HashReader(descriptor)
                             _add(archive, row, reader)
@@ -503,8 +525,16 @@ def write_archive(handle, metadata, roots, scratch, exclusions=(), owner_check=N
                                 list(_file_identity(os.fstat(descriptor))) != expected
                                 or reader.size != row["size"]
                             ):
-                                raise InstallationArchiveError(
-                                    "A persistent file changed while being archived."
+                                raise _changed_entry(
+                                    path,
+                                    expected,
+                                    os.fstat(descriptor),
+                                    "A persistent file changed while being archived",
+                                    extra=(
+                                        ("read_size",)
+                                        if reader.size != row["size"]
+                                        else ()
+                                    ),
                                 )
                             row["sha256"] = reader.digest.hexdigest()
                         finally:
@@ -514,7 +544,13 @@ def write_archive(handle, metadata, roots, scratch, exclusions=(), owner_check=N
                             stat.S_ISLNK(value.st_mode)
                             and os.readlink(leaf, dir_fd=parent) != row["link"]
                         ):
-                            raise InstallationArchiveError("A persistent link changed.")
+                            raise _changed_entry(
+                                path,
+                                expected,
+                                value,
+                                "A persistent link changed",
+                                extra=("link_target",),
+                            )
                         _add(archive, row)
                 database.execute(
                     "UPDATE entries SET payload=? WHERE name=?", (canonical(row), key)
