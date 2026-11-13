@@ -6051,8 +6051,36 @@ create installation archives, configure an optional schedule, and review a
 restore or its recovery state. This section requires installation-backup support
 from the backend. A fresh installation can reach its recovery entry before
 application onboarding; normal authentication setup and login still apply.</p>
+<p>On supported backends, choose uncompressed <code>.tar</code> (the default) or Zstandard
+<code>.tar.zst</code> before previewing a manual backup. The schedule has its own saved
+compression choice. Changing the manual choice requires a fresh preview and
+does not alter the schedule. Restore recognizes either format automatically.
+Compression streams to the destination, does not encrypt the archive, and does
+not add incremental backups. Space estimates do not assume a compression ratio.</p>
+<p>Supported backends show a tracked <strong>Preview backup</strong> status with the current
+stage, managed root, scanned entries and bytes, and elapsed time. The progress
+notice and completion notification follow the user-run update style. You can
+return to Settings or refresh the browser to reconnect while the same DUMB
+controller is running. <strong>Cancel preview</strong> waits for the scan to stop and clean
+up; it does not cancel by merely closing the page. Applications remain running
+throughout preview, and creating an archive still requires a separate reviewed
+confirmation. Older backends show only a pending-request spinner and elapsed
+time, so keep that page open for its result.</p>
+<p>Manual and scheduled installation backups also show an application-wide notice
+while preparing, queued or running, with their stage and elapsed time.
+Preparation is the confirmed backup's coverage/capacity recheck, before
+applications are stopped or an archive job is admitted. The notice remains
+visible when you navigate away from Settings and reconnects after a browser
+refresh. Do not stop the DUMB container or shut
+down its host until the backup finishes. A lost connection leaves the backup's
+state unconfirmed; reconnect to obtain its terminal status. <strong>Recovery required</strong>
+is a separate attention state with retained recovery instructions. Session
+verification and refresh remain available during recovery; a backup hold does
+not itself discard the browser's credentials. Service/setup controls can remain
+blocked while you inspect and complete the retained recovery.</p>
 <p>See <a href="../../features/installation-backups/">Installation backup and restore</a> for
-coverage, downtime, capacity, archive validation and container-restart steps.</p>
+coverage, preview tracking and cancellation, downtime, capacity, archive
+validation and container-restart steps.</p>
 <h2 id="appearance">Appearance<a class="headerlink" href="#appearance" title="Permanent link">#</a></h2>
 <p>Choose <strong>System Default</strong> to follow the browser/operating-system light or dark preference, or select one of the explicit light/dark palettes shown in the theme grid. The choice is stored in browser local storage as <code>dmbdb.appearance.theme</code>; it is a per-browser preference and does not modify backend configuration.</p>
 <hr />

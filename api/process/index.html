@@ -8561,7 +8561,7 @@ Paths below are relative to the API; browser requests use its <code>/api</code> 
 <tr>
 <td><code>GET</code></td>
 <td><code>/process/installation-backups/status</code></td>
-<td>Schedule, operation/recovery state and current job</td>
+<td>Schedule, preparation, operation/recovery state and current job</td>
 </tr>
 <tr>
 <td><code>GET</code></td>
@@ -8572,6 +8572,16 @@ Paths below are relative to the API; browser requests use its <code>/api</code> 
 <td><code>POST</code></td>
 <td><code>/process/installation-backups/preview</code></td>
 <td>Review coverage, exclusions, destination, capacity and downtime</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/process/installation-backups/preview/status</code></td>
+<td>Reconnect to the current or selected tracked backup preview when supported</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/process/installation-backups/preview/{preview_id}/cancel</code></td>
+<td>Request cooperative cancellation of that tracked backup preview when supported</td>
 </tr>
 <tr>
 <td><code>POST</code></td>
@@ -8586,7 +8596,7 @@ Paths below are relative to the API; browser requests use its <code>/api</code> 
 <tr>
 <td><code>PUT</code></td>
 <td><code>/process/installation-backups/schedule</code></td>
-<td>Save an explicitly enabled/disabled schedule, destination and retention</td>
+<td>Save an explicitly enabled/disabled schedule, destination, compression and retention</td>
 </tr>
 <tr>
 <td><code>POST</code></td>
@@ -8605,6 +8615,61 @@ Paths below are relative to the API; browser requests use its <code>/api</code> 
 </tr>
 </tbody>
 </table>
+<p>Backends advertising <code>installation_backup_compression=true</code> accept
+<code>compression</code> in <code>POST /preview</code> and <code>PUT /schedule</code>: <code>"none"</code> selects the default
+uncompressed <code>.tar</code>; <code>"zstd"</code> selects <code>.tar.zst</code> and additionally requires
+<code>installation_backup_zstd=true</code>. The schema capability is independent of runtime
+codec availability: with schema support and Zstandard unavailable, clients can
+still explicitly save <code>"none"</code> to replace a schedule's previous <code>"zstd"</code> choice.
+A preview response and its tracked operation report the reviewed compression
+choice, which is bound to the preview token. Changing it requires another
+preview. An omitted schedule field preserves its saved compression choice; a
+newly configured schedule defaults to <code>"none"</code>. Clients lacking the schema
+capability omit the field and keep the legacy uncompressed flow.</p>
+<p>The catalog reports each archive's compression. Restore detects the actual
+format from its bytes rather than trusting the extension, so legacy <code>.tar</code>
+archives continue to work. Both formats are complete standalone archives.
+Compression streams directly to the destination; capacity admission uses a
+conservative uncompressed estimate plus overhead, not an assumed ratio.</p>
+<p>The current <code>GET /status</code> response also includes <code>preparation</code>: <code>null</code> or an
+object with <code>stage: "checking_capacity"</code>, <code>message</code> and <code>started_at</code>. It describes
+a confirmed manual or scheduled backup's coverage/capacity recheck before a
+durable archive job is admitted and managed writers are stopped. The marker
+allows the frontend to reconnect to preparation after navigation or refresh.
+It reports elapsed time rather than per-entry preview counters and is cleared
+when job admission or the failed recheck finishes.</p>
+<p>Job <code>created_at</code> / <code>updated_at</code> and preparation <code>started_at</code> values use Unix
+seconds and can contain fractional seconds. Newer backends can include a <code>progress</code> object with optional
+<code>entries</code>, <code>logical_bytes</code> and <code>bytes_processed</code> counters. These are relative to
+the current <code>stage</code> and reset at a phase change: <code>inventorying</code> is a metadata
+census, <code>archiving</code> is archive streaming, <code>checking_source</code> hashes source file
+contents again, and <code>verifying</code> reads back the archive. In archive streaming
+and verification, <code>bytes_processed</code> counts actual stored stream bytes, including
+the stream containing headers, padding and manifest data; for Zstandard these
+are compressed bytes. <code>logical_bytes</code> remains an uncompressed source measure.
+In source checking, <code>bytes_processed</code> counts source file bytes hashed.
+Consumers must tolerate omitted counters and must not infer an overall
+percentage or advancement merely from a successful status request.</p>
+<p>Backends advertising <code>installation_backup_preview_status=true</code> track the
+backup preview while the existing synchronous <code>POST /preview</code> is running.
+Poll <code>GET /preview/status</code>; optional query parameter <code>preview_id</code> pins a selected
+operation. The response contains <code>protocol</code>, <code>controller_session</code> and <code>preview</code>
+(<code>null</code> when no current preview is retained). An explicitly queried unknown or
+expired ID returns <code>409</code>; it does not start another scan. The operation reports <code>preview_id</code>,
+<code>status</code>, <code>stage</code>, <code>message</code>, start/update/completion and last-progress timestamps,
+<code>elapsed_seconds</code>, <code>entries</code>, <code>logical_bytes</code>, completed/total root counts,
+<code>current_root</code> and <code>destination_id</code>. Statuses are <code>running</code>, <code>cancelling</code>,
+<code>completed</code>, <code>failed</code> and <code>cancelled</code>; scan counters do not imply a known total or
+an archive write. A completed operation supplies its original review <code>result</code>
+and expiry. A completed scan can still return blockers and requires a separate
+explicit <code>/start</code> request before a backup begins.</p>
+<p><code>POST /preview/{preview_id}/cancel</code> requests a stop; it does not claim immediate
+completion. Wait for <code>cancelled</code> after the worker cleans its temporary ledger
+and releases its preview lock. Preview never stops managed writers. Status is
+held in controller memory, so a changed <code>controller_session</code> or a missing result
+after a restart requires an explicitly requested new preview, not automatic
+replay. Confirmation expiry begins after scanning completes. The capability
+adds no fixed scan deadline and does not change restore-preview behavior.</p>
 <p>Preview authorization is short-lived and bound to the reviewed source, targets
 and storage identity. A restore can select an owned catalog reference or a
 container-visible archive path, allowing recovery without the original local
@@ -8621,6 +8686,11 @@ managed installation state, not host deployment files, media or external systems
 Failed admission, capacity, storage or compatibility checks do not authorize a
 partial success. See <a href="../../features/installation-backups/">Installation backup and restore</a>
 for the operating and recovery procedure.</p>
+<p>An installation-recovery hold continues to allow normal login/refresh and the
+stateless <code>POST /auth/verify</code> session check under their ordinary authentication
+rules. This exception does not allow other HTTP methods or unrelated mutations.
+A held service/setup request's <code>409</code> is not an instruction to clear credentials;
+clients retain the session unless authentication itself establishes its expiry.</p>
 <h2 id="registered-backup-storage">Registered backup storage<a class="headerlink" href="#registered-backup-storage" title="Permanent link">#</a></h2>
 <p>Clients gate these authenticated routes using explicit
 <code>backup_storage_selection=true</code>, numeric <code>backup_storage_protocol=1</code> and the

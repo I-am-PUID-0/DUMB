@@ -2587,6 +2587,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Hardware acceleration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intel-opencl-tone-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intel OpenCL tone mapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -5498,6 +5515,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Hardware acceleration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intel-opencl-tone-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intel OpenCL tone mapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -5706,6 +5740,32 @@ autodetection. Select the acceleration method and supported codecs in Jellyfin's
 not enable transcoding.</p>
 <p>See <a href="../../../deployment/proxmox/#gpu-passthrough-and-jellyfin">native Proxmox GPU setup</a>
 and <a href="https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/intel/">Jellyfin's Intel GPU guide</a>.</p>
+<h3 id="intel-opencl-tone-mapping">Intel OpenCL tone mapping<a class="headerlink" href="#intel-opencl-tone-mapping" title="Permanent link">#</a></h3>
+<p>AMD64 DUMB images include the distribution's current and legacy Intel OpenCL
+GPU runtimes, generic ICD loader and <code>clinfo</code>. They are installed when the image
+is built, so updating or recreating the container does not require reinstalling
+them manually. ARM64 images do not install these Intel GPU packages. This does
+not install a host kernel driver or provide AMD/NVIDIA runtime support.</p>
+<p>The current and legacy packages cover different Intel GPU generations. Check
+the <a href="https://github.com/intel/compute-runtime">upstream supported-platform list</a>
+and <a href="https://github.com/intel/compute-runtime/blob/master/documentation/LEGACY_PLATFORMS.md">legacy platforms</a>
+for your hardware. The host still needs a working GPU driver, a passed-through
+<code>/dev/dri/renderD*</code> device and permission for DUMB's configured service account
+to use that device. The runtime packages do not enable Jellyfin's transcoding
+settings automatically.</p>
+<p>Replace <code>dumb</code> with your container name, and select the correct render device:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>dumb<span class="w"> </span>clinfo<span class="w"> </span>-l
+docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>dumb<span class="w"> </span>/usr/lib/jellyfin-ffmpeg/ffmpeg<span class="w"> </span>-v<span class="w"> </span>verbose<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-init_hw_device<span class="w"> </span><span class="nv">vaapi</span><span class="o">=</span>va:/dev/dri/renderD128<span class="w"> </span>-init_hw_device<span class="w"> </span>opencl@va<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-f<span class="w"> </span>lavfi<span class="w"> </span>-i<span class="w"> </span><span class="nv">color</span><span class="o">=</span><span class="nv">size</span><span class="o">=</span>16x16:rate<span class="o">=</span><span class="m">1</span><span class="w"> </span>-frames:v<span class="w"> </span><span class="m">1</span><span class="w"> </span>-f<span class="w"> </span>null<span class="w"> </span>-
+</code></pre></div>
+<p>The second command checks device initialization and VA-API/OpenCL
+interoperability. Repeat device checks with the same user and GPU groups as
+Jellyfin; a successful root-run check does not verify the service account's access. Package installation or an empty <code>clinfo</code> result does not
+establish working GPU tone mapping. Configure OpenCL tone mapping in Jellyfin,
+then test a short HDR transcode and inspect Jellyfin's FFmpeg log before relying
+on it for playback. See <a href="https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/intel/">Jellyfin's Intel guide</a>
+for the current hardware and codec requirements.</p>
 <h2 id="media-library-protection">Media Library Protection<a class="headerlink" href="#media-library-protection" title="Permanent link">#</a></h2>
 <p>Jellyfin requires an authorized API key before DUMB can inspect sessions and temporarily control scan tasks/library real-time monitoring. Compatible guided first-administrator setup can create a dedicated application key; the checklist offers a separate explicit choice to save that key for Library Protection. You can also create a key in Jellyfin's dashboard and save it under <strong>Library Protection</strong> on the Jellyfin service page. New setup-created protection policies remain disabled until you review their mount scope and enable them. Without usable credentials, unattended storage maintenance is deferred because activity is unknown.</p>
 <p>See <a href="../../../features/media-library-protection/">Media Library Protection</a>.</p>
