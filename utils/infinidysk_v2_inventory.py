@@ -55,7 +55,7 @@ def _close_directory(frame):
         os.close(frame[0])
 
 
-def _content_hash(name, directory_fd, expected):
+def _content_hash(name, directory_fd, expected, *, progress=None):
     descriptor = os.open(
         name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory_fd
     )
@@ -68,6 +68,8 @@ def _content_hash(name, directory_fd, expected):
         digest = hashlib.sha256()
         while chunk := os.read(descriptor, 1024 * 1024):
             digest.update(chunk)
+            if progress is not None:
+                progress(len(chunk))
         if _file_identity(os.fstat(descriptor)) != _file_identity(opened):
             raise InventoryError("An inventory file changed while being read.")
         return digest.hexdigest()

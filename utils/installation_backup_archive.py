@@ -17,6 +17,7 @@ import tarfile
 import tempfile
 import time
 
+
 from utils.backup_storage import mount_records, require_local_path
 from utils.infinidysk_v2_archive import _BoundedTarInfo, ArchiveError as _TarSafetyError
 from utils.infinidysk_v2_inventory import (
@@ -263,7 +264,7 @@ def _changed_entry(path, expected, actual, message, *, extra=()):
     )
 
 
-def source_rows(root, exclusions=(), *, content=False):
+def source_rows(root, exclusions=(), *, content=False, content_progress=None):
     """Descriptor walk; never follows a link or enters a nested mount."""
     root_path = Path(root["path"])
     excluded = {os.path.normpath(str(x)) for x in exclusions}
@@ -287,7 +288,11 @@ def source_rows(root, exclusions=(), *, content=False):
             raise InstallationArchiveError(_unsupported_library_file(root_path))
         if content and stat.S_ISREG(value.st_mode):
             with open_leaf(root_path) as (parent, leaf):
-                first["sha256"] = _content_hash(leaf, parent, value)
+                first["sha256"] = (
+                    _content_hash(leaf, parent, value)
+                    if content_progress is None
+                    else _content_hash(leaf, parent, value, progress=content_progress)
+                )
         yield first, root_path, list(_file_identity(value))
         if not stat.S_ISDIR(value.st_mode):
             return
@@ -328,7 +333,13 @@ def source_rows(root, exclusions=(), *, content=False):
             ):
                 raise InstallationArchiveError(_unsupported_library_file(path))
             if content and stat.S_ISREG(value.st_mode):
-                row["sha256"] = _content_hash(entry.name, descriptor, value)
+                row["sha256"] = (
+                    _content_hash(entry.name, descriptor, value)
+                    if content_progress is None
+                    else _content_hash(
+                        entry.name, descriptor, value, progress=content_progress
+                    )
+                )
             yield row, path, list(_file_identity(value))
             if stat.S_ISDIR(value.st_mode):
                 if depth + 1 > MAX_INSTALLATION_DEPTH:
@@ -365,13 +376,26 @@ def open_leaf(path):
         os.close(descriptor)
 
 
-def inventory(roots, scratch, exclusions=(), *, content=False):
+def inventory(roots, scratch, exclusions=(), *, content=False, progress=None):
     entries = size = footer_bytes = 0
     digest = hashlib.sha256()
+    counters = _ArchiveProgress(
+        progress, "checking_source" if content else "inventorying"
+    )
     with manifest(scratch) as database:
         footer_limit = ledger_quota(database)
         for root in roots:
-            with closing(source_rows(root, exclusions, content=content)) as rows:
+            source = (
+                source_rows(root, exclusions, content=content)
+                if progress is None or not content
+                else source_rows(
+                    root,
+                    exclusions,
+                    content=content,
+                    content_progress=counters.source_read,
+                )
+            )
+            with closing(source) as rows:
                 for row, source, stamp in rows:
                     entries += 1
                     size += row["size"]
@@ -381,8 +405,12 @@ def inventory(roots, scratch, exclusions=(), *, content=False):
                             "The complete installation footer exceeds the verification space assigned from current local capacity."
                         )
                     _insert(database, row, source, stamp)
+                    counters.entries, counters.logical_bytes = entries, size
+                    counters.report()
         for (payload,) in database.execute("SELECT payload FROM entries ORDER BY name"):
             digest.update(payload + b"\n")
+            counters.report()
+    counters.report(force=True)
     return {
         "entries": entries,
         "logical_bytes": size,
@@ -431,21 +459,84 @@ class _Rows:
         return result
 
 
+class _ArchiveProgress:
+    """Phase-relative counters; callbacks are emitted only for actual work."""
+
+    def __init__(self, callback, stage):
+        self.callback, self.stage = callback, stage
+        self.entries = self.logical_bytes = self.bytes_processed = 0
+        self.report(force=True)
+
+    def report(self, *, force=False):
+        if self.callback is not None:
+            self.callback(
+                stage=self.stage,
+                force=force,
+                entries=self.entries,
+                logical_bytes=self.logical_bytes,
+                bytes_processed=self.bytes_processed,
+            )
+
+    def payload_read(self, amount):
+        self.logical_bytes += amount
+        self.report()
+
+    def source_read(self, amount):
+        self.bytes_processed += amount
+        self.report()
+
+
+class _ProgressStream:
+    """Observe the existing stream without changing its reads or writes."""
+
+    def __init__(self, handle, progress):
+        self.handle, self.progress = handle, progress
+
+    def write(self, data):
+        amount = self.handle.write(data)
+        self.progress.bytes_processed += amount
+        self.progress.report()
+        return amount
+
+    def read(self, amount=-1):
+        data = self.handle.read(amount)
+        if data:
+            self.progress.bytes_processed += len(data)
+            self.progress.report()
+        return data
+
+    def flush(self):
+        return self.handle.flush()
+
+
 class _HashReader:
-    def __init__(self, descriptor):
+    def __init__(self, descriptor, on_read=None):
         self.descriptor, self.digest, self.size = descriptor, hashlib.sha256(), 0
+        self.on_read = on_read
 
     def read(self, amount):
         chunk = os.read(self.descriptor, amount)
         self.digest.update(chunk)
         self.size += len(chunk)
+        if chunk and self.on_read is not None:
+            self.on_read(len(chunk))
         return chunk
 
 
-def write_archive(handle, metadata, roots, scratch, exclusions=(), owner_check=None):
+def _write_archive(
+    handle,
+    metadata,
+    roots,
+    scratch,
+    exclusions=(),
+    owner_check=None,
+    *,
+    progress=None,
+):
     if len(canonical(metadata)) > MAX_METADATA:
         raise InstallationArchiveError("Installation metadata exceeds its bound.")
     check = owner_check or (lambda: None)
+    counters = _ArchiveProgress(progress, "inventorying")
     with manifest(
         scratch,
         max_bytes=safe_ledger_budget(shutil.disk_usage(scratch).free, paired=True),
@@ -462,6 +553,9 @@ def write_archive(handle, metadata, roots, scratch, exclusions=(), owner_check=N
                             "The complete installation footer exceeds the verification space assigned from current local capacity."
                         )
                     _insert(database, row, path, stamp, reserve_hash=True)
+                    counters.entries = count
+                    counters.logical_bytes += row["size"]
+                    counters.report()
         ledger_bytes = ledger_footprint(database)
         # The producer keeps this ledger while building the second full content
         # verification ledger. Recheck remaining local headroom before emission.
@@ -470,8 +564,11 @@ def write_archive(handle, metadata, roots, scratch, exclusions=(), owner_check=N
             raise InstallationArchiveError(
                 "Insufficient local space for the complete second verification ledger."
             )
+        counters.report(force=True)
+        counters = _ArchiveProgress(progress, "archiving")
+        output = _ProgressStream(handle, counters) if progress is not None else handle
         with tarfile.open(
-            fileobj=handle,
+            fileobj=output,
             mode="w|",
             format=tarfile.PAX_FORMAT,
             encoding="utf-8",
@@ -519,7 +616,14 @@ def write_archive(handle, metadata, roots, scratch, exclusions=(), owner_check=N
                                     os.fstat(descriptor),
                                     "A persistent file changed while being opened",
                                 )
-                            reader = _HashReader(descriptor)
+                            reader = _HashReader(
+                                descriptor,
+                                on_read=(
+                                    counters.payload_read
+                                    if progress is not None
+                                    else None
+                                ),
+                            )
                             _add(archive, row, reader)
                             if (
                                 list(_file_identity(os.fstat(descriptor))) != expected
@@ -555,6 +659,8 @@ def write_archive(handle, metadata, roots, scratch, exclusions=(), owner_check=N
                 database.execute(
                     "UPDATE entries SET payload=? WHERE name=?", (canonical(row), key)
                 )
+                counters.entries += 1
+                counters.report()
             length = database.execute(
                 "SELECT COALESCE(SUM(length(payload)+1),0) FROM entries"
             ).fetchone()[0]
@@ -574,16 +680,31 @@ def write_archive(handle, metadata, roots, scratch, exclusions=(), owner_check=N
                 },
                 _Rows(database),
             )
+        counters.report(force=True)
         # Complete second content pass detects additions/removals as well as in-place writes.
+        counters = _ArchiveProgress(progress, "checking_source")
         expected_digest = hashlib.sha256()
         for (payload,) in database.execute("SELECT payload FROM entries ORDER BY name"):
             expected_digest.update(payload + b"\n")
-        current = inventory(roots, scratch, exclusions, content=True)
+            counters.report()
+        current = (
+            inventory(roots, scratch, exclusions, content=True)
+            if progress is None
+            else inventory(roots, scratch, exclusions, content=True, progress=progress)
+        )
         if current["fingerprint"] != expected_digest.hexdigest():
             raise InstallationArchiveError(
                 "The installation changed while its complete archive was being captured."
             )
         return {"entries": count, "fingerprint": expected_digest.hexdigest()}
+
+
+def write_archive(
+    handle, metadata, roots, scratch, exclusions=(), owner_check=None, *, progress=None
+):
+    return _write_archive(
+        handle, metadata, roots, scratch, exclusions, owner_check, progress=progress
+    )
 
 
 def _parsed_row(info):
@@ -626,7 +747,9 @@ def _parsed_row(info):
     return row
 
 
-def _inspect_archive(handle, scratch, *, extract_root=None, owner_check=None):
+def _inspect_archive(
+    handle, scratch, *, extract_root=None, owner_check=None, progress=None
+):
     """Verify a complete stream; optional extraction is only to an empty private tree."""
     check = owner_check or (lambda: None)
     metadata = None
@@ -635,6 +758,9 @@ def _inspect_archive(handle, scratch, *, extract_root=None, owner_check=None):
     root_sizes = {}
     controller_sha256 = {}
     root_ids = set()
+    counters = _ArchiveProgress(progress, "verifying")
+    if progress is not None:
+        handle = _ProgressStream(handle, counters)
     with manifest(scratch) as database:
         footer_limit = ledger_quota(database)
         with tarfile.open(
@@ -725,6 +851,7 @@ def _inspect_archive(handle, scratch, *, extract_root=None, owner_check=None):
                                 "UPDATE entries SET matched=1 WHERE name=?",
                                 (name.encode("utf-8", "surrogatepass"),),
                             )
+                            counters.report()
                     footer = True
                     continue
                 parts = PurePosixPath(info.name).parts
@@ -787,6 +914,7 @@ def _inspect_archive(handle, scratch, *, extract_root=None, owner_check=None):
                         with archive.extractfile(info) as stream:
                             while chunk := stream.read(1024 * 1024):
                                 digest.update(chunk)
+                                counters.payload_read(len(chunk))
                                 if destination is not None:
                                     pending = memoryview(chunk)
                                     while pending:
@@ -810,6 +938,8 @@ def _inspect_archive(handle, scratch, *, extract_root=None, owner_check=None):
                         if metadata.get(key) == str(absolute):
                             controller_sha256[role] = row["sha256"]
                 _insert(database, row)
+                counters.entries = count
+                counters.report()
             if any(getattr(archive.fileobj, "buf", b"")):
                 raise InstallationArchiveError(
                     "Unexpected bytes follow the archive end marker."
@@ -827,11 +957,12 @@ def _inspect_archive(handle, scratch, *, extract_root=None, owner_check=None):
             ).fetchone()[0]
         ):
             raise InstallationArchiveError("The installation archive is incomplete.")
-        found_roots = {
-            json.loads(x[0])["name"].split("/")[1]
-            for x in database.execute("SELECT payload FROM entries")
-            if len(json.loads(x[0])["name"].split("/")) == 2
-        }
+        found_roots = set()
+        for (payload,) in database.execute("SELECT payload FROM entries"):
+            parts = json.loads(payload)["name"].split("/")
+            if len(parts) == 2:
+                found_roots.add(parts[1])
+            counters.report()
         if found_roots != root_ids:
             raise InstallationArchiveError("An installation root is absent.")
         if extract_root is not None:
@@ -860,6 +991,8 @@ def _inspect_archive(handle, scratch, *, extract_root=None, owner_check=None):
         digest = hashlib.sha256()
         for (payload,) in database.execute("SELECT payload FROM entries ORDER BY name"):
             digest.update(payload + b"\n")
+            counters.report()
+        counters.report(force=True)
         return {
             "verified": True,
             "metadata": metadata,
@@ -872,10 +1005,16 @@ def _inspect_archive(handle, scratch, *, extract_root=None, owner_check=None):
         }
 
 
-def inspect_archive(handle, scratch, *, extract_root=None, owner_check=None):
+def inspect_archive(
+    handle, scratch, *, extract_root=None, owner_check=None, progress=None
+):
     try:
         return _inspect_archive(
-            handle, scratch, extract_root=extract_root, owner_check=owner_check
+            handle,
+            scratch,
+            extract_root=extract_root,
+            owner_check=owner_check,
+            progress=progress,
         )
     except InstallationArchiveError:
         raise

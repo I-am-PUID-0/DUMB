@@ -47,7 +47,14 @@ from utils.installation_backup_inventory import (
 )
 
 from utils.installation_backup_limits import paired_workspace_bytes
+
+
 from utils.installation_backup_lifecycle import BackupLifecycleError, order_resume_rows
+from utils.installation_backup_preview import (
+    PreviewCancelled,
+    PreviewStatuses,
+    PreviewStatusError,
+)
 
 PROTOCOL = 1
 NAMESPACE = "installation"
@@ -282,6 +289,8 @@ class InstallationBackupManager:
         self._worker = None
         self._rollback_running = False
         self._preview_reader = threading.Lock()
+        self._preview_statuses = PreviewStatuses(clock=clock, ttl=PREVIEW_TTL)
+        self._backup_preparation = None
         self._previews = {}
         self._stop = threading.Event()
         self._scheduler = None
@@ -478,6 +487,7 @@ class InstallationBackupManager:
             "result",
             "can_rollback",
             "rollback_confirmation_text",
+            "progress",
         }
         return {key: deepcopy(value) for key, value in job.items() if key in keys}
 
@@ -522,6 +532,7 @@ class InstallationBackupManager:
             return {
                 "protocol": PROTOCOL,
                 "job": self._public(job),
+                "preparation": deepcopy(self._backup_preparation),
                 "recovery_required": bool(
                     active and (job or {}).get("status") != "running"
                 ),
@@ -616,8 +627,12 @@ class InstallationBackupManager:
                     "The complete archive does not contain both hash-bound controller config/auth files."
                 )
 
-    def _backup_verifier(self, stream, scratch, metadata, check):
-        proof = inspect_archive(stream, scratch, owner_check=check)
+    def _backup_verifier(self, stream, scratch, metadata, check, *, progress=None):
+        proof = (
+            inspect_archive(stream, scratch, owner_check=check)
+            if progress is None
+            else inspect_archive(stream, scratch, owner_check=check, progress=progress)
+        )
         self._verify_controller_proof(metadata, proof)
         return proof
 
@@ -808,11 +823,64 @@ class InstallationBackupManager:
         finally:
             self._preview_reader.release()
 
-    def preview(self, options):
-        with self._preview_scan():
-            return self._backup_preview(options)
+    def preview_status(self, preview_id=None):
+        try:
+            operation = self._preview_statuses.snapshot(preview_id)
+        except PreviewStatusError as error:
+            raise InstallationBackupError(str(error)) from None
+        result = (operation or {}).get("result")
+        if result is not None:
+            with self._lock:
+                record = self._previews.get(result.get("preview_token"))
+                if not record or record["expires_at"] <= self.clock():
+                    self._preview_statuses.invalidate_result(operation["preview_id"])
+                    operation = self._preview_statuses.snapshot(operation["preview_id"])
+        return {
+            "protocol": PROTOCOL,
+            "controller_session": self._session,
+            "preview": operation,
+        }
 
-    def _backup_preview(self, options):
+    def cancel_preview(self, preview_id):
+        try:
+            self._preview_statuses.cancel(preview_id)
+        except PreviewStatusError as error:
+            raise InstallationBackupError(str(error)) from None
+        return self.preview_status(preview_id)
+
+    def preview(self, options):
+        progress = result = None
+        try:
+            with self._preview_scan():
+                progress = self._preview_statuses.begin(options.get("destination_id"))
+                try:
+                    result = self._backup_preview(options, progress=progress.checkpoint)
+                    self._preview_statuses.seal(progress.identifier)
+                finally:
+                    self._preview_statuses.close_cancel_window(progress.identifier)
+            # Terminal status is published only after the census workspace is
+            # cleaned and this operation has released its reader lane.
+            self._preview_statuses.finish(
+                progress.identifier, "completed", result=result
+            )
+            return result
+        except PreviewCancelled:
+            if result is not None:
+                with self._lock:
+                    self._previews.pop(result.get("preview_token"), None)
+            self._preview_statuses.finish(progress.identifier, "cancelled")
+            raise InstallationBackupError(
+                "Backup preview cancelled. The preview did not start a backup or stop services."
+            ) from None
+        except Exception:
+            if progress is not None:
+                if result is not None:
+                    with self._lock:
+                        self._previews.pop(result.get("preview_token"), None)
+                self._preview_statuses.finish(progress.identifier, "failed")
+            raise
+
+    def _backup_preview(self, options, *, progress=None):
         blockers, roots, details = [], [], []
         report = {
             "status": "unavailable",
@@ -827,14 +895,33 @@ class InstallationBackupManager:
         try:
             if self.has_blocking_job():
                 raise InstallationBackupError(_BLOCKER)
+            if progress:
+                progress(
+                    force=True,
+                    stage="checking_destination",
+                    message="Checking the selected backup destination.",
+                )
             destination = self.storage.bound_identity(options.get("destination_id"))
             scratch = self._workspace("preview")
+            if progress:
+                progress(
+                    force=True,
+                    stage="classifying",
+                    message="Identifying managed persistence and library link roots.",
+                )
             roots, exclusions = collect_roots(
                 self.config,
                 self.config_manager.file_path,
                 self.state_root,
                 self.storage,
             )
+            if progress:
+                progress(
+                    force=True,
+                    stage="checking_roots",
+                    message="Checking managed roots and archive containment.",
+                    root_count=len(roots),
+                )
             self._restore_contract(roots)
             retained = self._retained_holders()
             exclusions.extend(row["path"] for row in retained)
@@ -854,7 +941,21 @@ class InstallationBackupManager:
                 raise InstallationBackupError(
                     "The selected archive store overlaps a managed application root."
                 )
-            report, details = capacity(roots, scratch, destination["path"], exclusions)
+            if progress is None:
+                report, details = capacity(
+                    roots,
+                    scratch,
+                    destination["path"],
+                    exclusions,
+                )
+            else:
+                report, details = capacity(
+                    roots,
+                    scratch,
+                    destination["path"],
+                    exclusions,
+                    progress=progress,
+                )
             report["observed_at"] = self.clock()
             if report["status"] != "sufficient":
                 blockers.append(
@@ -891,6 +992,12 @@ class InstallationBackupManager:
                 "This private archive is checksummed, not encrypted or signed.",
             ],
         }
+        if progress:
+            progress(
+                force=True,
+                stage="finalizing",
+                message="Finalizing the live-state estimate and review token.",
+            )
         return self._preview_record("backup", plan, public)
 
     def _validated_request(self, kind, request):
@@ -1095,17 +1202,27 @@ class InstallationBackupManager:
                 raise InstallationBackupError(
                     "The destination changed; review a new preview."
                 )
-            report, _ = capacity(
-                plan["roots"],
-                self._workspace("preview"),
-                plan["destination"]["path"],
-                plan["exclusions"],
-            )
-            if report["status"] != "sufficient":
-                raise InstallationBackupError(
-                    "Available space changed; the complete backup is blocked before quiescence."
+            with self._lock:
+                self._backup_preparation = {
+                    "stage": "checking_capacity",
+                    "message": "Rechecking backup coverage and space before stopping services.",
+                    "started_at": self.clock(),
+                }
+            try:
+                report, _ = capacity(
+                    plan["roots"],
+                    self._workspace("preview"),
+                    plan["destination"]["path"],
+                    plan["exclusions"],
                 )
-            return self._admit("backup", record, scheduled=scheduled)
+                if report["status"] != "sufficient":
+                    raise InstallationBackupError(
+                        "Available space changed; the complete backup is blocked before quiescence."
+                    )
+                return self._admit("backup", record, scheduled=scheduled)
+            finally:
+                with self._lock:
+                    self._backup_preparation = None
 
     @staticmethod
     def _pid_alive(pid):
@@ -1256,15 +1373,42 @@ class InstallationBackupManager:
             ):
                 self._state("active.json").unlink(missing_ok=True)
 
+    def _backup_progress(self, identifier):
+        messages = {
+            "inventorying": "Indexing stopped application state before writing the archive.",
+            "archiving": "Streaming the cold installation archive to the selected destination.",
+            "checking_source": "Checking that the source inventory and file contents stayed unchanged.",
+            "verifying": "Reading back and checking the closed archive before acceptance.",
+        }
+        last_stage, last_report = None, 0.0
+
+        def report(
+            *, stage, force=False, entries=0, logical_bytes=0, bytes_processed=0
+        ):
+            nonlocal last_stage, last_report
+            now = time.monotonic()
+            if not force and stage == last_stage and now - last_report < 1:
+                return
+            self._progress(
+                identifier,
+                stage,
+                messages[stage],
+                progress={
+                    "entries": entries,
+                    "logical_bytes": logical_bytes,
+                    "bytes_processed": bytes_processed,
+                },
+            )
+            last_stage, last_report = stage, now
+
+        return report
+
     def _backup(self, identifier):
         job = self._job(identifier)
         plan = job["plan"]
         self._quiesce(identifier)
-        self._progress(
-            identifier,
-            "archiving",
-            "Streaming all cold managed persistent state to the verified destination.",
-        )
+        progress = self._backup_progress(identifier)
+        progress(stage="inventorying", force=True)
         if self._binding() != job["config_binding"]:
             raise InstallationBackupError(
                 "Configuration changed before the cold backup."
@@ -1292,10 +1436,16 @@ class InstallationBackupManager:
             plan["destination"]["destination_id"],
             NAMESPACE,
             lambda stream: write_archive(
-                stream, metadata, plan["roots"], scratch, plan["exclusions"], check
+                stream,
+                metadata,
+                plan["roots"],
+                scratch,
+                plan["exclusions"],
+                check,
+                progress=progress,
             ),
             verifier=lambda stream: self._backup_verifier(
-                stream, scratch, metadata, check
+                stream, scratch, metadata, check, progress=progress
             ),
             metadata={
                 "kind": "installation_backup",
@@ -2189,7 +2339,11 @@ class InstallationBackupManager:
                 raise InstallationBackupError(
                     "An installation job is active or needs recovery."
                 )
-            preview = self.preview({"destination_id": schedule["destination_id"]})
+            preview = self.preview(
+                {
+                    "destination_id": schedule["destination_id"],
+                }
+            )
             if not preview["ready"]:
                 raise InstallationBackupError("; ".join(preview["blockers"])[:800])
             request = {

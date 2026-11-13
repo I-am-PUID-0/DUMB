@@ -10,6 +10,7 @@ import stat
 import subprocess
 import hashlib
 
+
 from utils.backup_storage import mount_records, paths_overlap, require_local_path
 from utils.installation_backup_archive import (
     InstallationArchiveError,
@@ -438,7 +439,7 @@ def _capacity_filesystems(allocations):
     return rows
 
 
-def capacity(roots, scratch, destination, exclusions=()):
+def capacity(roots, scratch, destination, exclusions=(), *, progress=None):
     anchor = Path(scratch)
     while not anchor.exists():
         anchor = anchor.parent
@@ -464,6 +465,19 @@ def capacity(roots, scratch, destination, exclusions=()):
         quota = ledger_quota(database)
         for root in roots:
             count = size = 0
+            if progress:
+                progress(
+                    force=True,
+                    stage="scanning",
+                    message="Inspecting managed files and links; the preview does not stop services.",
+                    entries=entries,
+                    logical_bytes=logical,
+                    roots_completed=len(details),
+                    root_count=len(roots),
+                    current_root={
+                        key: root[key] for key in ("id", "path", "kind", "roles")
+                    },
+                )
             with closing(
                 source_rows(root, exclusions or root.get("exclusions", ()))
             ) as rows:
@@ -477,15 +491,37 @@ def capacity(roots, scratch, destination, exclusions=()):
                         )
                     tar_bytes += archive_entry_bytes(row)
                     _insert(database, row, path, stamp, reserve_hash=True)
+                    if progress:
+                        progress(
+                            entries=entries + count,
+                            logical_bytes=logical + size,
+                        )
             entries += count
             logical += size
             details.append(
                 {k: root[k] for k in ("id", "path", "kind", "roles")}
                 | {"entries": count, "logical_bytes": size}
             )
+        if progress:
+            progress(
+                force=True,
+                stage="measuring_ledger",
+                message="Measuring the complete temporary verification ledger.",
+                entries=entries,
+                logical_bytes=logical,
+                roots_completed=len(details),
+                root_count=len(roots),
+                current_root=None,
+            )
         ledger_bytes = ledger_footprint(database)
     # The census file has been removed before observing free space again, so
     # its measured allocation is not subtracted and then counted twice.
+    if progress:
+        progress(
+            force=True,
+            stage="checking_capacity",
+            message="Checking free space for the complete archive and local verification.",
+        )
     local_required = paired_workspace_bytes(ledger_bytes)
     archive_required = tar_bytes + footer_bytes + ARCHIVE_FIXED_OVERHEAD_BYTES
     rows = _capacity_filesystems(

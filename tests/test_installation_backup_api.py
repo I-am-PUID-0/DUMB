@@ -21,9 +21,16 @@ class Controller:
     calls = []
     def status(self):
         self.calls.append("status")
-        return {"protocol":1,"job":None,"recovery_required":False,"schedule":{},"scope":{}}
+        return {"protocol":1,"job":None,"preparation":None,"recovery_required":False,"schedule":{},"scope":{}}
     def preview(self, value):
         return {"protocol":1,"ready":True,"capacity":{"status":"sufficient"},"destination":value["destination_id"]}
+    def preview_status(self, identifier=None):
+        if identifier == "b"*32:
+            from utils.installation_backup import InstallationBackupError
+            raise InstallationBackupError("This preview is unavailable or expired.")
+        return {"protocol":1,"controller_session":"reserved-session","preview":{"preview_id":identifier or "a"*32,"status":"running","result":None}}
+    def cancel_preview(self, identifier):
+        return {"protocol":1,"controller_session":"reserved-session","preview":{"preview_id":identifier,"status":"cancelling","cancel_requested":True,"result":None}}
     def start(self, value):
         return {"protocol":1,"job":{"job_id":"a"*32,"job_type":"installation_backup","status":"queued"}}
     def restore_preview(self, value):
@@ -31,6 +38,8 @@ class Controller:
         return {"protocol":1,"ready":True,"backup":{"verified":True,"archive_path":value.get("archive_path")}}
     def restore_start(self, value):
         return {"protocol":1,"job":{"job_id":"b"*32,"job_type":"installation_restore","status":"queued"}}
+    def get_job(self, identifier):
+        return {"protocol":1,"job":{"job_id":identifier,"job_type":"installation_backup","status":"running"}}
     def update_schedule(self, value):
         return {"protocol":1,"schedule":value}
     def rollback(self, identifier, value):
@@ -48,6 +57,7 @@ def denied():
     raise HTTPException(status_code=401,detail="Authentication required")
 app.dependency_overrides[get_optional_current_user]=denied
 async def request(method,path,json_payload=None,content=None):
+    path,_,query=path.partition("?")
     messages=[]
     complete=asyncio.Event()
     delivered=False
@@ -63,13 +73,15 @@ async def request(method,path,json_payload=None,content=None):
         if message["type"]=="http.response.body" and not message.get("more_body"):
             complete.set()
     scope={"type":"http","asgi":{"version":"3.0","spec_version":"2.4"},"http_version":"1.1",
-           "method":method,"scheme":"http","path":path,"raw_path":path.encode(),"query_string":b"",
+           "method":method,"scheme":"http","path":path,"raw_path":path.encode(),"query_string":query.encode(),
            "root_path":"","server":("reserved.example",8000),"client":("127.0.0.1",1),
            "headers":[(b"content-type",b"application/json")]}
     await app(scope,receive,send)
     status=next(x["status"] for x in messages if x["type"]=="http.response.start")
     raw=b"".join(x.get("body",b"") for x in messages if x["type"]=="http.response.body")
-    return SimpleNamespace(status_code=status,text=raw.decode(),json=lambda:json.loads(raw))
+    start=next(x for x in messages if x["type"]=="http.response.start")
+    headers={key.decode():value.decode() for key,value in start.get("headers",[])}
+    return SimpleNamespace(status_code=status,text=raw.decode(),headers=headers,json=lambda:json.loads(raw))
 class Client:
     async def __aenter__(self): return self
     async def __aexit__(self,*_args): pass
@@ -81,10 +93,32 @@ async def prove():
         response=await client.get("/process/installation-backups/status")
         assert response.status_code==401, response.text
         assert not created, "unauthorized request initialized controller state"
+        assert (await client.get("/process/installation-backups/jobs/"+"a"*32)).status_code==401
+        assert (await client.get("/process/installation-backups/preview/status")).status_code==401
+        assert (await client.post("/process/installation-backups/preview/"+"a"*32+"/cancel")).status_code==401
+        assert not created, "unauthorized polling or cancellation initialized controller state"
         app.dependency_overrides[get_optional_current_user]=lambda: "reserved-fixture-admin"
-        assert (await client.get("/process/installation-backups/status")).json()["protocol"]==1
+        status=await client.get("/process/installation-backups/status")
+        assert status.json()["protocol"]==1 and status.json()["preparation"] is None
+        assert status.headers["cache-control"]=="no-store"
+        job=await client.get("/process/installation-backups/jobs/"+"a"*32)
+        assert job.status_code==200 and job.json()["job"]["status"]=="running"
+        assert job.headers["cache-control"]=="no-store"
         preview=await client.post("/process/installation-backups/preview",json={"destination_id":"@default"})
         assert preview.status_code==200 and preview.json()["capacity"]["status"]=="sufficient"
+        assert preview.headers["cache-control"]=="no-store"
+        polled=await client.get("/process/installation-backups/preview/status?preview_id="+"a"*32)
+        assert polled.status_code==200 and polled.json()["preview"]["preview_id"]=="a"*32
+        assert polled.headers["cache-control"]=="no-store"
+        unknown=await client.get("/process/installation-backups/preview/status?preview_id="+"b"*32)
+        assert unknown.status_code==409
+        invalid=await client.get("/process/installation-backups/preview/status?preview_id=private-input-must-not-echo")
+        assert invalid.status_code==422 and "private-input-must-not-echo" not in invalid.text
+        cancelled=await client.post("/process/installation-backups/preview/"+"a"*32+"/cancel")
+        assert cancelled.status_code==200 and cancelled.json()["preview"]["status"]=="cancelling"
+        assert cancelled.headers["cache-control"]=="no-store"
+        invalid=await client.post("/process/installation-backups/preview/private-input-must-not-echo/cancel")
+        assert invalid.status_code==409 and "private-input-must-not-echo" not in invalid.text
         malformed=await client.post("/process/installation-backups/restore/start",json={"preview_token":"fixture","confirmation":"fixture","acknowledgements":{"downtime":"private-input-must-not-echo"}})
         assert malformed.status_code==422 and "private-input-must-not-echo" not in malformed.text
         huge=await client.post("/process/installation-backups/restore/preview",content=b"x"*65537,headers={"content-type":"application/json"})

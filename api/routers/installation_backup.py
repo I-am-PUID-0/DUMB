@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.routing import APIRoute
 from fastapi.responses import JSONResponse
@@ -109,7 +109,12 @@ def invoke(controller, operation, *args):
 
 
 @installation_backup_router.get("/status")
-def status(controller=Depends(manager), _user=Depends(get_optional_current_user)):
+def status(
+    response: Response,
+    controller=Depends(manager),
+    _user=Depends(get_optional_current_user),
+):
+    response.headers["Cache-Control"] = "no-store"
     return invoke(controller, "status")
 
 
@@ -125,10 +130,40 @@ def catalog(
 @installation_backup_router.post("/preview")
 def preview(
     request: BackupPreviewRequest,
+    response: Response,
     controller=Depends(manager),
     _user=Depends(get_optional_current_user),
 ):
+    response.headers["Cache-Control"] = "no-store"
     return invoke(controller, "preview", request.model_dump())
+
+
+@installation_backup_router.get("/preview/status")
+def preview_status(
+    response: Response,
+    preview_id: str | None = Query(
+        default=None, min_length=32, max_length=32, pattern="^[0-9a-f]{32}$"
+    ),
+    controller=Depends(manager),
+    _user=Depends(get_optional_current_user),
+):
+    response.headers["Cache-Control"] = "no-store"
+    return invoke(controller, "preview_status", preview_id)
+
+
+@installation_backup_router.post("/preview/{preview_id}/cancel")
+def cancel_preview(
+    preview_id: str,
+    response: Response,
+    controller=Depends(manager),
+    _user=Depends(get_optional_current_user),
+):
+    if len(preview_id) != 32 or any(
+        value not in "0123456789abcdef" for value in preview_id
+    ):
+        raise HTTPException(status_code=409, detail="The preview identity is invalid.")
+    response.headers["Cache-Control"] = "no-store"
+    return invoke(controller, "cancel_preview", preview_id)
 
 
 @installation_backup_router.post("/start")
@@ -142,8 +177,12 @@ def start(
 
 @installation_backup_router.get("/jobs/{job_id}")
 def job(
-    job_id: str, controller=Depends(manager), _user=Depends(get_optional_current_user)
+    job_id: str,
+    response: Response,
+    controller=Depends(manager),
+    _user=Depends(get_optional_current_user),
 ):
+    response.headers["Cache-Control"] = "no-store"
     return invoke(controller, "get_job", job_id)
 
 
