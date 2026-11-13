@@ -10,6 +10,7 @@ import stat
 import subprocess
 import hashlib
 
+from utils.installation_backup_codec import compression_kind, estimated_stored_bytes
 
 from utils.backup_storage import mount_records, paths_overlap, require_local_path
 from utils.installation_backup_archive import (
@@ -439,7 +440,10 @@ def _capacity_filesystems(allocations):
     return rows
 
 
-def capacity(roots, scratch, destination, exclusions=(), *, progress=None):
+def capacity(
+    roots, scratch, destination, exclusions=(), *, progress=None, compression="none"
+):
+    compression_kind(compression)
     anchor = Path(scratch)
     while not anchor.exists():
         anchor = anchor.parent
@@ -523,7 +527,8 @@ def capacity(roots, scratch, destination, exclusions=(), *, progress=None):
             message="Checking free space for the complete archive and local verification.",
         )
     local_required = paired_workspace_bytes(ledger_bytes)
-    archive_required = tar_bytes + footer_bytes + ARCHIVE_FIXED_OVERHEAD_BYTES
+    uncompressed_archive = tar_bytes + footer_bytes + ARCHIVE_FIXED_OVERHEAD_BYTES
+    archive_required = estimated_stored_bytes(uncompressed_archive, compression)
     rows = _capacity_filesystems(
         [
             (scratch, "local_verification", local_required),
@@ -542,6 +547,8 @@ def capacity(roots, scratch, destination, exclusions=(), *, progress=None):
             "logical_bytes": logical,
             "root_count": len(roots),
             "estimated_archive_bytes": archive_required,
+            "estimated_uncompressed_archive_bytes": uncompressed_archive,
+            "compression": compression,
         },
         "verification": {
             "ledger_bytes": ledger_bytes,

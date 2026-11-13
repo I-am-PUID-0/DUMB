@@ -5809,13 +5809,21 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 100
+        },
+        "compression": {
+          "type": "string",
+          "enum": [
+            "none",
+            "zstd"
+          ]
         }
       },
       "required": [
         "enabled",
         "destination_id",
         "interval_hours",
-        "keep_last"
+        "keep_last",
+        "compression"
       ]
     }
   },

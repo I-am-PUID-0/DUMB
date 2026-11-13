@@ -287,3 +287,17 @@ maintainers should retain written permission from the applicable copyright
 holders or request that upstream publish an appropriate license. Once a license
 is published or permission terms are documented, add the applicable notice to
 this file.
+
+---
+
+## Installation archive Zstandard compression
+
+- Python package: <https://github.com/rogdham/backports.zstd>, pinned in the
+  Poetry lockfile for Python versions before 3.14.
+- License: Python Software Foundation License 2.0; package license material is
+  retained in its installed .dist-info/licenses/ directory.
+- The published wheels include libzstd: <https://github.com/facebook/zstd>.
+  Its BSD license and bundled dependency notices remain with the wheel.
+- Python 3.14 and newer use the runtime's standard compression.zstd module
+  when its native extension is available. DUMB does not advertise compression
+  support when the codec is absent.

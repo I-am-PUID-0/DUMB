@@ -17,6 +17,12 @@ import tarfile
 import tempfile
 import time
 
+from utils.installation_backup_codec import (
+    InstallationCodecError,
+    compression_kind,
+    decoded_input,
+    encoded_output,
+)
 
 from utils.backup_storage import mount_records, require_local_path
 from utils.infinidysk_v2_archive import _BoundedTarInfo, ArchiveError as _TarSafetyError
@@ -532,7 +538,9 @@ def _write_archive(
     owner_check=None,
     *,
     progress=None,
+    compression="none",
 ):
+    compression_kind(compression)
     if len(canonical(metadata)) > MAX_METADATA:
         raise InstallationArchiveError("Installation metadata exceeds its bound.")
     check = owner_check or (lambda: None)
@@ -567,13 +575,16 @@ def _write_archive(
         counters.report(force=True)
         counters = _ArchiveProgress(progress, "archiving")
         output = _ProgressStream(handle, counters) if progress is not None else handle
-        with tarfile.open(
-            fileobj=output,
-            mode="w|",
-            format=tarfile.PAX_FORMAT,
-            encoding="utf-8",
-            errors="surrogateescape",
-        ) as archive:
+        with (
+            encoded_output(output, compression) as encoded,
+            tarfile.open(
+                fileobj=encoded,
+                mode="w|",
+                format=tarfile.PAX_FORMAT,
+                encoding="utf-8",
+                errors="surrogateescape",
+            ) as archive,
+        ):
             payload = canonical(metadata)
             row = {
                 "name": "installation.json",
@@ -700,11 +711,29 @@ def _write_archive(
 
 
 def write_archive(
-    handle, metadata, roots, scratch, exclusions=(), owner_check=None, *, progress=None
+    handle,
+    metadata,
+    roots,
+    scratch,
+    exclusions=(),
+    owner_check=None,
+    *,
+    progress=None,
+    compression="none",
 ):
-    return _write_archive(
-        handle, metadata, roots, scratch, exclusions, owner_check, progress=progress
-    )
+    try:
+        return _write_archive(
+            handle,
+            metadata,
+            roots,
+            scratch,
+            exclusions,
+            owner_check,
+            progress=progress,
+            compression=compression,
+        )
+    except InstallationCodecError as error:
+        raise InstallationArchiveError(str(error)) from None
 
 
 def _parsed_row(info):
@@ -761,6 +790,7 @@ def _inspect_archive(
     counters = _ArchiveProgress(progress, "verifying")
     if progress is not None:
         handle = _ProgressStream(handle, counters)
+    handle, compression = decoded_input(handle)
     with manifest(scratch) as database:
         footer_limit = ledger_quota(database)
         with tarfile.open(
@@ -940,11 +970,25 @@ def _inspect_archive(
                 _insert(database, row)
                 counters.entries = count
                 counters.report()
-            if any(getattr(archive.fileobj, "buf", b"")):
+            buffered = getattr(archive.fileobj, "buf", b"")
+            if any(buffered):
                 raise InstallationArchiveError(
                     "Unexpected bytes follow the archive end marker."
                 )
-            while tail := handle.read(1024 * 1024):
+            # DUMB's tar writer closes with two zero blocks and pads to one
+            # RECORDSIZE boundary. Bound this format envelope independently of
+            # the total archive size so a compressed zero tail is not drained.
+            padding = len(buffered)
+            if padding > tarfile.RECORDSIZE:
+                raise InstallationArchiveError(
+                    "The installation tar end padding exceeds its record envelope."
+                )
+            while tail := handle.read(tarfile.RECORDSIZE - padding + 1):
+                padding += len(tail)
+                if padding > tarfile.RECORDSIZE:
+                    raise InstallationArchiveError(
+                        "The installation tar end padding exceeds its record envelope."
+                    )
                 if any(tail):
                     raise InstallationArchiveError(
                         "Unexpected bytes follow the installation archive."
@@ -995,6 +1039,7 @@ def _inspect_archive(
         counters.report(force=True)
         return {
             "verified": True,
+            "compression": compression,
             "metadata": metadata,
             "entries": count,
             "logical_bytes": logical,
@@ -1018,6 +1063,8 @@ def inspect_archive(
         )
     except InstallationArchiveError:
         raise
+    except InstallationCodecError as error:
+        raise InstallationArchiveError(str(error)) from None
     except (
         _TarSafetyError,
         tarfile.TarError,

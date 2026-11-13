@@ -47,7 +47,7 @@ from utils.installation_backup_inventory import (
 )
 
 from utils.installation_backup_limits import paired_workspace_bytes
-
+from utils.installation_backup_codec import compression_kind
 
 from utils.installation_backup_lifecycle import BackupLifecycleError, order_resume_rows
 from utils.installation_backup_preview import (
@@ -78,6 +78,7 @@ _SCHEDULE = {
     "destination_id": "",
     "interval_hours": 24,
     "keep_last": 7,
+    "compression": "none",
 }
 _BLOCKER = "An installation backup or restore owns managed state, or its retained recovery requires review."
 
@@ -852,7 +853,15 @@ class InstallationBackupManager:
         progress = result = None
         try:
             with self._preview_scan():
-                progress = self._preview_statuses.begin(options.get("destination_id"))
+                requested_compression = options.get("compression", "none")
+                progress = self._preview_statuses.begin(
+                    options.get("destination_id"),
+                    (
+                        requested_compression
+                        if requested_compression in ("none", "zstd")
+                        else "none"
+                    ),
+                )
                 try:
                     result = self._backup_preview(options, progress=progress.checkpoint)
                     self._preview_statuses.seal(progress.identifier)
@@ -881,6 +890,7 @@ class InstallationBackupManager:
             raise
 
     def _backup_preview(self, options, *, progress=None):
+        compression = options.get("compression", "none")
         blockers, roots, details = [], [], []
         report = {
             "status": "unavailable",
@@ -893,6 +903,7 @@ class InstallationBackupManager:
         }
         plan = {}
         try:
+            compression_kind(compression)
             if self.has_blocking_job():
                 raise InstallationBackupError(_BLOCKER)
             if progress:
@@ -947,6 +958,7 @@ class InstallationBackupManager:
                     scratch,
                     destination["path"],
                     exclusions,
+                    compression=compression,
                 )
             else:
                 report, details = capacity(
@@ -955,6 +967,7 @@ class InstallationBackupManager:
                     destination["path"],
                     exclusions,
                     progress=progress,
+                    compression=compression,
                 )
             report["observed_at"] = self.clock()
             if report["status"] != "sufficient":
@@ -968,6 +981,7 @@ class InstallationBackupManager:
                 "exclusions": exclusions,
                 "destination": destination,
                 "compatibility": compatibility(self.config),
+                "compression": compression,
             }
         except (
             OSError,
@@ -981,6 +995,7 @@ class InstallationBackupManager:
             "protocol": PROTOCOL,
             "ready": not blockers,
             "confirmation_text": "BACK UP DUMB INSTALLATION",
+            "compression": compression,
             "required_acknowledgements": ["downtime", "secrets", "external_state"],
             "inventory": {"roots": details, "excluded": deepcopy(EXCLUSIONS)},
             "capacity": report,
@@ -1214,6 +1229,7 @@ class InstallationBackupManager:
                     self._workspace("preview"),
                     plan["destination"]["path"],
                     plan["exclusions"],
+                    compression=plan.get("compression", "none"),
                 )
                 if report["status"] != "sufficient":
                     raise InstallationBackupError(
@@ -1443,12 +1459,15 @@ class InstallationBackupManager:
                 plan["exclusions"],
                 check,
                 progress=progress,
+                compression=plan.get("compression", "none"),
             ),
+            extension="tar.zst" if plan.get("compression") == "zstd" else "tar",
             verifier=lambda stream: self._backup_verifier(
                 stream, scratch, metadata, check, progress=progress
             ),
             metadata={
                 "kind": "installation_backup",
+                "compression": plan.get("compression", "none"),
                 "retention_scope": "scheduled" if job.get("scheduled") else "manual",
             },
             owner_check=check,
@@ -1870,6 +1889,7 @@ class InstallationBackupManager:
                 for k in ("schema_version", "created_at", "compatibility")
             } | {
                 "verified": True,
+                "compression": proof.get("compression", "none"),
                 "sha256": proof["archive_sha256"],
                 **{k: source[k] for k in ("reference", "archive_path") if k in source},
             }
@@ -2260,7 +2280,8 @@ class InstallationBackupManager:
             )
 
     def update_schedule(self, options):
-        schedule = _SCHEDULE | options
+        schedule = _SCHEDULE | (self.config.get("installation_backup") or {}) | options
+        compression_kind(schedule["compression"])
         if type(schedule.get("enabled")) is not bool or not isinstance(
             schedule.get("destination_id"), str
         ):
@@ -2342,6 +2363,7 @@ class InstallationBackupManager:
             preview = self.preview(
                 {
                     "destination_id": schedule["destination_id"],
+                    "compression": schedule.get("compression", "none"),
                 }
             )
             if not preview["ready"]:

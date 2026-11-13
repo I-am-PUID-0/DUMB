@@ -1,6 +1,6 @@
 """Installation backup and restore previews, jobs and opt-in scheduling."""
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.exceptions import RequestValidationError
@@ -57,6 +57,7 @@ Destination = Annotated[str, Field(min_length=1, max_length=64)]
 class BackupPreviewRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     destination_id: Destination
+    compression: Literal["none", "zstd"] = "none"
 
 
 class RestorePreviewRequest(BaseModel):
@@ -84,6 +85,7 @@ class ScheduleRequest(BaseModel):
     destination_id: str = Field(default="", max_length=64)
     interval_hours: int = Field(default=24, ge=1, le=8760, strict=True)
     keep_last: int = Field(default=7, ge=1, le=100, strict=True)
+    compression: Literal["none", "zstd"] = "none"
 
 
 def manager(
@@ -192,7 +194,10 @@ def schedule(
     controller=Depends(manager),
     _user=Depends(get_optional_current_user),
 ):
-    return invoke(controller, "update_schedule", request.model_dump())
+    options = request.model_dump()
+    if "compression" not in request.model_fields_set:
+        options.pop("compression")
+    return invoke(controller, "update_schedule", options)
 
 
 @installation_backup_router.post("/restore/preview")

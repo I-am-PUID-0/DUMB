@@ -1967,6 +1967,15 @@ class BackupStorage:
             "artifact_kind": (receipt.get("metadata") or {}).get("kind"),
             "retention_scope": (receipt.get("metadata") or {}).get("retention_scope"),
             "allow_shared_permissions": _shared_permissions(receipt),
+            **(
+                {
+                    "compression": (receipt.get("metadata") or {}).get(
+                        "compression", "none"
+                    )
+                }
+                if receipt.get("namespace") == "installation"
+                else {}
+            ),
         }
 
     def write_file(
@@ -1980,7 +1989,9 @@ class BackupStorage:
         metadata=None,
         owner_check=None,
     ):
-        if extension not in {"tar", "json"}:
+        if extension not in {"tar", "json"} and not (
+            namespace == "installation" and extension == "tar.zst"
+        ):
             raise BackupStorageError("The closed artifact format is unsupported.")
         artifact = secrets.token_hex(16)
         temporary, filename = f".{artifact}.partial", f"{artifact}.{extension}"
@@ -2103,7 +2114,13 @@ class BackupStorage:
             not receipt
             or receipt.get("reference") != reference
             or not receipt.get("verified")
-            or receipt.get("extension") not in {"json", "tar"}
+            or (
+                receipt.get("extension") not in {"json", "tar"}
+                and not (
+                    namespace == "installation"
+                    and receipt.get("extension") == "tar.zst"
+                )
+            )
             or receipt.get("filename") != f"{artifact}.{receipt.get('extension')}"
             or receipt.get("backup_destination_id") != profile
             or receipt.get("namespace") != namespace

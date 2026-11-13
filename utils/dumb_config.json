@@ -1551,6 +1551,7 @@
     "enabled": false,
     "destination_id": "",
     "interval_hours": 24,
-    "keep_last": 7
+    "keep_last": 7,
+    "compression": "none"
   }
 }

@@ -263,6 +263,7 @@ RUN --mount=type=cache,target=/root/.cache/pip,sharing=shared \
     python3.11 -m venv /venv && \
     /venv/bin/python -m pip install --upgrade pip setuptools wheel && \
     VIRTUAL_ENV=/venv /opt/poetry/bin/poetry install --only main --no-root --no-interaction && \
+    /venv/bin/python -c 'from backports import zstd; assert zstd.decompress(zstd.compress(b"installation-codec-check")) == b"installation-codec-check"' && \
     # Ensure working crypto stack in /venv so PyJWT never falls back to broken system bindings.
     /venv/bin/python -m pip install --upgrade --force-reinstall "cffi>=1.16,<3.0" "cryptography>=50.0.0,<51.0.0" && \
     find /venv/lib/python3.11/site-packages -type d \

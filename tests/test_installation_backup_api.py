@@ -23,7 +23,7 @@ class Controller:
         self.calls.append("status")
         return {"protocol":1,"job":None,"preparation":None,"recovery_required":False,"schedule":{},"scope":{}}
     def preview(self, value):
-        return {"protocol":1,"ready":True,"capacity":{"status":"sufficient"},"destination":value["destination_id"]}
+        return {"protocol":1,"ready":True,"capacity":{"status":"sufficient"},"destination":value["destination_id"],"compression":value["compression"]}
     def preview_status(self, identifier=None):
         if identifier == "b"*32:
             from utils.installation_backup import InstallationBackupError
@@ -107,6 +107,11 @@ async def prove():
         preview=await client.post("/process/installation-backups/preview",json={"destination_id":"@default"})
         assert preview.status_code==200 and preview.json()["capacity"]["status"]=="sufficient"
         assert preview.headers["cache-control"]=="no-store"
+        assert preview.json()["compression"]=="none"
+        compressed=await client.post("/process/installation-backups/preview",json={"destination_id":"fixture","compression":"zstd"})
+        assert compressed.status_code==200 and compressed.json()["compression"]=="zstd"
+        unsupported=await client.post("/process/installation-backups/preview",json={"destination_id":"fixture","compression":"gzip-private-invalid"})
+        assert unsupported.status_code==422 and "gzip-private-invalid" not in unsupported.text
         polled=await client.get("/process/installation-backups/preview/status?preview_id="+"a"*32)
         assert polled.status_code==200 and polled.json()["preview"]["preview_id"]=="a"*32
         assert polled.headers["cache-control"]=="no-store"
@@ -133,6 +138,11 @@ async def prove():
             assert malformed.status_code==422 and "private-consent-must-not-echo" not in malformed.text
         schedule=await client.put("/process/installation-backups/schedule",json={"enabled":False,"destination_id":"","interval_hours":24,"keep_last":7})
         assert schedule.status_code==200 and schedule.json()["schedule"]["enabled"] is False
+        assert "compression" not in schedule.json()["schedule"]
+        explicit=await client.put("/process/installation-backups/schedule",json={"enabled":False,"compression":"none"})
+        assert explicit.status_code==200 and explicit.json()["schedule"]["compression"]=="none"
+        explicit=await client.put("/process/installation-backups/schedule",json={"enabled":False,"compression":"zstd"})
+        assert explicit.status_code==200 and explicit.json()["schedule"]["compression"]=="zstd"
         invalid=await client.put("/process/installation-backups/schedule",json={"enabled":True,"destination_id":"fixture","interval_hours":1.5,"keep_last":7})
         assert invalid.status_code==422
         rollback=await client.post("/process/installation-backups/jobs/"+"a"*32+"/rollback",json={"confirmation":"ROLL BACK "+"a"*32})
@@ -157,6 +167,17 @@ async def prove():
                 archive.addfile(info,io.BytesIO(b"x"))
             response=await client.post("/process/installation-backups/restore/preview",json={"archive_path":str(invalid)})
             assert response.status_code==200 and response.json()["ready"] is False
+            assert fixture.handler.events==[]
+            from utils import installation_backup_codec as codec
+            from unittest.mock import patch
+            fixture.manager.update_schedule({"enabled":False,"compression":"zstd"})
+            assert fixture.config.config["installation_backup"]["compression"]=="zstd"
+            with patch.object(codec,"zstd",None):
+                assert not codec.zstd_available()
+                response=await client.put("/process/installation-backups/schedule",json={"enabled":False,"compression":"none"})
+                assert response.status_code==200, response.text
+                assert response.json()["schedule"]["compression"]=="none"
+                assert fixture.config.config["installation_backup"]["compression"]=="none"
             assert fixture.handler.events==[]
         finally:
             routes.get_installation_backup_manager=original_factory
