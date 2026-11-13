@@ -1019,23 +1019,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Create a backup">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#follow-or-cancel-a-backup-preview" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Follow or cancel a backup preview
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -5472,23 +5455,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Create a backup">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#follow-or-cancel-a-backup-preview" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Follow or cancel a backup preview
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -5625,11 +5591,11 @@
   
 
 
-<h1 id="installation-backup-and-restore">Installation backup and restore<a class="headerlink" href="#installation-backup-and-restore" title="Permanent link">#</a></h1>
+<h1 id="installation-backup-and-restore">Installation backup and restore<a class="headerlink" href="#installation-backup-and-restore" title="Permanent link">&para;</a></h1>
 <p>Open <strong>Settings → Backups and restore</strong> to manage installation archives and
 shared backup destinations. This requires a backend advertising installation
 backup protocol <code>1</code>; older backends continue to expose their existing tools.</p>
-<h2 id="what-an-installation-backup-contains">What an installation backup contains<a class="headerlink" href="#what-an-installation-backup-contains" title="Permanent link">#</a></h2>
+<h2 id="what-an-installation-backup-contains">What an installation backup contains<a class="headerlink" href="#what-an-installation-backup-contains" title="Permanent link">&para;</a></h2>
 <p>The preview inventories DUMB configuration, authentication and signing state,
 managed application configuration and persistent data, managed databases, and
 configured symlink state. Existing data belonging to disabled services is
@@ -5652,8 +5618,10 @@ sidecars in managed library-link directories are included. Actual media files
 and unrecognized regular payloads in those directories remain blockers; DUMB
 identifies the path instead of silently omitting it. DUMB refuses unsupported
 or ambiguous state instead of silently reporting a complete backup.</p>
-<p>A managed file or selected service alias is checked as a literal entry, so a
-final symlink is preserved without inspecting its target. Archive storage
+<p>A managed file or selected service alias is archived as a literal entry, so a
+final symlink is preserved without copying its target. A sibling alias under
+<code>data_root</code> pointing to an already-covered managed directory is also preserved
+as literal link state; its target is not copied again. Archive storage
 locations and intermediate directories must still be verifiable without
 following symlinks. An ancestry error identifies the component that failed and
 the reason; clearing it must not require deleting or retargeting service aliases.</p>
@@ -5666,7 +5634,7 @@ the utility does not silently discard that state.</p>
 <p>Archives contain credentials and private keys and are not encrypted.
 Restrict access to the destination, partial exports and downloaded copies;
 shared storage permission consent does not prove confidentiality.</p>
-<h2 id="choose-storage">Choose storage<a class="headerlink" href="#choose-storage" title="Permanent link">#</a></h2>
+<h2 id="choose-storage">Choose storage<a class="headerlink" href="#choose-storage" title="Permanent link">&para;</a></h2>
 <p>In <strong>Backup destination</strong>, expand <strong>Register a backup destination</strong>.
 Register an existing container-visible directory, then explicitly select that
 destination or <strong>Use global default</strong>. The separate <strong>Global default</strong> controls
@@ -5680,7 +5648,13 @@ DUMB does not mount shares or change their existing ownership/permissions.
 Active database and private recovery working files remain local. A missing or
 replaced destination mount blocks the operation;
 DUMB does not write into an underlying local directory as a fallback.</p>
-<h2 id="choose-an-archive-format">Choose an archive format<a class="headerlink" href="#choose-an-archive-format" title="Permanent link">#</a></h2>
+<p>A configured backup profile cannot use a managed persistence root itself or a
+directory containing one. This includes unselected or disabled profiles:
+excluding such a backup location would hide application state from the archive.
+Review the reported paths and correct the conflicting profile. A separate
+destination or a dedicated child archive directory can still be used when it
+passes the storage checks.</p>
+<h2 id="choose-an-archive-format">Choose an archive format<a class="headerlink" href="#choose-an-archive-format" title="Permanent link">&para;</a></h2>
 <p>Uncompressed <code>.tar</code> is the default. When the backend supports Zstandard,
 manual backups and the schedule can each select compressed <code>.tar.zst</code> archives.
 Choose the format before requesting a preview; changing it requires a new
@@ -5699,7 +5673,7 @@ own working space.</p>
 <p>DUMB verifies the stored archive bytes and the complete logical contents before
 publishing either format. Restore detects compression from the file contents,
 not its filename; existing uncompressed archives remain supported.</p>
-<h2 id="create-a-backup">Create a backup<a class="headerlink" href="#create-a-backup" title="Permanent link">#</a></h2>
+<h2 id="create-a-backup">Create a backup<a class="headerlink" href="#create-a-backup" title="Permanent link">&para;</a></h2>
 <p>Use the container's direct frontend/API access before starting. Managed reverse
 proxies and tunnels can be stopped with the applications, so their public or
 embedded ingress path may be unavailable during the operation.</p>
@@ -5744,6 +5718,20 @@ managed mount before its consumers; previously stopped services are not
 started just because a backup ran. Resuming services is a separate stage. A
 failed or blocked resume retains its recovery guidance rather than reporting
 that the backup has finished successfully.</p>
+<p>Seerr request synchronization reserves installation persistence for its entire
+cycle. It skips synchronization and checkpoint writes while a backup, restore
+or retained recovery owns that persistence, then resumes on its next normal
+interval after the hold ends. If a sync cycle is already running, backup
+admission reports busy until that cycle finishes; wait, then retry the operation
+and follow any renewed preview requirement. This prevents the controller's
+<code>seerr_sync_state.json</code> updates from continuing after managed services stop.</p>
+<p>PostgreSQL's configured <code>{postgres_config_dir}</code> and <code>{postgres_config_file}</code>
+launch placeholders are expanded on every managed start, including backup resume
+and recovery. A missing path containing a literal placeholder on an older build
+is a problem with launch arguments, separate from a change to the archive's
+source files. Expanding the command leaves saved settings and existing PostgreSQL
+data intact; it does not run initial database setup. Follow the job's service
+resume or recovery instructions before retrying a backup.</p>
 <p>Database consistency follows the requirements for a stopped
 <a href="https://www.postgresql.org/docs/current/backup-file.html">PostgreSQL cluster</a>
 and a quiescent <a href="https://sqlite.org/howtocorrupt.html#_backup_or_restore_while_a_transaction_is_active">SQLite database and its journals</a>.</p>
@@ -5758,7 +5746,7 @@ scan before a preview is ready. This phase inventories entries rather than
 copying the complete file contents, and it does not stop applications.
 Individual path, nesting, record and supported-metadata checks still apply;
 available disk space does not make an unsafe archive restorable.</p>
-<h3 id="follow-or-cancel-a-backup-preview">Follow or cancel a backup preview<a class="headerlink" href="#follow-or-cancel-a-backup-preview" title="Permanent link">#</a></h3>
+<h3 id="follow-or-cancel-a-backup-preview">Follow or cancel a backup preview<a class="headerlink" href="#follow-or-cancel-a-backup-preview" title="Permanent link">&para;</a></h3>
 <p>On backends with tracked backup-preview support, the progress notice shows the
 current stage and managed root, entries scanned, logical bytes inventoried and
 elapsed time. These are inventory counters, not bytes already copied to an
@@ -5800,7 +5788,7 @@ was received.</p>
 jobs. Record the selected archive and retain an independent copy before relying
 on it for disaster recovery. A checksum verifies the recorded bytes; a successful
 restore rehearsal remains the practical test of your recovery procedure.</p>
-<h2 id="unclassified-data-in-a-backup-preview">Unclassified data in a backup preview<a class="headerlink" href="#unclassified-data-in-a-backup-preview" title="Permanent link">#</a></h2>
+<h2 id="unclassified-data-in-a-backup-preview">Unclassified data in a backup preview<a class="headerlink" href="#unclassified-data-in-a-backup-preview" title="Permanent link">&para;</a></h2>
 <p>A preview can stop on an unrecognized child of <code>data_root</code>, even when that
 directory is empty. Current backends identify the first unclassified path and
 entry type in the blocker; long or unusual paths are escaped and can be marked
@@ -5815,7 +5803,7 @@ from coverage, retain it and report its path and owning tool so that its
 persistence can be qualified. Custom state and external media require their
 own backup/deployment review; DUMB does not silently omit them or sweep them
 into an installation archive.</p>
-<h2 id="schedule-backups">Schedule backups<a class="headerlink" href="#schedule-backups" title="Permanent link">#</a></h2>
+<h2 id="schedule-backups">Schedule backups<a class="headerlink" href="#schedule-backups" title="Permanent link">&para;</a></h2>
 <p>Scheduling is off by default. Enable it deliberately, choose its destination,
 interval, archive format and retention, and save the schedule. The schedule
 keeps its own format choice; changing a manual backup does not change it.
@@ -5828,7 +5816,7 @@ schedule them during a suitable maintenance window.</p>
 another active operation, unavailable storage or insufficient space. Retention
 applies only to verified scheduled installation archives owned by that schedule;
 manual archives and other tools' backups are retained separately.</p>
-<h2 id="restore-an-existing-or-fresh-installation">Restore an existing or fresh installation<a class="headerlink" href="#restore-an-existing-or-fresh-installation" title="Permanent link">#</a></h2>
+<h2 id="restore-an-existing-or-fresh-installation">Restore an existing or fresh installation<a class="headerlink" href="#restore-an-existing-or-fresh-installation" title="Permanent link">&para;</a></h2>
 <p>A restore replaces managed state and requires downtime. Keep a separate backup
 of the current installation and keep external writers stopped throughout the
 operation, including any other DUMB container using the same mounted state.
@@ -5884,13 +5872,23 @@ job-specific confirmation is still required. For a restore, <strong>Request revi
 instead returns the retained application state from before live replacement.
 After an instructed restart, refresh status; a recovered job can still show the
 failed backup's historical error without indicating another failure.</p>
-<p>A file changed during a cold archive means the stopped-state assumptions were
-not met. Retain the reported path and job error for investigation; that failed
-output is not a verified backup. Do not delete state or edit the job to force
-acceptance. An operation still marked queued or running is not eligible for
-rollback, even if its displayed stage or error indicates failure. If it cannot
-reach a terminal recovery state, preserve its records and request diagnosis.</p>
-<h2 id="startup-and-private-recovery-state">Startup and private recovery state<a class="headerlink" href="#startup-and-private-recovery-state" title="Permanent link">#</a></h2>
+<p>A change during a cold archive means the stopped-state assumptions were not
+met. DUMB also checks the complete source again after streaming. If that final
+check fails, the job error identifies a representative added, removed or changed
+path, naming the metadata fields that changed or indicating changed file
+contents. This is a limited sample, not a complete list of changes. Paths are
+escaped for display; field values, file contents and checksums are not included
+in the diagnostic.</p>
+<p>Retain the path and job error, then identify what can still write to that path,
+including another container or host process sharing the directory. Resolve the
+actual writer before requesting a fresh preview and backup. An older generic
+error alone cannot identify the changed entry or its writer. The failed output
+is not a verified backup; do not delete state or edit the job to force acceptance.
+Follow the service-resume or recovery guidance above. An operation still marked
+queued or running is not eligible for rollback, even if its displayed stage or
+error indicates failure. If it cannot reach a terminal recovery state, preserve
+its records and request diagnosis.</p>
+<h2 id="startup-and-private-recovery-state">Startup and private recovery state<a class="headerlink" href="#startup-and-private-recovery-state" title="Permanent link">&para;</a></h2>
 <p>DUMB checks its local installation-recovery records before normal applications
 start. If those records require recovery or cannot be trusted, only the API and
 already-installed frontend start. Service actions can return <code>409</code> while this
@@ -5921,7 +5919,7 @@ restart when instructed. Do not delete the directory, purge databases or apply
 recursive ownership/permission changes to clear the banner. A
 <a href="../infinidysk-v2-migration/#progress-cancellation-and-recovery">major InfiniDysk migration</a>
 has its own job, cancellation and rollback flow.</p>
-<h2 id="related-tools">Related tools<a class="headerlink" href="#related-tools" title="Permanent link">#</a></h2>
+<h2 id="related-tools">Related tools<a class="headerlink" href="#related-tools" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../symlinks/">Symlink operations</a> provides smaller link snapshots and schedules.</li>
 <li><a href="../infinidysk-v2-migration/">InfiniDysk 2 installation and upgrade</a> has its own

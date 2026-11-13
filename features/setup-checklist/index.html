@@ -1199,34 +1199,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Follow progress and finish later">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#during-an-installation-backup-or-recovery" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        During an installation backup or recovery
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#if-the-checklist-cannot-load" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        If the checklist cannot load
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -5505,34 +5477,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Follow progress and finish later">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#during-an-installation-backup-or-recovery" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        During an installation backup or recovery
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#if-the-checklist-cannot-load" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        If the checklist cannot load
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -5691,14 +5635,14 @@
   
 
 
-<h1 id="setup-checklist-and-automation">Setup checklist and automation<a class="headerlink" href="#setup-checklist-and-automation" title="Permanent link">#</a></h1>
+<h1 id="setup-checklist-and-automation">Setup checklist and automation<a class="headerlink" href="#setup-checklist-and-automation" title="Permanent link">&para;</a></h1>
 <p>DUMB can install services and configure many of their connections. The setup checklist records what DUMB can configure, what needs your input, what was applied, and which checks actually passed. A running process alone does not establish that a download, import, request, or playback workflow works.</p>
 <p>This experience requires a DUMB API advertising <code>setup_arrangements</code> and a compatible frontend. Older backends retain service-start onboarding and show that they cannot retain or verify a complete arrangement checklist.</p>
-<h2 id="choose-an-arrangement-then-review-its-requirements">Choose an arrangement, then review its requirements<a class="headerlink" href="#choose-an-arrangement-then-review-its-requirements" title="Permanent link">#</a></h2>
+<h2 id="choose-an-arrangement-then-review-its-requirements">Choose an arrangement, then review its requirements<a class="headerlink" href="#choose-an-arrangement-then-review-its-requirements" title="Permanent link">&para;</a></h2>
 <p>Categories describe roles: download workflows, library automation, media servers and playback, requests and discovery, access and security, databases and administration, and utilities and interfaces.</p>
 <p>The review distinguishes <strong>Chosen by you</strong>, <strong>Required dependency</strong>, and <strong>Optional companion</strong>. A media server is a choice; a database or mount helper can become required by another selection. The existing Core, Optional and Dependent documentation sections are catalogs, not a statement that every core service is mandatory.</p>
 <p>Choose the complete arrangement you want. DUMB prepares the selected instance configuration before reconciling connections, so a provider-first selection does not depend on an Arr already existing when its provider starts.</p>
-<h2 id="before-starting">Before starting<a class="headerlink" href="#before-starting" title="Permanent link">#</a></h2>
+<h2 id="before-starting">Before starting<a class="headerlink" href="#before-starting" title="Permanent link">&para;</a></h2>
 <p><strong>Connections and choices</strong> collects decisions DUMB cannot safely infer:</p>
 <ul>
 <li>Exact Arr and media-server instances to connect.</li>
@@ -5714,11 +5658,11 @@
 <p>Supported Jellyfin and Emby library forms offer <strong>Scan this new library after creation</strong>, off by default. Review the paths before enabling it. The choice authorizes the initial scan only when DUMB creates that library; it does not rescan an existing library. An empty newly created library may need this initialization before native file-change notifications can discover its first item.</p>
 <p><strong>Review Configuration</strong> shows meaningful choices with credentials masked, followed by <strong>DUMB will configure</strong>, <strong>Information you must provide</strong>, and <strong>Finish manually</strong>. <strong>Start services</strong> appears on this review step.</p>
 <p><strong>No media server</strong> and <strong>External server</strong> are different guided decisions. DUMB carries the chosen default into the advertised connection fields for selected request and maintenance services; you can review or change each connection. External URLs must be reachable from DUMB; a hostname or path that works in your browser or on the Docker host may not work inside the container. Keep TLS certificate verification enabled unless you have reviewed the specific connection. An external private network address also requires explicit endpoint authorization.</p>
-<h2 id="share-provider-accounts-without-entering-credentials-twice">Share provider accounts without entering credentials twice<a class="headerlink" href="#share-provider-accounts-without-entering-credentials-twice" title="Permanent link">#</a></h2>
+<h2 id="share-provider-accounts-without-entering-credentials-twice">Share provider accounts without entering credentials twice<a class="headerlink" href="#share-provider-accounts-without-entering-credentials-twice" title="Permanent link">&para;</a></h2>
 <p>When several selected clients use the same Usenet account, enter it once and choose <strong>Reuse accounts from</strong> that client on the others. The backend resolves the reference to protected account information; the browser does not receive the stored password.</p>
 <p>Set each client's allocation and, when known, the account's total connection limit. An account limited to ten concurrent connections could allocate five to InfiniDysk and five to Decypharr. Allocating ten to both would exceed that limit. Include consumers outside DUMB when deciding the available budget. DUMB validates declared selections; it cannot discover every external consumer.</p>
 <p>Provider accounts provide Usenet access. They do not create or authenticate indexer accounts.</p>
-<h2 id="follow-progress-and-finish-later">Follow progress and finish later<a class="headerlink" href="#follow-progress-and-finish-later" title="Permanent link">#</a></h2>
+<h2 id="follow-progress-and-finish-later">Follow progress and finish later<a class="headerlink" href="#follow-progress-and-finish-later" title="Permanent link">&para;</a></h2>
 <p>The checklist is available during setup, on the dashboard, and on matching service pages. Service pages scope tasks to the service or instance; the saved run remains the arrangement record.</p>
 <p>Each action reports automation, configuration, verification, missing input and an explanation, with service and documentation links. Last-checked and scheduled-retry times include a timezone, and attempt counts appear after work has been attempted. The open checklist refreshes results during active work and around an automatic retry's scheduled time.</p>
 <table>
@@ -5776,7 +5720,7 @@
 </tbody>
 </table>
 <p>There is no success timer or forced redirect. Leaving onboarding changes a navigation preference, not verification. A backend restart or browser change does not turn interrupted work into success. Correct rejected credentials in the relevant task and retry it rather than restarting unrelated applications.</p>
-<h3 id="during-an-installation-backup-or-recovery">During an installation backup or recovery<a class="headerlink" href="#during-an-installation-backup-or-recovery" title="Permanent link">#</a></h3>
+<h3 id="during-an-installation-backup-or-recovery">During an installation backup or recovery<a class="headerlink" href="#during-an-installation-backup-or-recovery" title="Permanent link">&para;</a></h3>
 <p>Setup checks and configuration pause while an installation backup, restore or
 recovery controls application data. This is an expected hold, not a failed
 connection check or lost setup run. Previously loaded results and the remembered
@@ -5790,7 +5734,7 @@ keep their normal error/retry behavior; they are not relabeled as a backup hold.
 The hold does not itself log you out: session verification and refresh remain
 available while the retained backup/recovery state is reviewed. Complete that
 recovery before retrying setup changes; rerunning onboarding does not release it.</p>
-<h3 id="if-the-checklist-cannot-load">If the checklist cannot load<a class="headerlink" href="#if-the-checklist-cannot-load" title="Permanent link">#</a></h3>
+<h3 id="if-the-checklist-cannot-load">If the checklist cannot load<a class="headerlink" href="#if-the-checklist-cannot-load" title="Permanent link">&para;</a></h3>
 <p>No saved setup run is a normal result for an existing installation that has not
 used the retained setup workflow. The dashboard does not require you to rerun
 onboarding to dismiss that empty state.</p>
@@ -5809,14 +5753,14 @@ state or treat an unavailable request as completed setup.</p>
 <p>The startup/readiness banner is separate from retained setup actions. A green
 process tile does not establish that every configured service endpoint is ready.
 See <a href="../startup-lifecycle/">Startup lifecycle</a> for phases and readiness checks.</p>
-<h2 id="understand-automation-coverage">Understand automation coverage<a class="headerlink" href="#understand-automation-coverage" title="Permanent link">#</a></h2>
+<h2 id="understand-automation-coverage">Understand automation coverage<a class="headerlink" href="#understand-automation-coverage" title="Permanent link">&para;</a></h2>
 <p>Coverage counts <strong>applicable required setup actions</strong>, including required manual work. Automatic work, automatic work after input, manual work, applied configuration and verified checks are separate counts.</p>
 <p>New API-based connections can initially appear as <strong>Needs review</strong> until DUMB recognizes the installed application's supported contract. Coverage is provisional during this discovery; unknown versions do not count as supported automation. The guided inputs and deliberate Apply control remain available, and unsupported results retain manual instructions.</p>
 <p>Where available, DUMB probes the running application's version/capabilities and validates its authenticated settings interface. A release name, branch, successful version response or healthy process alone does not prove that a connection contract is supported. Results describe the checks actually performed; manually confirmed work remains unverified.</p>
 <p>AltMount settings authorization is separate from its download-client API key. On recognized guarded versions, the checklist can create the first administrator only after explicit consent and a native zero-user check; you can also use its native UI. Existing accounts are never recreated. DUMB retains an authorized expiring settings session privately and removes the temporary administrator password after successful authorization. WebDAV credential changes need a fresh masked preview and approval, coordination of external consumers, and an explicitly authorized AltMount-only restart when its internal rclone mount needs rebuilding. An expired settings session needs a new login. See <a href="../../services/core/altmount/#setup-checklist-and-remaining-work">AltMount setup</a>.</p>
 <p>Process health does not complete an action. Manual confirmation is distinguished from machine verification. Optional work you did not choose does not inflate the denominator.</p>
 <p>These are unweighted action counts for the plan version. They do not measure time saved, playback quality, feature completeness, or the proportion of an entire media workflow tested.</p>
-<h2 id="infinidysk-generation-and-mount-choices">InfiniDysk generation and mount choices<a class="headerlink" href="#infinidysk-generation-and-mount-choices" title="Permanent link">#</a></h2>
+<h2 id="infinidysk-generation-and-mount-choices">InfiniDysk generation and mount choices<a class="headerlink" href="#infinidysk-generation-and-mount-choices" title="Permanent link">&para;</a></h2>
 <p>InfiniDysk 1 remains the default and uses rclone. With the advertised setup
 runtime capability, selecting InfiniDysk 2 offers historical rclone or native
 FUSE and a required handoff to the existing guarded native wizard. Setup cannot
@@ -5832,7 +5776,7 @@ against the native runtime or count those tasks as verified.</p>
 <p>Keep existing media paths, symlinks and STRM origins under review. The mount
 choice alone does not rewrite them or prove external playback. See the
 <a href="../infinidysk-v2-migration/">InfiniDysk 2 guide</a>.</p>
-<h2 id="example-infinidysk-arrs-and-plex">Example: InfiniDysk, Arrs and Plex<a class="headerlink" href="#example-infinidysk-arrs-and-plex" title="Permanent link">#</a></h2>
+<h2 id="example-infinidysk-arrs-and-plex">Example: InfiniDysk, Arrs and Plex<a class="headerlink" href="#example-infinidysk-arrs-and-plex" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Select InfiniDysk, the Arr instances, Plex and desired companions.</li>
 <li>Assign each Arr to its intended provider workflow.</li>
@@ -5843,7 +5787,7 @@ choice alone does not rewrite them or prove external playback. See the
 <li>Run the offered checks. You can authorize the optional bounded workflow test when supported, then separately review your real request and playback behavior before relying on the complete arrangement.</li>
 </ol>
 <p>Prowlarr adds explicit Arr application assignments. Seerr or Pulsarr adds chosen request/watchlist routes; administrator authorization and policy decisions remain separate from making a connection.</p>
-<h2 id="what-still-needs-a-decision">What still needs a decision<a class="headerlink" href="#what-still-needs-a-decision" title="Permanent link">#</a></h2>
+<h2 id="what-still-needs-a-decision">What still needs a decision<a class="headerlink" href="#what-still-needs-a-decision" title="Permanent link">&para;</a></h2>
 <p>The actual checklist depends on selections and supported application interfaces:</p>
 <table>
 <thead>
@@ -5947,7 +5891,7 @@ choice alone does not rewrite them or prove external playback. See the
 </tbody>
 </table>
 <p>Unavailable or unrecognized interfaces remain manual, unsupported or needing review. DUMB does not guess successful integration.</p>
-<h2 id="readiness-scope-and-authorization">Readiness scope and authorization<a class="headerlink" href="#readiness-scope-and-authorization" title="Permanent link">#</a></h2>
+<h2 id="readiness-scope-and-authorization">Readiness scope and authorization<a class="headerlink" href="#readiness-scope-and-authorization" title="Permanent link">&para;</a></h2>
 <p>Readiness checks do not recursively enumerate remote libraries, scan media collections, or write probe files into media paths. A remote mount, timeout, inaccessible path or consumer namespace that cannot be checked is <strong>Not verified</strong>. It is not a green result and is not automatically a confirmed failure. Review the explanation and perform the indicated consumer-side check.</p>
 <p>An optional <strong>consumer path</strong> check can inspect explicitly selected paths from a tracked application's filesystem namespace and effective user/group permissions. Run it deliberately from its retained task. A sample-file read is bounded by your byte limit; remote access also requires explicit authorization. Results distinguish path access, content actually read and a bounded versus complete sample. This does not establish playback or import success, and it does not write a probe file into your library. Missing namespace access remains unverified.</p>
 <p>The optional <strong>workflow test</strong> has stronger side effects and separate authorization. Choose the provider, an unmonitored native item with no existing file, media server, authorized sample NZB, download-size limit, timeout and cleanup policy. Reserve that item for the test and leave it unchanged until the run finishes. Preview the exact proposal, authorize the download/import/refresh scope, then choose <strong>Run this check</strong>. Audiobookshelf requires explicit approval of its containing-library scan. Jellyfin and Emby can also use a containing-library scan when you explicitly authorize it; this can initialize a fresh library whose first item is not discoverable through a file-change notification alone. If the installed interface scans all server libraries, DUMB requires separate permission for that larger scope when more than one library exists. Changing those choices needs a fresh preview. Results report separate download, native import, media refresh, bounded stream/decoded-frame and owned-artifact cleanup stages. A partial check does not verify the whole workflow. Rechecking reads the retained test state; it does not start another download. Starting setup or retrying other work never authorizes this test. If cleanup needs attention, select the offered cleanup-only recovery to remove artifacts owned by the recorded test. It does not start another download or import; it may refresh the removed test entry in the media server.</p>
@@ -5956,12 +5900,12 @@ choice alone does not rewrite them or prove external playback. See the
 <p>A Tautulli connection change may require a restart to take effect. DUMB requests explicit permission for that restart; opening or rechecking the checklist does not authorize it.</p>
 <p>New library-protection policies created during arrangement setup remain disabled until you review the mount scope and deliberately enable them. Existing configured policies keep their settings. Review the selected media server, credentials and affected paths in <a href="../media-library-protection/">Media Library Protection</a> before enabling a new policy.</p>
 <p>Battery topology is source-specific. Known immutable CLI Debrid releases/commits can advertise audited choices; an unknown branch needs an explicit supported topology choice. DUMB does not infer integrated Battery support from an unverified branch name.</p>
-<h2 id="preserve-existing-installations">Preserve existing installations<a class="headerlink" href="#preserve-existing-installations" title="Permanent link">#</a></h2>
+<h2 id="preserve-existing-installations">Preserve existing installations<a class="headerlink" href="#preserve-existing-installations" title="Permanent link">&para;</a></h2>
 <p>Existing applications are not fresh merely because you selected them. Accounts, libraries and unowned connections must be reused, preserved or explicitly adopted. Library creation does not authorize deletion or replacement of existing paths.</p>
 <p>For supported existing connections, choose <strong>Preview changes</strong> to inspect current and proposed field values. The table identifies DUMB-managed fields and settings needing your approval; credentials are hidden. Approve the specific proposal before applying an adoption. Changing a choice invalidates that approval. If the native configuration changes after inspection, refresh the preview and review the new proposal. Approval does not authorize unrelated fields, target instances or policy changes.</p>
 <p>Setup is not a database migration. Use separate <a href="../arr-postgres-migration/">SQLite-to-PostgreSQL migration</a>, namespace migration or <a href="../service-reset/">reset/removal</a> tools where required.</p>
 <p>Setup records and protected inputs live under <code>/config/.dumb-setup</code>. Include them in private configuration backups and protect them as credential-bearing data. Browser persistence retains only the run identifier, not passwords or unfinished credential drafts.</p>
-<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
+<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../../frontend/onboarding/">Onboarding wizard</a></li>
 <li><a href="../../frontend/service-pages/">Service pages</a></li>
