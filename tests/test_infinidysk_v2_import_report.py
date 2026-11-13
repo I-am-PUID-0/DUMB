@@ -84,8 +84,12 @@ class ImportReportTests(unittest.TestCase):
                     (str(self.second), "second.mkv", "/content/second.mkv"),
                 ],
             )
-            database.execute("CREATE TABLE HistoryItems(Id TEXT)")
-            database.execute("INSERT INTO HistoryItems VALUES(?)", (str(self.history),))
+            database.execute(
+                "CREATE TABLE HistoryItems(Id TEXT,DownloadStatus INTEGER)"
+            )
+            database.execute(
+                "INSERT INTO HistoryItems VALUES(?,1)", (str(self.history),)
+            )
         with sqlite3.connect(self.target) as database:
             database.execute("CREATE TABLE items(id BLOB,name TEXT,kind INTEGER)")
             database.execute(

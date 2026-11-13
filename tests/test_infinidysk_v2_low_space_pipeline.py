@@ -1,5 +1,7 @@
 """Low-space migration runs real manager/executor/archive recovery callbacks."""
 
+import hashlib
+import json
 import os
 from pathlib import Path
 import sqlite3
@@ -12,6 +14,13 @@ import uuid
 from utils.backup_storage import BackupStorage
 from utils.infinidysk_v2_execution import InfiniDyskV2Executor
 from utils.infinidysk_v2_inventory import tree_fingerprint
+from utils.infinidysk_v2_runtime import (
+    COMMIT,
+    MARKER,
+    RELEASE,
+    native_auth,
+    runtime_dir,
+)
 
 
 class LowSpacePipelineTests(unittest.TestCase):
@@ -36,13 +45,13 @@ class LowSpacePipelineTests(unittest.TestCase):
         with sqlite3.connect(self.source / "db.sqlite") as database:
             database.executescript(
                 "CREATE TABLE DavItems(Id TEXT,Name TEXT,Type INTEGER,Path TEXT);"
-                "CREATE TABLE HistoryItems(Id TEXT);"
+                "CREATE TABLE HistoryItems(Id TEXT, DownloadStatus INTEGER);"
             )
             database.execute(
                 "INSERT INTO DavItems VALUES(?,?,2,?)",
                 (self.file_id, "movie.mkv", "/content/example/movie.mkv"),
             )
-            database.execute("INSERT INTO HistoryItems VALUES(?)", (self.history_id,))
+            database.execute("INSERT INTO HistoryItems VALUES(?,1)", (self.history_id,))
         self.archive = self.fixture.root / "mounted-archives"
         self.archive.mkdir(mode=0o700)
         self.storage = BackupStorage(
@@ -66,6 +75,22 @@ class LowSpacePipelineTests(unittest.TestCase):
         self.fixture.manager = self.fixture.new_manager()
         self.fixture.managers.append(self.fixture.manager)
         self.manager = self.fixture.manager
+        runtime = runtime_dir(self.config.config["infinidysk"])
+        runtime.mkdir()
+        binary = runtime / "infinidysk"
+        binary.write_bytes(b"reserved pinned low-space runtime fixture")
+        binary.chmod(0o755)
+        (runtime / "version.txt").write_text(RELEASE)
+        (runtime / "commit.txt").write_text(COMMIT)
+        (runtime / MARKER).write_text(
+            json.dumps(
+                {
+                    "commit": COMMIT,
+                    "release": RELEASE,
+                    "binary_sha256": hashlib.sha256(binary.read_bytes()).hexdigest(),
+                }
+            )
+        )
         self.bad_report = False
         self.native_candidates = []
         self.patches = []
@@ -74,13 +99,25 @@ class LowSpacePipelineTests(unittest.TestCase):
             ("utils.infinidysk_v2_space_control.get_backup_storage", self.storage),
             ("utils.infinidysk_v2_space_control.preflight_reuse", None),
             ("utils.infinidysk_v2_execution.install_v2_runtime", (True, None)),
-            ("utils.infinidysk_v2_execution.native_auth", {}),
-            ("utils.infinidysk_v2_execution.configure_v2_runtime", (True, None)),
-            ("utils.infinidysk_v2_execution.native_api_request", {"status": 200}),
-            ("utils.infinidysk_v2_execution.delivery_mount_ready", True),
             ("utils.infinidysk_v2_execution.mount_records", []),
         ):
             self.start_patch(patch(target, return_value=value))
+        self.start_patch(
+            patch(
+                "utils.infinidysk_v2_execution.configure_v2_runtime",
+                side_effect=self.configure_native,
+            )
+        )
+        for target in (
+            "utils.infinidysk_v2_execution.native_api_request",
+            "utils.infinidysk_v2_consumer_recovery.native_api_request",
+        ):
+            self.start_patch(patch(target, side_effect=self.health))
+        for target in (
+            "utils.infinidysk_v2_execution.delivery_mount_ready",
+            "utils.infinidysk_v2_consumer_recovery.delivery_mount_ready",
+        ):
+            self.start_patch(patch(target, side_effect=self.delivery))
         self.start_patch(
             patch.object(self.executor, "preflight", return_value={"blockers": []})
         )
@@ -115,10 +152,29 @@ class LowSpacePipelineTests(unittest.TestCase):
             self.calls.append(("start", name))
             return True, None
 
+        start_prepared_process = start_process
+
         def stop_process(self, name):
             self.process_names.pop(name, None)
             self.processes.pop(name, None)
             self.calls.append(("stop", name))
+
+    def configure_native(self, _handler, _name, service):
+        # The fake importer never executes a native binary, but activation still
+        # verifies the real owned runtime marker and staged private credentials.
+        native_auth(service)
+        service["command"] = [str(runtime_dir(service) / "infinidysk")]
+        return True, None
+
+    def health(self, *_args, **_kwargs):
+        if not self.executor._running("InfiniDysk"):
+            raise ConnectionError("The fixture native owner is not registered")
+        return {"status": 200}
+
+    def delivery(self, *_args, **_kwargs):
+        return self.executor._running("InfiniDysk") and self.executor._running(
+            "rclone InfiniDysk"
+        )
 
     def native(
         self, service, candidate, private, uid, gid, timezone, legacy_env, **options
@@ -148,6 +204,15 @@ class LowSpacePipelineTests(unittest.TestCase):
                     database.executescript(
                         "CREATE TABLE items(id BLOB,name TEXT,kind INTEGER);"
                         "CREATE TABLE history(id BLOB);"
+                        "CREATE TABLE config(key TEXT,value TEXT);"
+                    )
+                    database.execute(
+                        "INSERT INTO config VALUES('sab',?)",
+                        (
+                            json.dumps(
+                                {"api_key": legacy_env["FRONTEND_BACKEND_API_KEY"]}
+                            ),
+                        ),
                     )
                     if not owner.bad_report:
                         database.execute(
@@ -231,6 +296,7 @@ class LowSpacePipelineTests(unittest.TestCase):
             {
                 "job_id": completed["job_id"],
                 "confirmation": completed["rollback_confirmation_text"],
+                "acknowledge_discard_v2_writes": True,
             }
         )["job"]
         self.assertEqual("rolled_back", result["status"], result)

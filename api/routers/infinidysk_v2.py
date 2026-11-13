@@ -53,7 +53,13 @@ def _invoke(kind, operation, payload, handler, updater, *, mutation=False):
     try:
         callback = getattr(manager, operation)
         if mutation and operation not in {"preview"}:
-            existing = operation in {"rollback", "cutover", "cancel"}
+            existing = operation in {
+                "rollback",
+                "cutover",
+                "cancel",
+                "retry_consumers",
+                "finish_consumer_recovery",
+            }
             with admit_v2_job(kind, existing=existing):
                 return callback(payload)
         return callback(payload) if payload is not None else callback()
@@ -151,6 +157,36 @@ async def major_cancel(
 ):
     return await run_in_threadpool(
         _invoke, "major", "cancel", request, handler, updater, mutation=True
+    )
+
+
+@infinidysk_v2_router.post("/retry-consumers")
+async def major_retry_consumers(
+    request: dict[str, Any] = Body(...),
+    handler=Depends(get_process_handler),
+    updater=Depends(get_updater),
+    current_user=Depends(get_optional_current_user),
+):
+    return await run_in_threadpool(
+        _invoke, "major", "retry_consumers", request, handler, updater, mutation=True
+    )
+
+
+@infinidysk_v2_router.post("/finish-consumer-recovery")
+async def major_finish_consumer_recovery(
+    request: dict[str, Any] = Body(...),
+    handler=Depends(get_process_handler),
+    updater=Depends(get_updater),
+    current_user=Depends(get_optional_current_user),
+):
+    return await run_in_threadpool(
+        _invoke,
+        "major",
+        "finish_consumer_recovery",
+        request,
+        handler,
+        updater,
+        mutation=True,
     )
 
 

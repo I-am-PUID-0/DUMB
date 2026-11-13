@@ -27,6 +27,9 @@ class Config:
             "puid": os.geteuid() or 1000,
             "pgid": os.getegid() or 1000,
             "infinidysk": service,
+            "sonarr": {
+                "instances": {"fixture": {"enabled": True, "process_name": "Sonarr"}}
+            },
             "rclone": {
                 "instances": {
                     "legacy": {
@@ -52,6 +55,9 @@ class Handler:
         }
         self.calls = []
         self.shutting_down = False
+
+    def start_prepared_process(self, name):
+        return self.start_process(name)
 
     def _prefixed_name(self, name):
         return name
@@ -121,6 +127,14 @@ class ExecutionTests(unittest.TestCase):
         Path(self.workspace["root"]).mkdir(parents=True)
         self.snapshots = []
         self.oidc = False
+        self.download_key = "retained-fixture-download-key"
+        with sqlite3.connect(self.root / "source.sqlite") as database:
+            database.execute(
+                "CREATE TABLE ConfigItems(ConfigName TEXT,ConfigValue TEXT)"
+            )
+            database.execute(
+                "INSERT INTO ConfigItems VALUES('api.key',?)", (self.download_key,)
+            )
 
         def capture(postgres_snapshot=None):
             self.snapshots.append(postgres_snapshot)
@@ -140,8 +154,14 @@ class ExecutionTests(unittest.TestCase):
             }
 
         self.workspace.update(
-            capture_source=capture, accept_import=Mock(), activate_config=Mock()
+            capture_source=capture,
+            accept_import=Mock(),
+            activate_config=Mock(),
+            expose_activation=Mock(),
+            commit_activation=Mock(),
+            resume_consumers=Mock(),
         )
+        self.workspace["resume_consumers"].side_effect = self.resume_consumers
         self.progress = Mock()
         self.patches = []
         for name, value in (
@@ -166,6 +186,21 @@ class ExecutionTests(unittest.TestCase):
         self.candidate.wait_import.return_value = (
             "Imported 0 directories, 0 files, 0 NZBs, 0 history rows, 0 queued jobs"
         )
+
+        def imported(*unused, **kwargs):
+            native = Path(self.workspace["candidate_data"]) / "infinidysk.sqlite"
+            with sqlite3.connect(native) as database:
+                database.execute(
+                    "CREATE TABLE IF NOT EXISTS config(key TEXT,value TEXT)"
+                )
+                database.execute("DELETE FROM config WHERE key='sab'")
+                database.execute(
+                    "INSERT INTO config VALUES('sab',?)",
+                    (json.dumps({"api_key": self.download_key}),),
+                )
+            return self.candidate.wait_import.return_value
+
+        self.candidate.wait_import.side_effect = imported
         patcher = patch(
             "utils.infinidysk_v2_execution.NativeCandidate", return_value=self.candidate
         )
@@ -176,6 +211,37 @@ class ExecutionTests(unittest.TestCase):
         for patcher in reversed(self.patches):
             patcher.stop()
         self.temp.cleanup()
+
+    def resume_consumers(self, receipt):
+        # This executor fixture supplies already-accepted checkpoints; use the
+        # real retained-scope planner and resume loop at its callback boundary.
+        # Complete receipt/identity/worker checks have real-manager coverage in
+        # test_infinidysk_v2_consumer_recovery.
+        from utils.infinidysk_v2_consumer_recovery import InfiniDyskV2ConsumerRecovery
+
+        controller = InfiniDyskV2ConsumerRecovery(
+            SimpleNamespace(
+                executor=self.executor,
+                _config=lambda: self.config.config,
+            )
+        )
+        names = self.progress.call_args_list[0].kwargs["original_running_names"]
+        job = {
+            "plan": self.plan,
+            "activation_exposed": True,
+            "activation_committed": True,
+            "consumer_recovery": {"schema": 1},
+        }
+        consumers, _bindings = controller._scope(job, names)
+        with (
+            patch.object(controller, "_owner"),
+            patch.object(controller, "_save"),
+            patch.object(
+                controller, "_validate", return_value=(self.service, receipt, consumers)
+            ),
+            patch.object(controller, "_ready", return_value=True),
+        ):
+            return controller.resume(job)
 
     def test_cutover_starts_delivery_before_any_consumer(self):
         observed = []
@@ -195,6 +261,97 @@ class ExecutionTests(unittest.TestCase):
         self.assertEqual(starts, ["InfiniDysk", "rclone InfiniDysk", "Sonarr"])
         self.assertTrue(observed)
         self.assertNotIn(("start", "Sonarr"), observed[-1])
+
+    def test_activation_journal_precedes_provider_and_commit_precedes_consumers(self):
+        phases = []
+
+        def expose(service, receipt):
+            self.assertNotIn(("start", "InfiniDysk"), self.handler.calls)
+            self.assertTrue(Path(self.plan["target"]["data_dir"]).exists())
+            phases.append("exposed")
+
+        def commit(receipt):
+            self.assertEqual(phases, ["exposed"])
+            self.assertIn(("start", "InfiniDysk"), self.handler.calls)
+            self.assertIn(("start", "rclone InfiniDysk"), self.handler.calls)
+            self.assertNotIn(("start", "Sonarr"), self.handler.calls)
+            phases.append("committed")
+
+        def resume(receipt):
+            self.assertEqual(phases, ["exposed", "committed"])
+            self.executor._start_retained("Sonarr", "consumer did not start")
+
+        self.workspace["expose_activation"].side_effect = expose
+        self.workspace["commit_activation"].side_effect = commit
+        self.workspace["resume_consumers"].side_effect = resume
+        self.assertTrue(
+            self.executor.cutover(self.plan, self.workspace, self.progress)[
+                "generation_2_started"
+            ]
+        )
+
+    def test_failed_exposure_journal_never_starts_provider(self):
+        self.workspace["expose_activation"].side_effect = OSError(
+            "private journal unavailable"
+        )
+        with self.assertRaisesRegex(OSError, "journal"):
+            self.executor.cutover(self.plan, self.workspace, self.progress)
+        self.assertFalse(any(action == "start" for action, _ in self.handler.calls))
+        self.workspace["commit_activation"].assert_not_called()
+        self.workspace["resume_consumers"].assert_not_called()
+
+    def test_mount_preparation_failure_exposes_only_safe_authored_reason(self):
+        from utils.infinidysk_v2_fuse import FUSE_POLICY_REQUIRED
+
+        with patch(
+            "utils.infinidysk_v2_execution.configure_v2_runtime",
+            return_value=(False, FUSE_POLICY_REQUIRED),
+        ):
+            with self.assertRaisesRegex(ContainedImportError, "user_allow_other"):
+                self.executor.cutover(self.plan, self.workspace, self.progress)
+        self.workspace["expose_activation"].assert_not_called()
+        self.assertFalse(any(action == "start" for action, _ in self.handler.calls))
+
+    def test_inventory_receives_only_verified_staged_blob_alias(self):
+        capture = self.workspace["capture_source"]
+
+        def aliased(**kwargs):
+            result = capture(**kwargs)
+            candidate = Path(self.workspace["candidate_data"])
+            (candidate / "payloads").mkdir()
+            (candidate / "blobs").symlink_to("payloads", target_is_directory=True)
+            return result
+
+        self.workspace["capture_source"] = aliased
+        with patch(
+            "utils.infinidysk_v2_execution.verify_import_inventory",
+            return_value={
+                "files": 0,
+                "history": 0,
+                "skipped_files": 0,
+                "failed_files": 0,
+            },
+        ) as verify:
+            self.executor.cutover(self.plan, self.workspace, self.progress)
+        self.assertEqual(
+            verify.call_args.kwargs["source_blob_root"],
+            Path(self.workspace["candidate_data"]) / "payloads",
+        )
+
+    def test_escaping_staged_blob_alias_blocks_before_activation(self):
+        capture = self.workspace["capture_source"]
+
+        def aliased(**kwargs):
+            result = capture(**kwargs)
+            (Path(self.workspace["candidate_data"]) / "blobs").symlink_to(
+                self.root, target_is_directory=True
+            )
+            return result
+
+        self.workspace["capture_source"] = aliased
+        with self.assertRaisesRegex(ContainedImportError, "alias"):
+            self.executor.cutover(self.plan, self.workspace, self.progress)
+        self.workspace["expose_activation"].assert_not_called()
 
     def test_validated_rehearsal_discards_only_candidate_after_restoration(self):
         outside = self.root / "outside.txt"
@@ -602,13 +759,13 @@ class ImportInventoryTests(unittest.TestCase):
             identifier = "00000000-0000-0000-0000-0000000000ab"
             with sqlite3.connect(source) as db:
                 db.executescript(
-                    "CREATE TABLE DavItems(Id TEXT,Name TEXT,Type INTEGER,Path TEXT);CREATE TABLE HistoryItems(Id TEXT);"
+                    "CREATE TABLE DavItems(Id TEXT,Name TEXT,Type INTEGER,Path TEXT);CREATE TABLE HistoryItems(Id TEXT, DownloadStatus INTEGER);"
                 )
                 db.execute(
                     "INSERT INTO DavItems VALUES(?,?,2,'/content/movie')",
                     (identifier, "movie.mkv"),
                 )
-                db.execute("INSERT INTO HistoryItems VALUES(?)", (identifier,))
+                db.execute("INSERT INTO HistoryItems VALUES(?,1)", (identifier,))
             with sqlite3.connect(target) as db:
                 db.executescript(
                     "CREATE TABLE items(id BLOB,name TEXT,kind INTEGER);CREATE TABLE history(id BLOB);"

@@ -11,6 +11,8 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
+from utils.infinidysk_v2_omissions import make_omission_proof
+
 from utils.infinidysk_v2_migration import (
     ACKNOWLEDGEMENTS,
     InfiniDyskV2MigrationError,
@@ -56,8 +58,17 @@ class Executor:
             "source_untouched": True,
             "import_complete": True,
             "inventory_verified": True,
+            "download_credentials_verified": True,
             "plan_fingerprint": plan["plan_fingerprint"],
-            "report": {"skipped_files": self.skipped, "failed_files": 0},
+            "report": {
+                "skipped_files": self.skipped,
+                "failed_files": 0,
+                "omission_proof": make_omission_proof(
+                    {"count": 3, "sha256": "1" * 64},
+                    {"count": 0, "sha256": "2" * 64},
+                    [],
+                ),
+            },
             "oidc_policy_verified": self.oidc_verified,
         }
 
@@ -333,10 +344,58 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
         job = self.wait(self.manager.rehearse(request))
         self.assertEqual("failed_restored", job["status"])
         self.assertIn("queue", job["error"])
+        self.assertIn("1 item(s)", job["error"])
+        self.assertIn("did not delete", job["error"])
         with sqlite3.connect(self.source / "db.sqlite") as db:
             self.assertEqual(
                 1, db.execute("SELECT COUNT(*) FROM QueueItems").fetchone()[0]
             )
+
+    def test_failed_history_is_preserved_and_does_not_block_an_empty_queue(self):
+        database = self.source / "db.sqlite"
+        with sqlite3.connect(database) as connection:
+            connection.executescript(
+                "CREATE TABLE HistoryItems(Id INTEGER,DownloadStatus TEXT);"
+                "INSERT INTO HistoryItems VALUES(1,'failed');"
+            )
+        before = database.read_bytes()
+        result = self.manager._source_schema(database)
+        self.assertEqual(result["queue_count"], 0)
+        self.assertEqual(result["tables"]["HistoryItems"], 1)
+        self.assertEqual(database.read_bytes(), before)
+
+    def test_missing_download_key_proof_blocks_acceptance(self):
+        plan = self.manager._plan(
+            {
+                "mode": "migrate",
+                "mount_backend": "rclone",
+                "import_strategy": "preserve",
+            }
+        )
+        receipt = self.executor.receipt(plan)
+        receipt.pop("download_credentials_verified")
+        with self.assertRaisesRegex(
+            InfiniDyskV2MigrationError, "credential preservation"
+        ):
+            self.manager._validate_receipt(
+                {"plan": plan, "plan_fingerprint": plan["plan_fingerprint"]}, receipt
+            )
+
+    def test_old_rehearsal_without_download_key_proof_refuses_cutover_admission(self):
+        _, request, rehearsal = self.rehearsal()
+        self.assertIs(rehearsal["result"]["download_credentials_verified"], True)
+        path = self.manager._job_path(rehearsal["job_id"])
+        retained = self.manager._read(path)
+        retained["result"].pop("download_credentials_verified")
+        self.manager._write(path, retained)
+        calls = list(self.executor.calls)
+        request["rehearsal_job_id"] = rehearsal["job_id"]
+        with self.assertRaisesRegex(
+            InfiniDyskV2MigrationError, "Run a fresh rehearsal"
+        ):
+            self.manager.start(request)
+        self.assertEqual(self.executor.calls, calls)
+        self.assertFalse(self.manager.has_blocking_job())
 
     def test_schema_floor_is_checked_on_actual_snapshot(self):
         preview, request = self.preview_request()
@@ -1719,8 +1778,24 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
 
         def receipt(plan):
             value = original(plan)
+            proof = make_omission_proof(
+                {"count": 3, "sha256": "1" * 64},
+                {"count": 0, "sha256": "2" * 64},
+                [
+                    {
+                        "id": "0" * 30 + "ab",
+                        "name": "movie",
+                        "path": "/content/movie",
+                        "reason": "no metadata blob",
+                    }
+                ],
+            )
+            if summary["review_digest"] == "a" * 64:
+                summary["review_digest"] = proof["review_digest"]
             value["report"].update(
-                skipped_files=1, import_report=copy.deepcopy(summary)
+                skipped_files=1,
+                import_report=copy.deepcopy(summary),
+                omission_proof=proof,
             )
             return value
 
@@ -1749,7 +1824,7 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
         summary["review_digest"] = "b" * 64
         job = self.wait(self.manager.start(request))
         self.assertEqual(job["status"], "failed_restored", job)
-        self.assertIn("changed after rehearsal", job["error"])
+        self.assertIn("omission proof", job["error"])
         self.assertEqual(self.config.config["infinidysk"]["runtime_generation"], "1")
 
     def test_native_report_remains_available_after_validation_failure_and_redacts(self):
@@ -1768,6 +1843,166 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
         report_path.chmod(0o644)
         with self.assertRaisesRegex(InfiniDyskV2MigrationError, "ownership"):
             self.manager.get_report(job["job_id"])
+
+    def test_fewer_reviewed_omissions_can_complete_cutover(self):
+        for remaining in (1, 0):
+            with self.subTest(remaining=remaining):
+                # Separate fixtures ensure neither a used preview nor prior job
+                # can supply consent for another cutover.
+                child = InfiniDyskV2MigrationTests()
+                child.setUp()
+                try:
+                    original = child.executor.receipt
+
+                    def receipt(plan):
+                        value = original(plan)
+                        omitted = [
+                            {
+                                "id": f"{number:032x}",
+                                "name": f"movie-{number}",
+                                "path": f"/content/movie-{number}",
+                                "reason": "no metadata blob",
+                            }
+                            for number in range(10, 13)
+                        ]
+                        if "cutover" in child.executor.calls:
+                            omitted = omitted[:remaining]
+                        proof = make_omission_proof(
+                            {"count": 3, "sha256": "1" * 64},
+                            {"count": 0, "sha256": "2" * 64},
+                            omitted,
+                        )
+                        value["report"].update(
+                            skipped_files=len(omitted),
+                            omission_proof=proof,
+                            import_report={
+                                "status": "review_required" if omitted else "complete",
+                                "review_required": bool(omitted),
+                                "blocking_reasons": [],
+                                "review_digest": (
+                                    proof["review_digest"] if omitted else None
+                                ),
+                            },
+                        )
+                        return value
+
+                    child.executor.receipt = receipt
+                    _, request, rehearsal = child.rehearsal()
+                    request.update(
+                        rehearsal_job_id=rehearsal["job_id"],
+                        skip_review_digest=rehearsal["import_report"]["review_digest"],
+                    )
+                    request["acknowledgements"]["skipped_media"] = True
+                    job = child.wait(child.manager.start(request))
+                    self.assertEqual(job["status"], "completed", job)
+                    private = child.manager._read(
+                        child.manager._job_path(job["job_id"])
+                    )
+                    self.assertNotIn("omitted", json.dumps(private))
+                    self.assertNotIn("omission_proof_ref", job)
+                finally:
+                    child.tearDown()
+
+    def test_old_rehearsal_without_complete_proof_ref_is_refused_before_cutover(self):
+        _, request, rehearsal = self.rehearsal()
+        path = self.manager._job_path(rehearsal["job_id"])
+        private = self.manager._read(path)
+        private.pop("omission_proof_ref")
+        self.manager._write(path, private)
+        request["rehearsal_job_id"] = rehearsal["job_id"]
+        with self.assertRaisesRegex(ValueError, "proof"):
+            self.manager.start(request)
+        self.assertNotIn("cutover", self.executor.calls)
+
+    def test_legacy_activated_recovery_cannot_silently_restore_v1(self):
+        _, request, rehearsal = self.rehearsal()
+        request["rehearsal_job_id"] = rehearsal["job_id"]
+        completed = self.wait(self.manager.start(request))
+        path = self.manager._job_path(completed["job_id"])
+        private = self.manager._read(path)
+        private.pop("activation_exposed")
+        private.pop("activation_committed")
+        private.update(status="recovery_required", stage="failed")
+        self.manager._write(path, private)
+        public = self.manager.get_job(completed["job_id"])["job"]
+        self.assertTrue(public["activation_exposed"])
+        self.assertEqual(public["recovery_kind"], "v2_activation")
+        for field in (
+            "can_cancel",
+            "can_rollback",
+            "can_cleanup",
+            "can_retry_consumers",
+            "can_finish_consumer_recovery",
+        ):
+            self.assertFalse(public[field], field)
+        self.assertIn("older activated job", public["message"])
+        with self.assertRaisesRegex(InfiniDyskV2MigrationError, "no retained"):
+            self.manager.rollback(
+                {
+                    "job_id": public["job_id"],
+                    "confirmation": public["rollback_confirmation_text"],
+                }
+            )
+        with self.assertRaisesRegex(InfiniDyskV2MigrationError, "new writes"):
+            self.manager.cancel(
+                {
+                    "job_id": public["job_id"],
+                    "confirmation": public["cancel_confirmation_text"],
+                }
+            )
+        self.assertNotIn("rollback", self.executor.calls)
+
+    def test_completed_legacy_activated_rollback_requires_write_loss_acknowledgement(
+        self,
+    ):
+        _, request, rehearsal = self.rehearsal()
+        request["rehearsal_job_id"] = rehearsal["job_id"]
+        completed = self.wait(self.manager.start(request))
+        path = self.manager._job_path(completed["job_id"])
+        private = self.manager._read(path)
+        private.pop("activation_exposed")
+        private.pop("activation_committed")
+        self.manager._write(path, private)
+        public = self.manager.get_job(completed["job_id"])["job"]
+        self.assertTrue(public["can_rollback"])
+        self.assertTrue(public["rollback_requires_discard_ack"])
+        payload = {
+            "job_id": public["job_id"],
+            "confirmation": public["rollback_confirmation_text"],
+        }
+        with self.assertRaisesRegex(InfiniDyskV2MigrationError, "discards later"):
+            self.manager.rollback(payload)
+        self.assertNotIn("rollback", self.executor.calls)
+        self.assertEqual(
+            self.manager.rollback(payload | {"acknowledge_discard_v2_writes": True})[
+                "job"
+            ]["status"],
+            "rolled_back",
+        )
+
+    def test_completed_consumer_recovery_restart_notice_clears_after_new_normal_startup(
+        self,
+    ):
+        _, request, rehearsal = self.rehearsal()
+        request["rehearsal_job_id"] = rehearsal["job_id"]
+        completed = self.wait(self.manager.start(request))
+        path = self.manager._job_path(completed["job_id"])
+        private = self.manager._read(path)
+        private["worker_id"] = "older-controller"
+        private["result"]["restart_required"] = True
+        private["message"] = "Restart DUMB to resume normal background workers."
+        self.manager._write(path, private)
+        for phase in ("starting", "recovery_required", "ready", "degraded"):
+            with self.subTest(phase=phase):
+                self.handler.startup_phase = phase
+                public = self.manager.get_job(completed["job_id"])["job"]
+                self.assertEqual(
+                    public["result"]["restart_required"],
+                    phase not in {"ready", "degraded"},
+                )
+                if phase in {"ready", "degraded"}:
+                    self.assertIn("normal DUMB startup completed", public["message"])
+        self.assertTrue(self.manager._read(path)["result"]["restart_required"])
 
 
 class InfiniDyskV2CapacityTests(unittest.TestCase):

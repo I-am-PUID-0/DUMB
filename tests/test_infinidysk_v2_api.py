@@ -78,6 +78,8 @@ class NativeMigrationAPITests(unittest.TestCase):
             manager.cleanup_preview.return_value = {'protocol': 1, 'ready': False, 'blockers': ['Source ownership review is required.']}
             manager.cleanup.return_value = {'job': {'status': 'completed', 'cleanup': {'state': 'queued'}}}
             manager.rollback.return_value = {'job': {'status': 'rolled_back'}}
+            manager.retry_consumers.return_value = {'job': {'status': 'running', 'activation_exposed': True}}
+            manager.finish_consumer_recovery.return_value = {'job': {'status': 'completed', 'activation_exposed': True}}
             manager.cancel.return_value = {'job': {'status': 'running', 'cancel_requested': True}}
             with patch.object(router, '_manager', return_value=manager), \
                  patch('utils.auth_config.AuthConfigManager.is_auth_enabled', return_value=True), \
@@ -91,6 +93,8 @@ class NativeMigrationAPITests(unittest.TestCase):
                 manager.get_report.assert_not_called()
                 assert client.post('/process/infinidysk-v2/start', json={}).status_code == 401
                 assert client.post('/process/infinidysk-v2/cancel', json={}).status_code == 401
+                assert client.post('/process/infinidysk-v2/retry-consumers', json={}).status_code == 401
+                assert client.post('/process/infinidysk-v2/finish-consumer-recovery', json={}).status_code == 401
                 assert client.post('/process/infinidysk-v2/cleanup/preview', json={}).status_code == 401
                 assert client.post('/process/infinidysk-v2/cleanup', json={}).status_code == 401
                 with patch('utils.auth.decode_token', return_value=SimpleNamespace(type='access', sub='example')), patch('utils.auth_config.AuthConfigManager.validate_token_principal', return_value=True):
@@ -109,11 +113,15 @@ class NativeMigrationAPITests(unittest.TestCase):
                     assert capabilities['infinidysk_v2_migration_protocol'] == 1
                     assert capabilities['infinidysk_v2_cleanup'] is True
                     assert capabilities['infinidysk_v2_cleanup_protocol'] == 1
+                    assert capabilities['infinidysk_v2_consumer_recovery'] is True
+                    assert capabilities['infinidysk_v2_consumer_recovery_protocol'] == 1
                     with patch.object(router, 'get_project_version', return_value='2.23.9'):
                         assert client.post('/process/infinidysk-v2/preview', json={}).status_code == 426
                         assert client.post('/process/infinidysk-v2/postgres/preview', json={}).status_code == 426
                         assert client.post('/process/infinidysk-v2/cleanup', json={}).status_code == 426
                         assert client.post('/process/infinidysk-v2/cancel', json={}).status_code == 426
+                        assert client.post('/process/infinidysk-v2/retry-consumers', json={}).status_code == 426
+                        assert client.post('/process/infinidysk-v2/finish-consumer-recovery', json={}).status_code == 426
                         assert client.get('/process/infinidysk-v2/status').status_code == 200
                         manager.preview.assert_not_called()
                     with patch.object(router, 'get_project_version', return_value='2.24.0'):
@@ -124,6 +132,8 @@ class NativeMigrationAPITests(unittest.TestCase):
                         assert client.post('/process/infinidysk-v2/start', json={}).status_code == 200
                         with patch.object(router.INFINIDYSK_V2_MIGRATION_MANAGER, 'has_blocking_job', return_value=True):
                             assert client.post('/process/infinidysk-v2/cancel', json={}).json()['job']['cancel_requested'] is True
+                            assert client.post('/process/infinidysk-v2/retry-consumers', json={}).json()['job']['activation_exposed'] is True
+                            assert client.post('/process/infinidysk-v2/finish-consumer-recovery', json={}).json()['job']['status'] == 'completed'
                         cleanup_preview = client.post('/process/infinidysk-v2/cleanup/preview', json={'job_id': 'a' * 32})
                         assert cleanup_preview.json()['ready'] is False
                         assert client.post('/process/infinidysk-v2/cleanup', json={}).json()['job']['cleanup']['state'] == 'queued'
@@ -144,7 +154,7 @@ class NativeMigrationAPITests(unittest.TestCase):
                         assert report_missing.status_code == 409, report_missing.text
                         assert report_missing.json()['detail'] == 'The native report is unavailable for this job.'
                     paths = app.openapi()['paths']
-                    for path in ('/status', '/preview', '/rehearse', '/start', '/jobs/{job_id}', '/jobs/{job_id}/report', '/rollback', '/cancel', '/cleanup/preview', '/cleanup', '/postgres/status', '/postgres/preview', '/postgres/start', '/postgres/cutover', '/postgres/cancel', '/postgres/rollback'):
+                    for path in ('/status', '/preview', '/rehearse', '/start', '/jobs/{job_id}', '/jobs/{job_id}/report', '/rollback', '/cancel', '/retry-consumers', '/finish-consumer-recovery', '/cleanup/preview', '/cleanup', '/postgres/status', '/postgres/preview', '/postgres/start', '/postgres/cutover', '/postgres/cancel', '/postgres/rollback'):
                         assert '/process/infinidysk-v2' + path in paths, path
                     assert app.version == '2.24.0'
             """)

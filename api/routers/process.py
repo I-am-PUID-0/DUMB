@@ -6417,6 +6417,8 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "infinidysk_v2_migration_backup_storage": True,
         "infinidysk_v2_cleanup": True,
         "infinidysk_v2_cleanup_protocol": 1,
+        "infinidysk_v2_consumer_recovery": True,
+        "infinidysk_v2_consumer_recovery_protocol": 1,
         "symlink_backup_manifest_list": True,
         "symlink_manifest_file_list": True,
         "arr_postgres_migration": True,

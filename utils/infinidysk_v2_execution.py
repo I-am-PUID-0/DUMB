@@ -19,6 +19,16 @@ import time
 from urllib.parse import quote
 import uuid
 
+from utils.infinidysk_v2_credentials import (
+    legacy_sab_environment,
+    source_sab_key,
+    validate_target_sab_override,
+    verify_imported_sab_key,
+)
+from utils.infinidysk_v2_fuse import (
+    safe_native_preparation_error,
+    validate_fuse_prerequisites,
+)
 from utils.infinidysk_v2_runtime import (
     build_v2_environment,
     configure_v2_runtime,
@@ -37,6 +47,7 @@ from utils.infinidysk_v2_pg_snapshot import (
 )
 from utils.infinidysk_v2_restore import postgres_tools, verify_postgres_restore
 from utils.infinidysk_v2_subprocess import MigrationProcessCleanupError
+from utils.installation_backup_lifecycle import BackupLifecycleError, order_resume_rows
 from utils.infinidysk_v2_topology import (
     delivery_mount_ready,
     mount_records,
@@ -93,14 +104,14 @@ def _uuid(value):
     )
 
 
-def verify_import_inventory(source, destination, report):
+def verify_import_inventory(source, destination, report, *, source_blob_root=None):
     from utils.infinidysk_v2_import_report import (
         ImportReportError,
         verify_import_inventory as verify,
     )
 
     try:
-        return verify(source, destination, report)
+        return verify(source, destination, report, source_blob_root=source_blob_root)
     except ImportReportError as error:
         refused = ContainedImportError(str(error))
         refused.import_report = error.import_report
@@ -163,6 +174,7 @@ class NativeCandidate:
                 }
             }
         )
+        environment.update(legacy_sab_environment(legacy_env))
         environment.update(
             {
                 "INFINIDYSK_LISTEN": f"127.0.0.1:{self.port}",
@@ -438,6 +450,10 @@ class InfiniDyskV2Executor:
             blockers.append(
                 "Contained migration requires configured non-root PUID and PGID."
             )
+        if not blockers and plan.get("target", {}).get("mount_backend") == "fuse":
+            valid, reason = validate_fuse_prerequisites(uid)
+            if not valid:
+                blockers.append(reason)
         if sys.platform != "linux" or os.geteuid() != 0 or not shutil.which("nsenter"):
             blockers.append(
                 "Contained native import requires Linux controller namespaces and nsenter."
@@ -447,6 +463,15 @@ class InfiniDyskV2Executor:
             if libc.syscall(444, None, 0, 1) < 3:
                 blockers.append(
                     "Contained native import requires Landlock ABI 3 or newer."
+                )
+        if not blockers:
+            try:
+                self._retained_order(plan)
+            except (ContainedImportError, OSError, ValueError) as error:
+                blockers.append(
+                    str(error)
+                    if isinstance(error, ContainedImportError)
+                    else "Managed startup dependencies could not be verified before migration."
                 )
         if not blockers:
             try:
@@ -520,7 +545,150 @@ class InfiniDyskV2Executor:
 
     def _running(self, name):
         process = self.handler.process_names.get(self.handler._prefixed_name(name))
-        return process is not None and process.poll() is None
+        if process is not None and process.poll() is None:
+            return True
+        external = getattr(self.handler, "external_processes", {})
+        return any(
+            self._pid_alive(external.get(key))
+            for key in {name, self.handler._prefixed_name(name)}
+        )
+
+    @staticmethod
+    def _pid_alive(pid):
+        if type(pid) is not int or pid <= 0:
+            return False
+        try:
+            state = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[0]
+            return state not in {"Z", "X"}
+        except FileNotFoundError:
+            return False
+
+    def _ordered_names(self, plan, names, *, service=None):
+        """Order only the reviewed retained set; never start extra dependencies."""
+        configuration = copy.deepcopy(getattr(self.config, "config", None))
+        if not isinstance(configuration, dict):
+            raise ContainedImportError(
+                "The managed lifecycle configuration is unavailable."
+            )
+        if service is not None:
+            configuration["infinidysk"] = copy.deepcopy(service)
+        configured = {}
+        for key, section in configuration.items():
+            if not isinstance(section, dict):
+                continue
+            instances = section.get("instances")
+            entries = instances.values() if isinstance(instances, dict) else [section]
+            for entry in entries:
+                if isinstance(entry, dict) and isinstance(
+                    entry.get("process_name"), str
+                ):
+                    configured.setdefault(entry["process_name"], []).append(
+                        (key, entry)
+                    )
+        rows = []
+        for name in names:
+            if not isinstance(name, str) or len(configured.get(name, [])) != 1:
+                raise ContainedImportError(
+                    "A retained migration process no longer has one configured identity."
+                )
+            key, entry = configured[name][0]
+            # Infer dependencies for the retained running set in a planning copy.
+            # Owned activation may have disabled a previous owner for rollback.
+            entry["enabled"] = True
+            rows.append({"key": key, "name": name})
+        owners = {plan["source"]["process_name"]}
+        owners.update(item.get("process_name") for item in plan["inventory"]["mounts"])
+        rows.sort(key=lambda row: row["name"] not in owners)
+        from utils.dependency_map import build_conditional_dependency_map
+
+        dependencies = build_conditional_dependency_map(
+            lambda key: configuration.get(key) or {}
+        )
+        try:
+            ordered = [
+                row["name"]
+                for row in order_resume_rows(rows, configuration, dependencies)
+            ]
+        except BackupLifecycleError as error:
+            raise ContainedImportError(str(error)) from None
+        seen_consumer = False
+        for name in ordered:
+            if name in owners:
+                if seen_consumer:
+                    raise ContainedImportError(
+                        "A delivery owner depends on a stopped consumer; review configured startup waits before migration."
+                    )
+            else:
+                seen_consumer = True
+        return ordered
+
+    def _target_names(self, plan, names):
+        mounts = {item.get("process_name") for item in plan["inventory"]["mounts"]}
+        owners = [plan["source"]["process_name"]]
+        instances = (self.config.get("rclone") or {}).get("instances") or {}
+        for owner in selected_topology(plan["target"]["service"], instances):
+            if owner["backend"] != "rclone":
+                continue
+            name = owner.get("process_name")
+            if not name or name not in mounts:
+                raise ContainedImportError(
+                    "The selected delivery owner is outside the reviewed migration scope."
+                )
+            owners.append(name)
+        return list(
+            dict.fromkeys(
+                owners
+                + [name for name in names if name not in owners and name not in mounts]
+            )
+        )
+
+    def _stop_retained(self, name):
+        process = self.handler.process_names.get(self.handler._prefixed_name(name))
+        external = getattr(self.handler, "external_processes", {})
+        pids = {getattr(process, "pid", None)}
+        pids.update(
+            external.get(key) for key in {name, self.handler._prefixed_name(name)}
+        )
+        pids = {pid for pid in pids if type(pid) is int and pid > 0}
+        result = self.handler.stop_process(name)
+        if isinstance(result, tuple) and result[0] is False:
+            raise ContainedImportError(
+                "A retained managed process refused to stop; migration remains paused."
+            )
+        try:
+            registered_running = self._running(name)
+        except (OSError, ValueError, IndexError):
+            raise MigrationProcessCleanupError(
+                "Retained writer termination could not be verified; recovery remains held."
+            ) from None
+        if registered_running:
+            raise ContainedImportError(
+                "A planned process did not stop; further migration changes remain blocked."
+            )
+        for pid in pids:
+            group_alive = getattr(self.handler, "_process_group_alive", lambda _: False)
+            try:
+                deadline = time.monotonic() + 5
+                while group_alive(pid) and time.monotonic() < deadline:
+                    time.sleep(0.05)
+                group_live = group_alive(pid)
+                pid_live = self._pid_alive(pid)
+            except (OSError, ValueError, IndexError):
+                raise MigrationProcessCleanupError(
+                    "Retained writer termination could not be verified; recovery remains held."
+                ) from None
+            if pid_live or group_live:
+                raise MigrationProcessCleanupError(
+                    "A retained managed writer or child group remains live; recovery must confirm termination before restarting services.",
+                    process_group=pid if group_live else None,
+                )
+
+    def _start_retained(self, name, message):
+        if self._running(name):
+            return
+        success, _ = self.handler.start_process(name)
+        if not success:
+            raise ContainedImportError(message)
 
     def _assert_unmounted(self, path):
         target = Path(os.path.normpath(path))
@@ -547,42 +715,51 @@ class InfiniDyskV2Executor:
             "The selected delivery mount did not become ready; consumers remain stopped."
         )
 
+    def _retained_order(self, plan):
+        was_running = self._ordered_names(
+            plan,
+            [name for name in self._names(plan) if self._running(name)],
+            service=plan["source"]["service"],
+        )
+        # Validate the selected target graph before stopping any original service.
+        self._ordered_names(
+            plan,
+            self._target_names(plan, was_running),
+            service=plan["target"]["service"],
+        )
+        return was_running
+
     def _quiesce(self, plan, progress):
-        was_running = [name for name in self._names(plan) if self._running(name)]
+        was_running = self._retained_order(plan)
         progress(
             "quiescing",
             "Stopping the identified source, mount and managed consumers.",
             original_running_names=was_running,
         )
         for name in reversed(was_running):
-            self.handler.stop_process(name)
-            if self._running(name):
-                raise ContainedImportError(
-                    "A planned process did not stop; no native import was started."
-                )
+            self._stop_retained(name)
         for mount in plan["inventory"]["mounts"]:
             self._assert_unmounted(mount["path"])
         return was_running
 
     def _restore_original(self, plan, names):
+        names = self._ordered_names(plan, names, service=plan["source"]["service"])
         source = plan["source"]["process_name"]
         mounts = {item.get("process_name") for item in plan["inventory"]["mounts"]}
         owners = [name for name in names if name == source or name in mounts]
         consumers = [name for name in names if name not in owners]
         for name in owners:
-            success, _ = self.handler.start_process(name)
-            if not success:
-                raise ContainedImportError(
-                    "A retained managed owner did not restart; recovery evidence was preserved."
-                )
+            self._start_retained(
+                name,
+                "A retained managed owner did not restart; recovery evidence was preserved.",
+            )
         if any(name in mounts for name in owners) or consumers:
             self._wait_delivery(plan["source"]["service"])
         for name in consumers:
-            success, _ = self.handler.start_process(name)
-            if not success:
-                raise ContainedImportError(
-                    "A retained consumer did not restart; recovery evidence was preserved."
-                )
+            self._start_retained(
+                name,
+                "A retained consumer did not restart; recovery evidence was preserved.",
+            )
 
     def _own_candidate(self, candidate, uid, gid):
         # Only the newly copied candidate tree is re-owned. Links are never
@@ -671,6 +848,12 @@ class InfiniDyskV2Executor:
         self._own_candidate(candidate, uid, gid)
         service = copy.deepcopy(plan["target"]["service"])
         service.update(v2_data_dir=str(candidate), branch_enabled=False, commit_sha="")
+        source_key = None
+        if plan["mode"] == "migrate":
+            source_key = source_sab_key(
+                snapshot["source_database"], plan["source"]["service"].get("env") or {}
+            )
+            validate_target_sab_override(source_key, service.get("env") or {})
         success, _ = install_v2_runtime(
             self.handler, plan["source"]["process_name"], service
         )
@@ -705,6 +888,11 @@ class InfiniDyskV2Executor:
                     native_process_group=child.pid,
                 )
             report_text = process.wait_import(plan["mode"] == "migrate", progress)
+        credentials = {}
+        if source_key is not None:
+            credentials = verify_imported_sab_key(
+                candidate / "infinidysk.sqlite", source_key, service.get("env") or {}
+            )
         bridge = getattr(process, "nntp_bridge", None)
         if isinstance(bridge, NntpBridge):
             bridge.restore_native_providers(
@@ -722,11 +910,29 @@ class InfiniDyskV2Executor:
         if temporary.exists():
             shutil.rmtree(temporary)
         if plan["mode"] == "migrate":
+            blob_root = candidate / "blobs"
+            if blob_root.is_symlink():
+                from utils.infinidysk_v2_inventory import (
+                    InventoryError,
+                    validate_data_link,
+                )
+
+                try:
+                    validate_data_link(
+                        candidate, {"path": "blobs", "link": os.readlink(blob_root)}
+                    )
+                    blob_root = blob_root.resolve(strict=True)
+                    blob_root.relative_to(candidate)
+                except (OSError, ValueError, RuntimeError, InventoryError):
+                    raise ContainedImportError(
+                        "The staged legacy blob alias leaves its verified candidate scope."
+                    ) from None
             try:
                 report = verify_import_inventory(
                     snapshot["source_database"],
                     candidate / "infinidysk.sqlite",
                     report_text,
+                    source_blob_root=blob_root,
                 )
             except ContainedImportError as error:
                 diagnostics = getattr(error, "import_report", None)
@@ -744,6 +950,7 @@ class InfiniDyskV2Executor:
                     )
             report = {"skipped_files": 0, "failed_files": 0, "files": 0, "history": 0}
         receipt = {
+            **credentials,
             "plan_fingerprint": plan["plan_fingerprint"],
             "execution_verified": True,
             "isolation_verified": True,
@@ -800,16 +1007,19 @@ class InfiniDyskV2Executor:
         )
         final = copy.deepcopy(plan["target"]["service"])
         final.update(branch_enabled=False, commit_sha="")
-        success, _ = configure_v2_runtime(
+        success, reason = configure_v2_runtime(
             self.handler, plan["source"]["process_name"], final
         )
         if not success:
             raise ContainedImportError(
-                "The accepted native runtime could not be prepared for its selected mount."
+                "The accepted native runtime could not be prepared: "
+                + safe_native_preparation_error(reason)
+                + "."
             )
         workspace["activate_config"](final)
+        workspace["expose_activation"](final, receipt)
         name = plan["source"]["process_name"]
-        success, _ = self.handler.start_process(name)
+        success, _ = self.handler.start_prepared_process(name)
         if not success:
             raise ContainedImportError(
                 "The selected native runtime did not start; original v1 data is retained."
@@ -835,22 +1045,14 @@ class InfiniDyskV2Executor:
                 and owner_name
                 and not self._running(owner_name)
             ):
-                success, _ = self.handler.start_process(owner_name)
+                success, _ = self.handler.start_prepared_process(owner_name)
                 if not success:
                     raise ContainedImportError(
                         "The selected rclone owner did not start; consumers remain stopped."
                     )
         self._wait_delivery(final)
-        # Re-enable only prior consumers after the selected owner is mounted.
-        mount_names = {item.get("process_name") for item in plan["inventory"]["mounts"]}
-        for previous in was_running:
-            if previous == name or previous in mount_names:
-                continue
-            success, _ = self.handler.start_process(previous)
-            if not success:
-                raise ContainedImportError(
-                    "A managed consumer did not recover after native activation."
-                )
+        workspace["commit_activation"](receipt)
+        workspace["resume_consumers"](receipt)
         receipt["generation_2_started"] = True
         return receipt
 
@@ -862,30 +1064,6 @@ class InfiniDyskV2Executor:
 
     def rollback(self, job, progress):
         plan = job["plan"]
-        progress(
-            "rolling_back",
-            "Stopping the selected native owner before restoring retained v1 configuration.",
-        )
-        for name in reversed(self._names(plan)):
-            if self._running(name):
-                self.handler.stop_process(name)
-                if self._running(name):
-                    raise ContainedImportError(
-                        "A native consumer did not stop; original configuration was not restored."
-                    )
-        self._assert_unmounted(plan["target"]["mount_path"])
-        restore = job.get("restore_config")
-        if not callable(restore):
-            raise ContainedImportError(
-                "The controller rollback checkpoint is unavailable."
-            )
-        progress(
-            "restoring_source", "Restoring the retained v1 configuration and data."
-        )
-        restore()
-        restore_source = job.get("restore_source")
-        if callable(restore_source):
-            restore_source(self._assert_unmounted)
         names = (job.get("execution") or {}).get("original_running_names")
         if not isinstance(names, list):
             names = (
@@ -904,7 +1082,34 @@ class InfiniDyskV2Executor:
                 if item.get("process_identity")
             ]
         allowed = set(self._names(plan))
-        self._restore_original(
-            plan, [name for name in dict.fromkeys(names) if name in allowed]
+        if any(not isinstance(name, str) or name not in allowed for name in names):
+            raise ContainedImportError(
+                "The retained migration process scope changed; preserve recovery state before starting services."
+            )
+        names = self._ordered_names(
+            plan, list(dict.fromkeys(names)), service=plan["source"]["service"]
         )
+        progress(
+            "rolling_back",
+            "Stopping the selected native owner before restoring retained v1 configuration.",
+        )
+        live_names = self._ordered_names(
+            plan, [name for name in self._names(plan) if self._running(name)]
+        )
+        for name in reversed(live_names):
+            self._stop_retained(name)
+        self._assert_unmounted(plan["target"]["mount_path"])
+        restore = job.get("restore_config")
+        if not callable(restore):
+            raise ContainedImportError(
+                "The controller rollback checkpoint is unavailable."
+            )
+        progress(
+            "restoring_source", "Restoring the retained v1 configuration and data."
+        )
+        restore()
+        restore_source = job.get("restore_source")
+        if callable(restore_source):
+            restore_source(self._assert_unmounted)
+        self._restore_original(plan, names)
         return {"generation_2_stopped": True, "source_restored": True}

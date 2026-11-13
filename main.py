@@ -1124,9 +1124,10 @@ def _major_migration_recovery_reason():
 
         if infinidysk_major_recovery_pending():
             return (
-                "An interrupted InfiniDysk major migration needs recovery. Preserve "
-                "the retained archive and job state, restore its mount and use "
-                "the offered migration recovery action."
+                "An interrupted InfiniDysk major migration needs review. Preserve "
+                "the retained data, archive and job state. Use the job's offered "
+                "recovery controls; an exposed generation 2 target may contain "
+                "new writes and must not be automatically replaced with v1."
             )
     except Exception as error:
         logger.error(

@@ -406,6 +406,19 @@ class InfiniDyskV2MigrationManager:
         job["owned_process_cleanup"] = retained
         return True
 
+    @staticmethod
+    def _possibly_exposed(job):
+        if "activation_exposed" in job:
+            return job.get("activation_exposed") is True
+        # Older jobs did not journal provider exposure separately. An activated
+        # but unfinished target may already contain writes; do not infer v1-only
+        # recovery from the absence of a marker introduced by newer code.
+        return bool(
+            job.get("mode") == "cutover"
+            and job.get("activation_fingerprint")
+            and job.get("status") in ACTIVE | RECOVERY | {"completed"}
+        )
+
     def _public_job(self, job):
         if not job:
             return None
@@ -427,7 +440,19 @@ class InfiniDyskV2MigrationManager:
                 and state == "completed"
             )
         )
+        exposed = self._possibly_exposed(job)
+        legacy_exposed = exposed and "activation_exposed" not in job
+        if exposed:
+            can_cancel = False
+            rollback = bool(
+                state == "completed"
+                and (job.get("activation_committed") is True or legacy_exposed)
+                and job.get("snapshot")
+                and job.get("mode") == "cutover"
+            )
         cleanup = self._cleanup_controller().public_state(job)
+        if exposed and state != "completed":
+            cleanup["can_cleanup"] = False
         if (job.get("plan", {}).get("options") or {}).get("reclaim_source_space"):
             cleanup["can_cleanup"] = False
         rollback = (
@@ -468,14 +493,53 @@ class InfiniDyskV2MigrationManager:
                 "cleanup": cleanup["can_cleanup"],
             },
             "rollback_confirmation_text": f"ROLLBACK INFINIDYSK V2 {job['job_id']}",
+            "activation_exposed": exposed,
+            "activation_committed": job.get("activation_committed") is True,
+            "rollback_requires_discard_ack": exposed and rollback,
+            **(self._consumer_recovery().public(job) if exposed else {}),
             **cleanup,
         }
+        if (
+            state == "completed"
+            and (public.get("result") or {}).get("restart_required") is True
+            and job.get("worker_id") != self._worker_id
+            and getattr(self.process_handler, "startup_phase", None)
+            in {"ready", "degraded"}
+        ):
+            # Preserve the recovery receipt; its old controller's restart request
+            # is satisfied only after this new controller finishes normal startup.
+            public["result"]["restart_required"] = False
+            public["message"] = (
+                "Generation 2 consumer recovery finished and normal DUMB startup completed. Review any retained consumer warnings below."
+            )
+        if legacy_exposed and state in ACTIVE | RECOVERY:
+            public.update(
+                recovery_kind="v2_activation",
+                can_retry_consumers=False,
+                can_finish_consumer_recovery=False,
+                message="This older activated job has no write-preserving activation receipt. Retain both v1 and v2 data and review the private job before recovery; automatic v1 restoration is unavailable.",
+            )
+        public["actions"].update(
+            retry_consumers=public.get("can_retry_consumers", False),
+            finish_consumer_recovery=public.get("can_finish_consumer_recovery", False),
+        )
         if "owned_process_cleanup" in job and rollback:
             public["message"] = (
                 "Helper termination is confirmed. Review and run rollback "
                 "to restore the retained v1 service."
             )
         return public
+
+    def _consumer_recovery(self):
+        from utils.infinidysk_v2_consumer_recovery import InfiniDyskV2ConsumerRecovery
+
+        return InfiniDyskV2ConsumerRecovery(self)
+
+    def retry_consumers(self, request):
+        return self._consumer_recovery().start(request)
+
+    def finish_consumer_recovery(self, request):
+        return self._consumer_recovery().start(request, finish=True)
 
     def _cleanup_controller(self):
         with self._lock:
@@ -1269,6 +1333,7 @@ class InfiniDyskV2MigrationManager:
                     {
                         "name": "source_queue",
                         "status": "must_be_empty_after_quiescence",
+                        "message": "Finish or review queued download tasks in InfiniDysk 1 before rehearsal. Failed history entries alone do not block this check; DUMB does not delete Arr history or library files.",
                     },
                     {"name": "contained_native_import", "status": "required"},
                 ],
@@ -1404,6 +1469,7 @@ class InfiniDyskV2MigrationManager:
                 )
             saved = latest
             reviewed_report = None
+            reviewed_proof = None
             if mode == "cutover" and plan["mode"] == "migrate":
                 rehearsal = self._read(self._job_path(request.get("rehearsal_job_id")))
                 if (
@@ -1411,11 +1477,20 @@ class InfiniDyskV2MigrationManager:
                     or rehearsal.get("mode") != "rehearsal"
                     or rehearsal.get("status") != "rehearsed"
                     or (rehearsal.get("result") or {}).get("validated") is not True
+                    or (rehearsal.get("result") or {}).get(
+                        "download_credentials_verified"
+                    )
+                    is not True
                     or rehearsal.get("plan_fingerprint") != plan["plan_fingerprint"]
                 ):
                     raise InfiniDyskV2MigrationError(
-                        "A successful contained rehearsal for this exact plan is required."
+                        "A successful contained rehearsal with download-client credential preservation for this exact plan is required. Run a fresh rehearsal."
                     )
+                reviewed_proof = {
+                    "job_id": rehearsal["job_id"],
+                    "reference": rehearsal.get("omission_proof_ref"),
+                }
+                self._read_omission_proof(rehearsal)
                 reviewed_report = rehearsal.get("import_report")
                 if reviewed_report and reviewed_report.get("review_required"):
                     if (
@@ -1443,6 +1518,7 @@ class InfiniDyskV2MigrationManager:
                     }
                 ),
                 "reviewed_skip_digest": (reviewed_report or {}).get("review_digest"),
+                "reviewed_omission_proof": reviewed_proof,
                 "status": "queued",
                 "stage": "queued",
                 "message": "Waiting for the guarded native migration worker.",
@@ -1456,6 +1532,8 @@ class InfiniDyskV2MigrationManager:
                 "result": None,
                 "error": None,
                 "snapshot": None,
+                "activation_exposed": False,
+                "activation_committed": False,
             }
             self._active_id = job_id
             self._thread = threading.Thread(
@@ -1530,6 +1608,10 @@ class InfiniDyskV2MigrationManager:
                 raise InfiniDyskV2MigrationError(
                     "Confirm the exact running major migration to cancel."
                 )
+            if self._possibly_exposed(job):
+                raise InfiniDyskV2MigrationError(
+                    "Generation 2 may contain new writes. Use its consumer recovery controls; cancellation cannot restore v1."
+                )
             if job.get("cancel_requested"):
                 return {"job": self._public_job(job)}
             if not self._public_job(job)["can_cancel"]:
@@ -1583,7 +1665,9 @@ class InfiniDyskV2MigrationManager:
             queued = connection.execute("SELECT COUNT(*) FROM QueueItems").fetchone()[0]
             if queued:
                 raise InfiniDyskV2MigrationError(
-                    "Empty the v1 download queue before the contained major import."
+                    f"The captured InfiniDysk 1 download queue contains {queued} item(s). "
+                    "Finish or explicitly remove those download tasks using InfiniDysk or the Arr download-client controls, then rehearse again. "
+                    "Failed history entries alone do not block this check; DUMB did not delete any queue entries."
                 )
             oidc = False
             try:
@@ -2071,6 +2155,13 @@ class InfiniDyskV2MigrationManager:
             raise InfiniDyskV2MigrationError(
                 "Native execution did not supply its complete verified acceptance receipt."
             )
+        if (
+            job["plan"].get("mode") == "migrate"
+            and receipt.get("download_credentials_verified") is not True
+        ):
+            raise InfiniDyskV2MigrationError(
+                "The native import did not verify download-client credential preservation. Run a fresh rehearsal before cutover."
+            )
         protection = (
             "archive_recovery_verified"
             if job["plan"]["options"].get("reclaim_source_space")
@@ -2108,18 +2199,46 @@ class InfiniDyskV2MigrationManager:
                 raise InfiniDyskV2MigrationError(
                     "The skipped media do not have a complete reconciled native report."
                 )
-        if job["mode"] == "cutover":
-            expected = job.get("reviewed_skip_digest")
-            actual = (
-                (diagnostics or {}).get("review_digest")
-                if report["skipped_files"]
-                else None
+        if job["plan"].get("mode") == "migrate":
+            from utils.infinidysk_v2_omissions import (
+                validate_omission_proof,
+                verify_omission_subset,
             )
-            if expected != actual:
-                raise InfiniDyskV2MigrationError(
-                    "Skipped items changed after rehearsal; cutover was refused. Review a new rehearsal."
+
+            proof = report.get("omission_proof")
+            if proof is None:
+                proof = self._read_omission_proof(
+                    job, receipt.get("omission_proof_ref")
                 )
+            validate_omission_proof(proof)
+            if len(proof["omitted"]) != report["skipped_files"] or (
+                report["skipped_files"]
+                and proof["review_digest"] != diagnostics.get("review_digest")
+            ):
+                raise InfiniDyskV2MigrationError(
+                    "The complete omission proof does not match the reconciled native report."
+                )
+            if job["mode"] == "cutover":
+                reviewed = job.get("reviewed_omission_proof") or {}
+                reviewed_job = {
+                    "job_id": reviewed.get("job_id"),
+                    "plan_fingerprint": job["plan_fingerprint"],
+                    "omission_proof_ref": reviewed.get("reference"),
+                }
+                verify_omission_subset(self._read_omission_proof(reviewed_job), proof)
         return receipt
+
+    def _read_omission_proof(self, job, reference=None):
+        from utils.infinidysk_v2_omission_store import read_proof
+
+        job_id = job.get("job_id")
+        self._job_path(job_id)
+        return read_proof(
+            self.state_root / "backups" / job_id,
+            job_id,
+            job["plan_fingerprint"],
+            reference if reference is not None else job.get("omission_proof_ref"),
+        )
 
     def _assert_job_owner(self, job):
         with self._lock:
@@ -2176,6 +2295,21 @@ class InfiniDyskV2MigrationManager:
                 )
         with self._lock:
             self._assert_job_owner(job)
+            if job["plan"].get("mode") == "migrate":
+                from utils.infinidysk_v2_omission_store import write_proof
+
+                proof = receipt["report"].pop("omission_proof")
+                reference = write_proof(
+                    self._directory(Path(self._workspace(job)["root"])),
+                    job["job_id"],
+                    job["plan_fingerprint"],
+                    proof,
+                )
+                job["omission_proof_ref"] = reference
+                receipt["omission_proof_ref"] = copy.deepcopy(reference)
+            # The full report has its own bounded private file. Ordinary job
+            # state/receipts must not duplicate it or the complete consent proof.
+            receipt.pop("native_report_private", None)
             job["accepted_import"] = {
                 "validated": True,
                 "snapshot_fingerprint": snapshot["snapshot_fingerprint"],
@@ -2315,6 +2449,17 @@ class InfiniDyskV2MigrationManager:
             lambda prepared_service=None: self._activate_config(job, prepared_service)
         )
         workspace["restore_config"] = lambda: self._restore_config(job)
+        workspace["resume_consumers"] = (
+            lambda receipt: self._consumer_recovery().resume(job)
+        )
+        workspace[
+            "expose_activation"
+        ] = lambda service, receipt: self._consumer_recovery().expose(
+            job, service, receipt
+        )
+        workspace["commit_activation"] = (
+            lambda receipt: self._consumer_recovery().commit(job, receipt)
+        )
         workspace["check_cancel"] = lambda: self._check_cancel(job)
         return workspace
 
@@ -2518,6 +2663,11 @@ class InfiniDyskV2MigrationManager:
                         "execution_verified": True,
                         "plan_fingerprint": job["plan_fingerprint"],
                         "import_strategy": "preserve",
+                        **(
+                            {"download_credentials_verified": True}
+                            if receipt.get("download_credentials_verified") is True
+                            else {}
+                        ),
                     },
                 )
                 self._write(self._job_path(job["job_id"]), job)
@@ -2538,6 +2688,9 @@ class InfiniDyskV2MigrationManager:
                     "Owned helper termination is unconfirmed; private recovery "
                     "files and migration admission remain retained."
                 )
+            elif self._possibly_exposed(job):
+                self._consumer_recovery().hold(job, error)
+                return
             elif acquired and job.get("execution_started"):
                 try:
                     self._recovery_progress(
@@ -2652,6 +2805,13 @@ class InfiniDyskV2MigrationManager:
             if request.get("confirmation") != f"ROLLBACK INFINIDYSK V2 {job['job_id']}":
                 raise InfiniDyskV2MigrationError(
                     "Confirm the exact retained major-migration rollback."
+                )
+            if (
+                self._possibly_exposed(job)
+                and request.get("acknowledge_discard_v2_writes") is not True
+            ):
+                raise InfiniDyskV2MigrationError(
+                    "Explicitly acknowledge that retained v1 rollback discards later generation 2 writes."
                 )
             if self.has_blocking_job() and self._effective_status(job) not in RECOVERY:
                 raise InfiniDyskV2MigrationError(

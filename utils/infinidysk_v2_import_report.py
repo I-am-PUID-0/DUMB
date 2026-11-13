@@ -9,11 +9,19 @@ from collections import Counter
 from contextlib import closing
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import sqlite3
+import stat
 from urllib.parse import quote
 import uuid
+
+from utils.infinidysk_v2_omissions import (
+    OmissionProofError,
+    is_reviewable_reason as _reviewable,
+    make_omission_proof,
+)
 
 MAX_REPORT_BYTES = 8_000_000
 MAX_PUBLIC_SKIPPED = 200
@@ -25,31 +33,6 @@ _SUMMARY = re.compile(
 _FETCHED = re.compile(r"  fetched ([0-9]{1,20}) articles to learn segment sizes")
 _SKIPPED = re.compile(r"Files not carried over: ([1-9][0-9]{0,19})")
 _GROUP = re.compile(r"  ([1-9][0-9]{0,19}): (.+)")
-_SIZE_MISMATCH = re.compile(r"size \d+ differs from C#'s \d+")
-_AES_LENGTH = re.compile(r"AES (?:key|IV) of \d+ bytes")
-_EXPECTED_SOURCE_REASONS = frozenset(
-    {
-        "no metadata blob",
-        "metadata blob: not found",
-        "no file size",
-        "no segments",
-        "negative volume size",
-        "negative member offset",
-        "negative member size",
-        "negative offset",
-        "negative length",
-        "negative member range",
-        "encrypted with no decoded size",
-        "segment sizes unknown for a run that starts mid-file",
-        "segments are not split evenly",
-        "a part's data lies outside its segments",
-        "RAR volume's first article is not its start",
-        "RAR headers are encrypted",
-        "member not found at the start of a RAR volume",
-        "RAR member is compressed or encrypted",
-        "an article belongs elsewhere in its file",
-    }
-)
 
 
 class ImportReportError(ValueError):
@@ -81,12 +64,6 @@ def _safe_text(value):
         value,
     )
     return value[:1600]
-
-
-def _reviewable(reason):
-    return reason in _EXPECTED_SOURCE_REASONS or bool(
-        _SIZE_MISMATCH.fullmatch(reason) or _AES_LENGTH.fullmatch(reason)
-    )
 
 
 def _public_report(parsed):
@@ -272,7 +249,149 @@ def _block(public, message):
     raise ImportReportError(message, public)
 
 
-def verify_import_inventory(source, destination, report):
+# These are native importer inputs, excluding changing health scheduling.
+_MEDIA_FIELDS = (
+    "Id",
+    "ParentId",
+    "Name",
+    "Path",
+    "Type",
+    "SubType",
+    "FileSize",
+    "FileBlobId",
+    "NzbBlobId",
+    "CreatedAt",
+    "ReleaseDate",
+    "GeneratedStrmPath",
+    "GeneratedSymlinkPath",
+    "ArrDownloadId",
+)
+_HISTORY_FIELDS = (
+    "Id",
+    "DownloadStatus",
+    "CreatedAt",
+    "FileName",
+    "JobName",
+    "Category",
+    "TotalSegmentBytes",
+    "DownloadTimeSeconds",
+    "FailMessage",
+    "DownloadDirId",
+    "NzbBlobId",
+)
+
+
+def _source_records(connection, table, fields):
+    present = {row[1] for row in connection.execute(f'PRAGMA table_info("{table}")')}
+    columns = [name for name in fields if name in present]
+    required = {"Id", "Name", "Path", "Type"} if table == "DavItems" else {"Id"}
+    if not required.issubset(columns):
+        raise ImportReportError(
+            "The source media/history census lacks required columns."
+        )
+    # All identifiers come from the fixed two callers above.
+    projection = ",".join(f'"{name}"' for name in columns)
+    rows = connection.execute(f'SELECT {projection} FROM "{table}"').fetchall()
+    return columns, rows
+
+
+def _blob_census(blob_root, value, cache):
+    if value is None:
+        return None
+    try:
+        identifier = uuid.UUID(str(value))
+    except (ValueError, AttributeError, TypeError):
+        return {"state": "invalid_identity"}
+    key = identifier.hex
+    if key in cache:
+        return cache[key]
+    descriptors = []
+    try:
+        # Mirror native open_blob: the blobs root can be an explicit link;
+        # descendants and the regular leaf must never follow links or block on FIFO.
+        descriptor = os.open(blob_root, os.O_RDONLY | os.O_DIRECTORY)
+        descriptors.append(descriptor)
+        for part in (key[:2], key[2:4]):
+            descriptor = os.open(
+                part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=descriptor
+            )
+            descriptors.append(descriptor)
+        descriptor = os.open(
+            str(identifier),
+            os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+            dir_fd=descriptor,
+        )
+        descriptors.append(descriptor)
+        before = os.fstat(descriptor)
+        if not stat.S_ISREG(before.st_mode):
+            raise ImportReportError("A source payload blob is not a regular file.")
+        digest = hashlib.sha256()
+        size = 0
+        while chunk := os.read(descriptor, 1024 * 1024):
+            size += len(chunk)
+            digest.update(chunk)
+        after = os.fstat(descriptor)
+        named = os.stat(str(identifier), dir_fd=descriptors[-2], follow_symlinks=False)
+        stamp = lambda value: (
+            value.st_dev,
+            value.st_ino,
+            value.st_size,
+            value.st_mtime_ns,
+            value.st_ctime_ns,
+        )
+        if (
+            size != before.st_size
+            or stamp(before) != stamp(after)
+            or stamp(before) != stamp(named)
+        ):
+            raise ImportReportError(
+                "A source payload blob changed during its complete census."
+            )
+        result = {"state": "present", "bytes": size, "sha256": digest.hexdigest()}
+    except FileNotFoundError:
+        result = {"state": "missing"}
+    except OSError:
+        raise ImportReportError(
+            "A source payload blob could not be inspected without following links."
+        ) from None
+    finally:
+        for descriptor in reversed(descriptors):
+            os.close(descriptor)
+    cache[key] = result
+    return result
+
+
+def _census(blob_root, columns, rows, cache, *, count):
+    digest = hashlib.sha256()
+    digest.update(json.dumps(columns, separators=(",", ":")).encode() + b"\n")
+    entries = []
+    for row in rows:
+        identifier = _uuid(row[0])
+        values = []
+        for field, value in zip(columns, row):
+            if field == "Id":
+                value = identifier
+            elif isinstance(value, bytes):
+                value = {"bytes": value.hex()}
+            values.append(value)
+            if field in {"FileBlobId", "NzbBlobId"}:
+                values.append(_blob_census(blob_root, value, cache))
+        entries.append((identifier, values))
+    for _identifier, values in sorted(entries, key=lambda row: row[0]):
+        digest.update(
+            json.dumps(
+                values,
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=True,
+                allow_nan=False,
+            ).encode()
+            + b"\n"
+        )
+    return {"count": count, "sha256": digest.hexdigest()}
+
+
+def verify_import_inventory(source, destination, report, *, source_blob_root=None):
     """Reconcile each imported identity and each exact, classified omission.
 
     Reviewable omissions return review_required; the caller must bind explicit
@@ -284,11 +403,114 @@ def verify_import_inventory(source, destination, report):
         with closing(
             sqlite3.connect(f"file:{quote(str(Path(source)))}?mode=ro", uri=True)
         ) as old:
+            media_columns, media_rows = _source_records(old, "DavItems", _MEDIA_FIELDS)
             files = old.execute(
                 "SELECT Id, Name, Path FROM DavItems "
                 "WHERE Type=2 AND Path LIKE '/content/%'"
             ).fetchall()
-            history = old.execute("SELECT Id FROM HistoryItems").fetchall()
+            history_columns, history_rows_source = _source_records(
+                old, "HistoryItems", _HISTORY_FIELDS
+            )
+            history = [(row[0],) for row in history_rows_source]
+            history_summary = {
+                "source_rows": len(history),
+                "completed": 0,
+                "failed": 0,
+                "unsupported_status": 0,
+                "invalid_identity": 0,
+                "imported_this_attempt": parsed["history"],
+            }
+            if history and "DownloadStatus" not in history_columns:
+                _block(
+                    public,
+                    "Source history eligibility cannot be verified: DownloadStatus is missing.",
+                )
+            status_index = history_columns.index("DownloadStatus") if history else None
+            for row in history_rows_source:
+                status = row[status_index]
+                if type(status) is not int or status not in {1, 2}:
+                    history_summary["unsupported_status"] += 1
+                else:
+                    history_summary["completed" if status == 1 else "failed"] += 1
+                try:
+                    identifier = int(_uuid(row[0]), 16)
+                    if identifier <= 4 and identifier != 2:
+                        history_summary["invalid_identity"] += 1
+                except ImportReportError:
+                    history_summary["invalid_identity"] += 1
+            public["history"] = history_summary
+            if (
+                history_summary["unsupported_status"]
+                or history_summary["invalid_identity"]
+            ):
+                _block(
+                    public,
+                    "Source history contains "
+                    f"{history_summary['unsupported_status']} unsupported status row(s) and "
+                    f"{history_summary['invalid_identity']} invalid/reserved identity row(s). "
+                    "The pinned native importer cannot preserve those rows; review the source history before migrating.",
+                )
+            blob_root = Path(source).parent / "blobs"
+            if source_blob_root is not None:
+                blob_root = Path(source_blob_root)
+                if not blob_root.is_absolute() or ".." in blob_root.parts:
+                    _block(
+                        public,
+                        "The explicit source blob census requires its proven absolute staged directory.",
+                    )
+                try:
+                    if any(
+                        path.is_symlink() for path in (blob_root, *blob_root.parents)
+                    ):
+                        _block(
+                            public,
+                            "The explicit source blob census requires a direct, scope-verified physical directory.",
+                        )
+                    try:
+                        blob_stat = blob_root.lstat()
+                    except FileNotFoundError:
+                        blob_stat = None
+                    if blob_stat is not None and not stat.S_ISDIR(blob_stat.st_mode):
+                        _block(
+                            public,
+                            "The explicit source blob census directory is unavailable.",
+                        )
+                    if blob_stat is None:
+                        for columns, records in (
+                            (media_columns, media_rows),
+                            (history_columns, history_rows_source),
+                        ):
+                            for field in ("FileBlobId", "NzbBlobId"):
+                                if field not in columns:
+                                    continue
+                                index = columns.index(field)
+                                for record in records:
+                                    if record[index] is None:
+                                        continue
+                                    try:
+                                        uuid.UUID(str(record[index]))
+                                    except (ValueError, AttributeError, TypeError):
+                                        continue
+                                    _block(
+                                        public,
+                                        "The explicit source blob census directory is missing despite referenced payload blobs.",
+                                    )
+                except OSError:
+                    _block(
+                        public,
+                        "The explicit source blob census directory could not be inspected safely.",
+                    )
+            blob_cache = {}
+            media_census = _census(
+                blob_root, media_columns, media_rows, blob_cache, count=len(files)
+            )
+            history_census = _census(
+                blob_root,
+                history_columns,
+                history_rows_source,
+                blob_cache,
+                count=len(history),
+            )
         with closing(
             sqlite3.connect(f"file:{quote(str(Path(destination)))}?mode=ro", uri=True)
         ) as new:
@@ -311,6 +533,10 @@ def verify_import_inventory(source, destination, report):
             public,
             f"The native/source inventory could not be read: {type(error).__name__}.",
         )
+    except (TypeError, ValueError):
+        _block(
+            public, "The source media/history census could not be represented safely."
+        )
 
     if any(kind not in {1, 2, 3} for _, _, kind in item_rows):
         _block(public, "The native target contains an unrecognized media kind.")
@@ -319,10 +545,25 @@ def verify_import_inventory(source, destination, report):
     if (
         len(set(old_history)) != len(old_history)
         or len(actual_history) != len(history_rows)
-        or parsed["history"] != len(history)
+        or parsed["history"] > len(history)
         or not set(old_history).issubset(actual_history)
     ):
-        _block(public, "Existing history identities or totals were not preserved.")
+        missing_history = set(old_history) - actual_history
+        statuses = {_uuid(row[0]): row[status_index] for row in history_rows_source}
+        missing_completed = sum(statuses[item] == 1 for item in missing_history)
+        missing_failed = sum(statuses[item] == 2 for item in missing_history)
+        public["history"].update(
+            missing_completed=missing_completed, missing_failed=missing_failed
+        )
+        _block(
+            public,
+            "Existing history identities or totals were not preserved: "
+            f"{missing_completed} completed and {missing_failed} failed required history identities missing; "
+            f"source {len(history)}, target {len(history_rows)}, "
+            f"native attempt {parsed['history']}. Completed and failed history must both be retained.",
+        )
+    public["history"]["verified_present"] = len(old_history)
+    public["history"]["attempt_count_differs"] = parsed["history"] != len(history)
     if parsed["queued"] != 0:
         _block(
             public, "The native import contains queued jobs; empty the source queue."
@@ -372,21 +613,18 @@ def verify_import_inventory(source, destination, report):
             f"The native import omitted {len(missing)} items; provider or unknown failures block cutover.",
             public,
         )
+    try:
+        proof = make_omission_proof(media_census, history_census, missing)
+    except OmissionProofError as error:
+        _block(public, str(error))
     if missing:
-        binding = {
-            "policy": "infinidysk-beta6-reviewed-omissions-v1",
-            "source_files": len(files),
-            "history": len(history),
-            "omitted": sorted(missing, key=lambda item: item["id"]),
-        }
-        public["review_digest"] = hashlib.sha256(
-            json.dumps(binding, sort_keys=True, separators=(",", ":")).encode()
-        ).hexdigest()
+        public["review_digest"] = proof["review_digest"]
     return {
         "files": carried,
         "history": len(history),
         "skipped_files": len(missing),
         "failed_files": 0,
         "native_report_sha256": hashlib.sha256(report.encode()).hexdigest(),
+        "omission_proof": proof,
         "import_report": public,
     }
