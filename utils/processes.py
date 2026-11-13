@@ -404,6 +404,7 @@ class ProcessHandler:
         instance_name=None,
         suppress_logging=False,
         env=None,
+        prepared_only=False,
     ):
         """Start a process after a short migration-admission check.
 
@@ -443,6 +444,16 @@ class ProcessHandler:
                         process_name,
                     )
                     return False, blocker
+        if prepared_only:
+            return self._start_process_admitted(
+                process_name,
+                config_dir=config_dir,
+                command=command,
+                instance_name=instance_name,
+                suppress_logging=suppress_logging,
+                env=env,
+                prepared_only=True,
+            )
         return self._start_process_admitted(
             process_name,
             config_dir=config_dir,
@@ -452,6 +463,15 @@ class ProcessHandler:
             env=env,
         )
 
+    def start_prepared_process(self, process_name):
+        """Start reviewed installed configuration without running installers.
+
+        Recovery owners validate the exact saved target/scope before this call.
+        Normal admission, configured dependency waits and process launch checks
+        still apply; absent installed artifacts fail instead of being rebuilt.
+        """
+        return self.start_process(process_name, prepared_only=True)
+
     def _start_process_admitted(
         self,
         process_name,
@@ -460,6 +480,7 @@ class ProcessHandler:
         instance_name=None,
         suppress_logging=False,
         env=None,
+        prepared_only=False,
     ):
         requested_env = dict(env) if isinstance(env, dict) else None
         internal_name = self._prefixed_name(process_name)
@@ -470,7 +491,7 @@ class ProcessHandler:
         config_for_wait = None
         native_child = None
 
-        if process_name in skip_setup:
+        if prepared_only or process_name in skip_setup:
             self.logger.info(
                 f"{process_name} does not require setup. Skipping setup..."
             )
@@ -525,15 +546,29 @@ class ProcessHandler:
                 key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
                 config = CONFIG_MANAGER.get_instance(instance_name, key)
                 config_for_wait = config
-                command = config.get("command", command)
+                if key == "postgres":
+                    # Initial setup supplies an expanded command explicitly.
+                    # Later name-only starts must resolve the saved template,
+                    # while retaining any explicit command or working directory.
+                    command = command or config.get("command")
+                    config_dir = config_dir or config.get("config_dir")
+                else:
+                    command = config.get("command", command)
+                    config_dir = config.get("config_dir", config_dir)
                 self.logger.debug(f"Command for {process_name}: {command}")
-                config_dir = config.get("config_dir", config_dir)
                 suppress_logging = config.get("suppress_logging", suppress_logging)
                 env = {**(config.get("env", {}) or {}), **(env or {})}
 
             if config_for_wait is None:
                 key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
                 config_for_wait = CONFIG_MANAGER.get_instance(instance_name, key)
+
+            if key == "postgres":
+                from utils.postgres_launch import postgres_launch_command
+
+                command = postgres_launch_command(
+                    command, config_dir, config_for_wait.get("config_file")
+                )
 
             if key == "rclone" and suppress_rclone(
                 (CONFIG_MANAGER.get("infinidysk") or {}), config_for_wait
@@ -710,9 +745,10 @@ class ProcessHandler:
                 )
                 if not success:
                     return False, error
-                success, error = self._reconcile_cli_battery_runtime(launch_config)
-                if not success:
-                    return False, error
+                if not prepared_only:
+                    success, error = self._reconcile_cli_battery_runtime(launch_config)
+                    if not success:
+                        return False, error
 
             process_description = process_name
             self.logger.info(f"Starting {process_description} process")
