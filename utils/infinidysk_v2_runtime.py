@@ -16,6 +16,7 @@ import urllib.error
 from pathlib import Path
 
 from utils.infinidysk_v2_proxy import compatibility_auth_environment
+from utils.infinidysk_v2_fuse import validate_fuse_prerequisites
 
 from utils.infinidysk_v2_topology import (
     is_v2 as is_v2,
@@ -609,16 +610,9 @@ def prepare_v2_launch(
             )
             if not valid:
                 return False, error
-            if not Path("/dev/fuse").exists() or not shutil.which("fusermount3"):
-                return False, "Native FUSE requires /dev/fuse and fusermount3"
-            if uid != 0 and not any(
-                line.split("#", 1)[0].strip() == "user_allow_other"
-                for line in Path("/etc/fuse.conf").read_text().splitlines()
-            ):
-                return (
-                    False,
-                    "Native FUSE with an unprivileged owner requires user_allow_other in /etc/fuse.conf",
-                )
+            valid, error = validate_fuse_prerequisites(uid)
+            if not valid:
+                return False, error
         elif rclone_instances is not None:
             valid, error = validate_rclone_topology(service, rclone_instances)
             if not valid:

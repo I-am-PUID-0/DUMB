@@ -226,6 +226,71 @@ def _target_url(target):
     )
 
 
+def _target_error_message(error, target, *, identity=False):
+    """Classify a failed check without publishing driver text or credentials."""
+    code = getattr(error, "pgcode", None)
+    # libpq connection failures commonly have no SQLSTATE. Only recognize
+    # fixed server diagnostics here; the original text is never returned.
+    detail = str(error)[:65536] if not code else ""
+    database = target.get("dbname")
+    missing_database = (
+        isinstance(database, str)
+        and _NAME.fullmatch(database)
+        and f'database "{database}" does not exist' in detail
+    )
+    user = target.get("user")
+    missing_role = (
+        isinstance(user, str)
+        and _NAME.fullmatch(user)
+        and f'role "{user}" does not exist' in detail
+    )
+    if code == "3D000" or missing_database:
+        return (
+            "The PostgreSQL destination database does not exist. Create a new empty "
+            "database with C collation before preview; choosing managed PostgreSQL "
+            "only reuses its connection settings."
+        )
+    if (
+        code in {"28P01", "28000"}
+        or missing_role
+        or any(
+            marker in detail
+            for marker in (
+                "password authentication failed",
+                "no pg_hba.conf entry",
+                "authentication failed for user",
+            )
+        )
+    ):
+        return (
+            "PostgreSQL rejected the destination credentials. Check the database "
+            "role, password and connection/authentication policy."
+        )
+    if code == "42501":
+        if identity:
+            return (
+                "PostgreSQL denied the cluster identity check. An administrator "
+                "must grant this role EXECUTE on pg_catalog.pg_control_system() "
+                "in the destination database; DUMB will not skip physical "
+                "identity verification."
+            )
+        return (
+            "PostgreSQL denied inspection of the destination catalog. Check the "
+            "configured role's database and public-schema privileges; DUMB will "
+            "not skip destination verification."
+        )
+    if identity and code == "42883":
+        return (
+            "The PostgreSQL destination does not expose pg_catalog.pg_control_system(). "
+            "DUMB requires this physical cluster identity before conversion."
+        )
+    return (
+        "The dedicated PostgreSQL destination could not be verified. Check that "
+        "the server is running and reachable, the named database exists, and the "
+        "configured credentials, TLS policy and inspection permissions are valid."
+    )
+
+
 def _inspect_target(target, *, require_empty=False):
     """Bind destructive native operations to the actual cluster and database."""
     connection = psycopg2.connect(
@@ -234,16 +299,35 @@ def _inspect_target(target, *, require_empty=False):
     try:
         connection.set_session(readonly=True, autocommit=True)
         with connection.cursor() as cursor:
-            cursor.execute("SELECT system_identifier::text FROM pg_control_system()")
+            try:
+                cursor.execute(
+                    "SELECT system_identifier::text FROM pg_catalog.pg_control_system()"
+                )
+            except psycopg2.Error as error:
+                raise NativePostgresError(
+                    _target_error_message(error, target, identity=True)
+                ) from None
             system_id = cursor.fetchone()[0]
             cursor.execute(
-                "SELECT oid::text, datcollate FROM pg_database WHERE datname=current_database()"
+                "SELECT oid::text, datcollate FROM pg_catalog.pg_database "
+                "WHERE datname=pg_catalog.current_database()"
             )
             database_id, collation = cursor.fetchone()
-            cursor.execute("SELECT current_schema(), current_user")
+            cursor.execute("SELECT pg_catalog.current_schema(), current_user")
             schema, owner = cursor.fetchone()
+            if schema == "public":
+                cursor.execute(
+                    "SELECT pg_catalog.has_schema_privilege(current_user, 'public', 'CREATE')"
+                )
+                if not cursor.fetchone()[0]:
+                    raise NativePostgresError(
+                        "The PostgreSQL destination role cannot create tables in its "
+                        "public schema. Ask the administrator to grant CREATE on that "
+                        "schema or use the dedicated database's owner."
+                    )
             cursor.execute(
-                "SELECT n.nspname, c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace "
+                "SELECT n.nspname, c.relname FROM pg_catalog.pg_class c "
+                "JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace "
                 "WHERE c.relkind IN ('r','p','v','m','f') AND n.nspname NOT IN ('pg_catalog','information_schema') "
                 "AND n.nspname NOT LIKE 'pg_toast%' ORDER BY 1,2"
             )
@@ -269,10 +353,8 @@ def _inspect_target(target, *, require_empty=False):
 def inspect_target(target, *, require_empty=False):
     try:
         return _inspect_target(target, require_empty=require_empty)
-    except psycopg2.Error:
-        raise NativePostgresError(
-            "The dedicated PostgreSQL destination could not be verified. Check that it exists and the configured user can inspect its identity."
-        ) from None
+    except psycopg2.Error as error:
+        raise NativePostgresError(_target_error_message(error, target)) from None
 
 
 class InfiniDyskV2PostgresManager:
