@@ -180,19 +180,39 @@ class FrontendSourceTests(FrontendSourceFixture, unittest.TestCase):
 
     def test_changed_file_during_hashing_is_not_published(self):
         original = frontend_source.os.read
+        expected = self.chunk.stat()
+        target = (expected.st_dev, expected.st_ino)
+        replacement = "export const value = 'other';"
+        self.assertEqual(len(replacement.encode()), expected.st_size)
         changed = False
 
         def read(fd, amount):
             nonlocal changed
             value = original(fd, amount)
-            if not changed:
+            opened = os.fstat(fd)
+            if not changed and (opened.st_dev, opened.st_ino) == target:
                 changed = True
-                self.chunk.write_text("export const value = 'other';")
+                self.chunk.write_text(replacement)
+                # Keep the same-size rewrite, but make its metadata change
+                # explicit rather than relying on filesystem clock granularity.
+                os.utime(
+                    self.chunk,
+                    ns=(expected.st_atime_ns, expected.st_mtime_ns + 1_000_000_000),
+                )
             return value
 
         with patch.object(frontend_source.os, "read", side_effect=read):
+            unrelated = os.open(self.root / "package.json", os.O_RDONLY | os.O_NOFOLLOW)
+            try:
+                os.read(unrelated, 1)
+            finally:
+                os.close(unrelated)
+            self.assertFalse(changed, "An unrelated descriptor consumed the mutation")
             with self.assertRaisesRegex(frontend_source.FrontendSourceError, "changed"):
                 self.write()
+        self.assertTrue(changed, "The target file was never read")
+        self.assertEqual(self.chunk.stat().st_size, expected.st_size)
+        self.assertNotEqual(self.chunk.stat().st_mtime_ns, expected.st_mtime_ns)
         self.assertFalse((self.root / frontend_source.MANIFEST_NAME).exists())
 
 
