@@ -171,6 +171,18 @@ def _unclassified_message(path, kind):
     )
 
 
+def _backup_profile_overlap_message(destination, source):
+    def shown(path):
+        value = json.dumps(str(path), ensure_ascii=True)
+        return value if len(value) <= 500 else value[:500] + "... [path truncated]"
+
+    return (
+        f"Backup destination {shown(destination)} would exclude managed persistence "
+        f"at {shown(source)}. Choose a dedicated archive directory that does not "
+        "equal or contain a managed persistence path; no application state was omitted."
+    )
+
+
 def _effective_persistence(key, service, data_root):
     """Reuse known native selectors, never crawl arbitrary environment values."""
     from utils.database_health import DatabaseHealthCollector, SQLITE_SERVICE_KEYS
@@ -292,15 +304,23 @@ def collect_roots(config, config_path, state_root, storage):
     if os.path.lexists(auth):
         candidates.append((auth, "authentication", False))
     exclusions = [str(Path(state_root))]
-    # Closed artifacts may be on a share or within an included local tree.
+    declared_paths = {Path(os.path.abspath(raw)) for raw, _role, _link in candidates}
+    declared_paths.add(Path(os.path.abspath(data_root)))
+    profiles = []
+    # Profile configuration alone excludes artifacts, even before registration.
+    # Do not probe mounted destinations or require their current availability.
     for profile in (config.get("backup_storage") or {}).get("profiles", {}).values():
         if isinstance(profile, dict) and isinstance(profile.get("path"), str):
             profile_path = Path(profile["path"])
-            if profile_path in {Path(config_path).parent, Path(data_root)}:
+            if (
+                not profile_path.is_absolute()
+                or ".." in profile_path.parts
+                or "\x00" in str(profile_path)
+            ):
                 raise InstallationArchiveError(
-                    "A backup destination cannot be the configuration or managed appdata root."
+                    "A backup destination must use an absolute direct container path."
                 )
-            exclusions.append(str(profile_path))
+            profiles.append(profile_path)
     roots = {}
     while candidates:
         raw, role, link_only = candidates.pop(0)
@@ -348,6 +368,20 @@ def collect_roots(config, config_path, state_root, storage):
                     "A managed alias points at a protected root."
                 )
             candidates.append((str(resolved), role, False))
+    # Excluding an archive child is safe; excluding a source itself or its parent
+    # would silently remove managed state. Check declared paths even when the
+    # service is disabled or its persistence does not exist yet, and include
+    # physical targets discovered through configured managed aliases.
+    declared_paths.update(Path(path) for path in roots)
+    for profile_path in profiles:
+        for source in sorted(
+            declared_paths, key=lambda path: (len(path.parts), str(path))
+        ):
+            if profile_path == source or profile_path in source.parents:
+                raise InstallationArchiveError(
+                    _backup_profile_overlap_message(profile_path, source)
+                )
+        exclusions.append(str(profile_path))
     selected = []
     for path, row in sorted(roots.items(), key=lambda x: len(Path(x[0]).parts)):
         if any(
@@ -382,7 +416,9 @@ def collect_roots(config, config_path, state_root, storage):
         for child in data_path.iterdir():
             if any(Path(x) == child or Path(x) in child.parents for x in exclusions):
                 continue
-            physical = child.resolve(strict=True) if child.is_symlink() else child
+            value = child.lstat()
+            is_link = stat.S_ISLNK(value.st_mode)
+            physical = child.resolve(strict=True) if is_link else child
             if not any(
                 Path(row["path"]) == child
                 or Path(row["path"]) == physical
@@ -390,7 +426,7 @@ def collect_roots(config, config_path, state_root, storage):
                 or physical in Path(row["path"]).parents
                 for row in selected
             ):
-                mode = child.lstat().st_mode
+                mode = value.st_mode
                 kind = (
                     "directory"
                     if stat.S_ISDIR(mode)
@@ -401,6 +437,25 @@ def collect_roots(config, config_path, state_root, storage):
                     )
                 )
                 raise InstallationArchiveError(_unclassified_message(child, kind))
+            if is_link and not any(
+                Path(row["path"]) == child
+                or (row["kind"] == "directory" and Path(row["path"]) in child.parents)
+                for row in selected
+            ):
+                if len(selected) >= MAX_INSTALLATION_ROOTS:
+                    raise InstallationArchiveError(
+                        "The complete persistence root inventory exceeds its bound."
+                    )
+                selected.append(
+                    {
+                        "id": f"root_{len(selected):03d}",
+                        "path": str(child),
+                        "identity": identity(value),
+                        "kind": "symlink",
+                        "roles": ["managed_alias"],
+                        "link_only": True,
+                    }
+                )
     return selected, exclusions
 
 

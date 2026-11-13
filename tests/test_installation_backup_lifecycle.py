@@ -371,6 +371,144 @@ class RecoveryLifecycleTests(unittest.TestCase):
         self.assertTrue(second.get_job(identifier)["job"]["restart_required"])
 
 
+class ResumeFailureDiagnosticsTests(unittest.TestCase):
+    setUp = fixtures.ManagerTests.setUp
+    join_worker = fixtures.ManagerTests.join_worker
+    start_backup = fixtures.ManagerTests.start_backup
+
+    def fail_backup_start(self, error, *, raised=False, name="Fixture PostgreSQL"):
+        self.config.config["postgres"] = {
+            "process_name": name,
+            "port": 5432,
+            "config_dir": str(self.root / "unused-postgres"),
+        }
+        self.config.config["fixture"]["wait_for_tcp"] = {"port": 5432}
+        self.config.config["unrecorded"] = {
+            "enabled": True,
+            "process_name": "Unrecorded enabled service",
+        }
+        self.handler.process_names[name] = fixtures.Process()
+        self.config.save_config()
+
+        def fail(process_name):
+            self.assertEqual(process_name, name)
+            self.assertTrue(self.manager.has_blocking_job())
+            # The real same-thread backup owner bypasses its own cold hold.
+            self.assertIsNone(module.installation_backup_blocker())
+            self.handler.events.append(("start", process_name))
+            if raised:
+                raise RuntimeError(error)
+            return False, error
+
+        with (
+            patch.object(
+                module,
+                "write_archive",
+                side_effect=InstallationArchiveError(
+                    "Fixture archive was not accepted"
+                ),
+            ),
+            patch.object(self.handler, "start_process", fail),
+        ):
+            job = self.start_backup()
+        self.assertEqual(
+            (job["status"], job["stage"]), ("recovery_required", "resume_required")
+        )
+        self.assertTrue(job["can_rollback"])
+        self.assertTrue(self.manager.has_blocking_job())
+        self.assertEqual(
+            [event for event in self.handler.events if event[0] == "start"],
+            [("start", name)],
+        )
+        self.assertNotIn(("start", "App"), self.handler.events)
+        self.assertEqual(self.manager.catalog("fixture")["artifacts"], [])
+        return job, self.manager._job(job["job_id"])
+
+    def assert_safe_failure(self, job, saved, name, code, secret):
+        public = json.dumps(job)
+        private = json.dumps(saved)
+        self.assertIn(json.dumps(name[:256], ensure_ascii=True)[1:-1], public)
+        self.assertIn(code, public)
+        self.assertNotIn(secret, public)
+        self.assertNotIn(secret, private)
+        self.assertEqual(
+            saved["resume_failure"],
+            {"process_name": name[:256], "reason_code": code},
+        )
+        self.assertIn("Remaining retained services were not started", job["errors"][-1])
+
+    def test_setup_error_names_failed_service_without_secret_bearing_error(self):
+        name, secret = "Fixture PostgreSQL", "reserved-private-password"
+        job, saved = self.fail_backup_start(
+            f"Failed to set up {name}: postgres://fixture:{secret}@example.invalid/db"
+        )
+        self.assert_safe_failure(job, saved, name, "setup_failed", secret)
+
+    def test_subprocess_error_uses_static_launch_category(self):
+        name, secret = "Fixture PostgreSQL", "reserved-subprocess-environment"
+        job, saved = self.fail_backup_start(
+            f"Error running subprocess for {name}: {secret}"
+        )
+        self.assert_safe_failure(job, saved, name, "process_launch_failed", secret)
+
+    def test_early_exit_error_uses_static_exit_category(self):
+        name, secret = "Fixture PostgreSQL", "reserved-private-stderr"
+        job, saved = self.fail_backup_start(
+            f"{name} failed to stay running (exit code 1): {secret}"
+        )
+        self.assert_safe_failure(job, saved, name, "exited_during_startup", secret)
+
+    def test_unknown_error_and_untrusted_blocker_suffix_do_not_leak_or_claim_hold(self):
+        name, secret = "Fixture PostgreSQL", "reserved-url-token"
+        job, saved = self.fail_backup_start(module._BLOCKER + " " + secret)
+        self.assert_safe_failure(job, saved, name, "start_refused", secret)
+        self.assertNotIn("installation_hold", json.dumps(job))
+
+    def test_raised_start_exception_names_service_without_exception_text(self):
+        name, secret = "Fixture PostgreSQL", "reserved-exception-token"
+        job, saved = self.fail_backup_start(secret, raised=True)
+        self.assert_safe_failure(job, saved, name, "start_exception", secret)
+
+    def test_error_object_is_not_stringified(self):
+        class PrivateError:
+            def __str__(self):
+                raise AssertionError("Never stringify start errors")
+
+        job, saved = self.fail_backup_start(PrivateError())
+        self.assertEqual(saved["resume_failure"]["reason_code"], "start_refused")
+        self.assertNotIn("Never stringify", json.dumps(job))
+
+    def test_failed_process_name_and_public_diagnostic_are_bounded_and_escaped(self):
+        name = "Fixture PostgreSQL\n" + "x" * 1000
+        secret = "reserved-private-start-error"
+        job, saved = self.fail_backup_start(secret, name=name)
+        self.assertEqual(saved["resume_failure"]["process_name"], name[:256])
+        self.assertEqual(saved["resume_failure"]["reason_code"], "start_refused")
+        self.assertNotIn("\n", job["errors"][-1])
+        self.assertIn("\\n", job["errors"][-1])
+        self.assertIn("[name truncated]", job["errors"][-1])
+        self.assertLess(len(job["errors"][-1]), 1000)
+        self.assertNotIn(secret, json.dumps(job))
+
+    def test_reviewed_retry_resumes_only_exact_retained_set_and_clears_failure(self):
+        job, saved = self.fail_backup_start("reserved opaque start error")
+        retained = deepcopy(saved["running_before"])
+        before = len(self.handler.events)
+        result = self.manager.rollback(
+            job["job_id"], {"confirmation": "ROLL BACK " + job["job_id"]}
+        )
+        self.assertEqual(
+            self.handler.events[before:],
+            [("start", "Fixture PostgreSQL"), ("start", "App")],
+        )
+        self.assertEqual(result["job"]["status"], "rolled_back")
+        self.assertFalse(result["job"]["restart_required"])
+        self.assertFalse(self.manager.has_blocking_job())
+        self.assertEqual(self.manager._job(job["job_id"])["running_before"], retained)
+        self.assertIsNone(self.manager._job(job["job_id"])["resume_failure"])
+        self.assertNotIn(("start", "Unrecorded enabled service"), self.handler.events)
+
+
 class ChangedEntryDiagnosticsTests(unittest.TestCase):
     setUp = fixtures.ArchiveTests.setUp
 

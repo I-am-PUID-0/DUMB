@@ -432,7 +432,23 @@ def _get_subordinate_connections(sync_cfg: dict) -> list[dict]:
 
 
 def run_sync_cycle() -> None:
-    """Run a single sync cycle."""
+    """Reserve the whole cycle against installation backup and recovery.
+
+    The daemon remains alive while managed applications are stopped. Its remote
+    actions and state checkpoint must finish before a cold snapshot is admitted,
+    or wait until the installation hold is released.
+    """
+    from utils.installation_backup import installation_persistence_work
+
+    with installation_persistence_work("Seerr synchronization cycle") as admitted:
+        if not admitted:
+            logger.debug("Seerr sync paused while installation persistence is held.")
+            return
+        _run_sync_cycle()
+
+
+def _run_sync_cycle() -> None:
+    """Run one cycle inside its caller's persistence reservation."""
     sync_cfg = CONFIG_MANAGER.get("seerr_sync", {})
 
     if not sync_cfg.get("enabled"):

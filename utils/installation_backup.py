@@ -1329,9 +1329,23 @@ class InstallationBackupManager:
         return running
 
     def _resume(self, identifier):
+        from utils.infinidysk_migration_admission import (
+            ACTIVE_NAMESPACE_MIGRATION_BLOCKER,
+            ACTIVE_POSTGRES_MIGRATION_BLOCKER,
+            EXTERNAL_MUTATION_BLOCKER,
+            RECOVERY_PENDING_BLOCKER,
+        )
+
         job = self._job(identifier)
-        failures = []
-        for row in self._ordered_lifecycle_rows(job.get("running_before") or []):
+        ordered = self._ordered_lifecycle_rows(job.get("running_before") or [])
+        self._progress(
+            identifier,
+            "resuming",
+            "Resuming the exact previous running services in dependency order.",
+            status="running",
+            resume_failure=None,
+        )
+        for row in ordered:
             name = row["name"]
             process = self.handler.process_names.get(self.handler._prefixed_name(name))
             external = getattr(self.handler, "external_processes", {}).get(name)
@@ -1350,24 +1364,92 @@ class InstallationBackupManager:
                 raise InstallationBackupError(
                     "An original writer or child group remains live without a managed registration; duplicate restart is refused."
                 )
-            label = json.dumps(name, ensure_ascii=True)
+            shown_name = name[:256]
+            label = json.dumps(shown_name, ensure_ascii=True)
             if len(label) > 400:
                 label = label[:400] + "... [name truncated]"
+            elif shown_name != name:
+                label += " [name truncated]"
             self._progress(
                 identifier,
                 "resuming",
                 f"Resuming retained service {label}; its dependencies must be ready first.",
                 status="running",
             )
-            success, _error = self.handler.start_process(name)
+            reason = "start_refused"
+            hint = "Startup returned a failure; inspect this service's logs for the underlying cause."
+            try:
+                success, error = self.handler.start_process(name)
+            except Exception:
+                # Start errors may contain raw environment values, URLs or
+                # subprocess output. Never stringify or persist them here.
+                success, error = False, None
+                reason = "start_exception"
+                hint = "Startup raised an exception; inspect this service's logs for the underlying cause."
             if not success:
-                failures.append(name)
+                if type(error) is str:
+                    if error == "Shutdown requested":
+                        reason, hint = (
+                            "shutdown_requested",
+                            "Controller shutdown interrupted startup.",
+                        )
+                    elif error in {
+                        _BLOCKER,
+                        "An installation backup/restore owns the managed lifecycle.",
+                    }:
+                        reason, hint = (
+                            "installation_hold",
+                            "An installation ownership check refused startup; inspect its retained recovery state.",
+                        )
+                    elif error in {
+                        ACTIVE_NAMESPACE_MIGRATION_BLOCKER,
+                        ACTIVE_POSTGRES_MIGRATION_BLOCKER,
+                        EXTERNAL_MUTATION_BLOCKER,
+                        RECOVERY_PENDING_BLOCKER,
+                    }:
+                        reason, hint = (
+                            "migration_hold",
+                            "A managed migration ownership check refused startup; inspect its retained recovery state.",
+                        )
+                    elif error.startswith(f"Failed to set up {name}:"):
+                        reason, hint = (
+                            "setup_failed",
+                            "Service setup failed; inspect this service's setup logs.",
+                        )
+                    elif error.startswith(f"Error running subprocess for {name}:"):
+                        reason, hint = (
+                            "process_launch_failed",
+                            "The process launch failed; inspect this service's startup logs.",
+                        )
+                    elif error.startswith(f"{name} failed to stay running"):
+                        reason, hint = (
+                            "exited_during_startup",
+                            "The process exited during startup; inspect this service's startup logs.",
+                        )
+                    elif (
+                        error
+                        == "Could not bind the retained InfiniDysk backend compatibility listener"
+                    ):
+                        reason, hint = (
+                            "compatibility_listener_unavailable",
+                            "The retained InfiniDysk compatibility listener could not bind; inspect its startup logs.",
+                        )
+                message = (
+                    f"Previously running service {label} could not resume ({reason}). "
+                    f"{hint} Remaining retained services were not started; recovery evidence was retained."
+                )
+                self._progress(
+                    identifier,
+                    "resuming",
+                    message,
+                    status="running",
+                    resume_failure={
+                        "process_name": shown_name,
+                        "reason_code": reason,
+                    },
+                )
                 # Never start downstream consumers after an owner/provider fails.
-                break
-        if failures:
-            raise InstallationBackupError(
-                "Previously running services could not resume in dependency order; recovery evidence was retained."
-            )
+                raise InstallationBackupError(message) from None
 
     def _owner_check(self, identifier):
         active = self._active()

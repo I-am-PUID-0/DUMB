@@ -262,11 +262,73 @@ def _changed_entry(path, expected, actual, message, *, extra=()):
         if before != after
     ]
     changed.extend(extra)
-    shown = json.dumps(str(path), ensure_ascii=True)
-    if len(shown) > 900:
-        shown = shown[:450] + "... [path truncated] ..." + shown[-450:]
     return InstallationArchiveError(
-        f"{message} at {shown}; changed metadata: {', '.join(changed) or 'identity'}."
+        f"{message} at {_shown_path(path)}; changed metadata: {', '.join(changed) or 'identity'}."
+    )
+
+
+def _shown_path(path, *, limit=900):
+    shown = json.dumps(str(path), ensure_ascii=True)
+    if len(shown) > limit:
+        marker = "... [path truncated] ..."
+        start = (limit - len(marker)) // 2
+        end = limit - len(marker) - start
+        shown = shown[:start] + marker + shown[-end:]
+    return shown
+
+
+def _source_ledger_changes(expected, current):
+    """Read at most one row per cursor; retain one bounded sample per category.
+
+    Structural changes take precedence over directory timestamp noise. Values,
+    link targets and content digests never enter the operator-facing evidence.
+    This inspects completed censuses only and does not decide acceptance.
+    """
+    added = removed = changed = directory_change = None
+    query = "SELECT name,payload,source FROM entries ORDER BY name"
+    with (
+        closing(expected.execute(query)) as before_rows,
+        closing(current.execute(query)) as after_rows,
+    ):
+        before, after = next(before_rows, None), next(after_rows, None)
+        while before is not None or after is not None:
+            if before is None or (after is not None and after[0] < before[0]):
+                if added is None:
+                    added = f"Added entry at {_shown_path(os.fsdecode(after[2]), limit=350)}."
+                after = next(after_rows, None)
+            elif after is None or before[0] < after[0]:
+                if removed is None:
+                    removed = f"Removed entry at {_shown_path(os.fsdecode(before[2]), limit=350)}."
+                before = next(before_rows, None)
+            else:
+                if before[1] != after[1] and changed is None:
+                    old, new = json.loads(before[1]), json.loads(after[1])
+                    fields = [
+                        label
+                        for field, label in (
+                            ("mode", "mode"),
+                            ("uid", "uid"),
+                            ("gid", "gid"),
+                            ("size", "size"),
+                            ("mtime_ns", "mtime_ns"),
+                            ("link", "link_target"),
+                            ("sha256", "content"),
+                        )
+                        if old.get(field) != new.get(field)
+                    ]
+                    detail = (
+                        f"Changed entry at {_shown_path(os.fsdecode(before[2]), limit=350)}; "
+                        f"changed fields: {', '.join(fields) or 'metadata'}."
+                    )
+                    if stat.S_ISDIR(old["mode"]) and stat.S_ISDIR(new["mode"]):
+                        directory_change = directory_change or detail
+                    else:
+                        changed = detail
+                before, after = next(before_rows, None), next(after_rows, None)
+            if added and removed and changed:
+                break
+    return " ".join(
+        detail for detail in (added, removed, changed or directory_change) if detail
     )
 
 
@@ -382,7 +444,15 @@ def open_leaf(path):
         os.close(descriptor)
 
 
-def inventory(roots, scratch, exclusions=(), *, content=False, progress=None):
+def inventory(
+    roots,
+    scratch,
+    exclusions=(),
+    *,
+    content=False,
+    progress=None,
+    _ledger_complete=None,
+):
     entries = size = footer_bytes = 0
     digest = hashlib.sha256()
     counters = _ArchiveProgress(
@@ -416,6 +486,8 @@ def inventory(roots, scratch, exclusions=(), *, content=False, progress=None):
         for (payload,) in database.execute("SELECT payload FROM entries ORDER BY name"):
             digest.update(payload + b"\n")
             counters.report()
+        if _ledger_complete is not None:
+            _ledger_complete(database, digest.hexdigest())
     counters.report(force=True)
     return {
         "entries": entries,
@@ -698,14 +770,25 @@ def _write_archive(
         for (payload,) in database.execute("SELECT payload FROM entries ORDER BY name"):
             expected_digest.update(payload + b"\n")
             counters.report()
-        current = (
-            inventory(roots, scratch, exclusions, content=True)
-            if progress is None
-            else inventory(roots, scratch, exclusions, content=True, progress=progress)
+        changed = ""
+
+        def inspect_source_ledger(current_database, fingerprint):
+            nonlocal changed
+            if fingerprint != expected_digest.hexdigest():
+                changed = _source_ledger_changes(database, current_database)
+
+        current = inventory(
+            roots,
+            scratch,
+            exclusions,
+            content=True,
+            progress=progress,
+            _ledger_complete=inspect_source_ledger,
         )
         if current["fingerprint"] != expected_digest.hexdigest():
             raise InstallationArchiveError(
                 "The installation changed while its complete archive was being captured."
+                + (" " + changed if changed else "")
             )
         return {"entries": count, "fingerprint": expected_digest.hexdigest()}
 
