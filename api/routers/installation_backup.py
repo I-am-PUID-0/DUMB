@@ -74,6 +74,15 @@ class StartRequest(BaseModel):
     acknowledgements: dict[str, StrictBool]
 
 
+class DirectStartRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    request_id: str = Field(min_length=32, max_length=32, pattern="^[0-9a-f]{32}$")
+    destination_id: Destination
+    compression: Literal["none", "zstd"] = "none"
+    confirmation: str = Field(min_length=1, max_length=160)
+    acknowledgements: dict[str, StrictBool]
+
+
 class RollbackRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     confirmation: str = Field(min_length=1, max_length=160)
@@ -175,6 +184,17 @@ def start(
     _user=Depends(get_optional_current_user),
 ):
     return invoke(controller, "start", request.model_dump())
+
+
+@installation_backup_router.post("/start-direct")
+def start_direct(
+    request: DirectStartRequest,
+    response: Response,
+    controller=Depends(manager),
+    _user=Depends(get_optional_current_user),
+):
+    response.headers["Cache-Control"] = "no-store"
+    return invoke(controller, "start_direct", request.model_dump())
 
 
 @installation_backup_router.get("/jobs/{job_id}")

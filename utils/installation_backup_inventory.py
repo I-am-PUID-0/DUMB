@@ -617,6 +617,72 @@ def capacity(
     }, details
 
 
+def capacity_from_census(
+    measurement, scratch, destination, *, compression="none", ledger_present=True
+):
+    """Check current free space using the complete cold ledger, without rescanning."""
+    compression_kind(compression)
+    fields = ("entries", "logical_bytes", "tar_bytes", "footer_bytes", "ledger_bytes")
+    if (
+        not isinstance(measurement, dict)
+        or type(ledger_present) is not bool
+        or any(
+            type(measurement.get(field)) is not int or measurement[field] < 0
+            for field in fields
+        )
+        or type(measurement.get("root_count", 0)) is not int
+        or measurement.get("root_count", 0) < 0
+    ):
+        raise InstallationArchiveError(
+            "The completed installation census has invalid size measurements."
+        )
+    ledger_bytes = measurement["ledger_bytes"]
+    paired_bytes = paired_workspace_bytes(ledger_bytes)
+    # The cold producer still owns its first ledger: current free space already
+    # excludes that allocation. Charge only the remaining verification headroom.
+    local_required = paired_bytes - (ledger_bytes if ledger_present else 0)
+    uncompressed_archive = (
+        measurement["tar_bytes"]
+        + measurement["footer_bytes"]
+        + ARCHIVE_FIXED_OVERHEAD_BYTES
+    )
+    archive_required = estimated_stored_bytes(uncompressed_archive, compression)
+    rows = _capacity_filesystems(
+        [
+            (scratch, "local_verification", local_required),
+            (destination, "cold_archive", archive_required),
+        ]
+    )
+    return {
+        "status": (
+            "sufficient" if all(row["sufficient"] for row in rows) else "insufficient"
+        ),
+        "complete": True,
+        "estimated": True,
+        "reserved": False,
+        "from_census": True,
+        "source": {
+            "entries": measurement["entries"],
+            "logical_bytes": measurement["logical_bytes"],
+            "root_count": measurement.get("root_count", 0),
+            "estimated_archive_bytes": archive_required,
+            "estimated_uncompressed_archive_bytes": uncompressed_archive,
+            "compression": compression,
+        },
+        "verification": {
+            "ledger_bytes": ledger_bytes,
+            "paired_workspace_bytes": paired_bytes,
+            "remaining_workspace_bytes": local_required,
+            "census_ledger_present": ledger_present,
+            "footer_bytes": measurement["footer_bytes"],
+            "ledger_verified": True,
+            "ledger_quota_bytes": measurement.get("ledger_quota_bytes", ledger_bytes),
+        },
+        "limits": installation_limits(),
+        "filesystems": rows,
+    }
+
+
 def verify_cold_postgres(config):
     """Physical PG data is valid only after its own clean shutdown, never a live copy."""
     service = config.get("postgres") or {}

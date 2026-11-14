@@ -315,79 +315,58 @@ class ManagerPreviewStatusTests(unittest.TestCase):
             },
         }
 
-    def test_confirmed_preparation_is_visible_until_durable_job_handoff(self):
+    def test_confirmed_start_has_durable_job_while_cold_capacity_is_pending(self):
+        from utils.installation_backup_inventory import capacity_from_census
+
         request = self.backup_request()
         entered = threading.Event()
-        handoffs = []
-        original = self.manager._admit
 
         def held(*args, **kwargs):
             entered.set()
-            self.assertTrue(self.scan_release.wait(5))
-            return capacity(*args, **kwargs)
+            self.assertTrue(self.scan_release.wait(10))
+            return capacity_from_census(*args, **kwargs)
 
-        def observed_admit(*args, **kwargs):
-            result = original(*args, **kwargs)
-            handoffs.append(self.manager.status())
-            return result
+        with patch("utils.installation_backup.capacity_from_census", held):
+            try:
+                result = self.manager.start(request)
+                self.assertTrue(entered.wait(5))
+                status = self.manager.status()
+                self.assertEqual(status["job"]["job_id"], result["job"]["job_id"])
+                self.assertEqual(status["job"]["stage"], "inventorying")
+                self.assertIsNone(status["preparation"])
+                self.assertEqual(self.handler.events, [("stop", "App")])
+                self.assertTrue(
+                    self.manager.state_root.joinpath("active.json").exists()
+                )
+                self.assertEqual(
+                    self.manager.start(request)["job"]["job_id"],
+                    result["job"]["job_id"],
+                )
+            finally:
+                self.scan_release.set()
+                self.join_worker()
+        self.assertEqual(self.manager.status()["job"]["status"], "completed")
 
-        with (
-            patch("utils.installation_backup.capacity", held),
-            patch.object(self.manager, "_admit", observed_admit),
-        ):
-            thread, results, errors = self.start_scan(
-                lambda: self.manager.start(request)
-            )
-            self.assertTrue(entered.wait(5))
-            status = self.manager.status()
-            self.assertIsNone(status["job"])
-            self.assertEqual(status["preparation"]["stage"], "checking_capacity")
-            self.assertIsInstance(status["preparation"]["started_at"], (int, float))
-            self.assertIn("before stopping services", status["preparation"]["message"])
-            status["preparation"]["stage"] = "caller-must-not-mutate-controller"
-            self.assertEqual(
-                self.manager.status()["preparation"]["stage"], "checking_capacity"
-            )
-            self.assertEqual(self.handler.events, [])
-            self.assertFalse(self.manager.state_root.joinpath("active.json").exists())
-            self.scan_release.set()
-            thread.join(timeout=10)
-        self.assertFalse(thread.is_alive())
-        self.assertEqual(errors, [])
-        self.assertEqual(len(results), 1)
-        self.assertEqual(len(handoffs), 1)
-        self.assertIsNotNone(handoffs[0]["preparation"])
-        self.assertEqual(handoffs[0]["job"]["job_id"], results[0]["job"]["job_id"])
-        self.assertEqual(handoffs[0]["job"]["job_type"], "installation_backup")
-        self.assertIsNone(self.manager.status()["preparation"])
-        self.join_worker()
-
-    def test_preparation_clears_on_capacity_refusal_and_census_failure(self):
+    def test_cold_capacity_refusal_or_census_failure_is_an_observable_job(self):
         from utils.installation_backup_archive import InstallationArchiveError
 
-        request = self.backup_request()
         for failure in ("insufficient", "exception"):
             with self.subTest(failure=failure):
+                request = self.backup_request()
 
                 def refused(*_args, **_kwargs):
-                    self.assertIsNotNone(self.manager.status()["preparation"])
                     if failure == "exception":
                         raise InstallationArchiveError("fixture census failed")
-                    return {"status": "insufficient"}, []
+                    return {"status": "insufficient"}
 
-                expected = (
-                    InstallationArchiveError
-                    if failure == "exception"
-                    else InstallationBackupError
-                )
-                with patch("utils.installation_backup.capacity", refused):
-                    with self.assertRaises(expected):
-                        self.manager.start(request)
-                self.assertIsNone(self.manager.status()["preparation"])
-                self.assertIsNone(self.manager.status()["job"])
-                self.assertEqual(self.handler.events, [])
-                self.assertTrue(self.manager._preview_reader.acquire(blocking=False))
-                self.manager._preview_reader.release()
+                with patch("utils.installation_backup.capacity_from_census", refused):
+                    result = self.manager.start(request)
+                    self.join_worker()
+                status = self.manager.status()
+                self.assertIsNone(status["preparation"])
+                self.assertEqual(status["job"]["job_id"], result["job"]["job_id"])
+                self.assertEqual(status["job"]["status"], "failed")
+                self.assertFalse(self.manager.has_blocking_job())
 
     def test_invalid_confirmation_never_marks_preparation_or_scans(self):
         request = self.backup_request()

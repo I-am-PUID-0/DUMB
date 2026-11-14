@@ -634,6 +634,7 @@ def _write_archive(
     *,
     progress=None,
     compression="none",
+    inventory_ready=None,
 ):
     compression_kind(compression)
     if len(canonical(metadata)) > MAX_METADATA:
@@ -645,12 +646,13 @@ def _write_archive(
         max_bytes=safe_ledger_budget(shutil.disk_usage(scratch).free, paired=True),
     ) as database:
         footer_limit = ledger_quota(database)
-        count = footer_bytes = 0
+        count = footer_bytes = tar_bytes = 0
         for root in roots:
             with closing(source_rows(root, exclusions)) as rows:
                 for row, path, stamp in rows:
                     count += 1
                     footer_bytes += footer_record_bytes(row)
+                    tar_bytes += archive_entry_bytes(row)
                     if footer_bytes > footer_limit:
                         raise InstallationArchiveError(
                             "The complete installation footer exceeds the verification space assigned from current local capacity."
@@ -667,6 +669,20 @@ def _write_archive(
             raise InstallationArchiveError(
                 "Insufficient local space for the complete second verification ledger."
             )
+        if inventory_ready is not None:
+            check()
+            inventory_ready(
+                {
+                    "entries": count,
+                    "logical_bytes": counters.logical_bytes,
+                    "root_count": len(roots),
+                    "tar_bytes": tar_bytes,
+                    "footer_bytes": footer_bytes,
+                    "ledger_bytes": ledger_bytes,
+                    "ledger_quota_bytes": footer_limit,
+                }
+            )
+            check()
         logical_total = counters.logical_bytes
         counters.total_entries, counters.total_logical_bytes = count, logical_total
         counters.report(force=True, complete=True)
@@ -840,6 +856,7 @@ def write_archive(
     *,
     progress=None,
     compression="none",
+    inventory_ready=None,
 ):
     try:
         return _write_archive(
@@ -851,6 +868,7 @@ def write_archive(
             owner_check,
             progress=progress,
             compression=compression,
+            inventory_ready=inventory_ready,
         )
     except InstallationCodecError as error:
         raise InstallationArchiveError(str(error)) from None

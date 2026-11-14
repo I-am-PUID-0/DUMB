@@ -31,6 +31,9 @@ class Controller:
         return {"protocol":1,"controller_session":"reserved-session","preview":{"preview_id":identifier or "a"*32,"status":"running","result":None}}
     def cancel_preview(self, identifier):
         return {"protocol":1,"controller_session":"reserved-session","preview":{"preview_id":identifier,"status":"cancelling","cancel_requested":True,"result":None}}
+    def start_direct(self, value):
+        self.calls.append("start_direct")
+        return {"protocol":1,"job":{"job_id":"c"*32,"request_id":value["request_id"],"job_type":"installation_backup","status":"queued"}}
     def start(self, value):
         return {"protocol":1,"job":{"job_id":"a"*32,"job_type":"installation_backup","status":"queued"}}
     def restore_preview(self, value):
@@ -160,6 +163,13 @@ async def prove():
         assert invalid.status_code==422
         rollback=await client.post("/process/installation-backups/jobs/"+"a"*32+"/rollback",json={"confirmation":"ROLL BACK "+"a"*32})
         assert rollback.status_code==200
+        payload={"request_id":"d"*32,"destination_id":"fixture","compression":"none","confirmation":"BACK UP DUMB INSTALLATION","acknowledgements":{"downtime":True,"secrets":True,"external_state":True}}
+        direct=await client.post("/process/installation-backups/start-direct",json=payload)
+        assert direct.status_code==200 and direct.json()["job"]["request_id"]=="d"*32
+        assert direct.headers["cache-control"]=="no-store"
+        for wrong in ["private-input-never-echo",None,12]:
+            invalid=await client.post("/process/installation-backups/start-direct",json={**payload,"request_id":wrong})
+            assert invalid.status_code==422 and "private-input-never-echo" not in invalid.text
         from tests.test_installation_backup import ManagerTests
         from pathlib import Path
         import io, tarfile

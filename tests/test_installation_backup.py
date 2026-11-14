@@ -999,16 +999,21 @@ class ManagerTests(unittest.TestCase):
         self.assertEqual(self.handler.events, before)
         self.assertIsNone(self.handler.process_names["App"].poll())
 
-    def test_capacity_changed_after_preview_blocks_before_any_service_stop(self):
+    def test_capacity_changed_after_preview_blocks_archive_and_resumes_services(self):
         request = self.backup_request()
         usage = shutil.disk_usage(self.root)
         with patch(
             "utils.installation_backup_inventory.shutil.disk_usage",
             return_value=usage._replace(free=0),
         ):
-            with self.assertRaises(InstallationBackupError):
-                self.manager.start(request)
-        self.assertEqual(self.handler.events, [])
+            result = self.manager.start(request)
+            self.join_worker()
+        job = self.manager.get_job(result["job"]["job_id"])["job"]
+        self.assertEqual(job["status"], "failed", job)
+        self.assertFalse(job["can_rollback"])
+        self.assertFalse(self.manager.has_blocking_job())
+        self.assertEqual(self.handler.events, [("stop", "App"), ("start", "App")])
+        self.assertEqual(self.manager.catalog("fixture")["artifacts"], [])
 
     def test_scheduled_transient_blocker_is_visible_and_retries_after_five_minutes(
         self,
@@ -1027,9 +1032,9 @@ class ManagerTests(unittest.TestCase):
         now[0] = 4600
         with patch.object(
             self.manager,
-            "preview",
-            return_value={"ready": False, "blockers": ["Fixture unavailable"]},
-        ) as preview:
+            "_start_direct_backup",
+            side_effect=InstallationBackupError("Fixture unavailable"),
+        ) as start:
             self.manager.tick()
             runtime = self.manager.status()["schedule_runtime"]
             self.assertEqual(runtime["status"], "blocked")
@@ -1037,7 +1042,7 @@ class ManagerTests(unittest.TestCase):
             self.assertEqual(runtime["next_due_at"], 4900)
             now[0] = 4899
             self.manager.tick()
-            self.assertEqual(preview.call_count, 1)
+            self.assertEqual(start.call_count, 1)
         self.assertEqual(self.handler.events, [])
 
     def test_scheduled_retention_keeps_manual_and_other_producers(self):
@@ -1254,40 +1259,21 @@ class ManagerTests(unittest.TestCase):
         self.assertTrue(self.manager._preview_reader.acquire(blocking=False))
         self.manager._preview_reader.release()
 
-    def test_admission_reader_lane_waits_before_allocating_another_ledger(self):
+    def test_admission_reader_lane_refuses_promptly_without_consuming_review(self):
         request = self.backup_request()
-        entered = threading.Event()
-        results, errors = [], []
-        original = self.manager._preview_scan
-
-        @contextmanager
-        def observed_lane(**kwargs):
-            entered.set()
-            with original(**kwargs):
-                yield
-
-        def start():
-            try:
-                results.append(self.manager.start(request))
-            except BaseException as error:
-                errors.append(error)
-
         self.assertTrue(self.manager._preview_reader.acquire(blocking=False))
-        with patch.object(self.manager, "_preview_scan", observed_lane):
-            thread = threading.Thread(target=start)
-            try:
-                thread.start()
-                self.assertTrue(entered.wait(5))
-                self.assertTrue(thread.is_alive())
-                self.assertIn(request["preview_token"], self.manager._previews)
-                self.assertEqual(self.handler.events, [])
-            finally:
-                self.manager._preview_reader.release()
-                thread.join(timeout=20)
-                self.assertFalse(thread.is_alive())
-                self.join_worker()
-        self.assertEqual(errors, [])
-        self.assertEqual(len(results), 1)
+        try:
+            with self.assertRaisesRegex(InstallationBackupError, "already inspecting"):
+                self.manager.start(request)
+            self.assertIn(request["preview_token"], self.manager._previews)
+            self.assertEqual(self.handler.events, [])
+        finally:
+            self.manager._preview_reader.release()
+        result = self.manager.start(request)
+        self.join_worker()
+        self.assertEqual(
+            self.manager.get_job(result["job"]["job_id"])["job"]["status"], "completed"
+        )
 
     def test_different_token_is_blocked_before_census_for_an_active_writer(self):
         first, second = self.backup_request(), self.backup_request()

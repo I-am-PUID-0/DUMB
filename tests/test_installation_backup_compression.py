@@ -289,7 +289,9 @@ class CompressionManagerTests(unittest.TestCase):
         self.assertEqual(self.manager.catalog("fixture")["artifacts"], [])
         self.assertEqual(list(self.root.joinpath("archives").rglob("*.partial")), [])
 
-    def test_capacity_never_assumes_compression_savings_and_rechecks_bound_codec(self):
+    def test_capacity_never_assumes_compression_savings_and_checks_cold_bound_codec(
+        self,
+    ):
         options = {"destination_id": "fixture"}
         plain = self.manager.preview(options)
         compressed = self.manager.preview(options | {"compression": "zstd"})
@@ -301,7 +303,7 @@ class CompressionManagerTests(unittest.TestCase):
             first,
         )
         self.assertEqual(compressed["capacity"]["source"]["compression"], "zstd")
-        original = manager_module.capacity
+        original = manager_module.capacity_from_census
         seen = []
 
         def capture(*args, **kwargs):
@@ -317,7 +319,7 @@ class CompressionManagerTests(unittest.TestCase):
                 "external_state": True,
             },
         }
-        with patch.object(manager_module, "capacity", capture):
+        with patch.object(manager_module, "capacity_from_census", capture):
             result = self.manager.start(request)
             self.join_worker()
         self.assertEqual(seen, ["zstd"])
