@@ -1287,6 +1287,7 @@ class BackupStorage:
                     "failed",
                     "recovery_required",
                     "rolled_back",
+                    "cancelled",
                 }
                 or not isinstance(job.get("plan"), dict)
             ):
