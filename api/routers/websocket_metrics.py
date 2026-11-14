@@ -10,6 +10,7 @@ from utils.dependencies import (
     get_websocket_current_user,
 )
 from utils.metrics_history_reader import prepare_history_series
+from utils.metrics_history_store import MetricsHistoryBusyError
 
 websocket_metrics_router = APIRouter()
 _publisher_task = None
@@ -95,6 +96,11 @@ async def websocket_metrics(
         await _ensure_publisher(collector, metrics_manager, interval)
         while True:
             await websocket.receive_text()
+    except MetricsHistoryBusyError:
+        await websocket.close(
+            code=1013,
+            reason="Metrics history is paused during installation backup or recovery.",
+        )
     except WebSocketDisconnect:
         pass
     finally:

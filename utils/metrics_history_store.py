@@ -5,6 +5,8 @@ import sqlite3
 import threading
 import time
 import zlib
+from contextlib import contextmanager
+from functools import wraps
 
 import psycopg2
 from psycopg2 import sql
@@ -13,6 +15,29 @@ from utils.metrics_history_reader import _list_history_files, _read_history_file
 
 _IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _MAINTENANCE_INTERVAL_SECONDS = 300
+
+
+class MetricsHistoryBusyError(RuntimeError):
+    """Installation backup/recovery currently owns metrics persistence."""
+
+
+def _installation_history_work(operation):
+    @wraps(operation)
+    def guarded(*args, **kwargs):
+        from utils.installation_backup import installation_persistence_work
+
+        # Reads can configure stores, replay history and create SQLite sidecars.
+        # Keep the reservation until every connection has closed, including
+        # nested migration calls and exceptional transaction exits.
+        with installation_persistence_work("Metrics history persistence") as admitted:
+            if not admitted:
+                raise MetricsHistoryBusyError(
+                    "An installation backup, restore or recovery owns metrics "
+                    "persistence. Retry when it has finished."
+                )
+            return operation(*args, **kwargs)
+
+    return guarded
 
 
 def _encode_snapshot(snapshot):
@@ -38,12 +63,20 @@ class SQLiteMetricsHistoryStore:
         self._lock = threading.RLock()
         self._ensure_schema()
 
+    @contextmanager
     def _connect(self):
         connection = sqlite3.connect(self.path, timeout=15)
-        connection.execute("PRAGMA busy_timeout = 15000")
-        connection.execute("PRAGMA journal_mode = WAL")
-        connection.execute("PRAGMA synchronous = NORMAL")
-        return connection
+        try:
+            connection.execute("PRAGMA busy_timeout = 15000")
+            connection.execute("PRAGMA journal_mode = WAL")
+            connection.execute("PRAGMA synchronous = NORMAL")
+            with connection:
+                yield connection
+        finally:
+            # sqlite3.Connection.__exit__ commits/rolls back but does not close.
+            # Deferring close to GC can checkpoint/delete WAL and SHM files long
+            # after the metrics operation, invalidating a cold backup.
+            connection.close()
 
     def _ensure_schema(self):
         directory = os.path.dirname(self.path) or "."
@@ -534,6 +567,7 @@ class MetricsHistoryManager:
             self.migrate_legacy(force=False, _configured=True)
         return metrics, storage
 
+    @_installation_history_work
     def migrate_legacy(self, force=False, _configured=False):
         with self._lock:
             if not _configured:
@@ -633,6 +667,7 @@ class MetricsHistoryManager:
                 break
         return synced
 
+    @_installation_history_work
     def write(self, snapshot):
         with self._lock:
             metrics, storage = self._configure()
@@ -673,6 +708,7 @@ class MetricsHistoryManager:
                 )
                 self._last_sqlite_prune = now
 
+    @_installation_history_work
     def activate_postgresql(self):
         """Replay the continuity buffer and promote PostgreSQL for reads."""
         with self._lock:
@@ -709,6 +745,7 @@ class MetricsHistoryManager:
                     )
                 raise
 
+    @_installation_history_work
     def read(self, since=None, full=False, limit=5000, default_hours=6):
         with self._lock:
             _metrics, storage = self._configure()
@@ -732,6 +769,7 @@ class MetricsHistoryManager:
             items = self._sqlite.read(since=since, limit=limit)
             return items, bool(limit and len(items) >= limit)
 
+    @_installation_history_work
     def status(self, probe_postgresql=False):
         with self._lock:
             _metrics, storage = self._configure()

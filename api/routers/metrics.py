@@ -10,6 +10,7 @@ from utils.dependencies import (
 )
 from utils.config_loader import CONFIG_MANAGER
 from utils.metrics_history_reader import prepare_history_series
+from utils.metrics_history_store import MetricsHistoryBusyError
 from utils.metrics_postgres import (
     MetricsPostgresActivationError,
     activate_metrics_postgresql,
@@ -17,6 +18,13 @@ from utils.metrics_postgres import (
 import time
 
 metrics_router = APIRouter()
+
+
+async def _history_request(operation, *args, **kwargs):
+    try:
+        return await run_in_threadpool(operation, *args, **kwargs)
+    except MetricsHistoryBusyError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from None
 
 
 @metrics_router.get("")
@@ -112,7 +120,7 @@ async def get_metrics_history(
     if since is None and not full:
         since = time.time() - (6 * 60 * 60)
 
-    items, truncated = await run_in_threadpool(
+    items, truncated = await _history_request(
         history_manager.read,
         since=since,
         full=full,
@@ -135,7 +143,7 @@ async def get_metrics_history_series(
     if since is None and not full:
         since = time.time() - (6 * 60 * 60)
 
-    items, truncated = await run_in_threadpool(
+    items, truncated = await _history_request(
         history_manager.read,
         since=since,
         full=full,
@@ -169,7 +177,7 @@ async def get_metrics_history_storage(
     history_manager=Depends(get_metrics_history_manager),
     current_user: str = Depends(get_optional_current_user),
 ):
-    return await run_in_threadpool(
+    return await _history_request(
         history_manager.status, probe_postgresql=probe_postgresql
     )
 
@@ -180,7 +188,7 @@ async def migrate_metrics_history(
     history_manager=Depends(get_metrics_history_manager),
     current_user: str = Depends(get_optional_current_user),
 ):
-    return await run_in_threadpool(history_manager.migrate_legacy, force=force)
+    return await _history_request(history_manager.migrate_legacy, force=force)
 
 
 @metrics_router.post("/history/storage/activate-postgresql")
