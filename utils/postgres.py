@@ -801,11 +801,24 @@ def pgadmin_setup(process_handler):
             "connection_parameters": {"connect_timeout": 10},
         }
 
-        success, error = add_pgadmin_server_to_db(pgadmin_db_uri, server_details)
-        if not success:
-            with process_handler.setup_tracker_lock:
-                process_handler.setup_tracker.remove(pgadmin_process_name)
-            return False, error
+        try:
+            registered, _registration_error = add_pgadmin_server_to_db(
+                pgadmin_db_uri, server_details
+            )
+        except Exception:
+            # Optional import tooling must not turn a live web process into a
+            # failed setup or expose its credential-bearing diagnostics.
+            registered = False
+        if not registered:
+            # Registration is optional provisioning of the already-running web
+            # service. An existing account can differ from setup_email; retain
+            # its definitions and prepared runtime instead of reinstalling it
+            # or blocking the remaining services during backup resume.
+            logger.warning(
+                "pgAdmin is running, but automatic PostgreSQL server registration "
+                "is incomplete. Review the configured administrator account and "
+                "existing server definitions; no account or definition was replaced."
+            )
 
         success, error = start_pgagent(
             process_handler, postgres_user, postgres_host, postgres_port

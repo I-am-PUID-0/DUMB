@@ -4,6 +4,7 @@ import io
 import os
 import signal
 import tempfile
+import threading
 import unittest
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -280,6 +281,110 @@ class PostgresStartupSafetyTests(unittest.TestCase):
 
         self.assertFalse(success)
         self.assertEqual(error, "pgAdmin failed to stay running.")
+
+    def test_pgadmin_registration_failure_keeps_prepared_web_service(self):
+        handler = SimpleNamespace(
+            process_names={"PostgreSQL": Mock()},
+            setup_tracker=set(),
+            setup_tracker_lock=threading.Lock(),
+        )
+        settings = {
+            "pgadmin": {
+                "process_name": "pgAdmin4",
+                "config_dir": "/example/pgadmin",
+                "config_file": "/example/pgadmin/config_local.py",
+                "setup_email": "operator@example.com",
+                "setup_password": "example-password",
+                "port": 5050,
+                "default_server": "127.0.0.1",
+            },
+            "postgres": {
+                "process_name": "PostgreSQL",
+                "host": "127.0.0.1",
+                "port": 5432,
+                "user": "example_user",
+                "password": "example-password",
+            },
+        }
+        for registration in [
+            (False, "Private import diagnostic"),
+            (True, None),
+            RuntimeError("Private import diagnostic"),
+        ]:
+            registration_succeeded = (
+                not isinstance(registration, Exception) and registration[0]
+            )
+            with self.subTest(registration_succeeded=registration_succeeded):
+                handler.setup_tracker.clear()
+                with (
+                    patch.object(postgres_utils, "config", settings),
+                    patch.object(
+                        postgres_utils,
+                        "initialize_pgadmin_config_directory",
+                        return_value=(True, None),
+                    ),
+                    patch.object(
+                        postgres_utils, "start_pgadmin", return_value=(True, None)
+                    ) as start,
+                    patch.object(
+                        postgres_utils,
+                        "add_pgadmin_server_to_db",
+                        **(
+                            {"side_effect": registration}
+                            if isinstance(registration, Exception)
+                            else {"return_value": registration}
+                        ),
+                    ),
+                    patch.object(
+                        postgres_utils, "start_pgagent", return_value=(True, None)
+                    ) as pgagent,
+                    patch.object(postgres_utils, "logger") as logger,
+                ):
+                    success, error = postgres_utils.pgadmin_setup(handler)
+                self.assertTrue(success)
+                self.assertIsNone(error)
+                self.assertIn("pgAdmin4", handler.setup_tracker)
+                start.assert_called_once()
+                pgagent.assert_called_once()
+                if not registration_succeeded:
+                    logger.warning.assert_called_once()
+                    self.assertNotIn(
+                        "Private import diagnostic", str(logger.warning.call_args)
+                    )
+
+    def test_pgadmin_failed_web_start_still_blocks_setup(self):
+        handler = SimpleNamespace(
+            process_names={"PostgreSQL": Mock()},
+            setup_tracker=set(),
+            setup_tracker_lock=threading.Lock(),
+        )
+        settings = {
+            "pgadmin": {
+                "process_name": "pgAdmin4",
+                "setup_email": "operator@example.com",
+                "setup_password": "example-password",
+            },
+            "postgres": {"process_name": "PostgreSQL"},
+        }
+        with (
+            patch.object(postgres_utils, "config", settings),
+            patch.object(
+                postgres_utils,
+                "initialize_pgadmin_config_directory",
+                return_value=(True, None),
+            ),
+            patch.object(
+                postgres_utils,
+                "start_pgadmin",
+                return_value=(False, "Web service could not start."),
+            ),
+            patch.object(postgres_utils, "add_pgadmin_server_to_db") as register,
+        ):
+            success, error = postgres_utils.pgadmin_setup(handler)
+        self.assertFalse(success)
+        self.assertEqual("Web service could not start.", error)
+        self.assertNotIn("pgAdmin4", handler.setup_tracker)
+        register.assert_not_called()
 
 
 if __name__ == "__main__":
