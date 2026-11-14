@@ -6411,6 +6411,8 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "installation_backup": True,
         "installation_backup_protocol": 1,
         "installation_backup_preview_status": True,
+        "installation_backup_cancellation": True,
+        "installation_backup_phase_progress": True,
         "installation_backup_compression": True,
         "installation_backup_zstd": zstd_available(),
         "installation_backup_shared_permissions": True,

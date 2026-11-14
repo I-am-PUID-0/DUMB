@@ -21,6 +21,7 @@ from utils.backup_storage import (
     mount_records,
     paths_overlap,
     require_local_path,
+    parse_backup_reference,
     _Reader,
 )
 from utils.installation_backup_archive import (
@@ -85,6 +86,10 @@ _BLOCKER = "An installation backup or restore owns managed state, or its retaine
 
 class InstallationBackupError(RuntimeError):
     """A safe complete operation cannot be admitted."""
+
+
+class InstallationBackupCancelled(InstallationBackupError):
+    """The owning backup worker reached a cooperative cancellation checkpoint."""
 
 
 @contextmanager
@@ -288,6 +293,9 @@ class InstallationBackupManager:
         self.clock = clock
         self._lock = threading.RLock()
         self._worker = None
+        self._cancel_job_id = None
+        self._cancel_requested = threading.Event()
+        self._cancel_closed = True
         self._rollback_running = False
         self._preview_reader = threading.Lock()
         self._preview_statuses = PreviewStatuses(clock=clock, ttl=PREVIEW_TTL)
@@ -324,7 +332,15 @@ class InstallationBackupManager:
                     restart_required=False,
                     can_rollback=False,
                     result=(job.get("result") or {}) | {"restart_required": False},
-                    message="The restored configuration loaded in a new controller. Automatic rollback is retired; retained previous trees remain available for manual recovery.",
+                    message=(
+                        "Backup recovery completed in a new controller; its verified archive remains saved."
+                        if self._verified_backup_archive(job) is not None
+                        else (
+                            "Backup recovery completed in a new controller. Review the retained backup outcome and archive catalog."
+                            if job.get("job_type") == "installation_backup"
+                            else "The restored configuration loaded in a new controller. Automatic rollback is retired; retained previous trees remain available for manual recovery."
+                        )
+                    ),
                 )
         self.status()
 
@@ -483,19 +499,126 @@ class InstallationBackupManager:
             "message",
             "created_at",
             "updated_at",
+            "scheduled",
             "restart_required",
             "errors",
             "result",
             "can_rollback",
             "rollback_confirmation_text",
             "progress",
+            "cancel_requested",
+            "services_stopped",
+            "stopped_process_names",
         }
-        return {key: deepcopy(value) for key, value in job.items() if key in keys}
+        public = {key: deepcopy(value) for key, value in job.items() if key in keys}
+        public["can_cancel"] = self._can_cancel(job)
+        public["archive_verified"] = self._verified_backup_archive(job) is not None
+        public["archive_publication_uncertain"] = bool(
+            not public["archive_verified"]
+            and (
+                job.get("archive_publication_uncertain") is True
+                or (
+                    job.get("archive_publication_started") is True
+                    and job.get("status")
+                    in {"recovery_required", "failed", "rolled_back"}
+                )
+            )
+        )
+        return public
+
+    @staticmethod
+    def _verified_backup_archive(job):
+        """Recognize a recorded accepted receipt, never transfer counters or stage."""
+        result = job.get("result")
+        if (
+            job.get("job_type") != "installation_backup"
+            or not isinstance(result, dict)
+            or result.get("complete") is not True
+        ):
+            return None
+        receipt = result.get("archive")
+        if (
+            not isinstance(receipt, dict)
+            or receipt.get("verified") is not True
+            or receipt.get("namespace") != NAMESPACE
+            or receipt.get("artifact_kind") != "installation_backup"
+            or type(receipt.get("size_bytes")) is not int
+            or receipt["size_bytes"] < 0
+            or type(receipt.get("sha256")) is not str
+            or len(receipt["sha256"]) != 64
+            or any(value not in "0123456789abcdef" for value in receipt["sha256"])
+            or type(receipt.get("reference")) is not str
+        ):
+            return None
+        try:
+            profile, namespace, artifact = parse_backup_reference(receipt["reference"])
+        except (BackupStorageError, ValueError):
+            return None
+        if (
+            namespace != NAMESPACE
+            or receipt["reference"] != f"dumb-backup://{profile}/{namespace}/{artifact}"
+            or receipt.get("backup_destination_id") != profile
+            or receipt.get("artifact_id") != artifact
+        ):
+            return None
+        return receipt
+
+    def _can_cancel(self, job):
+        return bool(
+            job.get("job_type") == "installation_backup"
+            and job.get("job_id") == self._cancel_job_id
+            and job.get("session") == self._session
+            and job.get("status") in {"queued", "running"}
+            and not self._cancel_closed
+            and not self._cancel_requested.is_set()
+            and self._worker is not None
+            and self._worker.is_alive()
+        )
+
+    def cancel(self, identifier):
+        """Request cancellation; only the owning worker may unwind and resume."""
+        with self._lock:
+            job = self._job(identifier)
+            if job.get("job_type") != "installation_backup":
+                raise InstallationBackupError("Only a running backup can be cancelled.")
+            # Transport retries must observe the original request without
+            # requesting recovery or affecting a later operation.
+            if job.get("cancel_requested"):
+                return {"protocol": PROTOCOL, "job": self._public(job)}
+            if not self._can_cancel(job):
+                raise InstallationBackupError(
+                    "This backup cannot be cancelled: it is no longer writing, is publishing its verified archive, or requires recovery."
+                )
+            self._owner_check(identifier)
+            job["cancel_requested"] = True
+            self._save(job)
+            self._cancel_requested.set()
+            return {"protocol": PROTOCOL, "job": self._public(job)}
+
+    def _check_backup_cancel(self, identifier):
+        if identifier == self._cancel_job_id and self._cancel_requested.is_set():
+            raise InstallationBackupCancelled(
+                "Backup cancellation was requested; no complete archive was accepted."
+            )
+
+    def _close_backup_cancel(self, identifier):
+        # The same lock as cancel() makes publication and cancellation mutually
+        # exclusive. No filesystem operation occurs while this lock is held.
+        with self._lock:
+            self._check_backup_cancel(identifier)
+            self._cancel_closed = True
+        self._progress(
+            identifier,
+            "publishing",
+            "Archive verification passed; finalizing the saved backup. Cancellation is no longer available.",
+            archive_publication_started=True,
+        )
 
     def has_blocking_job(self):
         with self._lock:
             return (
                 bool(self._active())
+                or bool(self._worker is not None and self._worker.is_alive())
                 or self._rollback_running
                 or bool(self.boot_error)
                 or bool(_BOOT_HOLD)
@@ -1180,6 +1303,9 @@ class InstallationBackupManager:
                     name="installation-backup",
                     daemon=True,
                 )
+                self._cancel_job_id = identifier if kind == "backup" else None
+                self._cancel_requested.clear()
+                self._cancel_closed = kind != "backup"
                 try:
                     self._worker.start()
                 except BaseException:
@@ -1298,8 +1424,11 @@ class InstallationBackupManager:
             running_before=running,
             can_rollback=True,
             rollback_confirmation_text=f"ROLL BACK {identifier}",
+            services_stopped=False,
+            stopped_process_names=[],
         )
         for row in reversed(running):
+            self._check_backup_cancel(identifier)
             name = row["name"]
             result = self.handler.stop_process(name)
             if isinstance(result, tuple) and result[0] is False:
@@ -1326,6 +1455,13 @@ class InstallationBackupManager:
                         "A managed child process group remains live; no snapshot was accepted."
                     )
         verify_cold_postgres(self.config)
+        self._progress(
+            identifier,
+            "quiescing",
+            "The previous managed running set is stopped and verified cold.",
+            services_stopped=True,
+            stopped_process_names=[row["name"] for row in running],
+        )
         return running
 
     def _resume(self, identifier):
@@ -1344,6 +1480,8 @@ class InstallationBackupManager:
             "Resuming the exact previous running services in dependency order.",
             status="running",
             resume_failure=None,
+            services_stopped=False,
+            stopped_process_names=[],
         )
         for row in ordered:
             name = row["name"]
@@ -1481,21 +1619,63 @@ class InstallationBackupManager:
         last_stage, last_report = None, 0.0
 
         def report(
-            *, stage, force=False, entries=0, logical_bytes=0, bytes_processed=0
+            *,
+            stage,
+            force=False,
+            entries=0,
+            logical_bytes=0,
+            bytes_processed=0,
+            total_entries=None,
+            total_logical_bytes=None,
+            total_bytes=None,
+            complete=False,
         ):
             nonlocal last_stage, last_report
+            self._check_backup_cancel(identifier)
             now = time.monotonic()
             if not force and stage == last_stage and now - last_report < 1:
                 return
+            values = {
+                "stage": stage,
+                "entries": entries,
+                "logical_bytes": logical_bytes,
+                "bytes_processed": bytes_processed,
+                "percent_scope": "phase",
+                "complete": complete and stage != "verifying",
+            }
+            for key, value in (
+                ("total_entries", total_entries),
+                ("total_logical_bytes", total_logical_bytes),
+                ("total_bytes", total_bytes),
+            ):
+                if type(value) is int and value >= 0:
+                    values[key] = value
+            if type(total_bytes) is int and total_bytes > 0:
+                numerator, denominator, basis = bytes_processed, total_bytes, "bytes"
+            elif type(total_logical_bytes) is int and total_logical_bytes > 0:
+                numerator, denominator, basis = (
+                    bytes_processed if stage == "checking_source" else logical_bytes,
+                    total_logical_bytes,
+                    "bytes",
+                )
+            elif type(total_entries) is int and total_entries > 0:
+                numerator, denominator, basis = entries, total_entries, "entries"
+            else:
+                numerator = denominator = basis = None
+            if denominator is not None:
+                values.update(
+                    percent=(
+                        100.0
+                        if values["complete"]
+                        else min(99.9, round(max(0, numerator) * 100 / denominator, 1))
+                    ),
+                    percent_basis=basis,
+                )
             self._progress(
                 identifier,
                 stage,
                 messages[stage],
-                progress={
-                    "entries": entries,
-                    "logical_bytes": logical_bytes,
-                    "bytes_processed": bytes_processed,
-                },
+                progress=values,
             )
             last_stage, last_report = stage, now
 
@@ -1504,6 +1684,7 @@ class InstallationBackupManager:
     def _backup(self, identifier):
         job = self._job(identifier)
         plan = job["plan"]
+        self._check_backup_cancel(identifier)
         self._quiesce(identifier)
         progress = self._backup_progress(identifier)
         progress(stage="inventorying", force=True)
@@ -1529,7 +1710,11 @@ class InstallationBackupManager:
             "config_sha256": self._controller_json(Path(self.config_manager.file_path)),
         }
         scratch = self._workspace(identifier)
-        check = lambda: self._owner_check(identifier)
+
+        def check():
+            self._owner_check(identifier)
+            self._check_backup_cancel(identifier)
+
         receipt = self.storage.write_file(
             plan["destination"]["destination_id"],
             NAMESPACE,
@@ -1553,13 +1738,30 @@ class InstallationBackupManager:
                 "retention_scope": "scheduled" if job.get("scheduled") else "manual",
             },
             owner_check=check,
+            before_publish=lambda: self._close_backup_cancel(identifier),
         )
         self._progress(
             identifier,
             "resuming",
             "The complete archive verified; resuming the previous running set.",
             result={"archive": receipt, "complete": True},
+            archive_verified_at=self.clock(),
         )
+        if job.get("scheduled"):
+            # Archive success is durable before resuming applications. A
+            # service setup failure must not cause another expensive backup in
+            # five minutes or reset this accepted artifact's schedule interval.
+            runtime = self._schedule_runtime()
+            schedule = _SCHEDULE | (self.config.get("installation_backup") or {})
+            verified_at = self._job(identifier)["archive_verified_at"]
+            runtime.update(
+                status="resuming",
+                last_success_at=verified_at,
+                next_due_at=verified_at + schedule["interval_hours"] * 3600,
+                blocker=None,
+                error=None,
+            )
+            self._write(self._state("schedule.json"), runtime)
         self._resume(identifier)
         self._finish(
             identifier,
@@ -1571,11 +1773,8 @@ class InstallationBackupManager:
         )
         if job.get("scheduled"):
             runtime = self._schedule_runtime()
-            schedule = _SCHEDULE | (self.config.get("installation_backup") or {})
             runtime.update(
                 status="completed",
-                last_success_at=self.clock(),
-                next_due_at=self.clock() + schedule["interval_hours"] * 3600,
                 blocker=None,
                 error=None,
             )
@@ -1587,6 +1786,41 @@ class InstallationBackupManager:
                     error="The archive succeeded, but retention could not verify/delete an older scheduled artifact."
                 )
                 self._write(self._state("schedule.json"), runtime)
+
+    def _verified_backup_failure(self, identifier, job, detail):
+        """Keep archive acceptance separate from subsequent service recovery."""
+        services_resumed = job.get("status") == "completed"
+        self._finish(
+            identifier,
+            status="completed" if services_resumed else "recovery_required",
+            stage="completed" if services_resumed else "resume_required",
+            message=(
+                "The backup is verified and services resumed; backup scheduling or retention needs attention."
+                if services_resumed
+                else "The complete backup archive is verified and retained; managed services could not fully resume. Review service recovery."
+            ),
+            errors=[detail],
+            can_rollback=not services_resumed,
+            **(
+                {"rollback_confirmation_text": f"ROLL BACK {identifier}"}
+                if not services_resumed
+                else {}
+            ),
+        )
+        if job.get("scheduled"):
+            runtime = self._schedule_runtime()
+            schedule = _SCHEDULE | (self.config.get("installation_backup") or {})
+            verified_at = job.get("archive_verified_at", self.clock())
+            runtime.update(
+                status="completed" if services_resumed else "recovery_required",
+                last_success_at=verified_at,
+                next_due_at=verified_at + schedule["interval_hours"] * 3600,
+                blocker=None,
+                error=detail[:800],
+            )
+            # Retention is deliberately skipped while service recovery needs
+            # attention; older verified archives remain protected too.
+            self._write(self._state("schedule.json"), runtime)
 
     def _run(self, identifier):
         with installation_owner():
@@ -1602,6 +1836,9 @@ class InstallationBackupManager:
                 else:
                     self._restore(identifier)
             except Exception as error:
+                cancelled = isinstance(error, InstallationBackupCancelled)
+                with self._lock:
+                    self._cancel_closed = True
                 # Never expose archive payloads, environment values or credentials in API errors.
                 detail = (
                     str(error)
@@ -1615,7 +1852,20 @@ class InstallationBackupManager:
                     )
                     else "An unexpected filesystem or lifecycle error occurred."
                 )
+                current = self._job(identifier)
+                if self._verified_backup_archive(current) is not None:
+                    self._verified_backup_failure(identifier, current, detail)
+                    return
+                publication_uncertain = bool(
+                    job["job_type"] == "installation_backup"
+                    and (
+                        current.get("archive_publication_started")
+                        or current.get("archive_publication_uncertain")
+                    )
+                )
                 message = "The complete installation operation did not finish. Review retained recovery evidence."
+                if publication_uncertain:
+                    message = "Backup archive publication could not be confirmed. Review the backup catalog and retained service recovery before retrying."
                 self._progress(
                     identifier,
                     (
@@ -1624,20 +1874,35 @@ class InstallationBackupManager:
                         else "failed"
                     ),
                     (
-                        "The archive was not accepted; resuming the previous running services."
-                        if job["job_type"] == "installation_backup"
-                        else message
+                        message
+                        if publication_uncertain
+                        or job["job_type"] != "installation_backup"
+                        else "The archive was not accepted; resuming the previous running services."
                     ),
                     status="running",
-                    errors=[detail],
+                    errors=[] if cancelled else [detail],
+                    **(
+                        {"archive_publication_uncertain": publication_uncertain}
+                        if job["job_type"] == "installation_backup"
+                        else {}
+                    ),
                 )
                 if job.get("scheduled"):
                     runtime = self._schedule_runtime()
                     runtime.update(
-                        status="error",
-                        error=detail[:800],
+                        status="cancelled" if cancelled else "error",
+                        error=None if cancelled else detail[:800],
                         blocker=None,
-                        next_due_at=self.clock() + 300,
+                        next_due_at=self.clock()
+                        + (
+                            (
+                                _SCHEDULE
+                                | (self.config.get("installation_backup") or {})
+                            )["interval_hours"]
+                            * 3600
+                            if cancelled or publication_uncertain
+                            else 300
+                        ),
                     )
                     self._write(self._state("schedule.json"), runtime)
                 if job["job_type"] == "installation_backup":
@@ -1663,10 +1928,18 @@ class InstallationBackupManager:
                     else:
                         self._finish(
                             identifier,
-                            status="failed",
-                            stage="failed",
-                            message="The archive was not accepted; the previous running services resumed.",
-                            errors=[detail],
+                            status="cancelled" if cancelled else "failed",
+                            stage="cancelled" if cancelled else "failed",
+                            message=(
+                                "Backup cancelled without restoring application data; the previous running services resumed."
+                                if cancelled
+                                else (
+                                    "The previous running services resumed; backup archive publication could not be confirmed. Review the backup catalog before retrying."
+                                    if publication_uncertain
+                                    else "The archive was not accepted; the previous running services resumed."
+                                )
+                            ),
+                            errors=[] if cancelled else [detail],
                             can_rollback=False,
                         )
                 else:
@@ -2284,7 +2557,11 @@ class InstallationBackupManager:
                     job.update(
                         status="running",
                         stage="rolling_back",
-                        message="Restoring the exact retained original identities.",
+                        message=(
+                            "Finishing backup recovery; existing application data remains in place."
+                            if job.get("job_type") == "installation_backup"
+                            else "Restoring the exact retained original identities."
+                        ),
                         session=self._session,
                         boot_identity=self._boot,
                         can_rollback=False,
@@ -2311,21 +2588,37 @@ class InstallationBackupManager:
                     restart = False
                 else:
                     restart = True
+                backup = job.get("job_type") == "installation_backup"
+                result = deepcopy(job.get("result") or {}) if backup else {}
+                result["restart_required"] = restart
                 self._finish(
                     identifier,
                     status="rolled_back",
                     stage="restart_required" if restart else "rolled_back",
                     message=(
-                        "Exact original state restored; restart the container before starting services."
-                        if restart
-                        else "The previous running set resumed."
+                        (
+                            "Backup recovery completed; restart the container before starting services."
+                            if restart
+                            else "Backup recovery completed; the previous running set resumed."
+                        )
+                        + (
+                            " Its verified archive remains saved."
+                            if self._verified_backup_archive(job) is not None
+                            else ""
+                        )
+                        if backup
+                        else (
+                            "Exact original state restored; restart the container before starting services."
+                            if restart
+                            else "The previous running set resumed."
+                        )
                     ),
                     can_rollback=False,
                     restart_required=restart,
                     restart_config_sha256=hashlib.sha256(
                         Path(self.config_manager.file_path).read_bytes()
                     ).hexdigest(),
-                    result={"restart_required": restart},
+                    result=result,
                 )
         except Exception:
             self._finish(

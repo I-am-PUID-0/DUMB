@@ -40,6 +40,12 @@ class Controller:
         return {"protocol":1,"job":{"job_id":"b"*32,"job_type":"installation_restore","status":"queued"}}
     def get_job(self, identifier):
         return {"protocol":1,"job":{"job_id":identifier,"job_type":"installation_backup","status":"running"}}
+    def cancel(self, identifier):
+        if identifier == "b"*32:
+            from utils.installation_backup import InstallationBackupError
+            raise InstallationBackupError("This backup cannot be cancelled.")
+        self.calls.append("cancel")
+        return {"protocol":1,"job":{"job_id":identifier,"job_type":"installation_backup","status":"running","cancel_requested":True,"can_cancel":False}}
     def update_schedule(self, value):
         return {"protocol":1,"schedule":value}
     def rollback(self, identifier, value):
@@ -94,6 +100,7 @@ async def prove():
         assert response.status_code==401, response.text
         assert not created, "unauthorized request initialized controller state"
         assert (await client.get("/process/installation-backups/jobs/"+"a"*32)).status_code==401
+        assert (await client.post("/process/installation-backups/jobs/"+"a"*32+"/cancel")).status_code==401
         assert (await client.get("/process/installation-backups/preview/status")).status_code==401
         assert (await client.post("/process/installation-backups/preview/"+"a"*32+"/cancel")).status_code==401
         assert not created, "unauthorized polling or cancellation initialized controller state"
@@ -104,6 +111,12 @@ async def prove():
         job=await client.get("/process/installation-backups/jobs/"+"a"*32)
         assert job.status_code==200 and job.json()["job"]["status"]=="running"
         assert job.headers["cache-control"]=="no-store"
+        cancelled_job=await client.post("/process/installation-backups/jobs/"+"a"*32+"/cancel")
+        assert cancelled_job.status_code==200 and cancelled_job.json()["job"]["cancel_requested"] is True
+        assert cancelled_job.headers["cache-control"]=="no-store"
+        assert controller.calls.count("cancel")==1
+        refused_cancel=await client.post("/process/installation-backups/jobs/"+"b"*32+"/cancel")
+        assert refused_cancel.status_code==409 and refused_cancel.json()["detail"]=="This backup cannot be cancelled."
         preview=await client.post("/process/installation-backups/preview",json={"destination_id":"@default"})
         assert preview.status_code==200 and preview.json()["capacity"]["status"]=="sufficient"
         assert preview.headers["cache-control"]=="no-store"

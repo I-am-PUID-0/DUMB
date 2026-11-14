@@ -452,11 +452,16 @@ def inventory(
     content=False,
     progress=None,
     _ledger_complete=None,
+    total_entries=None,
+    total_logical_bytes=None,
 ):
     entries = size = footer_bytes = 0
     digest = hashlib.sha256()
     counters = _ArchiveProgress(
-        progress, "checking_source" if content else "inventorying"
+        progress,
+        "checking_source" if content else "inventorying",
+        total_entries=total_entries,
+        total_logical_bytes=total_logical_bytes,
     )
     with manifest(scratch) as database:
         footer_limit = ledger_quota(database)
@@ -488,7 +493,8 @@ def inventory(
             counters.report()
         if _ledger_complete is not None:
             _ledger_complete(database, digest.hexdigest())
-    counters.report(force=True)
+    counters.total_entries, counters.total_logical_bytes = entries, size
+    counters.report(force=True, complete=True)
     return {
         "entries": entries,
         "logical_bytes": size,
@@ -540,12 +546,25 @@ class _Rows:
 class _ArchiveProgress:
     """Phase-relative counters; callbacks are emitted only for actual work."""
 
-    def __init__(self, callback, stage):
+    def __init__(
+        self,
+        callback,
+        stage,
+        *,
+        total_entries=None,
+        total_logical_bytes=None,
+        total_bytes=None,
+    ):
         self.callback, self.stage = callback, stage
         self.entries = self.logical_bytes = self.bytes_processed = 0
+        self.total_entries, self.total_logical_bytes = (
+            total_entries,
+            total_logical_bytes,
+        )
+        self.total_bytes = total_bytes
         self.report(force=True)
 
-    def report(self, *, force=False):
+    def report(self, *, force=False, complete=False):
         if self.callback is not None:
             self.callback(
                 stage=self.stage,
@@ -553,6 +572,10 @@ class _ArchiveProgress:
                 entries=self.entries,
                 logical_bytes=self.logical_bytes,
                 bytes_processed=self.bytes_processed,
+                total_entries=self.total_entries,
+                total_logical_bytes=self.total_logical_bytes,
+                total_bytes=self.total_bytes,
+                complete=complete,
             )
 
     def payload_read(self, amount):
@@ -644,8 +667,15 @@ def _write_archive(
             raise InstallationArchiveError(
                 "Insufficient local space for the complete second verification ledger."
             )
-        counters.report(force=True)
-        counters = _ArchiveProgress(progress, "archiving")
+        logical_total = counters.logical_bytes
+        counters.total_entries, counters.total_logical_bytes = count, logical_total
+        counters.report(force=True, complete=True)
+        counters = _ArchiveProgress(
+            progress,
+            "archiving",
+            total_entries=count,
+            total_logical_bytes=logical_total,
+        )
         output = _ProgressStream(handle, counters) if progress is not None else handle
         with (
             encoded_output(output, compression) as encoded,
@@ -763,9 +793,14 @@ def _write_archive(
                 },
                 _Rows(database),
             )
-        counters.report(force=True)
+        counters.report(force=True, complete=True)
         # Complete second content pass detects additions/removals as well as in-place writes.
-        counters = _ArchiveProgress(progress, "checking_source")
+        counters = _ArchiveProgress(
+            progress,
+            "checking_source",
+            total_entries=count,
+            total_logical_bytes=logical_total,
+        )
         expected_digest = hashlib.sha256()
         for (payload,) in database.execute("SELECT payload FROM entries ORDER BY name"):
             expected_digest.update(payload + b"\n")
@@ -784,6 +819,8 @@ def _write_archive(
             content=True,
             progress=progress,
             _ledger_complete=inspect_source_ledger,
+            total_entries=count,
+            total_logical_bytes=logical_total,
         )
         if current["fingerprint"] != expected_digest.hexdigest():
             raise InstallationArchiveError(
@@ -870,7 +907,17 @@ def _inspect_archive(
     root_sizes = {}
     controller_sha256 = {}
     root_ids = set()
-    counters = _ArchiveProgress(progress, "verifying")
+    # The stored stream's closed size is exact for compressed and plain
+    # archives alike. Source previews are never used as verification totals.
+    source = getattr(handle, "handle", handle)
+    try:
+        value = os.fstat(source.fileno())
+        total_bytes = value.st_size if stat.S_ISREG(value.st_mode) else None
+    except (AttributeError, OSError, io.UnsupportedOperation):
+        total_bytes = (
+            len(source.getbuffer()) if isinstance(source, io.BytesIO) else None
+        )
+    counters = _ArchiveProgress(progress, "verifying", total_bytes=total_bytes)
     if progress is not None:
         handle = _ProgressStream(handle, counters)
     handle, compression = decoded_input(handle)
@@ -1119,7 +1166,7 @@ def _inspect_archive(
         for (payload,) in database.execute("SELECT payload FROM entries ORDER BY name"):
             digest.update(payload + b"\n")
             counters.report()
-        counters.report(force=True)
+        counters.report(force=True, complete=True)
         return {
             "verified": True,
             "compression": compression,

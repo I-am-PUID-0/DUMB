@@ -1988,6 +1988,7 @@ class BackupStorage:
         extension="tar",
         metadata=None,
         owner_check=None,
+        before_publish=None,
     ):
         if extension not in {"tar", "json"} and not (
             namespace == "installation" and extension == "tar.zst"
@@ -2049,6 +2050,8 @@ class BackupStorage:
                             "The closed archive readback did not match its complete bytes."
                         )
                 check()
+                if before_publish is not None:
+                    before_publish()
                 reservation = os.open(
                     filename,
                     os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,

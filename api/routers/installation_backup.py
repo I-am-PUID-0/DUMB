@@ -188,6 +188,17 @@ def job(
     return invoke(controller, "get_job", job_id)
 
 
+@installation_backup_router.post("/jobs/{job_id}/cancel")
+def cancel_job(
+    job_id: str,
+    response: Response,
+    controller=Depends(manager),
+    _user=Depends(get_optional_current_user),
+):
+    response.headers["Cache-Control"] = "no-store"
+    return invoke(controller, "cancel", job_id)
+
+
 @installation_backup_router.put("/schedule")
 def schedule(
     request: ScheduleRequest,
