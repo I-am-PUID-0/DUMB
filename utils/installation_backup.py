@@ -1389,8 +1389,11 @@ class InstallationBackupManager:
             raise InstallationBackupError(str(error)) from None
 
     def _running(self):
+        from utils.installation_backup_lifecycle import auxiliary_services
+
+        configuration = self.config
         configured = {}
-        for key, service in service_entries(self.config):
+        for key, service in service_entries(configuration):
             name = service.get("process_name")
             if name:
                 configured[self.handler._prefixed_name(name)] = (key, name)
@@ -1404,8 +1407,29 @@ class InstallationBackupManager:
         ):
             if self._pid_alive(pid):
                 found[internal] = pid
+        auxiliaries = {}
+        for key, service in auxiliary_services(configuration):
+            name = service["process_name"]
+            auxiliaries[self.handler._prefixed_name(name)] = (key, name)
+            auxiliaries[name] = (key, name)
         running = {}
         for internal, pid in found.items():
+            if internal not in configured and internal in auxiliaries:
+                # This name is admitted only for DUMB's exact live subprocess,
+                # never an external PID claim with the same synthetic name.
+                process = self.handler.process_names.get(internal)
+                if (
+                    process is None
+                    or process.poll() is not None
+                    or not isinstance(pid, int)
+                    or isinstance(pid, bool)
+                    or pid <= 0
+                    or getattr(process, "pid", None) != pid
+                ):
+                    raise InstallationBackupError(
+                        "A managed auxiliary has no verified subprocess registration."
+                    )
+                configured[internal] = auxiliaries[internal]
             if internal not in configured:
                 raise InstallationBackupError(
                     "An unclassified managed writer is running; complete quiescence cannot be proved."
@@ -1517,7 +1541,18 @@ class InstallationBackupManager:
             reason = "start_refused"
             hint = "Startup returned a failure; inspect this service's logs for the underlying cause."
             try:
-                success, error = self.handler.start_process(name)
+                if row["key"] == "pgagent" and name == "pgAgent":
+                    from utils.postgres import start_pgagent
+
+                    postgres = self.config["postgres"]
+                    success, error = start_pgagent(
+                        self.handler,
+                        postgres.get("user"),
+                        postgres.get("host"),
+                        postgres.get("port"),
+                    )
+                else:
+                    success, error = self.handler.start_process(name)
             except Exception:
                 # Start errors may contain raw environment values, URLs or
                 # subprocess output. Never stringify or persist them here.

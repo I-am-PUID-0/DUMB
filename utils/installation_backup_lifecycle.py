@@ -10,6 +10,21 @@ class BackupLifecycleError(RuntimeError):
     """The retained process set cannot be resumed unambiguously."""
 
 
+def auxiliary_services(config):
+    """Describe only the pgAgent process launched by DUMB's pgAdmin setup."""
+    pgadmin = config.get("pgadmin")
+    postgres = config.get("postgres")
+    if all(
+        isinstance(section, dict)
+        and isinstance(section.get("process_name"), str)
+        and section["process_name"]
+        for section in (pgadmin, postgres)
+    ):
+        # PostgreSQL already owns its persistence. This descriptor only
+        # accounts for the exact managed stop/resume lifecycle.
+        yield "pgagent", {"process_name": "pgAgent"}
+
+
 def _services(config):
     for key, section in config.items():
         if not isinstance(section, dict) or key == "dumb":
@@ -21,6 +36,7 @@ def _services(config):
                 service.get("process_name"), str
             ):
                 yield key, service
+    yield from auxiliary_services(config)
 
 
 def _path(value):
@@ -159,6 +175,21 @@ def resume_wait_dependencies(recorded, config):
         if port is not None and _local_host(service.get("host")):
             endpoints.setdefault(port, set()).add(name)
     dependencies = {name: set() for name in selected}
+    for name, (_row, key, _service) in selected.items():
+        if key == "pgadmin":
+            # Native pgAdmin setup requires the PostgreSQL process registry
+            # even when a retained running provider has since been disabled.
+            dependencies[name].update(
+                provider
+                for provider, (_other, provider_key, _value) in selected.items()
+                if provider_key == "postgres"
+            )
+        elif key == "pgagent" and name == "pgAgent":
+            dependencies[name].update(
+                provider
+                for provider, (_other, provider_key, _value) in selected.items()
+                if provider_key in {"postgres", "pgadmin"}
+            )
     for name, (_row, _key, service) in selected.items():
         waits = service.get("wait_for_mounts") or []
         if isinstance(waits, str):
