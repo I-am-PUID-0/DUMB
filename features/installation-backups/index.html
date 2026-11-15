@@ -1019,6 +1019,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Create a backup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#follow-or-cancel-a-backup-preview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Follow or cancel a backup preview
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cancel-a-running-backup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cancel a running backup
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -5455,6 +5483,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Create a backup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#follow-or-cancel-a-backup-preview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Follow or cancel a backup preview
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cancel-a-running-backup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cancel a running backup
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -5591,11 +5647,11 @@
   
 
 
-<h1 id="installation-backup-and-restore">Installation backup and restore<a class="headerlink" href="#installation-backup-and-restore" title="Permanent link">&para;</a></h1>
+<h1 id="installation-backup-and-restore">Installation backup and restore<a class="headerlink" href="#installation-backup-and-restore" title="Permanent link">#</a></h1>
 <p>Open <strong>Settings → Backups and restore</strong> to manage installation archives and
 shared backup destinations. This requires a backend advertising installation
 backup protocol <code>1</code>; older backends continue to expose their existing tools.</p>
-<h2 id="what-an-installation-backup-contains">What an installation backup contains<a class="headerlink" href="#what-an-installation-backup-contains" title="Permanent link">&para;</a></h2>
+<h2 id="what-an-installation-backup-contains">What an installation backup contains<a class="headerlink" href="#what-an-installation-backup-contains" title="Permanent link">#</a></h2>
 <p>The preview inventories DUMB configuration, authentication and signing state,
 managed application configuration and persistent data, managed databases, and
 configured symlink state. Existing data belonging to disabled services is
@@ -5634,7 +5690,7 @@ the utility does not silently discard that state.</p>
 <p>Archives contain credentials and private keys and are not encrypted.
 Restrict access to the destination, partial exports and downloaded copies;
 shared storage permission consent does not prove confidentiality.</p>
-<h2 id="choose-storage">Choose storage<a class="headerlink" href="#choose-storage" title="Permanent link">&para;</a></h2>
+<h2 id="choose-storage">Choose storage<a class="headerlink" href="#choose-storage" title="Permanent link">#</a></h2>
 <p>In <strong>Backup destination</strong>, expand <strong>Register a backup destination</strong>.
 Register an existing container-visible directory, then explicitly select that
 destination or <strong>Use global default</strong>. The separate <strong>Global default</strong> controls
@@ -5654,7 +5710,7 @@ excluding such a backup location would hide application state from the archive.
 Review the reported paths and correct the conflicting profile. A separate
 destination or a dedicated child archive directory can still be used when it
 passes the storage checks.</p>
-<h2 id="choose-an-archive-format">Choose an archive format<a class="headerlink" href="#choose-an-archive-format" title="Permanent link">&para;</a></h2>
+<h2 id="choose-an-archive-format">Choose an archive format<a class="headerlink" href="#choose-an-archive-format" title="Permanent link">#</a></h2>
 <p>Uncompressed <code>.tar</code> is the default. When the backend supports Zstandard,
 manual backups and the schedule can each select compressed <code>.tar.zst</code> archives.
 Choose the format before requesting a preview; changing it requires a new
@@ -5673,17 +5729,51 @@ own working space.</p>
 <p>DUMB verifies the stored archive bytes and the complete logical contents before
 publishing either format. Restore detects compression from the file contents,
 not its filename; existing uncompressed archives remain supported.</p>
-<h2 id="create-a-backup">Create a backup<a class="headerlink" href="#create-a-backup" title="Permanent link">&para;</a></h2>
+<h2 id="create-a-backup">Create a backup<a class="headerlink" href="#create-a-backup" title="Permanent link">#</a></h2>
+<p><strong>Plan for application downtime, including scheduled backups.</strong> Once DUMB stops
+the managed applications, playback, library imports, scans and their service UIs
+are unavailable until archive creation, source checks, readback verification and
+service resume finish. The DUMB API and frontend remain available through their
+direct ports. Large installations or slow network storage can take hours; there
+is no promised finish time. A schedule starts the same complete operation and
+does not limit how long applications stay stopped.</p>
+<p>Optional preview does not stop applications. On backends advertising
+<code>installation_backup_direct_start</code>, both reviewed and direct starts promptly
+return a durable job instead of running a second live census in the request.
+After the actual backup begins, leave the container and host running until the job reports
+completion, completed cancellation, or recovery instructions. A failed service
+resume can require recovery before applications become available again.</p>
 <p>Use the container's direct frontend/API access before starting. Managed reverse
 proxies and tunnels can be stopped with the applications, so their public or
 embedded ingress path may be unavailable during the operation.</p>
+<p>When supported, choose <strong>Back up without preview</strong> to skip the live size and
+file inventory. Select the destination and archive format, then confirm the
+downtime, credential handling and external-state acknowledgements and the exact
+displayed phrase. This option provides no advance size estimate. DUMB checks
+managed-root coverage, stops the retained running applications, and uses one
+cold inventory for both space checks and archive creation. Insufficient space
+fails before archive payload is written; DUMB resumes applications or reports
+the exact service recovery needed. Scheduled backups use this same path.
+When available, the job shows measured free, required and missing space for
+each filesystem. An admitted scheduled failure waits for its normal interval
+rather than repeatedly stopping applications every five minutes. Transient
+blockers before job admission can still retry after five minutes.</p>
+<p>The optional preview remains useful for reviewing paths and estimated space
+while applications are available. Starting a reviewed backup does not repeat
+that full live scan: its cold inventory supplies the authoritative size. The
+source-content consistency pass and closed-archive readback are separate checks
+and still run before the archive is accepted.</p>
 <ol>
-<li>Select a destination and request a backup preview.</li>
+<li>To review first, select a destination and request a backup preview.</li>
 <li>Review included paths, exclusions, space estimates and any blockers.</li>
 <li>Stop external writers to the included data. Confirm the displayed downtime
    acknowledgement before starting.</li>
 <li>Follow the job until its archive has passed complete readback verification.</li>
 </ol>
+<p>If a request times out, refresh backup status before submitting another
+operation. A proxy timeout does not prove the job failed. The UI reconnects to
+the admitted job; a consumed preview cannot be reused to create a second job.
+Direct-start retries use the same request identity to recover that job.</p>
 <p>Manual and scheduled installation backups show an application-wide status
 notice from preparation through queued and running archive work, with the
 current stage and elapsed time. <strong>Preparing installation backup</strong> means that
@@ -5705,6 +5795,13 @@ storage, including the stream containing headers, padding and manifest data.
 For Zstandard they count compressed stored bytes. Logical-size and source-hash
 bytes describe uncompressed source file data. They are not interchangeable totals
 or an overall completion percentage.</p>
+<p>On backends with measured phase progress, the interface shows a percentage only
+when that phase has a known total, such as the expected entries or archive bytes
+to verify. The label names the phase; it is not a percentage for the whole
+backup. A phase can reach its total while later checks and service resume still
+remain. Phases without a complete denominator show activity and counters rather
+than a guessed percentage. Compression output size and elapsed time do not
+predict a reliable overall percentage or finish time.</p>
 <p>Last-update times reflect actual worker reports, including fractional-second
 backend timestamps. Refreshing status alone does not establish new inventory or
 transfer progress. Older backends can show stage and elapsed time without these
@@ -5716,8 +5813,24 @@ Previously running services
 are resumed in dependency order after a backup when it is safe, including the
 managed mount before its consumers; previously stopped services are not
 started just because a backup ran. Resuming services is a separate stage. A
-failed or blocked resume retains its recovery guidance rather than reporting
-that the backup has finished successfully.</p>
+failed or blocked resume retains its recovery guidance without discarding an
+already verified and saved archive.</p>
+<p>Archive completion and application availability are separate results. <strong>Archive
+verified and saved</strong> means that source-consistency checks, logical archive
+verification, stored-byte readback and catalogue publication completed. The job
+keeps that archive receipt while services resume. If resume fails, DUMB reports
+that the archive was saved but services need recovery. <strong>Finish backup recovery</strong>
+preserves the receipt and does not require repeating the backup just to restart
+applications. Future configured retention can still retire older scheduled
+archives; save independent copies according to your backup policy.</p>
+<p>A finished copying pass or a phase reaching its total does not establish those
+checks. If source consistency or archive verification fails before publication,
+DUMB does not advertise the partial output as a valid backup. If publication
+was interrupted before the job could record a receipt, its outcome is unconfirmed:
+review the archive catalogue and recovery details rather than assuming either
+that it was saved or that no archive exists. A saved receipt describes the
+verification performed when the backup was made; restore preview still checks
+the actual archive before using it.</p>
 <p>Seerr request synchronization reserves installation persistence for its entire
 cycle. It skips synchronization and checkpoint writes while a backup, restore
 or retained recovery owns that persistence, then resumes on its next normal
@@ -5725,6 +5838,11 @@ interval after the hold ends. If a sync cycle is already running, backup
 admission reports busy until that cycle finishes; wait, then retry the operation
 and follow any renewed preview requirement. This prevents the controller's
 <code>seerr_sync_state.json</code> updates from continuing after managed services stop.</p>
+<p>Metrics history also reserves installation persistence for its complete storage
+operations. SQLite connections are closed before that reservation is released,
+so delayed garbage collection cannot checkpoint or remove WAL/SHM files during
+the cold archive. Read and status operations use the same admission boundary
+because opening a SQLite connection can change its journal files.</p>
 <p>PostgreSQL's configured <code>{postgres_config_dir}</code> and <code>{postgres_config_file}</code>
 launch placeholders are expanded on every managed start, including backup resume
 and recovery. A missing path containing a literal placeholder on an older build
@@ -5732,6 +5850,12 @@ is a problem with launch arguments, separate from a change to the archive's
 source files. Expanding the command leaves saved settings and existing PostgreSQL
 data intact; it does not run initial database setup. Follow the job's service
 resume or recovery instructions before retrying a backup.</p>
+<p>pgAdmin's automatic PostgreSQL connection registration is separate from starting
+its web service. A registration warning, for example when the configured setup
+email differs from an existing pgAdmin account, preserves the running web service
+and existing definitions instead of blocking the remaining services' resume.
+The setup checklist can still report that the requested connection registration
+needs attention; DUMB does not replace accounts or connections to clear it.</p>
 <p>Database consistency follows the requirements for a stopped
 <a href="https://www.postgresql.org/docs/current/backup-file.html">PostgreSQL cluster</a>
 and a quiescent <a href="https://sqlite.org/howtocorrupt.html#_backup_or_restore_while_a_transaction_is_active">SQLite database and its journals</a>.</p>
@@ -5746,7 +5870,7 @@ scan before a preview is ready. This phase inventories entries rather than
 copying the complete file contents, and it does not stop applications.
 Individual path, nesting, record and supported-metadata checks still apply;
 available disk space does not make an unsafe archive restorable.</p>
-<h3 id="follow-or-cancel-a-backup-preview">Follow or cancel a backup preview<a class="headerlink" href="#follow-or-cancel-a-backup-preview" title="Permanent link">&para;</a></h3>
+<h3 id="follow-or-cancel-a-backup-preview">Follow or cancel a backup preview<a class="headerlink" href="#follow-or-cancel-a-backup-preview" title="Permanent link">#</a></h3>
 <p>On backends with tracked backup-preview support, the progress notice shows the
 current stage and managed root, entries scanned, logical bytes inventoried and
 elapsed time. These are inventory counters, not bytes already copied to an
@@ -5788,7 +5912,28 @@ was received.</p>
 jobs. Record the selected archive and retain an independent copy before relying
 on it for disaster recovery. A checksum verifies the recorded bytes; a successful
 restore rehearsal remains the practical test of your recovery procedure.</p>
-<h2 id="unclassified-data-in-a-backup-preview">Unclassified data in a backup preview<a class="headerlink" href="#unclassified-data-in-a-backup-preview" title="Permanent link">&para;</a></h2>
+<h3 id="cancel-a-running-backup">Cancel a running backup<a class="headerlink" href="#cancel-a-running-backup" title="Permanent link">#</a></h3>
+<p>On backends advertising backup cancellation, <strong>Cancel backup</strong> requests a
+cooperative stop for a manual or scheduled installation backup. Keep the
+container running and wait for <strong>Cancelled</strong>. An in-flight filesystem or network
+operation can take time to return before the worker reaches a cancellation
+checkpoint.</p>
+<p>This job control becomes available after admission. The earlier coverage and
+capacity recheck has not stopped applications or admitted an archive job, so it
+does not offer that job's cancel action. Closing the page does not cancel a
+submitted start request; keep monitoring its preparation and accepted job state.</p>
+<p>DUMB stops archive work, removes only the unpublished output owned by that job,
+and attempts to resume the previously running applications in dependency order.
+It does not restore an archive or replace application data. Existing completed
+archives remain available. If services cannot resume safely, the job reports
+<strong>Recovery required</strong> and retains its recovery evidence instead of claiming that
+cancellation restored service availability.</p>
+<p>Cancellation closes before the verified archive is published. The control is
+unavailable once the job has passed that boundary, after completion, and for
+installation restores. Closing the browser does not cancel a job. Older backends
+can expose <strong>Cancel preview</strong> without supporting cancellation of an actual
+backup; those are separate operations.</p>
+<h2 id="unclassified-data-in-a-backup-preview">Unclassified data in a backup preview<a class="headerlink" href="#unclassified-data-in-a-backup-preview" title="Permanent link">#</a></h2>
 <p>A preview can stop on an unrecognized child of <code>data_root</code>, even when that
 directory is empty. Current backends identify the first unclassified path and
 entry type in the blocker; long or unusual paths are escaped and can be marked
@@ -5803,7 +5948,7 @@ from coverage, retain it and report its path and owning tool so that its
 persistence can be qualified. Custom state and external media require their
 own backup/deployment review; DUMB does not silently omit them or sweep them
 into an installation archive.</p>
-<h2 id="schedule-backups">Schedule backups<a class="headerlink" href="#schedule-backups" title="Permanent link">&para;</a></h2>
+<h2 id="schedule-backups">Schedule backups<a class="headerlink" href="#schedule-backups" title="Permanent link">#</a></h2>
 <p>Scheduling is off by default. Enable it deliberately, choose its destination,
 interval, archive format and retention, and save the schedule. The schedule
 keeps its own format choice; changing a manual backup does not change it.
@@ -5812,11 +5957,17 @@ creates a full, standalone archive; incremental or deduplicated installation
 backups are not currently supported. Scheduled backups use the same
 coverage, quiescence, admission and verification checks as manual backups, so
 schedule them during a suitable maintenance window.</p>
+<p>Saving or enabling a schedule requires reviewing the same downtime warning as
+a manual backup. Every scheduled run stops the managed applications until its
+backup and resume stages finish, which may extend beyond the intended window.
+The global backup notice shows scheduled activity too. Changing or disabling
+the schedule does not cancel an already-running job; use that job's supported
+<strong>Cancel backup</strong> control and wait for its terminal result.</p>
 <p>Missed or blocked jobs remain visible. A schedule does not bypass startup,
 another active operation, unavailable storage or insufficient space. Retention
 applies only to verified scheduled installation archives owned by that schedule;
 manual archives and other tools' backups are retained separately.</p>
-<h2 id="restore-an-existing-or-fresh-installation">Restore an existing or fresh installation<a class="headerlink" href="#restore-an-existing-or-fresh-installation" title="Permanent link">&para;</a></h2>
+<h2 id="restore-an-existing-or-fresh-installation">Restore an existing or fresh installation<a class="headerlink" href="#restore-an-existing-or-fresh-installation" title="Permanent link">#</a></h2>
 <p>A restore replaces managed state and requires downtime. Keep a separate backup
 of the current installation and keep external writers stopped throughout the
 operation, including any other DUMB container using the same mounted state.
@@ -5856,8 +6007,9 @@ checksums and file types are validated; archive links cannot direct extraction
 outside that staging tree. The restore retains rollback evidence for replaced
 state. Where a job advertises <strong>Rollback</strong>, the control is available only after
 an eligible completed, failed or recovery-required state; it cannot run while
-that job is queued or running. This is recovery of retained state, not a way to
-cancel an active backup or restore. A failure during read-only verification does not stop applications.
+that job is queued or running. This is recovery of retained state; use the
+separate supported <strong>Cancel backup</strong> control for an active backup. It does not
+cancel an active restore. A failure during read-only verification does not stop applications.
 Before live replacement, DUMB attempts to resume any writers it stopped if the
 operation fails. Once replacement has started, or if the previous running set
 cannot be safely resumed, DUMB keeps applications blocked for recovery instead
@@ -5866,7 +6018,10 @@ rollback/recovery action and retain its files until recovery completes.</p>
 <p>For a failed installation backup, <strong>Finish backup recovery</strong> continues the
 retained service/startup recovery. The original application data remains in
 place: this action does not install applications or restore an archive. Follow
-any container-restart instruction before expecting services to resume. Older
+any container-restart instruction before expecting services to resume. If the
+archive was already verified and saved, its receipt remains available through
+this recovery; an application-startup failure does not invalidate that archive.
+Older
 frontends label this same guarded action <strong>Rollback</strong>; the displayed
 job-specific confirmation is still required. For a restore, <strong>Request reviewed rollback</strong>
 instead returns the retained application state from before live replacement.
@@ -5888,7 +6043,7 @@ Follow the service-resume or recovery guidance above. An operation still marked
 queued or running is not eligible for rollback, even if its displayed stage or
 error indicates failure. If it cannot reach a terminal recovery state, preserve
 its records and request diagnosis.</p>
-<h2 id="startup-and-private-recovery-state">Startup and private recovery state<a class="headerlink" href="#startup-and-private-recovery-state" title="Permanent link">&para;</a></h2>
+<h2 id="startup-and-private-recovery-state">Startup and private recovery state<a class="headerlink" href="#startup-and-private-recovery-state" title="Permanent link">#</a></h2>
 <p>DUMB checks its local installation-recovery records before normal applications
 start. If those records require recovery or cannot be trusted, only the API and
 already-installed frontend start. Service actions can return <code>409</code> while this
@@ -5919,7 +6074,7 @@ restart when instructed. Do not delete the directory, purge databases or apply
 recursive ownership/permission changes to clear the banner. A
 <a href="../infinidysk-v2-migration/#progress-cancellation-and-recovery">major InfiniDysk migration</a>
 has its own job, cancellation and rollback flow.</p>
-<h2 id="related-tools">Related tools<a class="headerlink" href="#related-tools" title="Permanent link">&para;</a></h2>
+<h2 id="related-tools">Related tools<a class="headerlink" href="#related-tools" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="../symlinks/">Symlink operations</a> provides smaller link snapshots and schedules.</li>
 <li><a href="../infinidysk-v2-migration/">InfiniDysk 2 installation and upgrade</a> has its own
