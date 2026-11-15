@@ -4,6 +4,7 @@ This is a controller-owned helper, never an API-supplied command. It must fail
 closed when Linux namespaces or Landlock are unavailable.
 """
 
+from contextlib import contextmanager
 import ctypes
 import fcntl
 import json
@@ -50,7 +51,123 @@ def namespace_command(uid, gid, command):
     ]
 
 
-def confine(writable):
+@contextmanager
+def _directory_fd(value):
+    path = Path(value)
+    if not path.is_absolute() or path == Path("/") or ".." in path.parts:
+        raise ValueError("External migration input paths must be absolute directories")
+    descriptor = os.open("/", os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)
+    try:
+        for part in path.parts[1:]:
+            child = os.open(
+                part,
+                os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
+                dir_fd=descriptor,
+            )
+            os.close(descriptor)
+            descriptor = child
+        yield descriptor
+    finally:
+        os.close(descriptor)
+
+
+def _directory_identity(descriptor):
+    value = os.fstat(descriptor)
+    return {
+        "device": value.st_dev,
+        "inode": value.st_ino,
+        "mode": stat.S_IFMT(value.st_mode),
+    }
+
+
+def _bind_external_blobs(libc, writable, external_blobs):
+    """Expose one pinned input tree read-only inside this private namespace."""
+    if not isinstance(external_blobs, dict) or not writable:
+        raise ValueError("External migration input requires its verified identity")
+    for field in ("identity", "target_identity", "candidate_identity"):
+        expected = external_blobs.get(field)
+        if (
+            not isinstance(expected, dict)
+            or set(expected) != {"device", "inode", "mode"}
+            or any(type(value) is not int for value in expected.values())
+            or expected["mode"] != stat.S_IFDIR
+        ):
+            raise ValueError(
+                "External migration input directory ownership is incomplete"
+            )
+    data = Path(writable[0])
+    source = Path(external_blobs.get("path") or "")
+    target = data / "blobs"
+    with (
+        _directory_fd(data) as candidate,
+        _directory_fd(source) as original,
+        _directory_fd(target) as destination,
+    ):
+        if (
+            _directory_identity(candidate) != external_blobs["candidate_identity"]
+            or _directory_identity(original) != external_blobs["identity"]
+            or _directory_identity(destination) != external_blobs["target_identity"]
+        ):
+            raise ValueError(
+                "External migration input or its local placeholder changed"
+            )
+        if os.fstat(original).st_dev == os.fstat(candidate).st_dev:
+            raise ValueError("External migration input must be on another filesystem")
+        with os.scandir(destination) as entries:
+            if next(entries, None) is not None:
+                raise ValueError("The external input placeholder must be empty")
+        _call(
+            libc.mount(
+                os.fsencode(f"/proc/self/fd/{original}"),
+                os.fsencode(f"/proc/self/fd/{destination}"),
+                None,
+                4096,  # MS_BIND, only in the new private mount namespace.
+                None,
+            ),
+            "The external migration input could not be mounted",
+        )
+        # Reopen through the pinned candidate to select the newly bound mount,
+        # rather than the descriptor for the now-covered empty directory.
+        mounted = os.open(
+            "blobs",
+            os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
+            dir_fd=candidate,
+        )
+        try:
+            if _directory_identity(mounted) != external_blobs["identity"]:
+                raise ValueError("The external input mount has a different identity")
+            _call(
+                libc.mount(
+                    None,
+                    os.fsencode(f"/proc/self/fd/{mounted}"),
+                    None,
+                    4096
+                    | 32
+                    | 1
+                    | 2
+                    | 4
+                    | 8,  # BIND, REMOUNT, RO, NOSUID, NODEV, NOEXEC.
+                    None,
+                ),
+                "The external migration input could not be made read-only",
+            )
+            if not os.fstatvfs(mounted).f_flag & os.ST_RDONLY:
+                raise ValueError("The external migration input is not read-only")
+        finally:
+            os.close(mounted)
+        with (
+            _directory_fd(data) as current_candidate,
+            _directory_fd(source) as current_source,
+        ):
+            if (
+                _directory_identity(current_candidate)
+                != external_blobs["candidate_identity"]
+                or _directory_identity(current_source) != external_blobs["identity"]
+            ):
+                raise ValueError("External migration input changed during mount setup")
+
+
+def confine(writable, external_blobs=None):
     if os.geteuid() != 0:
         raise ValueError(
             "Contained import requires the controller's namespace privileges"
@@ -67,6 +184,8 @@ def confine(writable):
         libc.mount(None, b"/", None, 16384 | (1 << 18), None),
         "Private mount propagation unavailable",
     )
+    if external_blobs is not None:
+        _bind_external_blobs(libc, writable, external_blobs)
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as control:
         flags = fcntl.ioctl(control, 0x8913, struct.pack("16sH14s", b"lo", 0, b""))
         current = struct.unpack("16sH14s", flags)[1]
@@ -175,7 +294,7 @@ def main():
     data = Path(payload["data_dir"])
     temporary = Path(payload["tmp_dir"])
     proof = Path(payload["proof_path"])
-    abi = confine([str(data), str(temporary)])
+    abi = confine([str(data), str(temporary)], payload.get("external_blobs"))
     # Proof is inside the write allowlist; the parent checks it before accepting
     # any importer receipt. No caller can replace it with request JSON.
     proof.write_text(
@@ -186,6 +305,16 @@ def main():
                 "network_namespace": os.readlink("/proc/self/ns/net"),
                 "external_network": False,
                 "write_roots": [str(data), str(temporary)],
+                **(
+                    {
+                        "external_blob_input_read_only": True,
+                        "external_blob_input_identity": payload["external_blobs"][
+                            "identity"
+                        ],
+                    }
+                    if payload.get("external_blobs") is not None
+                    else {}
+                ),
             }
         )
     )

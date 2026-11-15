@@ -186,7 +186,14 @@ class InfiniDyskV2CapacityError(InfiniDyskV2MigrationError):
         )
 
 
-def _capacity_check(requirements, *, source=None):
+def _capacity_check(
+    requirements,
+    *,
+    source=None,
+    phase=None,
+    projected_release=None,
+    filesystem_ids=None,
+):
     """Complete read-only per-filesystem estimates; no storage is reserved."""
     grouped = {}
     for requirement in requirements:
@@ -201,11 +208,12 @@ def _capacity_check(requirements, *, source=None):
         if role not in item["roles"]:
             item["roles"].append(role)
     filesystems = []
-    for index, item in enumerate(grouped.values(), 1):
+    for index, (device, item) in enumerate(grouped.items(), 1):
         margin = max(64 * 1024 * 1024, item["required"] // 10)
         required = item["required"] + margin
         free = shutil.disk_usage(item["path"]).free
-        shortfall = max(0, required - free)
+        credit = (projected_release or {}).get(device, 0)
+        shortfall = max(0, required - free - credit)
         filesystems.append(
             {
                 "id": f"filesystem_{index}",
@@ -216,6 +224,18 @@ def _capacity_check(requirements, *, source=None):
                 "free_bytes": free,
                 "shortfall_bytes": shortfall,
                 "sufficient": shortfall == 0,
+                **(
+                    {
+                        "phase": phase,
+                        "filesystem_id": (filesystem_ids or {}).get(
+                            device, f"filesystem_{index}"
+                        ),
+                        "projected_released_bytes": credit,
+                        "projected_available_bytes": free + credit,
+                    }
+                    if phase is not None
+                    else {}
+                ),
             }
         )
     sufficient = all(row["sufficient"] for row in filesystems)
@@ -470,6 +490,7 @@ class InfiniDyskV2MigrationManager:
                 "mode",
                 "import_report",
                 "source_storage",
+                "staging_cleanup_required",
                 "stage",
                 "message",
                 "created_at",
@@ -528,6 +549,20 @@ class InfiniDyskV2MigrationManager:
                 "Helper termination is confirmed. Review and run rollback "
                 "to restore the retained v1 service."
             )
+        staging = (job.get("snapshot") or {}).get("external_blob_staging")
+        if isinstance(staging, dict):
+            public["external_blob_staging"] = {
+                key: staging[key]
+                for key in (
+                    "state",
+                    "entries",
+                    "logical_bytes",
+                    "allocated_bytes",
+                    "copied_bytes",
+                    "released_bytes",
+                )
+                if key in staging
+            }
         return public
 
     def _consumer_recovery(self):
@@ -789,13 +824,146 @@ class InfiniDyskV2MigrationManager:
                     (tempfile.gettempdir(), postgres_size * 3, "postgres_temporary"),
                 ]
             )
-        return _capacity_check(
-            requirements,
-            source={
-                "entries": sum(item["entries"] for item in inventories),
-                "logical_bytes": sum(sizes.values()),
-                "root_count": len(sizes),
-            },
+        source_report = {
+            "entries": sum(item["entries"] for item in inventories),
+            "logical_bytes": sum(sizes.values()),
+            "root_count": len(sizes),
+        }
+        if plan.get("options", {}).get("offload_legacy_blobs"):
+            return self._external_blob_capacity(
+                plan,
+                requirements,
+                source_report,
+                database_bytes=database_bytes,
+                native_headroom=headroom,
+            )
+        return _capacity_check(requirements, source=source_report)
+
+    def _external_blob_capacity(
+        self, plan, requirements, source, *, database_bytes, native_headroom
+    ):
+        from utils.infinidysk_v2_blob_staging import blob_summary
+
+        blobs = Path(plan["source"]["data_dir"]) / "blobs"
+        try:
+            summary = blob_summary(blobs)
+        except (ValueError, OSError) as error:
+            raise InfiniDyskV2MigrationError(str(error)) from error
+        selected = plan.get("backup_storage") or {}
+        if not selected.get("artifact_root"):
+            raise InfiniDyskV2MigrationError(
+                "External legacy input requires a registered migration backup location."
+            )
+        before = [
+            (path, database_bytes if role == "candidate" else size, role)
+            for path, size, role in requirements
+        ]
+        before += [
+            (self.state_root, MAX_TREE_MANIFEST_BYTES, "external_blob_manifest"),
+            (
+                selected["artifact_root"],
+                summary["logical_bytes"] + summary["entries"] * 4096 + 64 * 1024**2,
+                "external_blob_staging",
+            ),
+        ]
+        after = [
+            (
+                Path(plan["target"]["data_dir"]).parent,
+                native_headroom,
+                "native_import_growth",
+            ),
+            (
+                self.state_root,
+                MAX_TREE_MANIFEST_BYTES + MAX_STATE_BYTES,
+                "local_verification",
+            ),
+        ]
+        filesystem_ids = {}
+        for path, _size, _role in before + after:
+            parent = Path(path)
+            while not parent.exists():
+                parent = parent.parent
+            filesystem_ids.setdefault(
+                parent.stat().st_dev, f"filesystem_{len(filesystem_ids) + 1}"
+            )
+        phases = []
+        for phase, allocations, credit in (
+            ("before_blob_release", before, {}),
+            (
+                "after_blob_release",
+                after,
+                {blobs.stat().st_dev: summary["allocated_bytes"]},
+            ),
+        ):
+            try:
+                report = _capacity_check(
+                    allocations,
+                    source=source,
+                    phase=phase,
+                    projected_release=credit,
+                    filesystem_ids=filesystem_ids,
+                )
+            except InfiniDyskV2CapacityError as error:
+                report = error.capacity
+            rows = report["filesystems"]
+            for row in rows:
+                row["id"] = phase + "_" + row["filesystem_id"]
+            phases.append(
+                {"phase": phase, "status": report["status"], "filesystems": rows}
+            )
+        sufficient = all(item["status"] == "sufficient" for item in phases)
+        report = {
+            "status": "sufficient" if sufficient else "insufficient",
+            "complete": True,
+            "estimated": True,
+            "reserved": False,
+            "release_is_projected": True,
+            "observed_at": int(time.time()),
+            "source": source,
+            "legacy_blobs": summary,
+            "phases": phases,
+            "filesystems": [row for item in phases for row in item["filesystems"]],
+        }
+        if not sufficient:
+            raise InfiniDyskV2CapacityError(report)
+        return report
+
+    def _external_capacity_after_release(self, job, *, postgres_snapshot=None):
+        snapshot, plan = job["snapshot"], job["plan"]
+        staged = (
+            Path(snapshot["source_database"])
+            if snapshot.get("source_database")
+            else None
+        )
+        database_bytes = staged.stat().st_size if staged is not None else 0
+        headroom = max(
+            64 * 1024**2, database_bytes * 3, snapshot.get("source_logical_bytes", 0)
+        )
+        report = _capacity_check(
+            [
+                (
+                    Path(plan["target"]["data_dir"]).parent,
+                    headroom,
+                    "native_import_growth",
+                ),
+                (
+                    self.state_root,
+                    MAX_TREE_MANIFEST_BYTES + MAX_STATE_BYTES,
+                    "local_verification",
+                ),
+            ],
+            source=(plan.get("capacity") or {}).get("source"),
+            phase="after_blob_release",
+        )
+        report["release_is_projected"] = False
+        report["observed_released_bytes"] = snapshot["external_blob_staging"][
+            "released_bytes"
+        ]
+        self._progress(
+            job,
+            "releasing_local_blobs",
+            "Local free space was checked again after releasing verified legacy input.",
+            capacity=report,
         )
 
     def _plan(self, options):
@@ -847,7 +1015,16 @@ class InfiniDyskV2MigrationManager:
             raise InfiniDyskV2MigrationError(
                 "Local storage reuse must be an explicit boolean choice."
             )
+        offload = options.get("offload_legacy_blobs", False)
+        if type(offload) is not bool:
+            raise InfiniDyskV2MigrationError(
+                "External legacy input staging must be an explicit boolean choice."
+            )
         blockers = []
+        if offload and (not reclaim or mode != "migrate"):
+            blockers.append(
+                "Moving legacy input to the backup location requires archive-backed v1 storage reuse during migration."
+            )
         if old != "1":
             blockers.append(
                 "The service already selects generation 2; use its existing runtime or retained rollback."
@@ -898,6 +1075,14 @@ class InfiniDyskV2MigrationManager:
             )
         if self.executor is None:
             blockers.append("The contained native migration executor is unavailable.")
+        if (
+            offload
+            and getattr(self.executor, "supports_external_blob_staging", False)
+            is not True
+        ):
+            blockers.append(
+                "This backend executor does not support verified external legacy input."
+            )
         supported = getattr(self.executor, "supported_source_providers", ("sqlite",))
         if provider in {"postgres", "postgresql"} and "postgres" not in supported:
             blockers.append(
@@ -1093,11 +1278,26 @@ class InfiniDyskV2MigrationManager:
                 preflight_reuse(plan)
             except (ValueError, OSError, BackupStorageError) as error:
                 plan["blockers"].append(str(error))
+        if offload:
+            plan["options"]["offload_legacy_blobs"] = True
+            if not (plan.get("backup_storage") or {}).get("artifact_root"):
+                plan["blockers"].append(
+                    "Select a registered backup location on another filesystem for external legacy input."
+                )
+            try:
+                from utils.infinidysk_v2_blob_staging import blob_summary
+
+                blob_summary(source_data / "blobs")
+            except (ValueError, OSError) as error:
+                plan["blockers"].append(str(error))
         plan["source_storage"] = {
             "mode": "archive_recovery" if reclaim else "retain_local",
             "reclaim_source_space": reclaim,
             "rollback_requires_archive": reclaim,
         }
+        if offload:
+            plan["source_storage"]["offload_legacy_blobs"] = True
+
         binding = copy.deepcopy(
             {
                 key: plan[key]
@@ -1243,6 +1443,7 @@ class InfiniDyskV2MigrationManager:
                 "supported_mount_backends": ["rclone", "fuse"],
                 "job": latest,
                 "blocking_job_count": len(blocking),
+                "capabilities": {"external_blob_staging": True},
                 "eligibility": {"ready": not blockers, "blockers": blockers},
             }
 
@@ -1367,6 +1568,11 @@ class InfiniDyskV2MigrationManager:
                     ["archive_recovery"]
                     if plan["options"].get("reclaim_source_space")
                     else []
+                )
+                + (
+                    ["external_blob_staging"]
+                    if plan["options"].get("offload_legacy_blobs")
+                    else []
                 ),
                 "rehearsal_required": plan["mode"] == "migrate",
             }
@@ -1403,6 +1609,11 @@ class InfiniDyskV2MigrationManager:
                 + (
                     ["archive_recovery"]
                     if plan["options"].get("reclaim_source_space")
+                    else []
+                )
+                + (
+                    ["external_blob_staging"]
+                    if plan["options"].get("offload_legacy_blobs")
                     else []
                 )
             )
@@ -2138,6 +2349,13 @@ class InfiniDyskV2MigrationManager:
             self._write(self._job_path(job["job_id"]), job)
         if schema and plan["source"]["provider"] in {"postgres", "postgresql"}:
             self._stage_candidate_database(candidate, database, candidate_identity)
+        if plan["options"].get("offload_legacy_blobs"):
+            from utils.infinidysk_v2_blob_staging import ExternalBlobStaging
+
+            ExternalBlobStaging(self).prepare(job, workspace, snapshot, owner_check)
+            self._external_capacity_after_release(
+                job, postgres_snapshot=postgres_snapshot
+            )
         owner_check()
         snapshot["candidate_identity"] = candidate_identity
         return snapshot
@@ -2260,6 +2478,14 @@ class InfiniDyskV2MigrationManager:
         snapshot = job.get("snapshot")
         if not snapshot:
             raise InfiniDyskV2MigrationError("No verified retained v1 snapshot exists.")
+        if job["plan"]["options"].get("offload_legacy_blobs"):
+            from utils.infinidysk_v2_blob_staging import ExternalBlobStaging
+
+            if receipt.get("external_blob_staging_verified") is not True:
+                raise InfiniDyskV2MigrationError(
+                    "The external legacy input has no verified read-only import receipt."
+                )
+            ExternalBlobStaging(self)._record(job)
         if (snapshot.get("source_schema") or {}).get("oidc_configured") and receipt.get(
             "oidc_policy_verified"
         ) is not True:
@@ -2442,6 +2668,8 @@ class InfiniDyskV2MigrationManager:
                 job, raw, diagnostics
             )
         )
+        workspace["external_blob_source"] = lambda: self._verified_external_blobs(job)
+        workspace["cleanup_blob_staging"] = lambda: self._cleanup_external_blobs(job)
         workspace["restore_source"] = (
             lambda assert_unmounted: self._restore_reused_source(job, assert_unmounted)
         )
@@ -2463,10 +2691,32 @@ class InfiniDyskV2MigrationManager:
         workspace["check_cancel"] = lambda: self._check_cancel(job)
         return workspace
 
+    def _verified_external_blobs(self, job):
+        if not job["plan"]["options"].get("offload_legacy_blobs"):
+            return None
+        from utils.infinidysk_v2_blob_staging import ExternalBlobStaging
+
+        return ExternalBlobStaging(self).verify(job)
+
+    def _cleanup_external_blobs(self, job):
+        if not ((job.get("snapshot") or {}).get("external_blob_staging")):
+            return
+        from utils.infinidysk_v2_blob_staging import ExternalBlobStaging
+
+        try:
+            ExternalBlobStaging(self).cleanup(job)
+        except (ValueError, OSError, sqlite3.Error):
+            job["staging_cleanup_required"] = True
+            self._write(self._job_path(job["job_id"]), job)
+        else:
+            job.pop("staging_cleanup_required", None)
+            self._write(self._job_path(job["job_id"]), job)
+
     def _restore_reused_source(self, job, assert_unmounted):
         from utils.infinidysk_v2_space_control import SpaceReuse
 
         SpaceReuse(self).restore(job, assert_unmounted)
+        self._cleanup_external_blobs(job)
 
     def _record_import_report(self, job, raw, diagnostics=None):
         from utils.private_files import atomic_write_private_text
@@ -2826,6 +3076,18 @@ class InfiniDyskV2MigrationManager:
                 status="rolling_back", stage="rolling_back", worker_id=self._worker_id
             )
             self._write(self._job_path(job["job_id"]), job)
+        if job["plan"].get("options", {}).get("offload_legacy_blobs"):
+            from utils.infinidysk_v2_recovery_worker import start_rollback_worker
+
+            try:
+                return start_rollback_worker(self, job, lock, self._finish_rollback)
+            except RuntimeError:
+                raise InfiniDyskV2MigrationError(
+                    "The recovery worker could not start. Refresh recovery status before retrying."
+                ) from None
+        return self._finish_rollback(job, lock)
+
+    def _finish_rollback(self, job, lock):
         try:
             private = copy.deepcopy(job)
             private["restore_config"] = lambda: self._restore_config(job)

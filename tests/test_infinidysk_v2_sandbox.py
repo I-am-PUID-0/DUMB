@@ -105,5 +105,70 @@ class SandboxTests(unittest.TestCase):
                 )
 
 
+class ExternalBlobSandboxGuards(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.data = self.root / "candidate"
+        self.data.mkdir()
+        (self.data / "blobs").mkdir()
+        self.source = self.root / "external"
+        self.source.mkdir()
+        self.payload = {
+            "path": str(self.source),
+            "identity": self.identity(self.source),
+            "candidate_identity": self.identity(self.data),
+            "target_identity": self.identity(self.data / "blobs"),
+        }
+        from scripts.infinidysk_v2_sandbox import _bind_external_blobs
+
+        self.bind = _bind_external_blobs
+
+    @staticmethod
+    def identity(path):
+        value = path.lstat()
+        return {
+            "device": value.st_dev,
+            "inode": value.st_ino,
+            "mode": value.st_mode & 0o170000,
+        }
+
+    def test_replaced_candidate_or_placeholder_is_refused_before_mount(self):
+        for key in ("candidate_identity", "target_identity", "identity"):
+            with self.subTest(key=key):
+                payload = {**self.payload, key: {**self.payload[key], "inode": -1}}
+                mount = Mock()
+                with self.assertRaisesRegex(ValueError, "changed"):
+                    self.bind(mount, [str(self.data)], payload)
+                mount.mount.assert_not_called()
+
+    def test_incomplete_or_noninteger_ownership_is_refused(self):
+        for expected in (None, {}, {**self.payload["identity"], "device": True}):
+            with self.subTest(expected=expected):
+                mount = Mock()
+                with self.assertRaisesRegex(ValueError, "ownership"):
+                    self.bind(
+                        mount, [str(self.data)], {**self.payload, "identity": expected}
+                    )
+                mount.mount.assert_not_called()
+
+    def test_external_input_ancestor_symlink_is_not_followed(self):
+        alias = self.root / "alias"
+        alias.symlink_to(self.source, target_is_directory=True)
+        mount = Mock()
+        with self.assertRaises(OSError):
+            self.bind(mount, [str(self.data)], {**self.payload, "path": str(alias)})
+        mount.mount.assert_not_called()
+        self.assertTrue(self.source.is_dir())
+
+    def test_same_filesystem_is_refused_without_overwriting_the_placeholder(self):
+        mount = Mock()
+        with self.assertRaisesRegex(ValueError, "another filesystem"):
+            self.bind(mount, [str(self.data)], self.payload)
+        mount.mount.assert_not_called()
+        self.assertEqual(list((self.data / "blobs").iterdir()), [])
+
+
 if __name__ == "__main__":
     unittest.main()

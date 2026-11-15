@@ -134,6 +134,7 @@ class NativeCandidate:
         timeout=30 * 60,
         check_cancel=None,
         record_report=None,
+        external_blobs=None,
     ):
         self.service, self.candidate, self.private = (
             service,
@@ -196,6 +197,30 @@ class NativeCandidate:
             "environment": environment,
             "binary": str(runtime_dir(service) / "infinidysk"),
         }
+        self.external_blobs = (
+            Path(
+                external_blobs["path"]
+                if isinstance(external_blobs, dict)
+                else external_blobs
+            )
+            if external_blobs is not None
+            else None
+        )
+        if self.external_blobs is not None:
+            from utils.infinidysk_v2_space_control import identity
+
+            if not (self.candidate / "blobs").is_dir() or any(
+                (self.candidate / "blobs").iterdir()
+            ):
+                raise ContainedImportError(
+                    "The local legacy input mount point is not an empty directory."
+                )
+            self.payload["external_blobs"] = {
+                "path": str(self.external_blobs),
+                "identity": identity(self.external_blobs),
+                "target_identity": identity(self.candidate / "blobs"),
+                "candidate_identity": identity(self.candidate),
+            }
 
     def __enter__(self):
         try:
@@ -359,6 +384,14 @@ class NativeCandidate:
                     raise ContainedImportError(
                         "The native importer confinement proof did not validate."
                     )
+                if self.external_blobs is not None and (
+                    proof.get("external_blob_input_read_only") is not True
+                    or proof.get("external_blob_input_identity")
+                    != self.payload["external_blobs"]["identity"]
+                ):
+                    raise ContainedImportError(
+                        "The external legacy input was not mapped read-only inside the importer."
+                    )
                 if migrate:
                     report = self.probe("/api/v1/upgrade/report")
                     if (
@@ -428,6 +461,7 @@ class NativeCandidate:
 
 class InfiniDyskV2Executor:
     supported_source_providers = ("sqlite", "postgres")
+    supports_external_blob_staging = True
 
     def __init__(self, process_handler, config_manager):
         self.handler, self.config = process_handler, config_manager
@@ -837,6 +871,9 @@ class InfiniDyskV2Executor:
             )
         candidate = Path(workspace["candidate_data"])
         private = Path(workspace["root"])
+        external_blobs = None
+        if plan.get("options", {}).get("offload_legacy_blobs"):
+            external_blobs = Path(workspace["external_blob_source"]())
         if postgres_snapshot is not None:
             # Native source() prefers the retained contract when DATABASE_PROVIDER
             # is absent. Adapt ONLY the private candidate: the verified staged
@@ -879,6 +916,9 @@ class InfiniDyskV2Executor:
             },
             check_cancel=workspace.get("check_cancel"),
             record_report=workspace.get("record_import_report"),
+            **(
+                {"external_blobs": external_blobs} if external_blobs is not None else {}
+            ),
         ) as process:
             child = getattr(process, "process", None)
             if type(getattr(child, "pid", None)) is int:
@@ -911,6 +951,12 @@ class InfiniDyskV2Executor:
             shutil.rmtree(temporary)
         if plan["mode"] == "migrate":
             blob_root = candidate / "blobs"
+            if external_blobs is not None:
+                blob_root = Path(workspace["external_blob_source"]())
+                if blob_root != external_blobs:
+                    raise ContainedImportError(
+                        "External migration input changed after native import."
+                    )
             if blob_root.is_symlink():
                 from utils.infinidysk_v2_inventory import (
                     InventoryError,
@@ -965,7 +1011,11 @@ class InfiniDyskV2Executor:
             "native_report_private": report_text,
         }
         # The manager independently verifies original hashes and this receipt.
+        if external_blobs is not None:
+            receipt["external_blob_staging_verified"] = True
         workspace["accept_import"](receipt)
+        if external_blobs is not None:
+            workspace["cleanup_blob_staging"]()
         if not cutover:
             if getattr(process, "stopped", False) is not True:
                 raise ContainedImportError(

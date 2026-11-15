@@ -797,6 +797,7 @@ class NativeImportWatchdogTests(unittest.TestCase):
     def candidate(self, root):
         value = object.__new__(NativeCandidate)
         value.timeout = 1800
+        value.external_blobs = None
         value.check_cancel = Mock()
         value.record_report = Mock()
         value.process = SimpleNamespace(pid=987654, poll=Mock(return_value=None))
@@ -838,6 +839,48 @@ class NativeImportWatchdogTests(unittest.TestCase):
         ):
             report = candidate.wait_import(True, progress)
         return report, progress
+
+    def test_external_input_requires_readonly_proof_for_the_verified_identity(self):
+        identity = {"device": 123, "inode": 456, "mode": 0o040000}
+        for proof in (
+            {},
+            {"external_blob_input_read_only": False},
+            {
+                "external_blob_input_read_only": True,
+                "external_blob_input_identity": {**identity, "inode": 789},
+            },
+        ):
+            with self.subTest(proof=proof), tempfile.TemporaryDirectory() as temporary:
+                candidate = self.candidate(Path(temporary))
+                candidate.external_blobs = Path(temporary) / "external-input"
+                candidate.payload["external_blobs"] = {"identity": identity}
+                path = Path(candidate.payload["proof_path"])
+                path.write_text(json.dumps({**json.loads(path.read_text()), **proof}))
+                with self.assertRaisesRegex(ContainedImportError, "read-only"):
+                    self.run_wait(candidate, [{"state": "done"}], list(range(10)))
+                candidate.record_report.assert_not_called()
+
+    def test_verified_readonly_external_input_keeps_native_report_validation(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            candidate = self.candidate(Path(temporary))
+            candidate.external_blobs = Path(temporary) / "external-input"
+            identity = {"device": 123, "inode": 456, "mode": 0o040000}
+            candidate.payload["external_blobs"] = {"identity": identity}
+            path = Path(candidate.payload["proof_path"])
+            path.write_text(
+                json.dumps(
+                    {
+                        **json.loads(path.read_text()),
+                        "external_blob_input_read_only": True,
+                        "external_blob_input_identity": identity,
+                    }
+                )
+            )
+            report, _progress = self.run_wait(
+                candidate, [{"state": "done"}], list(range(10))
+            )
+            self.assertEqual(report, "verified native report")
+            candidate.record_report.assert_called_once_with("verified native report")
 
     def test_advancing_import_is_allowed_beyond_previous_elapsed_cutoffs(self):
         with tempfile.TemporaryDirectory() as temporary:
