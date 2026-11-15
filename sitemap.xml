@@ -1,100 +1,64 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
       <url>
         <loc>https://dumbarr.com/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/getting-started/</loc>
+        <loc>https://dumbarr.com/about/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/getting-started/installation/</loc>
+        <loc>https://dumbarr.com/api/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/features/</loc>
+        <loc>https://dumbarr.com/api/ai/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/features/configuration/</loc>
+        <loc>https://dumbarr.com/api/auth/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/features/backup-storage/</loc>
+        <loc>https://dumbarr.com/api/config/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/features/installation-backups/</loc>
+        <loc>https://dumbarr.com/api/health/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/features/usage/</loc>
+        <loc>https://dumbarr.com/api/infinidysk-migration/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/features/service-reset/</loc>
+        <loc>https://dumbarr.com/api/logs/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/features/authentication/</loc>
+        <loc>https://dumbarr.com/api/media-library-protection/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/features/auto-restart/</loc>
+        <loc>https://dumbarr.com/api/metrics/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/features/startup-lifecycle/</loc>
+        <loc>https://dumbarr.com/api/notifications/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/features/setup-checklist/</loc>
+        <loc>https://dumbarr.com/api/postgres-migration/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/features/auto-update/</loc>
+        <loc>https://dumbarr.com/api/process/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/features/install-cache/</loc>
+        <loc>https://dumbarr.com/api/rclone-optimizer/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/features/media-library-protection/</loc>
+        <loc>https://dumbarr.com/api/seerr-sync/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/features/arr-postgres-migration/</loc>
+        <loc>https://dumbarr.com/api/symlinks/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/features/infinidysk-v2-migration/</loc>
+        <loc>https://dumbarr.com/api/updates/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/features/symlinks/</loc>
+        <loc>https://dumbarr.com/api/websocket/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/features/seerr-sync/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/features/ffprobe-monitor/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/features/metrics/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/features/rclone-optimizer/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/features/notifications/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/features/ai-assistant/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/features/embedded-ui/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/frontend/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/frontend/dashboard/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/frontend/onboarding/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/frontend/settings/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/frontend/service-pages/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/frontend/metrics/</loc>
+        <loc>https://dumbarr.com/api/websocket_logs/</loc>
       </url>
       <url>
         <loc>https://dumbarr.com/architecture/</loc>
@@ -109,130 +73,10 @@
         <loc>https://dumbarr.com/architecture/traefik/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/services/</loc>
+        <loc>https://dumbarr.com/changelog/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/services/dumb/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/dumb/api/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/dumb/dumb-frontend/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/core/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/core/cli-debrid/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/core/decypharr/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/core/infinidysk/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/core/nzbdav/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/core/altmount/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/core/plex-media-server/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/core/jellyfin/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/core/emby/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/core/seerr/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/core/riven-backend/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/core/sonarr/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/core/radarr/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/core/lidarr/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/core/prowlarr/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/core/whisparr/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/core/neutarr/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/core/profilarr/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/dependent/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/dependent/cli-battery/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/dependent/phalanx-db/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/dependent/postgres/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/dependent/rclone/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/dependent/zurg/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/optional/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/optional/pgadmin/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/optional/riven-frontend/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/optional/tautulli/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/optional/audiobookshelf/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/optional/bazarr/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/optional/pulsarr/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/optional/maintainerr/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/optional/mediastorm/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/optional/aiostreams/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/optional/traefik-proxy-admin/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/optional/authelia/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/optional/cloudflared/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/services/optional/zilean/</loc>
+        <loc>https://dumbarr.com/contributing/</loc>
       </url>
       <url>
         <loc>https://dumbarr.com/deployment/</loc>
@@ -241,91 +85,31 @@
         <loc>https://dumbarr.com/deployment/docker/</loc>
       </url>
       <url>
+        <loc>https://dumbarr.com/deployment/dockge/</loc>
+      </url>
+      <url>
         <loc>https://dumbarr.com/deployment/networking/</loc>
       </url>
       <url>
         <loc>https://dumbarr.com/deployment/portainer/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/deployment/unraid/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/deployment/wsl/</loc>
-      </url>
-      <url>
         <loc>https://dumbarr.com/deployment/proxmox/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/deployment/synology/</loc>
       </url>
       <url>
         <loc>https://dumbarr.com/deployment/qnap/</loc>
       </url>
       <url>
+        <loc>https://dumbarr.com/deployment/synology/</loc>
+      </url>
+      <url>
         <loc>https://dumbarr.com/deployment/truenas/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/deployment/dockge/</loc>
+        <loc>https://dumbarr.com/deployment/unraid/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/api/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/api/auth/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/api/health/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/api/process/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/api/config/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/api/logs/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/api/metrics/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/api/media-library-protection/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/api/notifications/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/api/ai/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/api/seerr-sync/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/api/websocket/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/api/websocket_logs/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/reference/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/reference/ports/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/reference/environment-variables/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/reference/config-schema/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/reference/instances/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/reference/core-service/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/faq/general/</loc>
+        <loc>https://dumbarr.com/deployment/wsl/</loc>
       </url>
       <url>
         <loc>https://dumbarr.com/faq/authentication/</loc>
@@ -338,6 +122,9 @@
       </url>
       <url>
         <loc>https://dumbarr.com/faq/dumb/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/faq/general/</loc>
       </url>
       <url>
         <loc>https://dumbarr.com/faq/neutarr/</loc>
@@ -370,12 +157,240 @@
         <loc>https://dumbarr.com/faq/zurg/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/changelog/</loc>
+        <loc>https://dumbarr.com/features/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/contributing/</loc>
+        <loc>https://dumbarr.com/features/ai-assistant/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/about/</loc>
+        <loc>https://dumbarr.com/features/arr-postgres-migration/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/features/authentication/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/features/auto-restart/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/features/auto-update/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/features/configuration/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/features/embedded-ui/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/features/ffprobe-monitor/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/features/install-cache/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/features/media-library-protection/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/features/metrics/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/features/notifications/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/features/rclone-optimizer/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/features/seerr-sync/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/features/service-reset/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/features/startup-lifecycle/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/features/symlinks/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/features/usage/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/frontend/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/frontend/dashboard/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/frontend/metrics/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/frontend/onboarding/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/frontend/service-pages/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/frontend/settings/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/getting-started/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/getting-started/installation/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/reference/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/reference/config-schema/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/reference/core-service/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/reference/doc-versions/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/reference/environment-variables/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/reference/instances/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/reference/ports/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/core/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/core/altmount/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/core/cli-debrid/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/core/decypharr/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/core/emby/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/core/infinidysk-installation/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/core/infinidysk-migration/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/core/infinidysk-postgres/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/core/infinidysk-troubleshooting/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/core/infinidysk/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/core/jellyfin/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/core/lidarr/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/core/neutarr/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/core/nzbdav/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/core/plex-media-server/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/core/profilarr/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/core/prowlarr/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/core/radarr/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/core/riven-backend/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/core/seerr/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/core/sonarr/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/core/whisparr/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/dependent/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/dependent/cli-battery/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/dependent/phalanx-db/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/dependent/postgres/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/dependent/rclone/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/dependent/zurg/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/dumb/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/dumb/api/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/dumb/dumb-frontend/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/optional/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/optional/aiostreams/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/optional/authelia/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/optional/bazarr/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/optional/cloudflared/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/optional/maintainerr/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/optional/mediastorm/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/optional/pgadmin/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/optional/pulsarr/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/optional/riven-frontend/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/optional/tautulli/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/optional/traefik-proxy-admin/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/optional/zilean/</loc>
       </url>
 </urlset>
