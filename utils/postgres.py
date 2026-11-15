@@ -1,5 +1,10 @@
 from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
+from utils.pgadmin_launch import (
+    PGADMIN_VENV,
+    pgadmin_command_template,
+    pgadmin_launch_command,
+)
 import psycopg2, time, os, subprocess, json, glob, shlex, signal
 from psycopg2 import sql
 from time import sleep
@@ -562,7 +567,7 @@ def start_pgadmin(
     pgadmin_default_server,
 ):
     logger.info("Starting pgAdmin process with PostgreSQL database...")
-    pgadmin_venv = "/pgadmin/venv"
+    pgadmin_venv = PGADMIN_VENV
 
     try:
         config_file = create_pgadmin_config(
@@ -585,14 +590,17 @@ def start_pgadmin(
         env["PATH"] = f"{pgadmin_venv}/bin:" + env["PATH"]
         env["VIRTUAL_ENV"] = pgadmin_venv
 
-        pgadmin_command = f"{pgadmin_venv}/bin/python3 /pgadmin/venv/lib/python*/site-packages/pgadmin4/pgAdmin4.py"
-        # set the command in the config memory
-        config.set("pgadmin", "command", pgadmin_command)
+        # Keep the portable managed template in configuration. Resolve its
+        # one installed web entrypoint into a separate argv copy for every
+        # launch, including this initial setup, without requiring a shell.
+        pgadmin_template = pgadmin_command_template(pgadmin_venv)
+        pgadmin_command = pgadmin_launch_command(pgadmin_template, pgadmin_venv)
+        config.set("pgadmin", "command", shlex.join(pgadmin_template))
 
         success, error = process_handler.start_process(
             pgadmin_process_name,
             pgadmin_config_dir,
-            ["sh", "-c", f"exec {pgadmin_command}"],
+            pgadmin_command,
             env=env,
         )
         if not success:

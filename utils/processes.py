@@ -546,9 +546,9 @@ class ProcessHandler:
                 key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
                 config = CONFIG_MANAGER.get_instance(instance_name, key)
                 config_for_wait = config
-                if key == "postgres":
-                    # Initial setup supplies an expanded command explicitly.
-                    # Later name-only starts must resolve the saved template,
+                if key in {"postgres", "pgadmin"}:
+                    # Initial setup supplies a prepared command explicitly.
+                    # Later name-only starts resolve the saved managed template,
                     # while retaining any explicit command or working directory.
                     command = command or config.get("command")
                     config_dir = config_dir or config.get("config_dir")
@@ -569,6 +569,11 @@ class ProcessHandler:
                 command = postgres_launch_command(
                     command, config_dir, config_for_wait.get("config_file")
                 )
+
+            elif key == "pgadmin":
+                from utils.pgadmin_launch import pgadmin_launch_command
+
+                command = pgadmin_launch_command(command)
 
             if key == "rclone" and suppress_rclone(
                 (CONFIG_MANAGER.get("infinidysk") or {}), config_for_wait

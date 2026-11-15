@@ -265,6 +265,11 @@ class PostgresStartupSafetyTests(unittest.TestCase):
                 return_value="/tmp/config_local.py",
             ),
             patch.object(postgres_utils.config, "set"),
+            patch.object(
+                postgres_utils,
+                "pgadmin_launch_command",
+                return_value=["/reserved/python3", "/reserved/pgAdmin4.py"],
+            ),
             patch.dict(os.environ, {}, clear=False),
         ):
             success, error = start_pgadmin(
