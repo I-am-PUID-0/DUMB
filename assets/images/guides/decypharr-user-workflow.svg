@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="952" viewBox="0 0 480 952" role="img" aria-labelledby="title description">
+  <title id="title">Decypharr: first playback</title>
+  <desc id="description">Choose Decypharr in DUMB onboarding. Select Debrid, Usenet, or both and enter the credentials for the selected providers. Open Decypharr, review the mount choice, test selected Arr clients and library folders, then confirm a real import and playback.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M1 1 L8 5 L1 9" fill="none" stroke="#75dce9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></marker>
+  </defs>
+  <style>
+    text { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #f3f9fc; }
+    .title { font-size: 28px; font-weight: 750; letter-spacing: -.4px; }
+    .subtitle { font-size: 20px; fill: #c0d6e3; }
+    .label { font-size: 28px; font-weight: 700; }
+    .body { font-size: 24px; fill: #d0e2ec; }
+    .small { font-size: 20px; fill: #c0d6e3; }
+    .number { font-size: 22px; font-weight: 800; fill: #132e41; }
+    .arrow { fill: none; stroke: #75dce9; stroke-width: 2.5; marker-end: url(#arrow); }
+    .panel { fill: #203d52; stroke: #42667f; stroke-width: 1.5; }
+    .choice { fill: #18394a; stroke: #75dce9; stroke-width: 1.5; }
+  </style>
+  <rect x="1" y="1" width="478" height="950" rx="24" fill="#142c3f" stroke="#44667d" stroke-width="1.5"/>
+  <text x="28" y="44" class="title">Decypharr: first playback</text>
+  <text x="28" y="76" class="subtitle">Choose the providers you actually use</text>
+  <rect x="24" y="112" width="432" height="100" rx="16" class="panel"/>
+  <circle cx="56" cy="146" r="17" fill="#a8eaf0"/>
+  <text x="56" y="154" class="number" text-anchor="middle">1</text>
+  <text x="86" y="154" class="label">Choose Decypharr</text>
+  <text x="44" y="190" class="body">In DUMB Onboarding</text>
+  <text x="28" y="253" class="label">2. Choose one or both</text>
+  <path d="M240 217 V225" class="arrow"/>
+  <path d="M240 273 H125 V292" class="arrow"/>
+  <path d="M240 273 H355 V292" class="arrow"/>
+  <rect x="24" y="300" width="202" height="104" rx="16" class="choice"/>
+  <rect x="254" y="300" width="202" height="104" rx="16" class="choice"/>
+  <text x="125" y="340" class="label" text-anchor="middle">Debrid</text>
+  <text x="125" y="378" class="body" text-anchor="middle">Provider key</text>
+  <text x="355" y="340" class="label" text-anchor="middle">Usenet</text>
+  <text x="355" y="378" class="body" text-anchor="middle">Account</text>
+  <path d="M125 409 V430 H240 V451" class="arrow"/>
+  <path d="M355 409 V430 H240" fill="none" stroke="#75dce9" stroke-width="2.5"/>
+  <rect x="24" y="458" width="432" height="100" rx="16" class="panel"/>
+  <circle cx="56" cy="492" r="17" fill="#a8eaf0"/>
+  <text x="56" y="500" class="number" text-anchor="middle">3</text>
+  <text x="86" y="500" class="label">Open Decypharr</text>
+  <text x="44" y="536" class="body">Review the chosen mount mode</text>
+  <path d="M240 563 V583" class="arrow"/>
+  <rect x="24" y="590" width="432" height="132" rx="16" class="panel"/>
+  <circle cx="56" cy="624" r="17" fill="#a8eaf0"/>
+  <text x="56" y="632" class="number" text-anchor="middle">4</text>
+  <text x="86" y="632" class="label">Test the Arr clients</text>
+  <text x="44" y="668" class="body">Check each chosen connection</text>
+  <text x="44" y="700" class="body">Choose the library folders</text>
+  <path d="M240 727 V747" class="arrow"/>
+  <rect x="24" y="754" width="432" height="132" rx="16" class="panel"/>
+  <circle cx="56" cy="788" r="17" fill="#a8eaf0"/>
+  <text x="56" y="796" class="number" text-anchor="middle">5</text>
+  <text x="86" y="796" class="label">Import, then play</text>
+  <text x="44" y="832" class="body">Test one intended item</text>
+  <text x="44" y="864" class="body">Confirm it plays in your server</text>
+  <text x="240" y="922" class="small" text-anchor="middle">Use only the credentials you need.</text>
+</svg>

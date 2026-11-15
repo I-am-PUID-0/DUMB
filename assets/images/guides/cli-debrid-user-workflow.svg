@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="932" viewBox="0 0 480 932" role="img" aria-labelledby="title description">
+  <title id="title">CLI Debrid: first playback</title>
+  <desc id="description">Choose CLI Debrid in DUMB onboarding and open its embedded UI. Authorize the selected provider and accounts. Review both content sources and scrapers, then check the selected library folder and test playback of one intended item. CLI Debrid is the application name; these are web interface steps.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M1 1 L8 5 L1 9" fill="none" stroke="#75dce9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></marker>
+  </defs>
+  <style>
+    text { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #f3f9fc; }
+    .title { font-size: 28px; font-weight: 750; letter-spacing: -.4px; }
+    .subtitle { font-size: 20px; fill: #c0d6e3; }
+    .label { font-size: 28px; font-weight: 700; }
+    .body { font-size: 24px; fill: #d0e2ec; }
+    .small { font-size: 20px; fill: #c0d6e3; }
+    .number { font-size: 22px; font-weight: 800; fill: #132e41; }
+    .arrow { fill: none; stroke: #75dce9; stroke-width: 2.5; marker-end: url(#arrow); }
+    .panel { fill: #203d52; stroke: #42667f; stroke-width: 1.5; }
+    .choice { fill: #18394a; stroke: #75dce9; stroke-width: 1.5; }
+  </style>
+  <rect x="1" y="1" width="478" height="930" rx="24" fill="#142c3f" stroke="#44667d" stroke-width="1.5"/>
+  <text x="28" y="44" class="title">CLI Debrid: first playback</text>
+  <text x="28" y="76" class="subtitle">Use its web interface after onboarding</text>
+  <rect x="24" y="112" width="432" height="100" rx="16" class="panel"/>
+  <circle cx="56" cy="146" r="17" fill="#a8eaf0"/>
+  <text x="56" y="154" class="number" text-anchor="middle">1</text>
+  <text x="86" y="154" class="label">Choose CLI Debrid</text>
+  <text x="44" y="190" class="body">In DUMB Onboarding</text>
+  <path d="M240 217 V237" class="arrow"/>
+  <rect x="24" y="244" width="432" height="100" rx="16" class="panel"/>
+  <circle cx="56" cy="278" r="17" fill="#a8eaf0"/>
+  <text x="56" y="286" class="number" text-anchor="middle">2</text>
+  <text x="86" y="286" class="label">Open CLI Debrid</text>
+  <text x="44" y="322" class="body">Service page → Embedded UI</text>
+  <path d="M240 349 V369" class="arrow"/>
+  <rect x="24" y="376" width="432" height="100" rx="16" class="panel"/>
+  <circle cx="56" cy="410" r="17" fill="#a8eaf0"/>
+  <text x="56" y="418" class="number" text-anchor="middle">3</text>
+  <text x="86" y="418" class="label">Authorize accounts</text>
+  <text x="44" y="454" class="body">Connect the provider you use</text>
+  <path d="M240 481 V501" class="arrow"/>
+  <text x="28" y="548" class="label">4. Content and scrapers</text>
+  <rect x="24" y="576" width="202" height="104" rx="16" class="choice"/>
+  <rect x="254" y="576" width="202" height="104" rx="16" class="choice"/>
+  <text x="125" y="616" class="label" text-anchor="middle">Content</text>
+  <text x="125" y="654" class="body" text-anchor="middle">Sources</text>
+  <text x="355" y="616" class="label" text-anchor="middle">Scrapers</text>
+  <text x="355" y="654" class="body" text-anchor="middle">Search rules</text>
+  <path d="M240 564 H125 V568" class="arrow"/>
+  <path d="M240 564 H355 V568" class="arrow"/>
+  <path d="M125 685 V706 H240 V727" class="arrow"/>
+  <path d="M355 685 V706 H240" fill="none" stroke="#75dce9" stroke-width="2.5"/>
+  <rect x="24" y="734" width="432" height="132" rx="16" class="panel"/>
+  <circle cx="56" cy="768" r="17" fill="#a8eaf0"/>
+  <text x="56" y="776" class="number" text-anchor="middle">5</text>
+  <text x="86" y="776" class="label">Check your library</text>
+  <text x="44" y="812" class="body">Use the chosen library folder</text>
+  <text x="44" y="844" class="body">Test one item and play it</text>
+  <text x="240" y="902" class="small" text-anchor="middle">Start with one small test item.</text>
+</svg>

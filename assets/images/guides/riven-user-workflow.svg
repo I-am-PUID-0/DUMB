@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="902" viewBox="0 0 480 902" role="img" aria-labelledby="title description">
+  <title id="title">Riven: first playback</title>
+  <desc id="description">Select Riven Backend and Riven Frontend in DUMB onboarding. Open Riven Frontend Settings and review provider, Content and Scrapers. Enable the intended content source, configure the media server and library settings, and deliberately choose updater behavior. Test one request and playback.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M1 1 L8 5 L1 9" fill="none" stroke="#75dce9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></marker>
+  </defs>
+  <style>
+    text { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #f3f9fc; }
+    .title { font-size: 28px; font-weight: 750; letter-spacing: -.4px; }
+    .subtitle { font-size: 20px; fill: #c0d6e3; }
+    .label { font-size: 28px; font-weight: 700; }
+    .body { font-size: 24px; fill: #d0e2ec; }
+    .small { font-size: 20px; fill: #c0d6e3; }
+    .number { font-size: 22px; font-weight: 800; fill: #132e41; }
+    .arrow { fill: none; stroke: #75dce9; stroke-width: 2.5; marker-end: url(#arrow); }
+    .panel { fill: #203d52; stroke: #42667f; stroke-width: 1.5; }
+    .choice { fill: #18394a; stroke: #75dce9; stroke-width: 1.5; }
+  </style>
+  <rect x="1" y="1" width="478" height="900" rx="24" fill="#142c3f" stroke="#44667d" stroke-width="1.5"/>
+  <text x="28" y="44" class="title">Riven: first playback</text>
+  <text x="28" y="76" class="subtitle">Configure the app in Riven Frontend</text>
+  <rect x="24" y="112" width="432" height="100" rx="16" class="panel"/>
+  <circle cx="56" cy="146" r="17" fill="#a8eaf0"/>
+  <text x="56" y="154" class="number" text-anchor="middle">1</text>
+  <text x="86" y="154" class="label">Select Riven services</text>
+  <text x="44" y="190" class="body">Choose Riven + Riven Frontend</text>
+  <path d="M240 217 V237" class="arrow"/>
+  <rect x="24" y="244" width="432" height="100" rx="16" class="panel"/>
+  <circle cx="56" cy="278" r="17" fill="#a8eaf0"/>
+  <text x="56" y="286" class="number" text-anchor="middle">2</text>
+  <text x="86" y="286" class="label">Open Riven Frontend</text>
+  <text x="44" y="322" class="body">Go to Settings</text>
+  <path d="M240 349 V369" class="arrow"/>
+  <rect x="24" y="376" width="432" height="132" rx="16" class="panel"/>
+  <circle cx="56" cy="410" r="17" fill="#a8eaf0"/>
+  <text x="56" y="418" class="number" text-anchor="middle">3</text>
+  <text x="86" y="418" class="label">Choose content</text>
+  <text x="44" y="454" class="body">Provider, Content and Scrapers</text>
+  <text x="44" y="486" class="body">Enable a content source</text>
+  <path d="M240 513 V533" class="arrow"/>
+  <rect x="24" y="540" width="432" height="132" rx="16" class="panel"/>
+  <circle cx="56" cy="574" r="17" fill="#a8eaf0"/>
+  <text x="56" y="582" class="number" text-anchor="middle">4</text>
+  <text x="86" y="582" class="label">Media server setup</text>
+  <text x="44" y="618" class="body">Review its library settings</text>
+  <text x="44" y="650" class="body">Choose updater behavior</text>
+  <path d="M240 677 V697" class="arrow"/>
+  <rect x="24" y="704" width="432" height="132" rx="16" class="panel"/>
+  <circle cx="56" cy="738" r="17" fill="#a8eaf0"/>
+  <text x="56" y="746" class="number" text-anchor="middle">5</text>
+  <text x="86" y="746" class="label">Request, then play</text>
+  <text x="44" y="782" class="body">Try one item from your source</text>
+  <text x="44" y="814" class="body">Confirm it appears and plays</text>
+  <text x="240" y="872" class="small" text-anchor="middle">Choose updater behavior yourself.</text>
+</svg>

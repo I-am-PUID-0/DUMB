@@ -39,8 +39,8 @@
       }
       button.querySelector(".docs-geek-state").textContent = enabled ? "On" : "Off";
       button.setAttribute("aria-pressed", String(enabled));
-      button.setAttribute("aria-label", `Geek mode is ${enabled ? "on" : "off"}. ${enabled ? "Hide" : "Show"} technical details.`);
-      button.title = enabled ? "Collapse technical details in guides" : "Expand technical details in guides";
+      button.setAttribute("aria-label", `Geek mode is ${enabled ? "on" : "off"}. ${enabled ? "Hide" : "Show"} technical explanations and alternative methods.`);
+      button.title = enabled ? "Collapse optional explanations and alternative methods" : "Show internals and alternative API, CLI, or configuration methods";
     });
     details.forEach(detail => {
       const summary = detail.querySelector("summary");
@@ -67,8 +67,8 @@
         else article.prepend(status);
       }
       status.querySelector("span").textContent = details.length
-        ? `${details.length} technical ${details.length === 1 ? "section" : "sections"} on this page, highlighted in green. You can open or close each section.`
-        : "This page has no hidden technical sections. Technical guides remain available in the Reference and Developers menus.";
+        ? `${details.length} optional Geek ${details.length === 1 ? "section" : "sections"}, highlighted in green: internals and alternative methods. The main frontend instructions stay visible in either mode.`
+        : "This page has no optional Geek sections. The main guide stays available in either mode; Geek reference contains technical explanations and other methods.";
       status.hidden = !enabled;
     }
     showHashTarget();
@@ -103,6 +103,11 @@
   }
 
   function initialize() {
+    // The header survives instant navigation; keep home links on their original
+    // origin and channel when the current page changes directory depth.
+    document.querySelectorAll("[data-docs-home]").forEach(link => {
+      link.href = new URL(link.getAttribute("href"), location.href).href;
+    });
     const tools = document.querySelector(".docs-tools");
     if (tools && !tools.dataset.initialized) {
       // The shared header survives instant navigation; freeze its site root

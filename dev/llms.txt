@@ -85,7 +85,7 @@ DUMB coordinates media services. Match instructions to the installed backend ver
 - [Symlink Operations](https://dumbarr.com/dev/features/symlinks/)
 - [Usage](https://dumbarr.com/dev/features/usage/)
 - [Dashboard](https://dumbarr.com/dev/frontend/dashboard/)
-- [Frontend Overview](https://dumbarr.com/dev/frontend/)
+- [Use DUMB](https://dumbarr.com/dev/frontend/)
 - [Metrics](https://dumbarr.com/dev/frontend/metrics/)
 - [Onboarding Wizard](https://dumbarr.com/dev/frontend/onboarding/)
 - [Service pages](https://dumbarr.com/dev/frontend/service-pages/)

@@ -50,7 +50,13 @@
 .md-header { background: #142c3f; color: #fff; }
 .md-header .md-icon, .md-header .md-search__button { color: #f1f7fa; }
 .md-header .md-search__button { background-color: #ffffff0d; }
-.md-header__title { margin-right: .4rem; }
+/* Keep the home links outside the theme's rotating page-title topics. */
+.md-header .md-header__button.md-logo { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.docs-brand { display: inline-flex; align-items: center; flex-shrink: 0; min-height: 2.2rem; padding: .15rem .2rem; color: #fff; font-size: .95rem; font-weight: 750; letter-spacing: -.025em; white-space: nowrap; }
+.docs-brand:hover { color: #a4ece7; }
+.md-header__title { min-width: 0; margin-right: .4rem; }
+.md-header__title .docs-header-spacer { display: none; }
+.md-header__title [data-md-component="header-topic"] { position: static; z-index: auto; opacity: 1; transform: none; pointer-events: none; font-size: .76rem; font-weight: 400; color: #deebf3; }
 .md-header__source { width: auto; margin-left: .5rem; }
 .md-tabs { background: #142c3f; }
 .md-tabs__link { color: #deebf3; opacity: 1; }
@@ -64,7 +70,7 @@
   background: transparent; color: #fff; cursor: pointer; font: inherit;
   min-height: 1.85rem; white-space: nowrap;
 }
-.docs-version summary { display: flex; align-items: center; gap: .4rem; list-style: none; }
+.docs-version summary { box-sizing: border-box; display: flex; align-items: center; gap: .4rem; list-style: none; }
 .docs-version summary::-webkit-details-marker { display: none; }
 .docs-version summary::after { content: "⌄"; font-size: .85rem; }
 .docs-tools[data-docs-channel="release"] .docs-version summary { border-color: #86b9c5; background: #153a46; }
@@ -179,6 +185,9 @@
 .home-next p { font-size: .76rem; }
 .home-reference { border-top: 1px solid var(--docs-border); padding: .7rem 0; color: var(--md-default-fg-color--light); }
 .home-reference p { font-size: .7rem; max-width: none; }
+.docs-community-strip { margin-top: 1.5rem; padding: .85rem 1rem; border-top: 1px solid var(--docs-border); background: var(--docs-surface); }
+.docs-community-strip nav { display: flex; flex-wrap: wrap; justify-content: center; gap: .6rem 1.6rem; font-size: .7rem; }
+.docs-community-strip a { color: var(--docs-accent); text-decoration: underline; text-underline-offset: .15em; }
 .docs-image-button { display: block; padding: 0; border: 0; background: none; cursor: zoom-in; color: inherit; text-align: inherit; }
 .docs-image-button img { display: block; }
 .docs-lightbox { padding: .6rem; max-width: 96vw; max-height: 96vh; background: var(--md-default-bg-color); border: 1px solid var(--docs-border); border-radius: .5rem; }
@@ -196,8 +205,10 @@
   .md-typeset .home-paths { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 36em) {
-  .md-header__topic { display: none; }
-  .md-header__title { flex-grow: 0; margin: 0; }
+  .md-header__inner { position: relative; }
+  .md-header__title { display: none; }
+  .md-header .md-header__button:not([hidden]) { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 2.2rem; height: 2.2rem; padding: .4rem; margin: 0; }
+  .docs-brand { min-height: 2.2rem; padding: .1rem .15rem; font-size: .85rem; }
   .docs-tools { margin-left: auto; gap: .3rem; }
   .docs-version summary, .docs-geek { font-size: .6rem; }
   .docs-geek-button-label { display: none; }
@@ -207,11 +218,21 @@
   .docs-version summary { padding: .38rem; }
   .docs-version-label, .docs-version-number { display: none; }
   .docs-version-short { display: inline; }
-  .docs-version-menu { position: fixed; top: 3rem; left: .5rem; right: .5rem; min-width: 0; }
+  .docs-version { position: static; }
+  .docs-version-menu { position: absolute; top: calc(100% + .3rem); left: .4rem; right: .4rem; min-width: 0; }
   .md-header__source { display: none; }
   .home-intro h1 { font-size: 2.15rem; }
   .md-typeset .home-paths { grid-template-columns: 1fr; }
   .home-next { padding: 1rem; }
   .docs-dev-section { padding: .65rem .7rem; }
+}
+/* A second control row preserves comfortable touch targets on narrow phones. */
+@media (max-width: 28em) {
+  .md-header__inner { flex-wrap: wrap; column-gap: .15rem; padding-top: .15rem; padding-bottom: .3rem; }
+  .md-header__button[for="__drawer"] { order: -3; }
+  .md-header .md-header__button.md-logo { order: -2; }
+  .docs-brand { order: -1; flex-grow: 1; }
+  .docs-tools { order: 10; width: 100%; justify-content: center; margin: 0; gap: .6rem; padding: .15rem 0 .1rem; }
+  .docs-version summary, .docs-geek { min-height: 2.2rem; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
