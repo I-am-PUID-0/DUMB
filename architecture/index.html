@@ -57,7 +57,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/css/main.css">
+      <link rel="stylesheet" href="../assets/css/main.57a1b4346c32.css">
     
     <script>__md_scope=new URL("..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -5923,6 +5923,18 @@
               <article class="md-content__inner md-typeset">
                 <a id="__skip" tabindex="-1"></a>
                 
+  
+    <aside class="docs-channel-context" data-channel="release" aria-label="Documentation channel">
+      <span class="docs-channel-badge" data-channel="release">
+        Released docs
+      </span>
+      <strong>DUMB 2.23.0</strong>
+      
+        <span>For the latest stable release.</span>
+      
+    </aside>
+  
+  
                   
 
   
@@ -5932,7 +5944,13 @@
 <h1 id="architecture-overview">Architecture overview<a class="headerlink" href="#architecture-overview" title="Permanent link">&para;</a></h1>
 <p>This section explains how DUMB is structured, how services are orchestrated, and how the frontend, backend, and proxy layers interact.</p>
 <h2 id="system-overview">System overview<a class="headerlink" href="#system-overview" title="Permanent link">&para;</a></h2>
+<figure class="docs-visual">
+<p><img alt="Library workflow roles: optional requests or searches, workflow apps, files and library paths, and the media server." src="../assets/images/guides/library-workflow.svg" /></p>
+<figcaption class="docs-visual-caption">For a library workflow, these are roles rather than four required services. Your chosen integration determines which apps and connections you need.</figcaption>
+</figure>
 <p>DUMB bundles a FastAPI backend, a Nuxt 4 frontend, a Traefik access layer, and a set of managed services (core, dependent, and optional). The backend owns configuration, process lifecycle, setup hooks, dependency ordering, health checks, update automation, and Traefik route generation. The frontend surfaces onboarding, status, logs, metrics, configuration controls, and embedded service UIs.</p>
+<details class="geek-details">
+<summary>Technical details: API, process and proxy layers</summary>
 <pre class="mermaid"><code>flowchart TD
     U([User browser])
     FE[DUMB frontend]
@@ -5956,6 +5974,7 @@
     TPA -. HTTP provider .-&gt; TR
     CFD -. tunnel ingress .-&gt; TR
 </code></pre>
+</details>
 <h2 id="core-building-blocks">Core building blocks<a class="headerlink" href="#core-building-blocks" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -6004,6 +6023,10 @@
 </tbody>
 </table>
 <h2 id="storage-and-mounts">Storage and mounts<a class="headerlink" href="#storage-and-mounts" title="Permanent link">&para;</a></h2>
+<figure class="docs-visual">
+<p><img alt="Host folders map to config, data, log and media paths inside DUMB. External apps need separate access to library paths and symlink targets." src="../assets/images/guides/storage-boundaries.svg" /></p>
+<figcaption class="docs-visual-caption">Bind mounts preserve local files when the container is recreated. Provider-backed media can remain remote; its mount must be available again. External apps need their own path and mount setup. A bind mount is not a backup.</figcaption>
+</figure>
 <p>The maintained deployment persists four container paths: <code>/config</code>, <code>/log</code>, <code>/data</code>, and <code>/mnt/debrid</code>. Services still use their native internal paths (for example <code>/riven/backend/data</code>, <code>/decypharr</code>, <code>/postgres_data</code>, or <code>/altmount</code>), but DUMB maps those paths into service-specific subdirectories below the mounted <code>/data</code> root. Media access is provided through <code>/mnt/debrid</code>, including mounts and curated symlink libraries.</p>
 <div class="admonition tip">
 <p class="admonition-title">Mount propagation</p>
@@ -6046,6 +6069,7 @@
 
 
                 
+
               </article>
             </div>
           
@@ -6173,9 +6197,9 @@
     
       <script src="../assets/javascripts/bundle.3cb411a8.min.js"></script>
       
-        <script src="../assets/js/zoom.js"></script>
+        <script src="../assets/js/zoom.aa9f2a8eef1d.js"></script>
       
-        <script src="../assets/js/docs.js"></script>
+        <script src="../assets/js/docs.21624ebdff7a.js"></script>
       
     
   </body>

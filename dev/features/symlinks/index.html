@@ -57,7 +57,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.css">
+      <link rel="stylesheet" href="../../assets/css/main.57a1b4346c32.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6537,6 +6537,18 @@
               <article class="md-content__inner md-typeset">
                 <a id="__skip" tabindex="-1"></a>
                 
+  
+    <aside class="docs-channel-context" data-channel="dev" aria-label="Documentation channel">
+      <span class="docs-channel-badge" data-channel="dev">
+        Development docs
+      </span>
+      <strong>DUMB 2.24.0</strong>
+      
+        <span>Dev labels mark additions beyond the released 2.23.0 docs.</span>
+      
+    </aside>
+  
+  
                   
 
   
@@ -6765,6 +6777,8 @@ unless you explicitly select and complete the guarded full namespace migration.<
 </ul>
 </li>
 </ul>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <h3 id="registered-backup-destinations">Registered backup destinations<a class="headerlink" href="#registered-backup-destinations" title="Permanent link">&para;</a></h3>
 <p>Use the <strong>Backup destination</strong> selection in Snapshot backup or the schedule
 section to choose <a href="../backup-storage/">registered local/NAS archive storage</a>.
@@ -6778,6 +6792,7 @@ recorded checksum and, when a service context is supplied, its process identity.
 Select an older registered destination explicitly when restoring one of its
 retained snapshots after changing the schedule's destination. A missing or
 changed mount reports an error instead of writing a local fallback.</p>
+</div>
 <h3 id="standalone-backup">Standalone backup<a class="headerlink" href="#standalone-backup" title="Permanent link">&para;</a></h3>
 <p>Create snapshot manifest:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
@@ -6817,7 +6832,7 @@ changed mount reports an error instead of writing a local fallback.</p>
 <p><code>symlink_backup_retention_count</code></p>
 </li>
 <li>
-<p><code>backup_destination_id</code> (explicit registered destination; empty keeps the existing path)</p>
+<p><span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> <code>backup_destination_id</code> (explicit registered destination; empty keeps the existing path)</p>
 </li>
 </ul>
 <h3 id="retention">Retention<a class="headerlink" href="#retention" title="Permanent link">&para;</a></h3>
@@ -6828,7 +6843,7 @@ changed mount reports an error instead of writing a local fallback.</p>
 <p>Values <code>&gt; 0</code> keep newest <code>N</code>, pruning older files matching the service template</p>
 </li>
 <li>
-<p>With registered storage, pruning applies only to that process's scheduled snapshots. Manual managed snapshots remain retained.</p>
+<p><span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> With registered storage, pruning applies only to that process's scheduled snapshots. Manual managed snapshots remain retained.</p>
 </li>
 </ul>
 <h3 id="default-cadence">Default cadence<a class="headerlink" href="#default-cadence" title="Permanent link">&para;</a></h3>
@@ -7142,6 +7157,7 @@ changed mount reports an error instead of writing a local fallback.</p>
 
 
                 
+
               </article>
             </div>
           
@@ -7269,9 +7285,9 @@ changed mount reports an error instead of writing a local fallback.</p>
     
       <script src="../../assets/javascripts/bundle.3cb411a8.min.js"></script>
       
-        <script src="../../assets/js/zoom.js"></script>
+        <script src="../../assets/js/zoom.aa9f2a8eef1d.js"></script>
       
-        <script src="../../assets/js/docs.js"></script>
+        <script src="../../assets/js/docs.21624ebdff7a.js"></script>
       
     
   </body>

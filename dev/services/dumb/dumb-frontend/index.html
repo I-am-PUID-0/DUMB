@@ -57,7 +57,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/css/main.css">
+      <link rel="stylesheet" href="../../../assets/css/main.57a1b4346c32.css">
     
     <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6416,6 +6416,18 @@
               <article class="md-content__inner md-typeset">
                 <a id="__skip" tabindex="-1"></a>
                 
+  
+    <aside class="docs-channel-context" data-channel="dev" aria-label="Documentation channel">
+      <span class="docs-channel-badge" data-channel="dev">
+        Development docs
+      </span>
+      <strong>DUMB 2.24.0</strong>
+      
+        <span>Dev labels mark additions beyond the released 2.23.0 docs.</span>
+      
+    </aside>
+  
+  
                   
 
   
@@ -6448,6 +6460,8 @@ and metrics in a single interface.</p>
 <p>The frontend source includes a dependency-free Node check in its install and build commands, so those commands can detect an incompatible runtime even on an older DUMB backend. The check reads that source's own <code>package.json</code>; with strict engine validation, pnpm may reject the requirement first with an expected/actual version error. Neither check upgrades Node.</p>
 <p>Production starts the compiled Nitro server with <code>node .output/server/index.mjs</code>, which does not run the source check. The version floor above applies to dependency installation and source builds; it does not establish the minimum runtime for every previously compiled frontend.</p>
 </details>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <details class="geek-details">
 <summary>Technical details: frontend version synchronization</summary>
 <h2 id="frontend-development-versions">Frontend development versions<a class="headerlink" href="#frontend-development-versions" title="Permanent link">&para;</a></h2>
@@ -6480,6 +6494,9 @@ with its <strong>Dev build</strong> badge and branch/SHA when the installed sour
 matches that package and compiled output. Backend and frontend build identities
 remain separate.</p>
 </details>
+</div>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <details class="geek-details">
 <summary>Technical details: development image builds</summary>
 <h2 id="build-a-development-image-with-a-chosen-frontend">Build a development image with a chosen frontend<a class="headerlink" href="#build-a-development-image-with-a-chosen-frontend" title="Permanent link">&para;</a></h2>
@@ -6557,6 +6574,7 @@ SHA and install that configured target using the
 the frontend using the image's existing Node runtime and leaves the backend
 image unchanged.</p>
 </details>
+</div>
 <details class="geek-details">
 <summary>Technical details: configuration reference</summary>
 <h2 id="configuration-settings-in-dumb_configjson">Configuration Settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">&para;</a></h2>
@@ -6702,6 +6720,7 @@ solely from the interrupted browser request.</p>
 
 
                 
+
               </article>
             </div>
           
@@ -6829,9 +6848,9 @@ solely from the interrupted browser request.</p>
     
       <script src="../../../assets/javascripts/bundle.3cb411a8.min.js"></script>
       
-        <script src="../../../assets/js/zoom.js"></script>
+        <script src="../../../assets/js/zoom.aa9f2a8eef1d.js"></script>
       
-        <script src="../../../assets/js/docs.js"></script>
+        <script src="../../../assets/js/docs.21624ebdff7a.js"></script>
       
     
   </body>

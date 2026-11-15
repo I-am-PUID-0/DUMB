@@ -57,7 +57,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/css/main.css">
+      <link rel="stylesheet" href="../../../assets/css/main.57a1b4346c32.css">
     
     <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6468,6 +6468,18 @@
               <article class="md-content__inner md-typeset">
                 <a id="__skip" tabindex="-1"></a>
                 
+  
+    <aside class="docs-channel-context" data-channel="dev" aria-label="Documentation channel">
+      <span class="docs-channel-badge" data-channel="dev">
+        Development docs
+      </span>
+      <strong>DUMB 2.24.0</strong>
+      
+        <span>Dev labels mark additions beyond the released 2.23.0 docs.</span>
+      
+    </aside>
+  
+  
                   
 
   
@@ -6476,9 +6488,12 @@
 
 <h1 id="infinidysk-core-service">InfiniDysk (Core Service)<a class="headerlink" href="#infinidysk-core-service" title="Permanent link">&para;</a></h1>
 <p><strong>InfiniDysk</strong> is a combined backend + frontend WebDAV service for <strong>Usenet</strong> workflows. In DUMB it runs as a single service that exposes a Web UI, a WebDAV endpoint for browsing/serving content, and a backend API used for automation.</p>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>DUMB keeps InfiniDysk 1.x as the default. DUMB API 2.24.0 or newer can offer the
 separate <a href="../../../features/infinidysk-v2-migration/">InfiniDysk 2 installation and upgrade wizard</a>.
 The workflow below describes the default 1.x integration unless a section says otherwise.</p>
+</div>
 <h2 id="first-start">First start<a class="headerlink" href="#first-start" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Choose InfiniDysk as your Usenet workflow in onboarding.</li>
@@ -6487,6 +6502,8 @@ The workflow below describes the default 1.x integration unless a section says o
 <li>Verify that the mount is readable, then test an intended import and playback through your media server.</li>
 </ol>
 <p>Existing NzbDAV installations should read <a href="../infinidysk-migration/">Migration from NzbDAV</a> before changing names or paths.</p>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <h2 id="setup-checklist-and-remaining-work">Setup checklist and remaining work<a class="headerlink" href="#setup-checklist-and-remaining-work" title="Permanent link">&para;</a></h2>
 <p>Choose intended Arr instances and provider accounts in the setup checklist. Other selected Usenet clients can reference InfiniDysk's accounts with separate connection allocations. Review the shared limit, add/test indexers, verify mount access and test a real import. Runtime readiness and Arr connections are separate results.</p>
 <p>Requires the backend setup-arrangement capability. See <a href="../../../features/setup-checklist/">Setup checklist and automation</a> for retained tasks, coverage and safe retries.</p>
@@ -6496,6 +6513,7 @@ mount selection. Refresh the setup plan afterward; native account/provider,
 Arr-link and import-strategy work remains manual where no generation 2 adapter
 is advertised. Native FUSE excludes the associated rclone dependency while
 preserving the existing consumer path.</p>
+</div>
 <h2 id="workflow-diagram">Workflow diagram<a class="headerlink" href="#workflow-diagram" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>%%{ init: { "flowchart": { "curve": "basis" } } }%%
 flowchart TD
@@ -6547,11 +6565,20 @@ flowchart TD
 <td>Core Service</td>
 <td>NZB WebDAV gateway</td>
 </tr>
+<tr>
+<td><span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> Mount</td>
+<td><a href="../../dependent/rclone/">rclone</a> by default; optional native FUSE with generation 2</td>
+</tr>
+<tr>
+<td>Optional</td>
+<td>Sonarr, Radarr, Lidarr, Whisparr, Prowlarr, NeutArr</td>
+</tr>
+<tr>
+<td>Exposes UI</td>
+<td>Yes (Web UI + WebDAV)</td>
+</tr>
 </tbody>
 </table>
-<p>| Mount          | <a href="../../dependent/rclone/">rclone</a> by default; optional native FUSE with generation 2 |</p>
-<p>| Optional       | Sonarr, Radarr, Lidarr, Whisparr, Prowlarr, NeutArr      |
-| Exposes UI     | Yes (Web UI + WebDAV)                                    |</p>
 <hr />
 <h2 id="what-infinidysk-provides">What InfiniDysk provides<a class="headerlink" href="#what-infinidysk-provides" title="Permanent link">&para;</a></h2>
 <table>
@@ -6605,6 +6632,8 @@ former DUMB repository default, <code>nzbdav-dev/nzbdav</code> or <code>nzbdav/n
 follow the maintained repository automatically; intentional custom forks
 remain unchanged. User-visible identity changes remain opt-in.</p>
 </div>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <div class="admonition important">
 <p class="admonition-title">Supported InfiniDysk versions</p>
 <p><code>runtime_generation: "1"</code> remains the default. Its <code>latest</code> and <code>prerelease</code>
@@ -6619,6 +6648,7 @@ Existing data requires a guarded major migration; changing the generation
 field does not convert a database. See the
 <a href="../../../features/infinidysk-v2-migration/">upgrade guide</a> for eligibility,
 mount choices and current containment limitations.</p>
+</div>
 </div>
 <div class="admonition tip">
 <p class="admonition-title">Support the maintainer</p>
@@ -6694,6 +6724,8 @@ exposes this link through the frontend's InfiniDysk service page and
 <li><code>log_file</code>: Path for the consolidated InfiniDysk log.</li>
 <li><code>env</code>: Optional environment variables (see below).</li>
 </ul>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <h3 id="generation-2-configuration">Generation 2 configuration<a class="headerlink" href="#generation-2-configuration" title="Permanent link">&para;</a></h3>
 <p>The wizard prepares these fields after reviewing an eligible fresh installation
 or retaining the original 1.x data and recovery state:</p>
@@ -6743,6 +6775,7 @@ compatibility relay requires native <strong>Required</strong> authentication. DU
 runtime lock, preserving the saved native setting and rejecting conflicting
 mode overrides. See the <a href="../../../features/infinidysk-v2-migration/#authentication-with-the-retained-backend-port">compatibility authentication policy</a>
 before changing listener ports or native authentication.</p>
+</div>
 <h3 id="postgresql-in-infinidysk-v120">PostgreSQL in InfiniDysk v1.2.0+<a class="headerlink" href="#postgresql-in-infinidysk-v120" title="Permanent link">&para;</a></h3>
 <p>SQLite remains the default. Fresh compatible 1.x installs can select PostgreSQL for the main database; existing SQLite installs must use <strong>Database Migration</strong> and pass rehearsal before cutover. The helper stores stay local and still need filesystem backups.</p>
 <p>Read the <a href="../infinidysk-postgres/">InfiniDysk 1 PostgreSQL procedure</a> for supported schema contracts, source-version safeguards, backups, and rollback limits. Complete any NzbDAV identity or namespace migration first.</p>
@@ -6868,6 +6901,8 @@ local RC listener so WebDAV changes can invalidate rclone's VFS directory cache.
 Later InfiniDysk UI changes to the RC enablement, host, username, or password are
 preserved. A saved <code>--rc-addr</code> and <code>--dir-cache-time</code> in the rclone command are
 also retained when they remain valid.</p>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>For generation 2, the WebDAV transport uses its consolidated HTTP listener and
 native Basic login. Its mount can remain rclone or explicitly use native FUSE.
 Generation 2 does not send the 1.x rclone RC directory-refresh notifications, so
@@ -6875,6 +6910,7 @@ its rclone setup uses a shorter directory-cache policy and retains <code>--links
 <code>.rclonelink</code> handling. Native FUSE does not use rclone flags or the optimizer.
 The optimizer described below currently supports generation 1; generation 2
 needs a separately advertised and validated native adapter, even when it keeps rclone.</p>
+</div>
 <p>Default rclone mount path (if not overridden) is:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>/mnt/debrid/infinidysk
 </code></pre></div>
@@ -7042,6 +7078,7 @@ conflicts manually before restarting a single service.</p>
 
 
                 
+
               </article>
             </div>
           
@@ -7169,9 +7206,9 @@ conflicts manually before restarting a single service.</p>
     
       <script src="../../../assets/javascripts/bundle.3cb411a8.min.js"></script>
       
-        <script src="../../../assets/js/zoom.js"></script>
+        <script src="../../../assets/js/zoom.aa9f2a8eef1d.js"></script>
       
-        <script src="../../../assets/js/docs.js"></script>
+        <script src="../../../assets/js/docs.21624ebdff7a.js"></script>
       
     
   </body>

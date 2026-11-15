@@ -57,7 +57,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.css">
+      <link rel="stylesheet" href="../../assets/css/main.57a1b4346c32.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6331,6 +6331,18 @@
               <article class="md-content__inner md-typeset">
                 <a id="__skip" tabindex="-1"></a>
                 
+  
+    <aside class="docs-channel-context" data-channel="dev" aria-label="Documentation channel">
+      <span class="docs-channel-badge" data-channel="dev">
+        Development docs
+      </span>
+      <strong>DUMB 2.24.0</strong>
+      
+        <span>Dev labels mark additions beyond the released 2.23.0 docs.</span>
+      
+    </aside>
+  
+  
                   
 
   
@@ -6466,8 +6478,11 @@
 </code></pre></div>
 <p>Apply changes with <code>sudo docker compose up -d</code>. Compare bridge and host networking in <a href="../networking/">Networking and ports</a>.</p>
 <p>Do not publish <code>8000</code> for normal use. A mapping alone cannot expose its loopback listener; direct backend access also requires an intentional bind-address change and appropriate access controls.</p>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <h2 id="optional-audiobookshelf-storage">Optional Audiobookshelf storage<a class="headerlink" href="#optional-audiobookshelf-storage" title="Permanent link">&para;</a></h2>
 <p>The normal <code>/data</code> mount preserves <code>/data/audiobookshelf/config</code> and <code>/data/audiobookshelf/metadata</code>. Add separate media mounts for books and podcasts. The SQLite configuration directory must be on local storage; if <code>/data</code> is network-backed, use a separate local bind and set <code>audiobookshelf.config_dir</code> to that container path. See <a href="../../services/optional/audiobookshelf/">Audiobookshelf</a>.</p>
+</div>
 <h2 id="update-or-stop">Update or stop<a class="headerlink" href="#update-or-stop" title="Permanent link">&para;</a></h2>
 <p>To adopt a new DUMB image while preserving bind-mounted data:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>sudo<span class="w"> </span>docker<span class="w"> </span>compose<span class="w"> </span>pull
@@ -6497,6 +6512,7 @@
 
 
                 
+
               </article>
             </div>
           
@@ -6624,9 +6640,9 @@
     
       <script src="../../assets/javascripts/bundle.3cb411a8.min.js"></script>
       
-        <script src="../../assets/js/zoom.js"></script>
+        <script src="../../assets/js/zoom.aa9f2a8eef1d.js"></script>
       
-        <script src="../../assets/js/docs.js"></script>
+        <script src="../../assets/js/docs.21624ebdff7a.js"></script>
       
     
   </body>

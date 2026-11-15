@@ -57,7 +57,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.css">
+      <link rel="stylesheet" href="../../assets/css/main.57a1b4346c32.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6205,6 +6205,18 @@
               <article class="md-content__inner md-typeset">
                 <a id="__skip" tabindex="-1"></a>
                 
+  
+    <aside class="docs-channel-context" data-channel="dev" aria-label="Documentation channel">
+      <span class="docs-channel-badge" data-channel="dev">
+        Development docs
+      </span>
+      <strong>DUMB 2.24.0</strong>
+      
+        <span>Dev labels mark additions beyond the released 2.23.0 docs.</span>
+      
+    </aside>
+  
+  
                   
 
   
@@ -6363,7 +6375,10 @@
 <p>Lists backup manifests that match the current service <code>symlink_backup_path</code> template.</p>
 <h3 id="get-processsymlink-manifest-files"><code>GET /process/symlink-manifest-files</code><a class="headerlink" href="#get-processsymlink-manifest-files" title="Permanent link">&para;</a></h3>
 <p>Lists files under <code>/config/symlink-repair/snapshots</code> by default.</p>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>With an explicit registered backup destination, lists only owned symlink catalog artifacts for the selected process; a managed <code>manifest_path</code> must verify before its namespace is listed. See <a href="../backup-storage/">Backup storage API</a>.</p>
+</div>
 <p>Use this to populate manifest pickers in the Snapshot tab for quick restore/overwrite selection.</p>
 <h3 id="post-processsymlink-backupreschedule"><code>POST /process/symlink-backup/reschedule</code><a class="headerlink" href="#post-processsymlink-backupreschedule" title="Permanent link">&para;</a></h3>
 <p>Rebuilds symlink-backup schedule state from current service config.</p>
@@ -6390,6 +6405,7 @@
 
 
                 
+
               </article>
             </div>
           
@@ -6517,9 +6533,9 @@
     
       <script src="../../assets/javascripts/bundle.3cb411a8.min.js"></script>
       
-        <script src="../../assets/js/zoom.js"></script>
+        <script src="../../assets/js/zoom.aa9f2a8eef1d.js"></script>
       
-        <script src="../../assets/js/docs.js"></script>
+        <script src="../../assets/js/docs.21624ebdff7a.js"></script>
       
     
   </body>

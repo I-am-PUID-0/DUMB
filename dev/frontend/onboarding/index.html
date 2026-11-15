@@ -57,7 +57,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.css">
+      <link rel="stylesheet" href="../../assets/css/main.57a1b4346c32.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6349,6 +6349,18 @@
               <article class="md-content__inner md-typeset">
                 <a id="__skip" tabindex="-1"></a>
                 
+  
+    <aside class="docs-channel-context" data-channel="dev" aria-label="Documentation channel">
+      <span class="docs-channel-badge" data-channel="dev">
+        Development docs
+      </span>
+      <strong>DUMB 2.24.0</strong>
+      
+        <span>Dev labels mark additions beyond the released 2.23.0 docs.</span>
+      
+    </aside>
+  
+  
                   
 
   
@@ -6360,7 +6372,10 @@
 <p>Existing application data is retained, but the wizard can apply new settings. Use a service's own configuration editor for an ordinary setting change. Onboarding is not a database or namespace migration.</p>
 <h2 id="before-you-begin">Before you begin<a class="headerlink" href="#before-you-begin" title="Permanent link">&para;</a></h2>
 <p>Have the intended storage mounted inside DUMB, provider credentials ready, and a plan for which application owns requests, downloads, imports, and playback. A host-only mount or browser-reachable URL may not be visible from inside the container.</p>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>A compatible backend retains a setup checklist after you leave the wizard. It records configured actions, failed checks, missing inputs, and manual work separately. A running process does not complete an arrangement. See <a href="../../features/setup-checklist/">Setup checklist and automation</a>.</p>
+</div>
 <h2 id="wizard-steps">Wizard steps<a class="headerlink" href="#wizard-steps" title="Permanent link">&para;</a></h2>
 <h3 id="step-1-choose-services">Step 1: Choose services<a class="headerlink" href="#step-1-choose-services" title="Permanent link">&para;</a></h3>
 <p>Select your workflow applications and supporting services, or use <strong>Guided setup</strong>:</p>
@@ -6395,11 +6410,17 @@
 </tbody>
 </table>
 <p>A tier name such as <code>1080p</code> is an instance label, not proof that the application has the intended quality profile.</p>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>The manual catalog groups services by role, with alphabetical expandable categories and service descriptions. <strong>Expand all</strong> and <strong>Collapse all</strong> change only the layout. Selected categories open initially; summaries retain selection counts when closed.</p>
 <p>Review <strong>Chosen by you</strong>, <strong>Required dependency</strong>, and <strong>Optional companion</strong> separately. The historical Core/Optional catalog names do not make every core service mandatory.</p>
+</div>
 <h3 id="step-2-preflight-checks">Step 2: Preflight checks<a class="headerlink" href="#step-2-preflight-checks" title="Permanent link">&para;</a></h3>
 <p>The wizard checks backend health, capabilities, service catalogs, configuration, and embedded UI readiness through the frontend proxy.</p>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>Health, capability, and catalog failures block the next step. Storage-path inventory and embedded UI checks are advisory. Unknown storage, remote timeout, or consumer-namespace results stay <strong>Not verified</strong> rather than being reported as passed. Correct confirmed critical failures before starting.</p>
+</div>
 <h3 id="step-3-configure-provider-credentials">Step 3: Configure provider credentials<a class="headerlink" href="#step-3-configure-provider-credentials" title="Permanent link">&para;</a></h3>
 <p>Enter the credentials requested by the selected workflow. Debrid API keys are available from the provider's account page. DUMB maps supported inputs into the selected services' configuration.</p>
 <p>An NNTP provider account and an NZB indexer account serve different purposes; supplying one does not configure the other.</p>
@@ -6432,28 +6453,37 @@
 <p>Review paths, ports, mount mode, media-server settings, and requested provider/database options. Defaults are starting values, not a validation of your deployment.</p>
 <p>For Decypharr and AltMount, choose FUSE, embedded rclone, external rclone, or no-mount mode where offered. AltMount still needs an administrator, NNTP provider, import strategy, and valid consumer paths; use its <a href="../../services/core/altmount/#first-start-checklist">first-start checklist</a>.</p>
 <p>InfiniDysk 1's <code>postgres_enabled</code> and <code>postgres_database</code> options are for a fresh installation. They do not copy an existing SQLite library. Existing installations must use the guarded <a href="../../features/arr-postgres-migration/">database migration workflow</a>, after any required namespace migration.</p>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>For InfiniDysk 2, review the separate runtime and mount choices. Generation 1 retains historical rclone; generation 2 can use rclone-over-WebDAV or native FUSE. FUSE needs a visible device, permissions, and the same mount in every consumer namespace.</p>
 <p>Choosing generation 2 opens its guarded installation/migration tool without accepting its acknowledgements or starting a job. Finish the tool, then refresh the setup plan. Existing 1.x data needs major migration; selecting an option does not convert it. Native FUSE omits the associated rclone dependency. See <a href="../../features/infinidysk-v2-migration/">InfiniDysk 2 installation and upgrade</a>.</p>
 <h3 id="connections-and-choices">Connections and choices<a class="headerlink" href="#connections-and-choices" title="Permanent link">&para;</a></h3>
 <p>Choose exact application instances, authorized external services, provider-account allocations, library paths, quality profiles, languages, and default/4K request routes. <strong>External server</strong> and <strong>No media server</strong> are separate choices.</p>
 <p>Some profiles, roots, and generated keys are available only after first start. Leave those tasks unfinished and return to them later. Existing unowned settings require a reviewed adoption before DUMB changes them.</p>
+</div>
 <h3 id="embedded-service-access">Embedded service access<a class="headerlink" href="#embedded-service-access" title="Permanent link">&para;</a></h3>
 <p>Enable embedded UIs when offered to use proxied service tabs, split view, and direct links. This does not publish public DNS or configure an external HTTPS origin.</p>
 <h3 id="review-configuration">Review configuration<a class="headerlink" href="#review-configuration" title="Permanent link">&para;</a></h3>
 <p>Review selected services, dependencies, credentials, instance paths, and custom options before applying. Confirmation can install, configure, and start services.</p>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>The plan groups work into <strong>DUMB will configure</strong>, <strong>Information you must provide</strong>, and <strong>Finish manually</strong>. Choose <strong>Start services</strong> to apply the reviewed plan.</p>
 <h3 id="setup-progress-and-retained-tasks">Setup progress and retained tasks<a class="headerlink" href="#setup-progress-and-retained-tasks" title="Permanent link">&para;</a></h3>
 <p>Follow the checklist and live logs. Correct the relevant input, then apply, retry, or recheck that action. <strong>Continue to dashboard</strong> leaves the wizard without discarding unfinished work; the same checklist appears on the dashboard and matching service pages.</p>
 <p>Manual completion records your confirmation separately from an independently passed check. Closing the browser does not complete remaining tasks. External provider/account setup and unsupported connections remain visible as manual work.</p>
+</div>
 <h2 id="skipping-onboarding">Skipping onboarding<a class="headerlink" href="#skipping-onboarding" title="Permanent link">&para;</a></h2>
 <p>If you configure services manually, set the appropriate <code>enabled</code> flags and required paths/credentials. Disabled applications will not start merely because their files already exist. Do not skip setup steps by guessing a generated API key or database selector.</p>
 <h2 id="configuration-applied">Configuration applied<a class="headerlink" href="#configuration-applied" title="Permanent link">&para;</a></h2>
 <p>The wizard updates the runtime <code>dumb_config.json</code>, including enabled services, selected provider inputs, service options, and instances. Higher-priority environment or secret values still apply. See <a href="../../features/configuration/#configuration-precedence">configuration precedence</a>.</p>
 <h2 id="multi-instance-support">Multi-instance support<a class="headerlink" href="#multi-instance-support" title="Permanent link">&para;</a></h2>
 <p>Instances need distinct names, process identities, ports, and appropriate data paths. Combined Arr layouts can use list-based <code>core_service</code>; separate layouts keep independent integrations. Review the <a href="../../reference/instances/">multi-instance guide</a> before changing a working topology.</p>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <h2 id="external-media-and-plex-authorization">External media and Plex authorization<a class="headerlink" href="#external-media-and-plex-authorization" title="Permanent link">&para;</a></h2>
 <p>External endpoints must be reachable from DUMB and require explicit authorization for private-network access. The media-server choice becomes the initial connection choice for selected request/maintenance applications; review each form before applying.</p>
 <p>Plex can be claimed from its retained account task after it is ready. Use a fresh short-lived claim token when needed. Existing claimed servers retain their account; claim inputs and API tokens remain masked.</p>
+</div>
 <h2 id="after-onboarding">After onboarding<a class="headerlink" href="#after-onboarding" title="Permanent link">&para;</a></h2>
 <p>Check service status, actual application configuration, and one intended end-to-end workflow. Configure <a href="../../features/media-library-protection/">media-library protection</a> before unattended storage maintenance, and keep application data backed up.</p>
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
@@ -6483,7 +6513,10 @@
 </tr>
 </tbody>
 </table>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>Refreshing loses unsaved credential drafts, but the backend's retained setup run remains. Resume its checklist rather than reinstalling successful services.</p>
+</div>
 
 
 
@@ -6502,6 +6535,7 @@
 
 
                 
+
               </article>
             </div>
           
@@ -6629,9 +6663,9 @@
     
       <script src="../../assets/javascripts/bundle.3cb411a8.min.js"></script>
       
-        <script src="../../assets/js/zoom.js"></script>
+        <script src="../../assets/js/zoom.aa9f2a8eef1d.js"></script>
       
-        <script src="../../assets/js/docs.js"></script>
+        <script src="../../assets/js/docs.21624ebdff7a.js"></script>
       
     
   </body>

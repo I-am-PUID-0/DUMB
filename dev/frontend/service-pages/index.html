@@ -57,7 +57,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.css">
+      <link rel="stylesheet" href="../../assets/css/main.57a1b4346c32.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6525,6 +6525,18 @@
               <article class="md-content__inner md-typeset">
                 <a id="__skip" tabindex="-1"></a>
                 
+  
+    <aside class="docs-channel-context" data-channel="dev" aria-label="Documentation channel">
+      <span class="docs-channel-badge" data-channel="dev">
+        Development docs
+      </span>
+      <strong>DUMB 2.24.0</strong>
+      
+        <span>Dev labels mark additions beyond the released 2.23.0 docs.</span>
+      
+    </aside>
+  
+  
                   
 
   
@@ -6580,8 +6592,11 @@
 </tr>
 </tbody>
 </table>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <h2 id="setup-checklist">Setup checklist<a class="headerlink" href="#setup-checklist" title="Permanent link">&para;</a></h2>
 <p>Retained setup tasks are scoped to the current service and instance. Expand <strong>Configure this step</strong> to supply missing inputs, then apply, retry, or recheck the intended action. Manual completion records your confirmation separately from a passed connection test. See <a href="../../features/setup-checklist/">Setup checklist</a>.</p>
+</div>
 <h2 id="status-and-controls">Status and controls<a class="headerlink" href="#status-and-controls" title="Permanent link">&para;</a></h2>
 <p>The header shows process status, application health, and restart information. Hover a health badge for the backend's probe reason. <strong>Starting</strong> and <strong>Degraded</strong> are distinct from a restart-relevant <strong>Unhealthy</strong> result.</p>
 <p>Use <strong>Start</strong>, <strong>Stop</strong>, or <strong>Restart</strong> for the current service. The DUMB API page has no start/stop/restart buttons. A storage operation affecting a protected media server prompts for playback and scan handling before it runs. Dashboard bulk updates use safe mode; use the individual service page to review an override.</p>
@@ -6624,7 +6639,10 @@
 <p>Supported services expose <strong>Database Migration</strong> through backend capability metadata. The panel separates preflight, rehearsal, guarded cutover, and rollback. A successful rehearsal is required before the frontend enables cutover.</p>
 <p>Closing the panel does not cancel the backend job. Reopen it to follow progress. InfiniDysk failures, interruption, or rollback problems retain a recovery banner after navigation and reload; use the reported guarded rollback rather than manual provider/file changes.</p>
 <p>The <a href="../../features/arr-postgres-migration/">SQLite-to-PostgreSQL guide</a> lists supported applications, schema checks, backup requirements, and the limits of rollback.</p>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>For InfiniDysk 2, the frontend selects the separate <a href="../../features/infinidysk-v2-migration/#native-postgresql-conversion">native conversion tool</a> for the active generation.</p>
+</div>
 <h2 id="dependency-graph-view">Dependency graph view<a class="headerlink" href="#dependency-graph-view" title="Permanent link">&para;</a></h2>
 <p>Open <strong>Tools → Dependencies</strong> to inspect startup order, missing prerequisites, and relationship signals. Available <strong>Fix now</strong> actions start the identified dependency; review the target before using them.</p>
 <table>
@@ -6721,7 +6739,10 @@
 <h2 id="embedded-ui">Embedded UI<a class="headerlink" href="#embedded-ui" title="Permanent link">&para;</a></h2>
 <p>Enable service UIs in Settings, then open the service's <strong>Embedded UI</strong> tab. Choose its supported base path, use split/full-window view, or open the direct link. A matching enabled TPA HTTPS route can supply a public link; otherwise use the local/private link.</p>
 <p>DUMB login does not replace the application's own login. Root-relative APIs, assets, and WebSockets use the frontend's service context. Authelia login and TPA admin SSO open at their public HTTPS origins in a top-level tab.</p>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>InfiniDysk 2 currently opens at its own root URL. Use the direct local/public address until a validated embedded adapter is advertised; do not substitute a subpath URL into signed playback links.</p>
+</div>
 <h3 id="service-workers-and-browser-notifications">Service workers and browser notifications<a class="headerlink" href="#service-workers-and-browser-notifications" title="Permanent link">&para;</a></h3>
 <p>Embedded workers are scoped to the owning service to preserve background updates and destination routing. This routing does not isolate the applications' cookies, CacheStorage, or other storage on the shared frontend origin. Native OS notification delivery also depends on browser and system permissions. A dedicated application origin keeps its own native worker behavior.</p>
 <h3 id="jellyfin-and-emby-libraries">Jellyfin and Emby libraries<a class="headerlink" href="#jellyfin-and-emby-libraries" title="Permanent link">&para;</a></h3>
@@ -6750,6 +6771,7 @@
 
 
                 
+
               </article>
             </div>
           
@@ -6877,9 +6899,9 @@
     
       <script src="../../assets/javascripts/bundle.3cb411a8.min.js"></script>
       
-        <script src="../../assets/js/zoom.js"></script>
+        <script src="../../assets/js/zoom.aa9f2a8eef1d.js"></script>
       
-        <script src="../../assets/js/docs.js"></script>
+        <script src="../../assets/js/docs.21624ebdff7a.js"></script>
       
     
   </body>

@@ -3646,7 +3646,17 @@ This section explains how DUMB is structured, how services are orchestrated, and
 
 ## System overview
 
+<figure class="docs-visual" markdown="1">
+
+![Library workflow roles: optional requests or searches, workflow apps, files and library paths, and the media server.](../assets/images/guides/library-workflow.svg)
+
+<figcaption class="docs-visual-caption">For a library workflow, these are roles rather than four required services. Your chosen integration determines which apps and connections you need.</figcaption>
+</figure>
+
 DUMB bundles a FastAPI backend, a Nuxt 4 frontend, a Traefik access layer, and a set of managed services (core, dependent, and optional). The backend owns configuration, process lifecycle, setup hooks, dependency ordering, health checks, update automation, and Traefik route generation. The frontend surfaces onboarding, status, logs, metrics, configuration controls, and embedded service UIs.
+
+<details class="geek-details" markdown="1">
+<summary>Technical details: API, process and proxy layers</summary>
 
 ```mermaid
 flowchart TD
@@ -3674,6 +3684,8 @@ flowchart TD
 
 ```
 
+</details>
+
 ## Core building blocks
 
 | Component | Responsibility |
@@ -3689,6 +3701,13 @@ flowchart TD
 | Cloudflared | Optional Cloudflare Tunnel connector that forwards public traffic to Traefik |
 
 ## Storage and mounts
+
+<figure class="docs-visual" markdown="1">
+
+![Host folders map to config, data, log and media paths inside DUMB. External apps need separate access to library paths and symlink targets.](../assets/images/guides/storage-boundaries.svg)
+
+<figcaption class="docs-visual-caption">Bind mounts preserve local files when the container is recreated. Provider-backed media can remain remote; its mount must be available again. External apps need their own path and mount setup. A bind mount is not a backup.</figcaption>
+</figure>
 
 The maintained deployment persists four container paths: `/config`, `/log`, `/data`, and `/mnt/debrid`. Services still use their native internal paths (for example `/riven/backend/data`, `/decypharr`, `/postgres_data`, or `/altmount`), but DUMB maps those paths into service-specific subdirectories below the mounted `/data` root. Media access is provided through `/mnt/debrid`, including mounts and curated symlink libraries.
 
@@ -5385,6 +5404,13 @@ services:
     ports:
       - "3005:3005"
 ```
+
+<figure class="docs-visual" markdown="1">
+
+![The browser reaches host port 3005, which maps to the DUMB dashboard. The dashboard forwards API requests to the internal port 8000.](../assets/images/guides/published-ports.svg)
+
+<figcaption class="docs-visual-caption">This shows the maintained bridge-mode example. The dashboard is the front door for API requests; publish additional service ports only when direct access is needed.</figcaption>
+</figure>
 
 Open the dashboard at:
 
@@ -9951,6 +9977,13 @@ Choose a task to find its controls, configuration, and recovery steps. For a lis
 
 ## Keep the stack running
 
+<figure class="docs-visual" markdown="1">
+
+![Review the impact, keep a recovery copy, apply one change, then verify readiness, import and playback.](../assets/images/guides/change-checklist.svg)
+
+<figcaption class="docs-visual-caption">For changes that affect data, keep an independent backup first. Choose a recovery method that fits the service and operation; not every action has an automatic undo.</figcaption>
+</figure>
+
 | Task | Guide |
 | --- | --- |
 | Understand startup order and readiness | [Startup lifecycle](startup-lifecycle.md) |
@@ -12579,6 +12612,13 @@ Source: https://dumbarr.com/frontend/
 
 The DUMB Frontend, also called **dmbdb**, is the browser interface for service controls, configuration, logs, and metrics. Open `http://localhost:3005` on the Docker host, or use the host's address from another device.
 
+<figure class="docs-visual" markdown="1">
+
+![A navigation map showing Dashboard, Service pages, Metrics and Settings, with the purpose of each screen.](../assets/images/guides/dashboard-map.svg)
+
+<figcaption class="docs-visual-caption">A navigation map, not a screenshot. Open a service card for that app; use Metrics and Settings for installation-wide tasks. Available controls depend on the connected backend.</figcaption>
+</figure>
+
 ## Find a task
 
 | Task | Page |
@@ -13426,6 +13466,13 @@ These are starting points, not interchangeable backends. Each service has its ow
 
 ## From install to first playback
 
+<figure class="docs-visual" markdown="1">
+
+![Five stages: prepare, install DUMB, choose services, connect the apps, then import and play a test item.](../assets/images/guides/first-playback.svg)
+
+<figcaption class="docs-visual-caption">Start with one workflow and test a real item from import to playback. The steps below link to the instructions for each stage.</figcaption>
+</figure>
+
 1. **Prepare storage and credentials.** Read [Before you install](installation.md).
 2. **Deploy DUMB.** Choose your host in [Deployment](../deployment/index.md).
 3. **Open the dashboard.** The default address is `http://<host>:3005`.
@@ -13437,6 +13484,9 @@ These are starting points, not interchangeable backends. Each service has its ow
 6. **Check the workflow.** Add a test item through your chosen application, confirm its import, and play it from the media server. A running process alone does not establish this.
 
 ## What runs where
+
+<details class="geek-details" markdown="1">
+<summary>Technical details: control and media paths</summary>
 
 ```mermaid
 flowchart LR
@@ -13450,6 +13500,8 @@ flowchart LR
     FE -. embedded UI .-> ARR
     FE -. embedded UI .-> FLOW
 ```
+
+</details>
 
 DUMB installs and coordinates services. Each upstream application still owns its accounts, provider behavior, database, and content decisions. The [architecture guide](../architecture/index.md) explains the boundaries.
 
@@ -13890,7 +13942,12 @@ the examples.
 
 The guides begin with the steps most users need. **Geek mode** in the shared
 header opens their technical details: configuration examples, API commands,
-and notes about how the software works. Your browser remembers the choice.
+and notes about how the software works. Open technical sections have a light green
+background and a **Geek detail** label while the mode is on. The header shows
+**On** or **Off**, and your browser remembers the choice.
+
+Some overview pages have no hidden technical sections. They show that clearly
+when Geek mode is on; the mode does not add extra content to those pages.
 
 You can also open any technical section individually. Essential warnings,
 prerequisites, and recovery steps stay visible in either mode. Direct links to
@@ -13899,6 +13956,17 @@ a heading inside a closed section open it for you.
 The [API](../api/index.md), [configuration reference](index.md), and
 [architecture](../architecture/index.md) remain directly available in either
 mode. Geek mode changes how details are displayed; it does not remove content.
+
+## Spot development additions
+
+Each page identifies its documentation channel and DUMB version. **Released
+docs** use a blue-green label; **Development docs** use amber. Words accompany
+the colors so you can tell them apart without relying on color alone.
+
+In development guides, amber panels and small **Dev** badges identify additions
+beyond the released documentation snapshot. A development-only feature page
+also states which stable DUMB release does not include that feature. A newly
+written guide for an existing feature is labelled **New guide** instead.
 
 ## How release docs stay current
 
@@ -14158,7 +14226,6 @@ These defaults refer to the first configured instance. A second Sonarr or Radarr
 |---|---:|---|
 | AIOStreams | 3006 | `/stremio/configure`; addon clients need a stable trusted HTTPS `base_url` |
 | mediastorm | 7777 | `/admin` |
-
 | Traefik Proxy Admin | 3004 | Web UI/API |
 | Authelia | 9091 | Identity portal/API |
 | Cloudflared | None | Outbound tunnel connector; no local web UI listener |
@@ -16564,11 +16631,7 @@ flowchart TD
 | Classification | Role                                                     |
 | -------------- | -------------------------------------------------------- |
 | Core Service   | NZB WebDAV gateway                                       |
-
-
 | Mount | [rclone](../dependent/rclone.md) |
-
-
 | Optional       | Sonarr, Radarr, Lidarr, Whisparr, Prowlarr, NeutArr      |
 | Exposes UI     | Yes (Web UI + WebDAV)                                    |
 
@@ -19706,11 +19769,7 @@ These services provide databases, mounted files, or metadata to another applicat
 
 | Dependency | Startup requirement |
 |---|---|
-
-
 | [CLI Battery](cli-battery.md) | Runs before a CLI Debrid installation that uses its standalone API. If testing an upstream embedded layout, review the [release-specific guidance](../../faq/cli-debrid.md). |
-
-
 | [PostgreSQL](postgres.md) | Starts before applications configured to use its managed databases. |
 | [rclone](rclone.md) | Makes a configured WebDAV source available as local files. The source service must be ready first. |
 | [Zurg](zurg.md) | Exposes Debrid content to an rclone instance configured to use Zurg. |
@@ -21170,7 +21229,6 @@ Start with the workflow you want, then enable its services in onboarding. You do
 | Stream a Usenet library | [InfiniDysk](core/infinidysk.md), [AltMount](core/altmount.md), or [Decypharr](core/decypharr.md) | NNTP account limits, indexers, Arr clients, and import strategy |
 | Manage movies, TV, or music | [Radarr](core/radarr.md), [Sonarr](core/sonarr.md), [Lidarr](core/lidarr.md), [Whisparr](core/whisparr.md) | [Prowlarr](core/prowlarr.md), download clients, roots, and profiles |
 | Play an existing library | [Plex](core/plex-media-server.md), [Jellyfin](core/jellyfin.md), or [Emby](core/emby.md) | Readable media paths, accounts, and hardware acceleration |
-
 | Take requests | [Seerr](core/seerr.md) or [Pulsarr](optional/pulsarr.md) | Exact media-server and Arr connections, approvals, and quotas |
 | Use Stremio addons | [AIOStreams](optional/aiostreams.md) | Sources and a dedicated public HTTPS addon address |
 | Use a separate streaming client | [mediastorm](optional/mediastorm.md) | PostgreSQL and playback-provider accounts |
@@ -21204,7 +21262,6 @@ DUMB can prepare supported connections, but account authorization, profiles, lib
 | [pgAdmin](optional/pgadmin.md) | PostgreSQL administration |
 | [Riven Frontend](optional/riven-frontend.md) | Optional Riven interface |
 | [Tautulli](optional/tautulli.md) | Plex playback history and monitoring |
-
 | [Bazarr](optional/bazarr.md) | Subtitles for Sonarr/Radarr libraries |
 | [Pulsarr](optional/pulsarr.md) | Plex watchlist requests |
 | [Maintainerr](optional/maintainerr.md) | Rule-based review collections and optional cleanup |
@@ -22334,7 +22391,6 @@ Add these tools when you need their specific function. They are not required by 
 | [pgAdmin](../optional/pgadmin.md) | Web-based PostgreSQL administration UI                      | PostgreSQL                     |
 | [Riven Frontend](../optional/riven-frontend.md) | Web-based UI for management of the [Riven Backend](../core/riven-backend.md) | Riven |
 | [Tautulli](../optional/tautulli.md) | Plex monitoring and statistics                            | Plex Media Server              |
-
 | [Bazarr](../optional/bazarr.md) | Subtitle search and management                              | Sonarr, Radarr                 |
 | [Pulsarr](../optional/pulsarr.md) | Plex watchlist request automation                         | Plex, Sonarr, Radarr           |
 | [Maintainerr](../optional/maintainerr.md) | Rule-based library cleanup and leaving-soon collections | Plex/Jellyfin/Emby, Sonarr, Radarr, Seerr, Tautulli |
@@ -22363,7 +22419,6 @@ Add these tools when you need their specific function. They are not required by 
 | Add subtitles to Sonarr/Radarr libraries | [Bazarr](bazarr.md) |
 | Route Plex watchlist requests | [Pulsarr](pulsarr.md) |
 | Review library retention rules | [Maintainerr](maintainerr.md) |
-
 | Aggregate Stremio addons | [AIOStreams](aiostreams.md) |
 | Add identity and protected application routes | [Authelia](authelia.md), [Traefik Proxy Admin](traefik-proxy-admin.md), and optionally [Cloudflared](cloudflared.md) |
 

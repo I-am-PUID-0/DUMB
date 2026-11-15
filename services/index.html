@@ -57,7 +57,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/css/main.css">
+      <link rel="stylesheet" href="../assets/css/main.57a1b4346c32.css">
     
     <script>__md_scope=new URL("..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -5815,6 +5815,18 @@
               <article class="md-content__inner md-typeset">
                 <a id="__skip" tabindex="-1"></a>
                 
+  
+    <aside class="docs-channel-context" data-channel="release" aria-label="Documentation channel">
+      <span class="docs-channel-badge" data-channel="release">
+        Released docs
+      </span>
+      <strong>DUMB 2.23.0</strong>
+      
+        <span>For the latest stable release.</span>
+      
+    </aside>
+  
+  
                   
 
   
@@ -5853,12 +5865,28 @@
 <td><a href="core/plex-media-server/">Plex</a>, <a href="core/jellyfin/">Jellyfin</a>, or <a href="core/emby/">Emby</a></td>
 <td>Readable media paths, accounts, and hardware acceleration</td>
 </tr>
+<tr>
+<td>Take requests</td>
+<td><a href="core/seerr/">Seerr</a> or <a href="optional/pulsarr/">Pulsarr</a></td>
+<td>Exact media-server and Arr connections, approvals, and quotas</td>
+</tr>
+<tr>
+<td>Use Stremio addons</td>
+<td><a href="optional/aiostreams/">AIOStreams</a></td>
+<td>Sources and a dedicated public HTTPS addon address</td>
+</tr>
+<tr>
+<td>Use a separate streaming client</td>
+<td><a href="optional/mediastorm/">mediastorm</a></td>
+<td>PostgreSQL and playback-provider accounts</td>
+</tr>
+<tr>
+<td>Publish selected applications</td>
+<td><a href="optional/traefik-proxy-admin/">Traefik Proxy Admin</a></td>
+<td>Route protection, DNS, HTTPS, and optional <a href="optional/cloudflared/">Cloudflared</a></td>
+</tr>
 </tbody>
 </table>
-<p>| Take requests | <a href="core/seerr/">Seerr</a> or <a href="optional/pulsarr/">Pulsarr</a> | Exact media-server and Arr connections, approvals, and quotas |
-| Use Stremio addons | <a href="optional/aiostreams/">AIOStreams</a> | Sources and a dedicated public HTTPS addon address |
-| Use a separate streaming client | <a href="optional/mediastorm/">mediastorm</a> | PostgreSQL and playback-provider accounts |
-| Publish selected applications | <a href="optional/traefik-proxy-admin/">Traefik Proxy Admin</a> | Route protection, DNS, HTTPS, and optional <a href="optional/cloudflared/">Cloudflared</a> |</p>
 <p>DUMB can prepare supported connections, but account authorization, profiles, library policy, and playback still need review.</p>
 <h2 id="quick-reference">Quick reference<a class="headerlink" href="#quick-reference" title="Permanent link">&para;</a></h2>
 <table>
@@ -5949,14 +5977,32 @@
 <td><a href="optional/tautulli/">Tautulli</a></td>
 <td>Plex playback history and monitoring</td>
 </tr>
+<tr>
+<td><a href="optional/bazarr/">Bazarr</a></td>
+<td>Subtitles for Sonarr/Radarr libraries</td>
+</tr>
+<tr>
+<td><a href="optional/pulsarr/">Pulsarr</a></td>
+<td>Plex watchlist requests</td>
+</tr>
+<tr>
+<td><a href="optional/maintainerr/">Maintainerr</a></td>
+<td>Rule-based review collections and optional cleanup</td>
+</tr>
+<tr>
+<td><a href="optional/mediastorm/">mediastorm</a>, <a href="optional/aiostreams/">AIOStreams</a></td>
+<td>Additional streaming workflows</td>
+</tr>
+<tr>
+<td><a href="optional/authelia/">Authelia</a></td>
+<td>Identity provider and optional ForwardAuth</td>
+</tr>
+<tr>
+<td><a href="optional/traefik-proxy-admin/">Traefik Proxy Admin</a>, <a href="optional/cloudflared/">Cloudflared</a></td>
+<td>Application routes and tunnel ingress</td>
+</tr>
 </tbody>
 </table>
-<p>| <a href="optional/bazarr/">Bazarr</a> | Subtitles for Sonarr/Radarr libraries |
-| <a href="optional/pulsarr/">Pulsarr</a> | Plex watchlist requests |
-| <a href="optional/maintainerr/">Maintainerr</a> | Rule-based review collections and optional cleanup |
-| <a href="optional/mediastorm/">mediastorm</a>, <a href="optional/aiostreams/">AIOStreams</a> | Additional streaming workflows |
-| <a href="optional/authelia/">Authelia</a> | Identity provider and optional ForwardAuth |
-| <a href="optional/traefik-proxy-admin/">Traefik Proxy Admin</a>, <a href="optional/cloudflared/">Cloudflared</a> | Application routes and tunnel ingress |</p>
 <h2 id="service-categories">Service categories<a class="headerlink" href="#service-categories" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="dumb/">DUMB services</a>: the management API and dashboard.</li>
@@ -5983,6 +6029,7 @@
 
 
                 
+
               </article>
             </div>
           
@@ -6110,9 +6157,9 @@
     
       <script src="../assets/javascripts/bundle.3cb411a8.min.js"></script>
       
-        <script src="../assets/js/zoom.js"></script>
+        <script src="../assets/js/zoom.aa9f2a8eef1d.js"></script>
       
-        <script src="../assets/js/docs.js"></script>
+        <script src="../assets/js/docs.21624ebdff7a.js"></script>
       
     
   </body>

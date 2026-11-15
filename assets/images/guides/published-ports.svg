@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="828" viewBox="0 0 480 828" role="img" aria-labelledby="title description">
+  <title id="title">One published front door</title>
+  <desc id="description">In the maintained bridge-mode example, the browser reaches published host port 3005 and the DUMB dashboard on container port 3005. The dashboard forwards API requests to the internal loopback listener on port 8000; that listener is not published.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto-start-reverse"><path d="M1 1 L8 5 L1 9" fill="none" stroke="#75dce9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></marker>
+  </defs>
+  <style>
+    text { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #f3f9fc; }
+    .title { font-size: 28px; font-weight: 750; letter-spacing: -.4px; }
+    .subtitle { font-size: 20px; fill: #c0d6e3; }
+    .label { font-size: 28px; font-weight: 700; }
+    .body { font-size: 24px; fill: #d0e2ec; }
+    .small { font-size: 20px; fill: #c0d6e3; }
+    .number { font-size: 22px; font-weight: 800; fill: #132e41; }
+    .arrow { fill: none; stroke: #75dce9; stroke-width: 2.5; marker-end: url(#arrow); }
+    .panel { fill: #203d52; stroke: #42667f; stroke-width: 1.5; }
+  </style>
+  <rect x="1" y="1" width="478" height="826" rx="24" fill="#142c3f" stroke="#44667d" stroke-width="1.5"/>
+  <text x="28" y="44" class="title">One published front door</text>
+  <text x="28" y="76" class="subtitle">The maintained bridge-mode example</text>
+  <rect x="24" y="112" width="432" height="94" rx="16" class="panel"/>
+  <text x="44" y="151" class="label">Your browser</text>
+  <text x="44" y="185" class="body">Open your host on port 3005</text>
+  <path d="M240 215 V250" class="arrow"/>
+  <rect x="24" y="266" width="432" height="104" rx="16" class="panel"/>
+  <text x="44" y="307" class="label">Host port :3005</text>
+  <text x="44" y="344" class="body">Compose mapping: 3005:3005</text>
+  <path d="M240 379 V414" class="arrow"/>
+  <rect x="24" y="430" width="432" height="316" rx="16" fill="#102334" stroke="#75dce9" stroke-width="1.5"/>
+  <text x="44" y="466" class="label">Inside DUMB</text>
+  <rect x="44" y="487" width="392" height="80" rx="12" class="panel"/>
+  <text x="64" y="520" class="label">Dashboard :3005</text>
+  <text x="64" y="551" class="body">The supported API gateway</text>
+  <path d="M240 576 V609" class="arrow" stroke-dasharray="5 4"/>
+  <rect x="44" y="625" width="392" height="98" rx="12" class="panel"/>
+  <text x="64" y="659" class="label">API :8000</text>
+  <text x="64" y="694" class="body">Internal loopback listener</text>
+  <text x="240" y="790" class="small" text-anchor="middle">Publish extra ports only when needed.</text>
+</svg>

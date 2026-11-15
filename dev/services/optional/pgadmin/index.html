@@ -57,7 +57,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/css/main.css">
+      <link rel="stylesheet" href="../../../assets/css/main.57a1b4346c32.css">
     
     <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6306,6 +6306,18 @@
               <article class="md-content__inner md-typeset">
                 <a id="__skip" tabindex="-1"></a>
                 
+  
+    <aside class="docs-channel-context" data-channel="dev" aria-label="Documentation channel">
+      <span class="docs-channel-badge" data-channel="dev">
+        Development docs
+      </span>
+      <strong>DUMB 2.24.0</strong>
+      
+        <span>Dev labels mark additions beyond the released 2.23.0 docs.</span>
+      
+    </aside>
+  
+  
                   
 
   
@@ -6404,7 +6416,10 @@
 </details>
 <h2 id="server-configuration">Server configuration<a class="headerlink" href="#server-configuration" title="Permanent link">&para;</a></h2>
 <p>The pgAdmin login and the PostgreSQL connection use separate credentials. When opening a saved server, enter the database password from <code>postgres.password</code> or <code>POSTGRES_PASSWORD</code>; its public bootstrap default is <code>postgres</code>.</p>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>The <a href="../../../features/setup-checklist/">setup checklist</a> can register a connection through pgAdmin's supported provisioning command. Choose the connection name and group, review the preview, then apply it. DUMB reuses an exact existing connection and preserves unrelated definitions and saved-password settings. If automatic registration cannot use an existing pgAdmin account, the web service can still run; review or add the connection manually.</p>
+</div>
 <p>For a manual connection, use the managed PostgreSQL host and port saved in DUMB (normally <code>127.0.0.1:5432</code> inside the container), maintenance database <code>postgres</code>, and the configured PostgreSQL user.</p>
 <p><img alt="Saved PostgreSQL connection" src="../../../assets/images/pgadmin/pgadmin-server-view.png" /></p>
 <h2 id="extensions">Extensions<a class="headerlink" href="#extensions" title="Permanent link">&para;</a></h2>
@@ -6441,6 +6456,7 @@
 
 
                 
+
               </article>
             </div>
           
@@ -6568,9 +6584,9 @@
     
       <script src="../../../assets/javascripts/bundle.3cb411a8.min.js"></script>
       
-        <script src="../../../assets/js/zoom.js"></script>
+        <script src="../../../assets/js/zoom.aa9f2a8eef1d.js"></script>
       
-        <script src="../../../assets/js/docs.js"></script>
+        <script src="../../../assets/js/docs.21624ebdff7a.js"></script>
       
     
   </body>

@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="884" viewBox="0 0 480 884" role="img" aria-labelledby="title description">
+  <title id="title">Container files need a home</title>
+  <desc id="description">Host folders are bind-mounted into DUMB at config, data, log and media paths. These persist when the container is recreated but are not backups. External applications of library paths and symlink targets.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto-start-reverse"><path d="M1 1 L8 5 L1 9" fill="none" stroke="#75dce9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></marker>
+  </defs>
+  <style>
+    text { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #f3f9fc; }
+    .title { font-size: 28px; font-weight: 750; letter-spacing: -.4px; }
+    .subtitle { font-size: 20px; fill: #c0d6e3; }
+    .label { font-size: 28px; font-weight: 700; }
+    .body { font-size: 24px; fill: #d0e2ec; }
+    .small { font-size: 20px; fill: #c0d6e3; }
+    .number { font-size: 22px; font-weight: 800; fill: #132e41; }
+    .arrow { fill: none; stroke: #75dce9; stroke-width: 2.5; marker-end: url(#arrow); }
+    .panel { fill: #203d52; stroke: #42667f; stroke-width: 1.5; }
+  </style>
+  <rect x="1" y="1" width="478" height="882" rx="24" fill="#142c3f" stroke="#44667d" stroke-width="1.5"/>
+  <text x="28" y="44" class="title">Container files need a home</text>
+  <text x="28" y="76" class="subtitle">Keep files outside the disposable container</text>
+  <rect x="24" y="108" width="432" height="94" rx="16" class="panel"/>
+  <text x="44" y="148" class="label">Your host folders</text>
+  <text x="44" y="181" class="body">Persist when DUMB is recreated</text>
+  <path d="M240 216 V260" class="arrow" marker-start="url(#arrow)"/>
+  <text x="266" y="246" class="small">Bind mounts</text>
+  <rect x="24" y="278" width="432" height="360" rx="16" fill="#102334" stroke="#75dce9" stroke-width="1.5"/>
+  <text x="44" y="317" class="label">Paths inside DUMB</text>
+  <path d="M44 394 H436" stroke="#36566e"/>
+  <text x="44" y="357" class="label">/config</text>
+  <text x="44" y="384" class="body">Settings and feature state</text>
+  <path d="M44 462 H436" stroke="#36566e"/>
+  <text x="44" y="425" class="label">/data</text>
+  <text x="44" y="452" class="body">App data and databases</text>
+  <path d="M44 530 H436" stroke="#36566e"/>
+  <text x="44" y="493" class="label">/log</text>
+  <text x="44" y="520" class="body">Collected service logs</text>
+  <path d="M44 598 H436" stroke="#36566e"/>
+  <text x="44" y="561" class="label">/mnt/debrid</text>
+  <text x="44" y="588" class="body">Mounts and library paths</text>
+  <rect x="24" y="664" width="432" height="156" rx="16" fill="#26394a" stroke="#ffd18a" stroke-width="1.5" stroke-dasharray="7 5"/>
+  <text x="44" y="704" class="label">External applications</text>
+  <text x="44" y="744" class="body">Library and symlink targets</text>
+  <text x="44" y="783" class="body">Mounts may need extra setup.</text>
+  <text x="240" y="855" class="small" text-anchor="middle">Bind mounts are not backups.</text>
+</svg>

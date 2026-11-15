@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="680" viewBox="0 0 480 680" role="img" aria-labelledby="title description">
+  <title id="title">Find the right screen</title>
+  <desc id="description">A navigation map: Dashboard shows services; a service page has app controls, settings and logs; Metrics shows resource use; Settings contains DUMB login and preferences.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto-start-reverse"><path d="M1 1 L8 5 L1 9" fill="none" stroke="#75dce9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></marker>
+  </defs>
+  <style>
+    text { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #f3f9fc; }
+    .title { font-size: 28px; font-weight: 750; letter-spacing: -.4px; }
+    .subtitle { font-size: 20px; fill: #c0d6e3; }
+    .label { font-size: 28px; font-weight: 700; }
+    .body { font-size: 24px; fill: #d0e2ec; }
+    .small { font-size: 20px; fill: #c0d6e3; }
+    .number { font-size: 22px; font-weight: 800; fill: #132e41; }
+    .arrow { fill: none; stroke: #75dce9; stroke-width: 2.5; marker-end: url(#arrow); }
+    .panel { fill: #203d52; stroke: #42667f; stroke-width: 1.5; }
+  </style>
+  <rect x="1" y="1" width="478" height="678" rx="24" fill="#142c3f" stroke="#44667d" stroke-width="1.5"/>
+  <text x="28" y="44" class="title">Find the right screen</text>
+  <text x="28" y="76" class="subtitle">A navigation map, not a screenshot</text>
+  <rect x="24" y="112" width="432" height="108" rx="16" class="panel"/>
+  <rect x="24" y="132" width="5" height="68" rx="2" fill="#75dce9"/>
+  <text x="46" y="151" class="label">Dashboard</text>
+  <text x="46" y="189" class="body">Service state and updates</text>
+  <rect x="24" y="238" width="432" height="108" rx="16" class="panel"/>
+  <rect x="24" y="258" width="5" height="68" rx="2" fill="#75dce9"/>
+  <text x="46" y="277" class="label">Service page</text>
+  <text x="46" y="315" class="body">App controls, settings and logs</text>
+  <rect x="24" y="364" width="432" height="108" rx="16" class="panel"/>
+  <rect x="24" y="384" width="5" height="68" rx="2" fill="#75dce9"/>
+  <text x="46" y="403" class="label">Metrics</text>
+  <text x="46" y="441" class="body">Resource use and history</text>
+  <rect x="24" y="490" width="432" height="108" rx="16" class="panel"/>
+  <rect x="24" y="510" width="5" height="68" rx="2" fill="#75dce9"/>
+  <text x="46" y="529" class="label">Settings</text>
+  <text x="46" y="567" class="body">DUMB login and preferences</text>
+  <text x="240" y="649" class="small" text-anchor="middle">Application logins can be separate.</text>
+</svg>

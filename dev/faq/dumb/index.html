@@ -57,7 +57,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.css">
+      <link rel="stylesheet" href="../../assets/css/main.57a1b4346c32.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6182,6 +6182,18 @@
               <article class="md-content__inner md-typeset">
                 <a id="__skip" tabindex="-1"></a>
                 
+  
+    <aside class="docs-channel-context" data-channel="dev" aria-label="Documentation channel">
+      <span class="docs-channel-badge" data-channel="dev">
+        Development docs
+      </span>
+      <strong>DUMB 2.24.0</strong>
+      
+        <span>Dev labels mark additions beyond the released 2.23.0 docs.</span>
+      
+    </aside>
+  
+  
                   
 
   
@@ -6193,12 +6205,15 @@
 <h3 id="does-the-dumb-image-have-the-latest-version-of-x">Does the DUMB image have the latest version of a service?<a class="headerlink" href="#does-the-dumb-image-have-the-latest-version-of-x" title="Permanent link">&para;</a></h3>
 <p>The GitHub repository for <strong>DUMB</strong> uses continuous integration and deployment workflows to build and report image contents.</p>
 <p>For example, the <a href="https://github.com/I-am-PUID-0/DUMB/actions/workflows/fetch-latest-tags.yml">Check for New Release Tags</a> workflow is automated to run every three hours and check for updates to the various services/projects utilized in DUMB. If an update is found, the <a href="https://github.com/I-am-PUID-0/DUMB/actions/workflows/docker-image.yml">Docker Image CI</a> workflow is called to build a new image with the latest services. </p>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>To pair DUMB <code>dev</code> with an unreleased frontend, maintainers can use the manual
 <a href="../../services/dumb/dumb-frontend/#build-a-development-image-with-a-chosen-frontend">frontend image-build selection</a>.
 Each frontend choice on DUMB <code>dev</code> publishes the normal <code>:dev</code> image tag, so
 that tag follows the last published backend/frontend combination. Automatic builds
 continue to select a tagged frontend release. Use a registry digest to retain an
 exact image; selecting a frontend commit alone does not pin the backend.</p>
+</div>
 <h3 id="what-versions-are-in-the-latest-dumb-image">What versions are in the latest <strong>DUMB</strong> image<a class="headerlink" href="#what-versions-are-in-the-latest-dumb-image" title="Permanent link">&para;</a></h3>
 <p>The image often contains current upstream releases, but not every service is updated by the same workflow or at the same time. Compatibility pins and services installed at runtime can also differ from the image-build inputs. Treat the running service page/version marker and the relevant Docker build summary as authoritative.</p>
 <p>To check, click on one of the <a href="https://github.com/I-am-PUID-0/DUMB/actions/workflows/docker-image.yml">Docker Image CI</a> jobs to see the <code>Build Summary</code></p>
@@ -6291,6 +6306,7 @@ service configuration and databases when recreating the container.</p>
 
 
                 
+
               </article>
             </div>
           
@@ -6418,9 +6434,9 @@ service configuration and databases when recreating the container.</p>
     
       <script src="../../assets/javascripts/bundle.3cb411a8.min.js"></script>
       
-        <script src="../../assets/js/zoom.js"></script>
+        <script src="../../assets/js/zoom.aa9f2a8eef1d.js"></script>
       
-        <script src="../../assets/js/docs.js"></script>
+        <script src="../../assets/js/docs.21624ebdff7a.js"></script>
       
     
   </body>

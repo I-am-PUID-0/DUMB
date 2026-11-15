@@ -57,7 +57,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.css">
+      <link rel="stylesheet" href="../../assets/css/main.57a1b4346c32.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6337,6 +6337,18 @@
               <article class="md-content__inner md-typeset">
                 <a id="__skip" tabindex="-1"></a>
                 
+  
+    <aside class="docs-channel-context" data-channel="dev" aria-label="Documentation channel">
+      <span class="docs-channel-badge" data-channel="dev">
+        Development docs
+      </span>
+      <strong>DUMB 2.24.0</strong>
+      
+        <span>Dev labels mark additions beyond the released 2.23.0 docs.</span>
+      
+    </aside>
+  
+  
                   
 
   
@@ -6379,12 +6391,24 @@
 <td>Rename a legacy NzbDAV installation to InfiniDysk</td>
 <td><a href="../infinidysk-migration/">Namespace migration</a></td>
 </tr>
+<tr>
+<td><span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> Plan and complete a service arrangement</td>
+<td><a href="../setup/">Setup</a></td>
+</tr>
+<tr>
+<td><span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> Back up or restore a managed installation</td>
+<td><a href="../installation-backups/">Installation backups</a></td>
+</tr>
+<tr>
+<td><span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> Register an archive destination</td>
+<td><a href="../backup-storage/">Backup storage</a></td>
+</tr>
+<tr>
+<td><span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> Install or migrate to native InfiniDysk 2</td>
+<td><a href="../infinidysk-v2/">InfiniDysk 2</a></td>
+</tr>
 </tbody>
 </table>
-<p>| Plan and complete a service arrangement | <a href="../setup/">Setup</a> |
-| Back up or restore a managed installation | <a href="../installation-backups/">Installation backups</a> |
-| Register an archive destination | <a href="../backup-storage/">Backup storage</a> |
-| Install or migrate to native InfiniDysk 2 | <a href="../infinidysk-v2/">InfiniDysk 2</a> |</p>
 <h2 id="service-endpoints">Service endpoints<a class="headerlink" href="#service-endpoints" title="Permanent link">&para;</a></h2>
 <h3 id="get-processprocesses"><code>GET /process/processes</code><a class="headerlink" href="#get-processprocesses" title="Permanent link">&para;</a></h3>
 <p>Returns all configured processes, including enabled status, version, repo URL,
@@ -6761,25 +6785,64 @@ configured persistent cache directory. Clients should gate this endpoint on the
 <td><code>mediastorm_initial_admin_password</code></td>
 <td>No-store bootstrap credential readback</td>
 </tr>
+<tr>
+<td><span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> <code>setup_arrangements</code></td>
+<td>Retained service setup plans and action runs</td>
+</tr>
+<tr>
+<td><span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> <code>setup_infinidysk_runtime_choices</code>, <code>setup_infinidysk_runtime_protocol</code></td>
+<td>Native runtime selection handoff; protocol <code>1</code></td>
+</tr>
+<tr>
+<td><span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> <code>installation_backup</code>, <code>installation_backup_protocol</code></td>
+<td>Installation backup/restore; protocol <code>1</code></td>
+</tr>
+<tr>
+<td><span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> <code>installation_backup_cancellation</code>, <code>installation_backup_phase_progress</code></td>
+<td>Job-specific cancellation and measured phase progress</td>
+</tr>
+<tr>
+<td><span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> <code>backup_storage_selection</code>, <code>backup_storage_protocol</code></td>
+<td>Registered archive destinations; protocol <code>1</code></td>
+</tr>
+<tr>
+<td><span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> <code>backup_storage_shared_permissions</code></td>
+<td>Explicit shared-permissions consent per storage profile</td>
+</tr>
+<tr>
+<td><span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> <code>infinidysk_v2</code>, <code>infinidysk_v2_migration</code>, <code>infinidysk_v2_migration_protocol</code></td>
+<td>Native generation 2 workflow; protocol <code>1</code></td>
+</tr>
+<tr>
+<td><span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> <code>infinidysk_v2_postgres</code></td>
+<td>Native generation 2 PostgreSQL conversion</td>
+</tr>
+<tr>
+<td><span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> <code>infinidysk_v2_consumer_recovery</code>, <code>infinidysk_v2_consumer_recovery_protocol</code></td>
+<td>Retained target/consumer recovery; protocol <code>1</code></td>
+</tr>
+<tr>
+<td><span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> <code>infinidysk_v2_cleanup</code>, <code>infinidysk_v2_cleanup_protocol</code></td>
+<td>Guarded v1 retirement; protocol <code>1</code></td>
+</tr>
+<tr>
+<td><span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> <code>infinidysk_v2_low_space_migration</code>, <code>infinidysk_v2_external_blob_staging</code></td>
+<td>Explicit capacity-saving migration choices</td>
+</tr>
 </tbody>
 </table>
-<p>| <code>setup_arrangements</code> | Retained service setup plans and action runs |
-| <code>setup_infinidysk_runtime_choices</code>, <code>setup_infinidysk_runtime_protocol</code> | Native runtime selection handoff; protocol <code>1</code> |
-| <code>installation_backup</code>, <code>installation_backup_protocol</code> | Installation backup/restore; protocol <code>1</code> |
-| <code>installation_backup_cancellation</code>, <code>installation_backup_phase_progress</code> | Job-specific cancellation and measured phase progress |
-| <code>backup_storage_selection</code>, <code>backup_storage_protocol</code> | Registered archive destinations; protocol <code>1</code> |
-| <code>backup_storage_shared_permissions</code> | Explicit shared-permissions consent per storage profile |
-| <code>infinidysk_v2</code>, <code>infinidysk_v2_migration</code>, <code>infinidysk_v2_migration_protocol</code> | Native generation 2 workflow; protocol <code>1</code> |
-| <code>infinidysk_v2_postgres</code> | Native generation 2 PostgreSQL conversion |
-| <code>infinidysk_v2_consumer_recovery</code>, <code>infinidysk_v2_consumer_recovery_protocol</code> | Retained target/consumer recovery; protocol <code>1</code> |
-| <code>infinidysk_v2_cleanup</code>, <code>infinidysk_v2_cleanup_protocol</code> | Guarded v1 retirement; protocol <code>1</code> |
-| <code>infinidysk_v2_low_space_migration</code>, <code>infinidysk_v2_external_blob_staging</code> | Explicit capacity-saving migration choices |</p>
 <p>Require the exact protocol advertised by the relevant workflow. Treat an absent flag as unsupported. Legacy <code>arr_postgres_migration*</code>, <code>nzbdav_install_info</code>, and <code>rclone_optimizer_nzbdav</code> aliases exist for older clients; new clients should use canonical names.</p>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>Generation 2 also requires valid <code>api_version</code> SemVer at least <code>2.24.0</code>. Its runtime, mount backend, and database provider are separate choices. <code>infinidysk_v2_rclone_optimizer</code> is currently false, including when a generation 2 installation retains rclone.</p>
+</div>
 <h2 id="previously-on-this-page">Previously on this page<a class="headerlink" href="#previously-on-this-page" title="Permanent link">&para;</a></h2>
 <p>These section links remain available for existing bookmarks:</p>
 <h3 id="setup-plans-and-retained-runs">Setup plans and retained runs<a class="headerlink" href="#setup-plans-and-retained-runs" title="Permanent link">&para;</a></h3>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>See <a href="../setup/">Setup API</a>.</p>
+</div>
 <h3 id="install-cache">Install cache<a class="headerlink" href="#install-cache" title="Permanent link">&para;</a></h3>
 <p>See <a href="../updates/#install-cache">install cache endpoints</a>.</p>
 <p><span id="get-processupdate-status"></span>
@@ -6790,9 +6853,15 @@ configured persistent cache directory. Clients should gate this endpoint on the
 <h3 id="updates-and-scheduling">Updates and scheduling<a class="headerlink" href="#updates-and-scheduling" title="Permanent link">&para;</a></h3>
 <p>See <a href="../updates/">Updates and install cache API</a>.</p>
 <h3 id="installation-backup-and-restore">Installation backup and restore<a class="headerlink" href="#installation-backup-and-restore" title="Permanent link">&para;</a></h3>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>See <a href="../installation-backups/">Installation backups API</a>.</p>
+</div>
 <h3 id="registered-backup-storage">Registered backup storage<a class="headerlink" href="#registered-backup-storage" title="Permanent link">&para;</a></h3>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>See <a href="../backup-storage/">Backup storage API</a>.</p>
+</div>
 <p><span id="post-processsymlink-repair"></span>
 <span id="post-processsymlink-repair-async"></span>
 <span id="post-processsymlink-manifestbackup"></span>
@@ -6818,7 +6887,10 @@ configured persistent cache directory. Clients should gate this endpoint on the
 <h3 id="rclone-streaming-optimizer">Rclone streaming optimizer<a class="headerlink" href="#rclone-streaming-optimizer" title="Permanent link">&para;</a></h3>
 <p>See <a href="../rclone-optimizer/">Rclone optimizer API</a>.</p>
 <h3 id="infinidysk-2-workflows">InfiniDysk 2 workflows<a class="headerlink" href="#infinidysk-2-workflows" title="Permanent link">&para;</a></h3>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>See <a href="../infinidysk-v2/">InfiniDysk 2 API</a>.</p>
+</div>
 <p><span id="get-processinfinidysk-migrationstatus"></span>
 <span id="post-processinfinidysk-migrationremind-later"></span>
 <span id="post-processinfinidysk-migrationpreflight"></span>
@@ -6852,6 +6924,7 @@ configured persistent cache directory. Clients should gate this endpoint on the
 
 
                 
+
               </article>
             </div>
           
@@ -6979,9 +7052,9 @@ configured persistent cache directory. Clients should gate this endpoint on the
     
       <script src="../../assets/javascripts/bundle.3cb411a8.min.js"></script>
       
-        <script src="../../assets/js/zoom.js"></script>
+        <script src="../../assets/js/zoom.aa9f2a8eef1d.js"></script>
       
-        <script src="../../assets/js/docs.js"></script>
+        <script src="../../assets/js/docs.21624ebdff7a.js"></script>
       
     
   </body>

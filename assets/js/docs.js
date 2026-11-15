@@ -22,11 +22,55 @@
 
   function applyMode(enabled) {
     document.documentElement.dataset.geekMode = String(enabled);
+    const details = document.querySelectorAll("details.geek-details");
     document.querySelectorAll(".docs-geek").forEach(button => {
+      if (!button.querySelector(".docs-geek-state")) {
+        const label = document.createElement("span");
+        label.className = "docs-geek-button-label";
+        label.textContent = "Geek mode";
+        const shortLabel = document.createElement("span");
+        shortLabel.className = "docs-geek-button-short";
+        shortLabel.textContent = "Geek";
+        shortLabel.setAttribute("aria-hidden", "true");
+        const state = document.createElement("span");
+        state.className = "docs-geek-state";
+        state.setAttribute("aria-hidden", "true");
+        button.replaceChildren(label, shortLabel, state);
+      }
+      button.querySelector(".docs-geek-state").textContent = enabled ? "On" : "Off";
       button.setAttribute("aria-pressed", String(enabled));
+      button.setAttribute("aria-label", `Geek mode is ${enabled ? "on" : "off"}. ${enabled ? "Hide" : "Show"} technical details.`);
       button.title = enabled ? "Collapse technical details in guides" : "Expand technical details in guides";
     });
-    document.querySelectorAll("details.geek-details").forEach(detail => { detail.open = enabled; });
+    details.forEach(detail => {
+      const summary = detail.querySelector("summary");
+      if (summary && !summary.querySelector(".docs-geek-badge")) {
+        const badge = document.createElement("span");
+        badge.className = "docs-geek-badge";
+        badge.textContent = "Geek detail";
+        summary.prepend(badge, document.createTextNode(" "));
+      }
+      detail.open = enabled;
+    });
+    const article = document.querySelector("article.md-content__inner, article");
+    if (article) {
+      let status = article.querySelector(":scope > .docs-geek-status");
+      if (!status) {
+        status = document.createElement("aside");
+        status.className = "docs-geek-status";
+        status.setAttribute("role", "status");
+        const heading = document.createElement("strong");
+        heading.textContent = "Geek mode is on ";
+        status.append(heading, document.createElement("span"));
+        const channelContext = article.querySelector(":scope > .docs-channel-context");
+        if (channelContext) channelContext.after(status);
+        else article.prepend(status);
+      }
+      status.querySelector("span").textContent = details.length
+        ? `${details.length} technical ${details.length === 1 ? "section" : "sections"} on this page, highlighted in green. You can open or close each section.`
+        : "This page has no hidden technical sections. Technical guides remain available in the Reference and Developers menus.";
+      status.hidden = !enabled;
+    }
     showHashTarget();
   }
 

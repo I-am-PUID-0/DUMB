@@ -57,7 +57,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.css">
+      <link rel="stylesheet" href="../../assets/css/main.57a1b4346c32.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6169,6 +6169,18 @@
               <article class="md-content__inner md-typeset">
                 <a id="__skip" tabindex="-1"></a>
                 
+  
+    <aside class="docs-channel-context" data-channel="dev" aria-label="Documentation channel">
+      <span class="docs-channel-badge" data-channel="dev">
+        Development docs
+      </span>
+      <strong>DUMB 2.24.0</strong>
+      
+        <span>Dev labels mark additions beyond the released 2.23.0 docs.</span>
+      
+    </aside>
+  
+  
                   
 
   
@@ -6202,18 +6214,58 @@
 <td>Plex monitoring and statistics</td>
 <td>Plex Media Server</td>
 </tr>
+<tr>
+<td><span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> <a href="audiobookshelf/">Audiobookshelf</a></td>
+<td>Audiobook and podcast libraries with basic ebook reading</td>
+<td>Standalone media libraries</td>
+</tr>
+<tr>
+<td><a href="../optional/bazarr/">Bazarr</a></td>
+<td>Subtitle search and management</td>
+<td>Sonarr, Radarr</td>
+</tr>
+<tr>
+<td><a href="../optional/pulsarr/">Pulsarr</a></td>
+<td>Plex watchlist request automation</td>
+<td>Plex, Sonarr, Radarr</td>
+</tr>
+<tr>
+<td><a href="../optional/maintainerr/">Maintainerr</a></td>
+<td>Rule-based library cleanup and leaving-soon collections</td>
+<td>Plex/Jellyfin/Emby, Sonarr, Radarr, Seerr, Tautulli</td>
+</tr>
+<tr>
+<td><a href="../optional/mediastorm/">mediastorm</a></td>
+<td>Self-hosted streaming for Debrid, torrent, and Usenet sources</td>
+<td>PostgreSQL, playback providers</td>
+</tr>
+<tr>
+<td><a href="../optional/aiostreams/">AIOStreams</a></td>
+<td>Configurable Stremio addon aggregator for Debrid and Usenet playback</td>
+<td>Prowlarr, Zilean, InfiniDysk, AltMount</td>
+</tr>
+<tr>
+<td><a href="../optional/traefik-proxy-admin/">Traefik Proxy Admin</a></td>
+<td>User-managed Traefik reverse proxy routes</td>
+<td>Traefik, PostgreSQL</td>
+</tr>
+<tr>
+<td><a href="../optional/authelia/">Authelia</a></td>
+<td>Identity provider, DUMB/TPA OIDC, and Traefik ForwardAuth</td>
+<td>Traefik, PostgreSQL</td>
+</tr>
+<tr>
+<td><a href="../optional/cloudflared/">Cloudflared</a></td>
+<td>Cloudflare Tunnel connector for DUMB Traefik</td>
+<td>Traefik</td>
+</tr>
+<tr>
+<td><a href="../optional/zilean/">Zilean</a></td>
+<td>Debrid scraper and metadata cache for various core services</td>
+<td>Riven, CLI Debrid</td>
+</tr>
 </tbody>
 </table>
-<p>| <a href="audiobookshelf/">Audiobookshelf</a> | Audiobook and podcast libraries with basic ebook reading | Standalone media libraries |</p>
-<p>| <a href="../optional/bazarr/">Bazarr</a> | Subtitle search and management                              | Sonarr, Radarr                 |
-| <a href="../optional/pulsarr/">Pulsarr</a> | Plex watchlist request automation                         | Plex, Sonarr, Radarr           |
-| <a href="../optional/maintainerr/">Maintainerr</a> | Rule-based library cleanup and leaving-soon collections | Plex/Jellyfin/Emby, Sonarr, Radarr, Seerr, Tautulli |
-| <a href="../optional/mediastorm/">mediastorm</a> | Self-hosted streaming for Debrid, torrent, and Usenet sources | PostgreSQL, playback providers |
-| <a href="../optional/aiostreams/">AIOStreams</a> | Configurable Stremio addon aggregator for Debrid and Usenet playback | Prowlarr, Zilean, InfiniDysk, AltMount |
-| <a href="../optional/traefik-proxy-admin/">Traefik Proxy Admin</a> | User-managed Traefik reverse proxy routes | Traefik, PostgreSQL |
-| <a href="../optional/authelia/">Authelia</a> | Identity provider, DUMB/TPA OIDC, and Traefik ForwardAuth | Traefik, PostgreSQL |
-| <a href="../optional/cloudflared/">Cloudflared</a> | Cloudflare Tunnel connector for DUMB Traefik | Traefik |
-| <a href="../optional/zilean/">Zilean</a>   | Debrid scraper and metadata cache for various core services | Riven, CLI Debrid |</p>
 <hr />
 <h2 id="before-enabling-a-tool">Before enabling a tool<a class="headerlink" href="#before-enabling-a-tool" title="Permanent link">&para;</a></h2>
 <ul>
@@ -6251,11 +6303,20 @@
 <td>Review library retention rules</td>
 <td><a href="maintainerr/">Maintainerr</a></td>
 </tr>
+<tr>
+<td><span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> Serve books and podcasts</td>
+<td><a href="audiobookshelf/">Audiobookshelf</a></td>
+</tr>
+<tr>
+<td>Aggregate Stremio addons</td>
+<td><a href="aiostreams/">AIOStreams</a></td>
+</tr>
+<tr>
+<td>Add identity and protected application routes</td>
+<td><a href="authelia/">Authelia</a>, <a href="traefik-proxy-admin/">Traefik Proxy Admin</a>, and optionally <a href="cloudflared/">Cloudflared</a></td>
+</tr>
 </tbody>
 </table>
-<p>| Serve books and podcasts | <a href="audiobookshelf/">Audiobookshelf</a> |</p>
-<p>| Aggregate Stremio addons | <a href="aiostreams/">AIOStreams</a> |
-| Add identity and protected application routes | <a href="authelia/">Authelia</a>, <a href="traefik-proxy-admin/">Traefik Proxy Admin</a>, and optionally <a href="cloudflared/">Cloudflared</a> |</p>
 <p>AIOStreams needs a dedicated trusted HTTPS <code>BASE_URL</code> for remote Stremio clients. Its embedded DUMB UI is an administration view; it is not the addon installation address.</p>
 <h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
 <ul>
@@ -6281,6 +6342,7 @@
 
 
                 
+
               </article>
             </div>
           
@@ -6408,9 +6470,9 @@
     
       <script src="../../assets/javascripts/bundle.3cb411a8.min.js"></script>
       
-        <script src="../../assets/js/zoom.js"></script>
+        <script src="../../assets/js/zoom.aa9f2a8eef1d.js"></script>
       
-        <script src="../../assets/js/docs.js"></script>
+        <script src="../../assets/js/docs.21624ebdff7a.js"></script>
       
     
   </body>

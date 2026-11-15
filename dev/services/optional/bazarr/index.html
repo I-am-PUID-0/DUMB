@@ -57,7 +57,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/css/main.css">
+      <link rel="stylesheet" href="../../../assets/css/main.57a1b4346c32.css">
     
     <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6372,6 +6372,18 @@
               <article class="md-content__inner md-typeset">
                 <a id="__skip" tabindex="-1"></a>
                 
+  
+    <aside class="docs-channel-context" data-channel="dev" aria-label="Documentation channel">
+      <span class="docs-channel-badge" data-channel="dev">
+        Development docs
+      </span>
+      <strong>DUMB 2.24.0</strong>
+      
+        <span>Dev labels mark additions beyond the released 2.23.0 docs.</span>
+      
+    </aside>
+  
+  
                   
 
   
@@ -6394,9 +6406,12 @@
 </ol>
 <p>If your Arr instances use non-default ports, use the actual ports shown on their DUMB service pages.</p>
 <p>DUMB treats <code>bazarr.port</code> as authoritative. If DUMB assigns a different port to avoid a conflict, Bazarr's persisted <strong>Settings -&gt; General -&gt; Port</strong> value is synchronized to the same port during setup. Restart Bazarr after manually changing <code>bazarr.port</code> so both the managed launch command and Bazarr's saved setting are updated.</p>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <h2 id="setup-checklist-and-remaining-work">Setup checklist and remaining work<a class="headerlink" href="#setup-checklist-and-remaining-work" title="Permanent link">&para;</a></h2>
 <p>Compatible checklists populate selected Sonarr/Radarr connections, guide discovered languages/profiles, and expose supported subtitle-provider credential fields. Preview the exact settings, then explicitly approve saving credentials or activating a provider. Existing providers remain preserved. Configuration readback does not verify a third-party provider login or subtitle search; test those with your account in Bazarr. Activating integrations can activate existing schedules: enable them deliberately after review. Manual instructions below remain useful for older backends or unsupported interfaces.</p>
 <p>Requires the backend setup-arrangement capability. See <a href="../../../features/setup-checklist/">Setup checklist and automation</a> for retained tasks, coverage and safe retries.</p>
+</div>
 <h2 id="how-dumb-runs-bazarr">How DUMB runs Bazarr<a class="headerlink" href="#how-dumb-runs-bazarr" title="Permanent link">&para;</a></h2>
 <p>DUMB installs the official Bazarr release inside the DUMB container and runs it as a managed service:</p>
 <ul>
@@ -6511,6 +6526,7 @@
 
 
                 
+
               </article>
             </div>
           
@@ -6638,9 +6654,9 @@
     
       <script src="../../../assets/javascripts/bundle.3cb411a8.min.js"></script>
       
-        <script src="../../../assets/js/zoom.js"></script>
+        <script src="../../../assets/js/zoom.aa9f2a8eef1d.js"></script>
       
-        <script src="../../../assets/js/docs.js"></script>
+        <script src="../../../assets/js/docs.21624ebdff7a.js"></script>
       
     
   </body>

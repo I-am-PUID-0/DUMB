@@ -57,7 +57,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.css">
+      <link rel="stylesheet" href="../../assets/css/main.57a1b4346c32.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6493,6 +6493,18 @@
               <article class="md-content__inner md-typeset">
                 <a id="__skip" tabindex="-1"></a>
                 
+  
+    <aside class="docs-channel-context" data-channel="dev" aria-label="Documentation channel">
+      <span class="docs-channel-badge" data-channel="dev">
+        Development docs
+      </span>
+      <strong>DUMB 2.24.0</strong>
+      
+        <span>Dev labels mark additions beyond the released 2.23.0 docs.</span>
+      
+    </aside>
+  
+  
                   
 
   
@@ -6637,7 +6649,10 @@ each service's Updates panel when the backend advertises
 <li>API checks run at startup and daily in check-only mode. Apply an API update through your Docker image/stack; these checks never replace the container automatically.</li>
 </ul>
 <p>DUMB API and frontend have independent version numbers. A development suffix identifies a moving image/source build, while stable releases link to their release notes. See <a href="../../services/dumb/api/#development-and-release-versions">API versions</a>.</p>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>The candidate core in <code>v2.24.0-dev.34</code> is <code>2.24.0</code>; <code>-dev.34</code> identifies the rolling image build. The frontend follows its own releases and source commits; see <a href="../../services/dumb/dumb-frontend/#frontend-development-versions">frontend development versions</a>.</p>
+</div>
 <div class="admonition warning">
 <p class="admonition-title">Fixed versions and update schedules</p>
 <p>Fixed release, branch, commit, and pinned-version choices can disable automatic
@@ -6945,6 +6960,8 @@ commit strategy.</p>
 <a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="p">}</span>
 </code></pre></div>
 <p>With this example, checks run once per day at 04:00. If you set <code>auto_update_interval</code> to another value (for example <code>12</code>), checks run every 12 hours anchored from the configured start time.</p>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <h3 id="scheduled-work-and-deferrals">Scheduled work and deferrals<a class="headerlink" href="#scheduled-work-and-deferrals" title="Permanent link">&para;</a></h3>
 <p>DUMB uses one shared scheduler. Scheduled service update checks and installs
 run one at a time. If another scheduled update is still active, or a lifecycle
@@ -6967,6 +6984,7 @@ it returns, and later updates remain deferred where necessary.</p>
 <p>An exception records an error and leaves the scheduler available for later
 work. A service process starting successfully does not by itself mean update
 health stabilization and cleanup have finished.</p>
+</div>
 <hr />
 <h2 id="preserving-data-during-updates">Preserving data during updates<a class="headerlink" href="#preserving-data-during-updates" title="Permanent link">&para;</a></h2>
 <h3 id="clear-on-update">Clear on update<a class="headerlink" href="#clear-on-update" title="Permanent link">&para;</a></h3>
@@ -7094,12 +7112,15 @@ while GitHub-based services rely on release or branch downloads.</p>
 <li><strong>Review logs</strong> for error messages</li>
 <li><strong>Verify network connectivity</strong> to GitHub</li>
 </ol>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>If the status is <code>deferred</code>, review its message and next retry time. Another
 update, lifecycle operation, or migration can temporarily prevent admission.
 For a running or long-running update, review the active service's install
 stage and logs. Elapsed time alone does not identify the blocking operation;
 collecting a thread traceback may be needed to diagnose a persistent stall.
 The scheduler does not terminate the active installer to start another one.</p>
+</div>
 <h3 id="update-fails-repeatedly">Update fails repeatedly<a class="headerlink" href="#update-fails-repeatedly" title="Permanent link">&para;</a></h3>
 <ol>
 <li><strong>Check GitHub API rate limits</strong> - add a token if needed</li>
@@ -7141,6 +7162,7 @@ The scheduler does not terminate the active installer to start another one.</p>
 
 
                 
+
               </article>
             </div>
           
@@ -7268,9 +7290,9 @@ The scheduler does not terminate the active installer to start another one.</p>
     
       <script src="../../assets/javascripts/bundle.3cb411a8.min.js"></script>
       
-        <script src="../../assets/js/zoom.js"></script>
+        <script src="../../assets/js/zoom.aa9f2a8eef1d.js"></script>
       
-        <script src="../../assets/js/docs.js"></script>
+        <script src="../../assets/js/docs.21624ebdff7a.js"></script>
       
     
   </body>

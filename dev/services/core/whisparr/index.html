@@ -57,7 +57,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/css/main.css">
+      <link rel="stylesheet" href="../../../assets/css/main.57a1b4346c32.css">
     
     <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6380,6 +6380,18 @@
               <article class="md-content__inner md-typeset">
                 <a id="__skip" tabindex="-1"></a>
                 
+  
+    <aside class="docs-channel-context" data-channel="dev" aria-label="Documentation channel">
+      <span class="docs-channel-badge" data-channel="dev">
+        Development docs
+      </span>
+      <strong>DUMB 2.24.0</strong>
+      
+        <span>Dev labels mark additions beyond the released 2.23.0 docs.</span>
+      
+    </aside>
+  
+  
                   
 
   
@@ -6483,7 +6495,7 @@
 <p><code>config_dir</code>, <code>config_file</code>, <code>log_file</code>: Paths for configuration and logs. Keep different version families in separate data directories.</p>
 </li>
 <li>
-<p><code>whisparr_profiles</code>: Saved v2 and v3 data paths, runtime paths, and release choices managed by DUMB. You normally do not need to edit this field.</p>
+<p><span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> <code>whisparr_profiles</code>: Saved v2 and v3 data paths, runtime paths, and release choices managed by DUMB. You normally do not need to edit this field.</p>
 </li>
 </ul>
 <hr />
@@ -6515,6 +6527,8 @@
 </tr>
 </tbody>
 </table>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>Both versions use <code>logs.db</code> for SQLite logs. Each saved version profile has its own data directory and managed binary directory, so its config, logs and library stay separate.</p>
 <h3 id="switching-versions-on-the-same-instance">Switching versions on the same instance<a class="headerlink" href="#switching-versions-on-the-same-instance" title="Permanent link">&para;</a></h3>
 <p>For a SQLite-backed instance:</p>
@@ -6535,6 +6549,7 @@
 <p>If an older configuration placed both v2 and v3 databases in the same data directory, explicitly choose the version you want to run. DUMB prepares an isolated profile for that version, taking a consistent SQLite snapshot of its main database, including committed writes in its WAL, and copying any existing <code>config.xml</code>. Logs and caches are created again in the profile. The original database and native configuration files remain in place.</p>
 <p>When you later select the other version, DUMB can prepare its own profile from the matching original database. After a profile is initialized, returning to it reuses that saved profile rather than recopying the original library.</p>
 <p>DUMB stops with an explanation if it cannot safely identify or copy the library, including directories containing only recovery files, conflicting legacy/current v2 filenames, invalid SQLite databases, or data already occupying a proposed profile directory. Preserve those files and resolve the reported ambiguity before retrying.</p>
+</div>
 <div class="admonition warning">
 <p class="admonition-title">Legacy v2 database filenames require a separate migration</p>
 <p>Current v2 releases (2.2 and newer) open <code>whisparr2.db</code>; they do not automatically discover or rename a legacy <code>whisparr.db</code>. Starting a newer binary against only the legacy file could create an empty library. See the <a href="https://github.com/Whisparr/Whisparr/blob/v2.2.0-release.231/src/NzbDrone.Common/Extensions/PathExtensions.cs">upstream v2 database path</a>.</p>
@@ -6639,6 +6654,7 @@
 
 
                 
+
               </article>
             </div>
           
@@ -6766,9 +6782,9 @@
     
       <script src="../../../assets/javascripts/bundle.3cb411a8.min.js"></script>
       
-        <script src="../../../assets/js/zoom.js"></script>
+        <script src="../../../assets/js/zoom.aa9f2a8eef1d.js"></script>
       
-        <script src="../../../assets/js/docs.js"></script>
+        <script src="../../../assets/js/docs.21624ebdff7a.js"></script>
       
     
   </body>

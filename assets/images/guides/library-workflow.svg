@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="674" viewBox="0 0 480 674" role="img" aria-labelledby="title description">
+  <title id="title">Your library workflow</title>
+  <desc id="description">Optional requests and searches feed the selected workflow applications, which make media available through the chosen Debrid or Usenet integration. A media server reads the resulting library. These are roles, not four mandatory services.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto-start-reverse"><path d="M1 1 L8 5 L1 9" fill="none" stroke="#75dce9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></marker>
+  </defs>
+  <style>
+    text { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #f3f9fc; }
+    .title { font-size: 28px; font-weight: 750; letter-spacing: -.4px; }
+    .subtitle { font-size: 20px; fill: #c0d6e3; }
+    .label { font-size: 28px; font-weight: 700; }
+    .body { font-size: 24px; fill: #d0e2ec; }
+    .small { font-size: 20px; fill: #c0d6e3; }
+    .number { font-size: 22px; font-weight: 800; fill: #132e41; }
+    .arrow { fill: none; stroke: #75dce9; stroke-width: 2.5; marker-end: url(#arrow); }
+    .panel { fill: #203d52; stroke: #42667f; stroke-width: 1.5; }
+  </style>
+  <rect x="1" y="1" width="478" height="672" rx="24" fill="#142c3f" stroke="#44667d" stroke-width="1.5"/>
+  <text x="28" y="44" class="title">Your library workflow</text>
+  <text x="28" y="76" class="subtitle">Roles depend on the apps you choose</text>
+  <rect x="24" y="112" width="432" height="100" rx="16" class="panel" stroke-dasharray="7 5"/>
+  <circle cx="56" cy="146" r="17" fill="#a8eaf0"/>
+  <text x="56" y="154" class="number" text-anchor="middle">1</text>
+  <text x="86" y="154" class="label">Requests or searches</text>
+  <text x="44" y="190" class="body">Optional requests or searches</text>
+  <path d="M240 217 V237" class="arrow"/>
+  <rect x="24" y="244" width="432" height="100" rx="16" class="panel"/>
+  <circle cx="56" cy="278" r="17" fill="#a8eaf0"/>
+  <text x="56" y="286" class="number" text-anchor="middle">2</text>
+  <text x="86" y="286" class="label">Workflow apps</text>
+  <text x="44" y="322" class="body">Arr apps, Riven or CLI Debrid</text>
+  <path d="M240 349 V369" class="arrow"/>
+  <rect x="24" y="376" width="432" height="100" rx="16" class="panel"/>
+  <circle cx="56" cy="410" r="17" fill="#a8eaf0"/>
+  <text x="56" y="418" class="number" text-anchor="middle">3</text>
+  <text x="86" y="418" class="label">Files and library</text>
+  <text x="44" y="454" class="body">Debrid or Usenet integration</text>
+  <path d="M240 481 V501" class="arrow"/>
+  <rect x="24" y="508" width="432" height="100" rx="16" class="panel"/>
+  <circle cx="56" cy="542" r="17" fill="#a8eaf0"/>
+  <text x="56" y="550" class="number" text-anchor="middle">4</text>
+  <text x="86" y="550" class="label">Your media server</text>
+  <text x="44" y="586" class="body">Plex, Jellyfin or Emby</text>
+  <text x="240" y="648" class="small" text-anchor="middle">Enable only what you need.</text>
+</svg>

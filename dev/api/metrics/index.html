@@ -57,7 +57,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.css">
+      <link rel="stylesheet" href="../../assets/css/main.57a1b4346c32.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6447,6 +6447,18 @@
               <article class="md-content__inner md-typeset">
                 <a id="__skip" tabindex="-1"></a>
                 
+  
+    <aside class="docs-channel-context" data-channel="dev" aria-label="Documentation channel">
+      <span class="docs-channel-badge" data-channel="dev">
+        Development docs
+      </span>
+      <strong>DUMB 2.24.0</strong>
+      
+        <span>Dev labels mark additions beyond the released 2.23.0 docs.</span>
+      
+    </aside>
+  
+  
                   
 
   
@@ -6554,7 +6566,10 @@
 <p>The response includes <code>status</code>, <code>provider</code>, <code>database</code>, <code>postgres_enabled</code>, <code>postgres_running</code>, <code>postgres_started</code>, <code>postgres_reused</code>, <code>synced_samples</code>, and the resulting provider status. <code>postgres_started</code> means this request launched PostgreSQL; <code>postgres_reused</code> means it was already running. Concurrent activation returns <code>409</code>. Provisioning or synchronization failure returns <code>503</code> with a safe stage description; detailed errors remain in DUMB logs, and SQLite remains active.</p>
 <p>Clients should gate this call on the <code>metrics_history_hot_activation</code> process capability. Older backends require the normal DUMB restart to provision PostgreSQL.</p>
 <h2 id="failure-behavior">Failure behavior<a class="headerlink" href="#failure-behavior" title="Permanent link">&para;</a></h2>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>During installation backup/restore holds, history reads and maintenance routes can return <code>409</code> instead of starting concurrent persistence work. Retain the response and retry after the controlling operation releases its hold.</p>
+</div>
 <p>In PostgreSQL mode, each new sample is committed to SQLite before PostgreSQL synchronization. PostgreSQL read/write failures change the active provider to SQLite. The complete retained SQLite window is idempotently reconciled after PostgreSQL recovers, and PostgreSQL is promoted only after that succeeds.</p>
 <p>Notification persistence is separate and never moves to PostgreSQL. See <a href="../notifications/">Notifications API</a>.</p>
 
@@ -6575,6 +6590,7 @@
 
 
                 
+
               </article>
             </div>
           
@@ -6702,9 +6718,9 @@
     
       <script src="../../assets/javascripts/bundle.3cb411a8.min.js"></script>
       
-        <script src="../../assets/js/zoom.js"></script>
+        <script src="../../assets/js/zoom.aa9f2a8eef1d.js"></script>
       
-        <script src="../../assets/js/docs.js"></script>
+        <script src="../../assets/js/docs.21624ebdff7a.js"></script>
       
     
   </body>

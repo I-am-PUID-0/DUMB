@@ -57,7 +57,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/css/main.css">
+      <link rel="stylesheet" href="../../../assets/css/main.57a1b4346c32.css">
     
     <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6468,6 +6468,18 @@
               <article class="md-content__inner md-typeset">
                 <a id="__skip" tabindex="-1"></a>
                 
+  
+    <aside class="docs-channel-context" data-channel="dev" aria-label="Documentation channel">
+      <span class="docs-channel-badge" data-channel="dev">
+        Development docs
+      </span>
+      <strong>DUMB 2.24.0</strong>
+      
+        <span>Dev labels mark additions beyond the released 2.23.0 docs.</span>
+      
+    </aside>
+  
+  
                   
 
   
@@ -6492,9 +6504,12 @@
 <summary>Technical details: manual Plex startup</summary>
 <p>For manual configuration, review the <code>plex</code> settings below. A fresh instance needs a valid <code>plex_claim</code> immediately before startup. Start Plex from its DUMB service page. A deliberately published native port also allows <code>http://&lt;host&gt;:32400/web</code> access.</p>
 </details>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <h2 id="setup-checklist-and-remaining-work">Setup checklist and remaining work<a class="headerlink" href="#setup-checklist-and-remaining-work" title="Permanent link">&para;</a></h2>
 <p>Review account/claim authorization separately from libraries. The checklist can create or reuse explicitly selected libraries when authorized, preserving existing libraries and paths. Sharing, remote access, host GPU mapping and real playback remain deliberate decisions/checks.</p>
 <p>Requires the backend setup-arrangement capability. See <a href="../../../features/setup-checklist/">Setup checklist and automation</a> for retained tasks, coverage and safe retries.</p>
+</div>
 <h2 id="service-relationships">Service Relationships<a class="headerlink" href="#service-relationships" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -6757,10 +6772,13 @@ Example:</p>
 </table>
 <p>Once complete, your DUMB-based Plex server should fully replicate your prior setup while gaining the integration benefits of the DUMB ecosystem.</p>
 <hr />
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <h2 id="claim-authorization-during-setup">Claim authorization during setup<a class="headerlink" href="#claim-authorization-during-setup" title="Permanent link">&para;</a></h2>
 <p>With the arrangement checklist, start Plex first and use its retained account task when a fresh claim is needed. Claim tokens are short-lived; submit one when the server is ready, then retry that account task without reinstalling the arrangement. An already claimed Plex server keeps its account.</p>
 <p>The checklist tracks account authorization, library configuration and verified connection checks separately. A successful account claim does not verify playback, sharing or remote access. See <a href="../../../features/setup-checklist/">Setup Checklist and Automation</a>.</p>
 <hr />
+</div>
 <h2 id="hardware-transcoding">Hardware Transcoding<a class="headerlink" href="#hardware-transcoding" title="Permanent link">&para;</a></h2>
 <p>Hardware-accelerated streaming enables Plex to use the GPU or specialized hardware encoders to offload and speed up transcoding operations, significantly improving performance and lowering CPU usage.</p>
 <div class="admonition warning">
@@ -6921,6 +6939,7 @@ Example:</p>
 
 
                 
+
               </article>
             </div>
           
@@ -7048,9 +7067,9 @@ Example:</p>
     
       <script src="../../../assets/javascripts/bundle.3cb411a8.min.js"></script>
       
-        <script src="../../../assets/js/zoom.js"></script>
+        <script src="../../../assets/js/zoom.aa9f2a8eef1d.js"></script>
       
-        <script src="../../../assets/js/docs.js"></script>
+        <script src="../../../assets/js/docs.21624ebdff7a.js"></script>
       
     
   </body>

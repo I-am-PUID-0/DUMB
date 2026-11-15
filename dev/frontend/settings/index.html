@@ -57,7 +57,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.css">
+      <link rel="stylesheet" href="../../assets/css/main.57a1b4346c32.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6415,6 +6415,18 @@
               <article class="md-content__inner md-typeset">
                 <a id="__skip" tabindex="-1"></a>
                 
+  
+    <aside class="docs-channel-context" data-channel="dev" aria-label="Documentation channel">
+      <span class="docs-channel-badge" data-channel="dev">
+        Development docs
+      </span>
+      <strong>DUMB 2.24.0</strong>
+      
+        <span>Dev labels mark additions beyond the released 2.23.0 docs.</span>
+      
+    </aside>
+  
+  
                   
 
   
@@ -6423,7 +6435,10 @@
 
 <h1 id="settings">Settings<a class="headerlink" href="#settings" title="Permanent link">&para;</a></h1>
 <p>Open <strong>Settings</strong> from the sidebar. Expand a section to change its values. Closing a section changes only the layout; it does not disable the feature.</p>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>Sections start collapsed until you choose otherwise. Each browser remembers explicit open/closed choices. A direct section link opens it for that visit without replacing the saved choice.</p>
+</div>
 <h2 id="find-a-setting">Find a setting<a class="headerlink" href="#find-a-setting" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -6475,14 +6490,20 @@
 </tr>
 </tbody>
 </table>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>The <strong>Advanced</strong> section also includes service utilities. <strong>Backups and restore</strong> appears after Authentication when supported by the backend.</p>
+</div>
 <h2 id="appearance">Appearance<a class="headerlink" href="#appearance" title="Permanent link">&para;</a></h2>
 <p>Choose <strong>System Default</strong> to follow your operating system, or select a light/dark palette. This preference is stored in the browser and does not change backend configuration.</p>
 <h2 id="about-section">About section<a class="headerlink" href="#about-section" title="Permanent link">&para;</a></h2>
 <h3 id="version-information">Version information<a class="headerlink" href="#version-information" title="Permanent link">&para;</a></h3>
 <p>The About section shows the installed API, frontend, and service versions. Select an <strong>Update available</strong> badge to open the <strong>DUMB Updates</strong> dialog. Where GitHub history includes the installed release, it also shows how many releases the component is behind. Moving development builds show <strong>Dev build</strong> instead of an invented release count.</p>
 <p>Dismissing a banner hides it only in that browser. The About section retains the backend's update result and can show the banner again.</p>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>Ordinary stable notices are suppressed when the installed version is equal to or newer than that release. Explicit branch, commit, and release selections remain available for review.</p>
+</div>
 <p><img alt="About settings" class="shadow" src="../../assets/images/frontend/about_settings.png" /></p>
 <h3 id="launch-onboarding">Launch Onboarding<a class="headerlink" href="#launch-onboarding" title="Permanent link">&para;</a></h3>
 <p>Choose <strong>Launch Onboarding</strong> and confirm to review services again. If onboarding has already completed, you can go directly to optional services.</p>
@@ -6527,9 +6548,12 @@
 <p><strong>Log Timestamp Format</strong> controls MDY/DMY date order, 12/24-hour time, and leading zeros. It changes log presentation, not the backend's timezone or original log timestamps.</p>
 <p><img alt="Log timestamp settings" class="shadow" src="../../assets/images/frontend/log_timestamp_settings.png" /></p>
 <h2 id="advanced">Advanced<a class="headerlink" href="#advanced" title="Permanent link">&para;</a></h2>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <h3 id="service-utilities">Service utilities<a class="headerlink" href="#service-utilities" title="Permanent link">&para;</a></h3>
 <p>Choose <strong>Service or instance</strong>, then a tool for that exact target. The selector includes enabled/running services and instances with saved utility state, and omits unconfigured disabled templates.</p>
 <p>Available shortcuts include Media Protection, Symlinks, Database Health/Migration, InfiniDysk 2 migration, Rclone Optimizer, Seerr Sync, and Plex Status. They depend on backend and service capabilities. Opening a tool does not run it or accept its confirmations. Viewing Database Health does not enable collection.</p>
+</div>
 <h3 id="geek-mode">Geek Mode<a class="headerlink" href="#geek-mode" title="Permanent link">&para;</a></h3>
 <p>Enable <strong>Geek Mode</strong> for extra diagnostic details:</p>
 <table>
@@ -6578,6 +6602,8 @@
 <h3 id="user-management">User management<a class="headerlink" href="#user-management" title="Permanent link">&para;</a></h3>
 <p>Add, disable, enable, or delete local users under Authentication. DUMB protects the last active user from disable/delete. All enabled users have the same operator privileges; groups do not create viewer or administrator roles.</p>
 <p><img alt="Authentication settings" class="shadow" src="../../assets/images/frontend/auth_settings.png" /></p>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <h2 id="backups-and-restore">Backups and restore<a class="headerlink" href="#backups-and-restore" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Register an already-mounted destination.</li>
@@ -6588,6 +6614,7 @@
 <p>The preview scans while applications remain running. <strong>Cancel preview</strong> waits for its cleanup; closing the page does not cancel backend work. Manual compression and schedule compression are separate choices, and compression does not encrypt an archive.</p>
 <p>A fresh installation can reach restore before application onboarding after normal authentication setup/login. <strong>Recovery required</strong> retains instructions and may block service/setup actions until recovery completes. Reconnect after a lost connection to establish the actual terminal state. Do not stop DUMB or the host during a running backup or restore.</p>
 <p>Use <a href="../../features/installation-backups/">Installation backup and restore</a> for the complete procedure and <a href="../../features/backup-storage/">Backup storage</a> for destination identity and mount checks.</p>
+</div>
 <h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../dashboard/">Dashboard</a> for service cards and updates.</li>
@@ -6612,6 +6639,7 @@
 
 
                 
+
               </article>
             </div>
           
@@ -6739,9 +6767,9 @@
     
       <script src="../../assets/javascripts/bundle.3cb411a8.min.js"></script>
       
-        <script src="../../assets/js/zoom.js"></script>
+        <script src="../../assets/js/zoom.aa9f2a8eef1d.js"></script>
       
-        <script src="../../assets/js/docs.js"></script>
+        <script src="../../assets/js/docs.21624ebdff7a.js"></script>
       
     
   </body>

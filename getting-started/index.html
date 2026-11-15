@@ -57,7 +57,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/css/main.css">
+      <link rel="stylesheet" href="../assets/css/main.57a1b4346c32.css">
     
     <script>__md_scope=new URL("..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -5802,6 +5802,18 @@
               <article class="md-content__inner md-typeset">
                 <a id="__skip" tabindex="-1"></a>
                 
+  
+    <aside class="docs-channel-context" data-channel="release" aria-label="Documentation channel">
+      <span class="docs-channel-badge" data-channel="release">
+        Released docs
+      </span>
+      <strong>DUMB 2.23.0</strong>
+      
+        <span>For the latest stable release.</span>
+      
+    </aside>
+  
+  
                   
 
   
@@ -5849,6 +5861,10 @@
 </table>
 <p>These are starting points, not interchangeable backends. Each service has its own provider support, accounts, and library behavior. Check its guide before choosing.</p>
 <h2 id="from-install-to-first-playback">From install to first playback<a class="headerlink" href="#from-install-to-first-playback" title="Permanent link">&para;</a></h2>
+<figure class="docs-visual">
+<p><img alt="Five stages: prepare, install DUMB, choose services, connect the apps, then import and play a test item." src="../assets/images/guides/first-playback.svg" /></p>
+<figcaption class="docs-visual-caption">Start with one workflow and test a real item from import to playback. The steps below link to the instructions for each stage.</figcaption>
+</figure>
 <ol>
 <li><strong>Prepare storage and credentials.</strong> Read <a href="installation/">Before you install</a>.</li>
 <li><strong>Deploy DUMB.</strong> Choose your host in <a href="../deployment/">Deployment</a>.</li>
@@ -5864,6 +5880,8 @@
 </li>
 </ol>
 <h2 id="what-runs-where">What runs where<a class="headerlink" href="#what-runs-where" title="Permanent link">&para;</a></h2>
+<details class="geek-details">
+<summary>Technical details: control and media paths</summary>
 <pre class="mermaid"><code>flowchart LR
     USER([You]) --&gt; FE[Dashboard :3005]
     FE --&gt; API[DUMB controller]
@@ -5874,6 +5892,7 @@
     LIB --&gt; MEDIA[Plex / Jellyfin / Emby]
     FE -. embedded UI .-&gt; ARR
     FE -. embedded UI .-&gt; FLOW</code></pre>
+</details>
 <p>DUMB installs and coordinates services. Each upstream application still owns its accounts, provider behavior, database, and content decisions. The <a href="../architecture/">architecture guide</a> explains the boundaries.</p>
 <div class="admonition tip">
 <p class="admonition-title">Using a media server outside DUMB?</p>
@@ -5897,6 +5916,7 @@
 
 
                 
+
               </article>
             </div>
           
@@ -6024,9 +6044,9 @@
     
       <script src="../assets/javascripts/bundle.3cb411a8.min.js"></script>
       
-        <script src="../assets/js/zoom.js"></script>
+        <script src="../assets/js/zoom.aa9f2a8eef1d.js"></script>
       
-        <script src="../assets/js/docs.js"></script>
+        <script src="../assets/js/docs.21624ebdff7a.js"></script>
       
     
   </body>

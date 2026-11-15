@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="806" viewBox="0 0 480 806" role="img" aria-labelledby="title description">
+  <title id="title">Install to first playback</title>
+  <desc id="description">Five stages: prepare storage and accounts, install DUMB, choose services, configure connections and paths, then confirm a real import and playback.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto-start-reverse"><path d="M1 1 L8 5 L1 9" fill="none" stroke="#75dce9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></marker>
+  </defs>
+  <style>
+    text { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #f3f9fc; }
+    .title { font-size: 28px; font-weight: 750; letter-spacing: -.4px; }
+    .subtitle { font-size: 20px; fill: #c0d6e3; }
+    .label { font-size: 28px; font-weight: 700; }
+    .body { font-size: 24px; fill: #d0e2ec; }
+    .small { font-size: 20px; fill: #c0d6e3; }
+    .number { font-size: 22px; font-weight: 800; fill: #132e41; }
+    .arrow { fill: none; stroke: #75dce9; stroke-width: 2.5; marker-end: url(#arrow); }
+    .panel { fill: #203d52; stroke: #42667f; stroke-width: 1.5; }
+  </style>
+  <rect x="1" y="1" width="478" height="804" rx="24" fill="#142c3f" stroke="#44667d" stroke-width="1.5"/>
+  <text x="28" y="44" class="title">Install to first playback</text>
+  <text x="28" y="76" class="subtitle">Start with one small, complete workflow</text>
+  <rect x="24" y="112" width="432" height="100" rx="16" class="panel"/>
+  <circle cx="56" cy="146" r="17" fill="#a8eaf0"/>
+  <text x="56" y="154" class="number" text-anchor="middle">1</text>
+  <text x="86" y="154" class="label">Prepare</text>
+  <text x="44" y="190" class="body">Storage and provider accounts</text>
+  <path d="M240 217 V237" class="arrow"/>
+  <rect x="24" y="244" width="432" height="100" rx="16" class="panel"/>
+  <circle cx="56" cy="278" r="17" fill="#a8eaf0"/>
+  <text x="56" y="286" class="number" text-anchor="middle">2</text>
+  <text x="86" y="286" class="label">Install DUMB</text>
+  <text x="44" y="322" class="body">Open its dashboard</text>
+  <path d="M240 349 V369" class="arrow"/>
+  <rect x="24" y="376" width="432" height="100" rx="16" class="panel"/>
+  <circle cx="56" cy="410" r="17" fill="#a8eaf0"/>
+  <text x="56" y="418" class="number" text-anchor="middle">3</text>
+  <text x="86" y="418" class="label">Choose your services</text>
+  <text x="44" y="454" class="body">Start with one workflow</text>
+  <path d="M240 481 V501" class="arrow"/>
+  <rect x="24" y="508" width="432" height="100" rx="16" class="panel"/>
+  <circle cx="56" cy="542" r="17" fill="#a8eaf0"/>
+  <text x="56" y="550" class="number" text-anchor="middle">4</text>
+  <text x="86" y="550" class="label">Connect your apps</text>
+  <text x="44" y="586" class="body">Accounts, paths and libraries</text>
+  <path d="M240 613 V633" class="arrow"/>
+  <rect x="24" y="640" width="432" height="100" rx="16" class="panel"/>
+  <circle cx="56" cy="674" r="17" fill="#a8eaf0"/>
+  <text x="56" y="682" class="number" text-anchor="middle">5</text>
+  <text x="86" y="682" class="label">Import, then play</text>
+  <text x="44" y="718" class="body">Confirm a real item works</text>
+  <text x="240" y="780" class="small" text-anchor="middle">Check readiness and playback.</text>
+</svg>

@@ -19,7 +19,15 @@ Running a workflow and its media server in the same container gives them a share
 DUMB coordinates upstream applications rather than replacing them. You still choose providers, configure application accounts and libraries, and review changes that affect your data. Automatic setup covers supported integrations; account and library tasks still need review.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 The retained [setup checklist](features/setup-checklist.md) shows automatic, manual, and unverified integration work.
+
+</div>
+
 
 
 ## Project resources
@@ -1293,11 +1301,10 @@ See [Authentication API](auth.md) for local login, OIDC, token refresh, and user
 | Migrate a supported SQLite application | [PostgreSQL migration](postgres-migration.md) |
 | Benchmark InfiniDysk-backed rclone | [Rclone optimizer](rclone-optimizer.md) |
 | Review library protection incidents | [Media library protection](media-library-protection.md) |
-
-| Plan and complete application integration | [Setup](setup.md) |
-| Back up or restore an installation | [Installation backups](installation-backups.md) |
-| Register archive destinations | [Backup storage](backup-storage.md) |
-| Install or migrate native InfiniDysk 2 | [InfiniDysk 2](infinidysk-v2.md) |
+| <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> Plan and complete application integration | [Setup](setup.md) |
+| <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> Back up or restore an installation | [Installation backups](installation-backups.md) |
+| <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> Register archive destinations | [Backup storage](backup-storage.md) |
+| <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> Install or migrate native InfiniDysk 2 | [InfiniDysk 2](infinidysk-v2.md) |
 
 
 ## Use the running schema
@@ -2503,7 +2510,15 @@ Clients should gate this call on the `metrics_history_hot_activation` process ca
 ## Failure behavior
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 During installation backup/restore holds, history reads and maintenance routes can return `409` instead of starting concurrent persistence work. Retain the response and retry after the controlling operation releases its hold.
+
+</div>
+
 
 
 
@@ -2735,11 +2750,10 @@ All paths are backend-native. When calling through port `3005`, prefix REST path
 | Move a supported application from SQLite to PostgreSQL | [PostgreSQL migration](postgres-migration.md) |
 | Benchmark an InfiniDysk-backed rclone mount | [Rclone optimizer](rclone-optimizer.md) |
 | Rename a legacy NzbDAV installation to InfiniDysk | [Namespace migration](infinidysk-migration.md) |
-
-| Plan and complete a service arrangement | [Setup](setup.md) |
-| Back up or restore a managed installation | [Installation backups](installation-backups.md) |
-| Register an archive destination | [Backup storage](backup-storage.md) |
-| Install or migrate to native InfiniDysk 2 | [InfiniDysk 2](infinidysk-v2.md) |
+| <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> Plan and complete a service arrangement | [Setup](setup.md) |
+| <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> Back up or restore a managed installation | [Installation backups](installation-backups.md) |
+| <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> Register an archive destination | [Backup storage](backup-storage.md) |
+| <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> Install or migrate to native InfiniDysk 2 | [InfiniDysk 2](infinidysk-v2.md) |
 
 
 ## Service endpoints
@@ -3169,24 +3183,31 @@ Common capability groups:
 | `infinidysk_migration*` | Legacy identity and namespace migration |
 | `rclone_optimizer_infinidysk` | InfiniDysk generation 1 rclone optimizer |
 | `mediastorm_initial_admin_password` | No-store bootstrap credential readback |
-
-| `setup_arrangements` | Retained service setup plans and action runs |
-| `setup_infinidysk_runtime_choices`, `setup_infinidysk_runtime_protocol` | Native runtime selection handoff; protocol `1` |
-| `installation_backup`, `installation_backup_protocol` | Installation backup/restore; protocol `1` |
-| `installation_backup_cancellation`, `installation_backup_phase_progress` | Job-specific cancellation and measured phase progress |
-| `backup_storage_selection`, `backup_storage_protocol` | Registered archive destinations; protocol `1` |
-| `backup_storage_shared_permissions` | Explicit shared-permissions consent per storage profile |
-| `infinidysk_v2`, `infinidysk_v2_migration`, `infinidysk_v2_migration_protocol` | Native generation 2 workflow; protocol `1` |
-| `infinidysk_v2_postgres` | Native generation 2 PostgreSQL conversion |
-| `infinidysk_v2_consumer_recovery`, `infinidysk_v2_consumer_recovery_protocol` | Retained target/consumer recovery; protocol `1` |
-| `infinidysk_v2_cleanup`, `infinidysk_v2_cleanup_protocol` | Guarded v1 retirement; protocol `1` |
-| `infinidysk_v2_low_space_migration`, `infinidysk_v2_external_blob_staging` | Explicit capacity-saving migration choices |
+| <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> `setup_arrangements` | Retained service setup plans and action runs |
+| <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> `setup_infinidysk_runtime_choices`, `setup_infinidysk_runtime_protocol` | Native runtime selection handoff; protocol `1` |
+| <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> `installation_backup`, `installation_backup_protocol` | Installation backup/restore; protocol `1` |
+| <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> `installation_backup_cancellation`, `installation_backup_phase_progress` | Job-specific cancellation and measured phase progress |
+| <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> `backup_storage_selection`, `backup_storage_protocol` | Registered archive destinations; protocol `1` |
+| <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> `backup_storage_shared_permissions` | Explicit shared-permissions consent per storage profile |
+| <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> `infinidysk_v2`, `infinidysk_v2_migration`, `infinidysk_v2_migration_protocol` | Native generation 2 workflow; protocol `1` |
+| <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> `infinidysk_v2_postgres` | Native generation 2 PostgreSQL conversion |
+| <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> `infinidysk_v2_consumer_recovery`, `infinidysk_v2_consumer_recovery_protocol` | Retained target/consumer recovery; protocol `1` |
+| <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> `infinidysk_v2_cleanup`, `infinidysk_v2_cleanup_protocol` | Guarded v1 retirement; protocol `1` |
+| <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> `infinidysk_v2_low_space_migration`, `infinidysk_v2_external_blob_staging` | Explicit capacity-saving migration choices |
 
 
 Require the exact protocol advertised by the relevant workflow. Treat an absent flag as unsupported. Legacy `arr_postgres_migration*`, `nzbdav_install_info`, and `rclone_optimizer_nzbdav` aliases exist for older clients; new clients should use canonical names.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 Generation 2 also requires valid `api_version` SemVer at least `2.24.0`. Its runtime, mount backend, and database provider are separate choices. `infinidysk_v2_rclone_optimizer` is currently false, including when a generation 2 installation retains rclone.
+
+</div>
+
 
 
 ## Previously on this page
@@ -3195,7 +3216,15 @@ These section links remain available for existing bookmarks:
 
 ### Setup plans and retained runs
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 See [Setup API](setup.md).
+
+</div>
+
 
 
 
@@ -3213,13 +3242,29 @@ See [Updates and install cache API](updates.md).
 
 ### Installation backup and restore
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 See [Installation backups API](installation-backups.md).
+
+</div>
+
 
 
 
 ### Registered backup storage
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 See [Backup storage API](backup-storage.md).
+
+</div>
+
 
 
 
@@ -3254,7 +3299,15 @@ See [Rclone optimizer API](rclone-optimizer.md).
 
 ### InfiniDysk 2 workflows
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 See [InfiniDysk 2 API](infinidysk-v2.md).
+
+</div>
+
 
 
 
@@ -3797,7 +3850,15 @@ Lists backup manifests that match the current service `symlink_backup_path` temp
 Lists files under `/config/symlink-repair/snapshots` by default.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 With an explicit registered backup destination, lists only owned symlink catalog artifacts for the selected process; a managed `manifest_path` must verify before its namespace is listed. See [Backup storage API](backup-storage.md).
+
+</div>
+
 
 
 Use this to populate manifest pickers in the Snapshot tab for quick restore/overwrite selection.
@@ -3829,6 +3890,11 @@ Endpoint paths below are backend-native. Add `/api` when using the dashboard gat
 Returns the last recorded update state for the required `process_name` query parameter.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 Scheduled work can add the following fields to `update_status`:
 
 | Field | Meaning |
@@ -3854,6 +3920,9 @@ and `message` during a recheck or deferral. Read `scheduler_state` and
 Scheduled backups publish corresponding worker fields through
 [`GET /process/symlink-backup-status`](symlinks.md#get-processsymlink-backup-status),
 with `scheduler_job: "symlink_backup"` and `next_backup_at`.
+
+</div>
+
 
 
 ### `GET /process/update-notices`
@@ -4579,7 +4648,17 @@ This section explains how DUMB is structured, how services are orchestrated, and
 
 ## System overview
 
+<figure class="docs-visual" markdown="1">
+
+![Library workflow roles: optional requests or searches, workflow apps, files and library paths, and the media server.](../assets/images/guides/library-workflow.svg)
+
+<figcaption class="docs-visual-caption">For a library workflow, these are roles rather than four required services. Your chosen integration determines which apps and connections you need.</figcaption>
+</figure>
+
 DUMB bundles a FastAPI backend, a Nuxt 4 frontend, a Traefik access layer, and a set of managed services (core, dependent, and optional). The backend owns configuration, process lifecycle, setup hooks, dependency ordering, health checks, update automation, and Traefik route generation. The frontend surfaces onboarding, status, logs, metrics, configuration controls, and embedded service UIs.
+
+<details class="geek-details" markdown="1">
+<summary>Technical details: API, process and proxy layers</summary>
 
 ```mermaid
 flowchart TD
@@ -4607,6 +4686,8 @@ flowchart TD
 
 ```
 
+</details>
+
 ## Core building blocks
 
 | Component | Responsibility |
@@ -4622,6 +4703,13 @@ flowchart TD
 | Cloudflared | Optional Cloudflare Tunnel connector that forwards public traffic to Traefik |
 
 ## Storage and mounts
+
+<figure class="docs-visual" markdown="1">
+
+![Host folders map to config, data, log and media paths inside DUMB. External apps need separate access to library paths and symlink targets.](../assets/images/guides/storage-boundaries.svg)
+
+<figcaption class="docs-visual-caption">Bind mounts preserve local files when the container is recreated. Provider-backed media can remain remote; its mount must be available again. External apps need their own path and mount setup. A bind mount is not a backup.</figcaption>
+</figure>
 
 The maintained deployment persists four container paths: `/config`, `/log`, `/data`, and `/mnt/debrid`. Services still use their native internal paths (for example `/riven/backend/data`, `/decypharr`, `/postgres_data`, or `/altmount`), but DUMB maps those paths into service-specific subdirectories below the mounted `/data` root. Media access is provided through `/mnt/debrid`, including mounts and curated symlink libraries.
 
@@ -6113,9 +6201,17 @@ Apply changes with `sudo docker compose up -d`. Compare bridge and host networki
 Do not publish `8000` for normal use. A mapping alone cannot expose its loopback listener; direct backend access also requires an intentional bind-address change and appropriate access controls.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ## Optional Audiobookshelf storage
 
 The normal `/data` mount preserves `/data/audiobookshelf/config` and `/data/audiobookshelf/metadata`. Add separate media mounts for books and podcasts. The SQLite configuration directory must be on local storage; if `/data` is network-backed, use a separate local bind and set `audiobookshelf.config_dir` to that container path. See [Audiobookshelf](../services/optional/audiobookshelf.md).
+
+</div>
+
 
 
 ## Update or stop
@@ -6288,7 +6384,14 @@ Use a normal `/mnt/debrid` bind if all consumers run inside DUMB. External consu
 Keep a backup before changing persistent storage or moving hosts.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 The development backend provides [installation backup and restore](../features/installation-backups.md).
+
+</div>
 
 ---
 
@@ -6325,6 +6428,13 @@ services:
     ports:
       - "3005:3005"
 ```
+
+<figure class="docs-visual" markdown="1">
+
+![The browser reaches host port 3005, which maps to the DUMB dashboard. The dashboard forwards API requests to the internal port 8000.](../assets/images/guides/published-ports.svg)
+
+<figcaption class="docs-visual-caption">This shows the maintained bridge-mode example. The dashboard is the front door for API requests; publish additional service ports only when direct access is needed.</figcaption>
+</figure>
 
 Open the dashboard at:
 
@@ -7646,7 +7756,15 @@ that imports Battery as an in-process Python module instead of running its Flask
 service on port `5001`.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 DUMB inspects the installed CLI Debrid files. For a recognized embedded layout it removes the managed standalone Battery dependency and skips that separate process, even if its saved toggle remains enabled. Older layouts that still provide `cli_battery/main.py` need the standalone service. A missing entrypoint alone does not prove the embedded layout; an unrecognized installation needs repair.
+
+</div>
+
 
 
 
@@ -7754,12 +7872,20 @@ The GitHub repository for **DUMB** uses continuous integration and deployment wo
 For example, the [Check for New Release Tags](https://github.com/I-am-PUID-0/DUMB/actions/workflows/fetch-latest-tags.yml) workflow is automated to run every three hours and check for updates to the various services/projects utilized in DUMB. If an update is found, the [Docker Image CI](https://github.com/I-am-PUID-0/DUMB/actions/workflows/docker-image.yml) workflow is called to build a new image with the latest services. 
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 To pair DUMB `dev` with an unreleased frontend, maintainers can use the manual
 [frontend image-build selection](../services/dumb/dumb-frontend.md#build-a-development-image-with-a-chosen-frontend).
 Each frontend choice on DUMB `dev` publishes the normal `:dev` image tag, so
 that tag follows the last published backend/frontend combination. Automatic builds
 continue to select a tagged frontend release. Use a registry digest to retain an
 exact image; selecting a frontend commit alone does not pin the backend.
+
+</div>
+
 
 
 ### What versions are in the latest **DUMB** image
@@ -8101,7 +8227,15 @@ NeutArr relies on Arr API access.
 - Check API-key discovery and any workflow filter on the NeutArr instance. A filter only includes Arr instances whose workflow selections overlap.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 If the setup checklist retains exact Arr targets for this NeutArr instance, review those selections as well.
+
+</div>
+
 
 
 
@@ -9217,10 +9351,17 @@ Source: https://dumbarr.com/dev/features/arr-postgres-migration/
 DUMB provides a guarded tool for moving an existing supported service from SQLite to DUMB-managed PostgreSQL. Open the service page and select **Database Migration**.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 For InfiniDysk, this page describes the generation 1 adapter. Generation 2 uses
 its separate [native PostgreSQL conversion workflow](infinidysk-v2-migration.md#native-postgresql-conversion)
 after a validated fresh installation or major upgrade; the frontend selects the
 tool for the active generation.
+
+</div>
 
 
 
@@ -9536,9 +9677,17 @@ When DUMB starts for the first time, the frontend detects that no users exist an
 When authentication is enabled, users must log in to access the dashboard and API.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 After either login method succeeds, the dashboard can return to an internal page
 on the same origin. External destinations and malformed or ambiguous return
 paths fall back to the dashboard home page.
+
+</div>
+
 
 
 ### Local login
@@ -10120,7 +10269,15 @@ The global **DUMB Updates** banner and **Settings → About** share the backend'
 DUMB API and frontend have independent version numbers. A development suffix identifies a moving image/source build, while stable releases link to their release notes. See [API versions](../services/dumb/api.md#development-and-release-versions).
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 The candidate core in `v2.24.0-dev.34` is `2.24.0`; `-dev.34` identifies the rolling image build. The frontend follows its own releases and source commits; see [frontend development versions](../services/dumb/dumb-frontend.md#frontend-development-versions).
+
+</div>
+
 
 
 !!! warning "Fixed versions and update schedules"
@@ -10388,6 +10545,11 @@ The `auto_update_start_time` and `auto_update_interval` settings control update 
 With this example, checks run once per day at 04:00. If you set `auto_update_interval` to another value (for example `12`), checks run every 12 hours anchored from the configured start time.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ### Scheduled work and deferrals
 
 DUMB uses one shared scheduler. Scheduled service update checks and installs
@@ -10413,6 +10575,8 @@ it returns, and later updates remain deferred where necessary.
 An exception records an error and leaves the scheduler available for later
 work. A service process starting successfully does not by itself mean update
 health stabilization and cleanup have finished.
+
+</div>
 
 
 
@@ -10543,12 +10707,19 @@ INFO - [Auto-Update] Update complete: frontend v1.33.0
 4. **Verify network connectivity** to GitHub
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 If the status is `deferred`, review its message and next retry time. Another
 update, lifecycle operation, or migration can temporarily prevent admission.
 For a running or long-running update, review the active service's install
 stage and logs. Elapsed time alone does not identify the blocking operation;
 collecting a thread traceback may be needed to diagnose a persistent stall.
 The scheduler does not terminate the active installer to start another one.
+
+</div>
 
 
 
@@ -10974,7 +11145,15 @@ This listener has its own exposure and authentication requirements. Enabling DUM
 These are default ports and example route keys. Enabled instances, current ports, and API-discovered UI paths are authoritative; startup may move a conflicting port. Authelia is a top-level portal launcher rather than an embedded login form.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 InfiniDysk 2 currently requires its own root URL. Use its direct local address or configured public origin; embedded subpath login/playback remain unavailable until the backend advertises a validated adapter. Preserve existing stream URL origins and signed paths. See [InfiniDysk 2 authentication](infinidysk-v2-migration.md#authentication-with-the-retained-backend-port).
+
+</div>
+
 
 
 ## Traefik configuration
@@ -11143,6 +11322,13 @@ Choose a task to find its controls, configuration, and recovery steps. For a lis
 
 ## Keep the stack running
 
+<figure class="docs-visual" markdown="1">
+
+![Review the impact, keep a recovery copy, apply one change, then verify readiness, import and playback.](../assets/images/guides/change-checklist.svg)
+
+<figcaption class="docs-visual-caption">For changes that affect data, keep an independent backup first. Choose a recovery method that fits the service and operation; not every action has an automatic undo.</figcaption>
+</figure>
+
 | Task | Guide |
 | --- | --- |
 | Understand startup order and readiness | [Startup lifecycle](startup-lifecycle.md) |
@@ -11170,12 +11356,20 @@ Choose a task to find its controls, configuration, and recovery steps. For a lis
 | Ask a model to help interpret selected, redacted evidence | [AI Assistant](ai-assistant.md) |
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ## Development additions
 
 - [Setup checklist and automation](setup-checklist.md) retains missing inputs, verified connections, and manual work.
 - [Backup storage](backup-storage.md) registers mounted archive destinations.
 - [Installation backup and restore](installation-backups.md) protects managed installation state.
 - [InfiniDysk 2 installation and upgrade](infinidysk-v2-migration.md) handles the native generation separately from 1.x.
+
+</div>
+
 
 
 Features appear in the dashboard only when the connected DUMB API supports them. A newer frontend cannot add a missing backend capability. Each guide calls out additional prerequisites and actions that still need your decision.
@@ -12532,7 +12726,15 @@ The feature covers DUMB-managed storage dependencies such as rclone, InfiniDysk,
     This feature reduces outage risk but cannot reverse an application database change that already occurred. Keep media-server database/config backups, and avoid exposing the media server directly to mount paths that can disappear without warning.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 New policies created by arrangement setup stay disabled until you review their mount scope and enable them deliberately. Existing policies retain their settings.
+
+</div>
+
 
 
 ## Planned stop, restart, or update
@@ -14072,6 +14274,11 @@ in steady state. The lifecycle is:
 6. `shutting_down`
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 An interrupted installation restore uses a separate **`recovery_required`**
 phase. DUMB starts only the configured API and already-installed frontend for
 recovery; normal application setup, services and background workers remain
@@ -14079,6 +14286,8 @@ paused. Use direct frontend/API access, finish the offered recovery action, then
 restart the container. Docker health checks the required recovery control plane
 instead of treating intentionally paused applications as failed startup.
 An unavailable API or missing installed frontend remains a real health failure.
+
+</div>
 
 
 
@@ -14110,11 +14319,18 @@ becomes `ready`.
 | `stabilization_seconds` | `15` | Continuous healthy period required before `ready` |
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 The readiness deadline starts after the dependency-aware service-launch phase
 returns; it is not a maximum duration measured from container creation. Green
 process tiles show running processes while this phase also checks their configured
 endpoints. The startup banner exposes pending readiness checks and their reasons
 so a launch delay, an unopened port and the stabilization window can be distinguished.
+
+</div>
 
 
 
@@ -14413,6 +14629,11 @@ Snapshot tab behavior:
     - Custom roots (textarea)
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ### Registered backup destinations
 
 Use the **Backup destination** selection in Snapshot backup or the schedule
@@ -14428,6 +14649,8 @@ recorded checksum and, when a service context is supplied, its process identity.
 Select an older registered destination explicitly when restoring one of its
 retained snapshots after changing the schedule's destination. A missing or
 changed mount reports an error instead of writing a local fallback.
+
+</div>
 
 
 
@@ -14480,7 +14703,7 @@ Enabled with service config keys:
 - `symlink_backup_roots` (optional override)
 - `symlink_backup_retention_count`
 
-- `backup_destination_id` (explicit registered destination; empty keeps the existing path)
+- <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> `backup_destination_id` (explicit registered destination; empty keeps the existing path)
 
 
 ### Retention
@@ -14489,7 +14712,7 @@ Enabled with service config keys:
 - `0` disables pruning (keep all matching manifests)
 - Values `> 0` keep newest `N`, pruning older files matching the service template
 
-- With registered storage, pruning applies only to that process's scheduled snapshots. Manual managed snapshots remain retained.
+- <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> With registered storage, pruning applies only to that process's scheduled snapshots. Manual managed snapshots remain retained.
 
 
 ### Default cadence
@@ -14878,9 +15101,16 @@ The dashboard displays service cards for each configured service, showing:
 ---
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ## Setup checklist
 
 Compatible backends retain the latest or remembered setup run, automatic/manual tasks and independent connection results. Correct inputs, retry an action or recheck connections without repeating successful installations. Leaving onboarding does not complete missing tasks. See [Setup checklist and automation](../features/setup-checklist.md).
+
+</div>
 
 
 
@@ -15128,6 +15358,13 @@ Source: https://dumbarr.com/dev/frontend/
 # Dashboard guide
 
 The DUMB Frontend, also called **dmbdb**, is the browser interface for service controls, configuration, logs, and metrics. Open `http://localhost:3005` on the Docker host, or use the host's address from another device.
+
+<figure class="docs-visual" markdown="1">
+
+![A navigation map showing Dashboard, Service pages, Metrics and Settings, with the purpose of each screen.](../assets/images/guides/dashboard-map.svg)
+
+<figcaption class="docs-visual-caption">A navigation map, not a screenshot. Open a service card for that app; use Metrics and Settings for installation-wide tasks. Available controls depend on the connected backend.</figcaption>
+</figure>
 
 ## Find a task
 
@@ -15509,7 +15746,15 @@ Existing application data is retained, but the wizard can apply new settings. Us
 Have the intended storage mounted inside DUMB, provider credentials ready, and a plan for which application owns requests, downloads, imports, and playback. A host-only mount or browser-reachable URL may not be visible from inside the container.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 A compatible backend retains a setup checklist after you leave the wizard. It records configured actions, failed checks, missing inputs, and manual work separately. A running process does not complete an arrangement. See [Setup checklist and automation](../features/setup-checklist.md).
+
+</div>
+
 
 
 ## Wizard steps
@@ -15534,9 +15779,17 @@ Select your workflow applications and supporting services, or use **Guided setup
 A tier name such as `1080p` is an instance label, not proof that the application has the intended quality profile.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 The manual catalog groups services by role, with alphabetical expandable categories and service descriptions. **Expand all** and **Collapse all** change only the layout. Selected categories open initially; summaries retain selection counts when closed.
 
 Review **Chosen by you**, **Required dependency**, and **Optional companion** separately. The historical Core/Optional catalog names do not make every core service mandatory.
+
+</div>
+
 
 
 ### Step 2: Preflight checks
@@ -15545,7 +15798,15 @@ The wizard checks backend health, capabilities, service catalogs, configuration,
 
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 Health, capability, and catalog failures block the next step. Storage-path inventory and embedded UI checks are advisory. Unknown storage, remote timeout, or consumer-namespace results stay **Not verified** rather than being reported as passed. Correct confirmed critical failures before starting.
+
+</div>
+
 
 
 ### Step 3: Configure provider credentials
@@ -15575,6 +15836,11 @@ For Decypharr and AltMount, choose FUSE, embedded rclone, external rclone, or no
 InfiniDysk 1's `postgres_enabled` and `postgres_database` options are for a fresh installation. They do not copy an existing SQLite library. Existing installations must use the guarded [database migration workflow](../features/arr-postgres-migration.md), after any required namespace migration.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 For InfiniDysk 2, review the separate runtime and mount choices. Generation 1 retains historical rclone; generation 2 can use rclone-over-WebDAV or native FUSE. FUSE needs a visible device, permissions, and the same mount in every consumer namespace.
 
 Choosing generation 2 opens its guarded installation/migration tool without accepting its acknowledgements or starting a job. Finish the tool, then refresh the setup plan. Existing 1.x data needs major migration; selecting an option does not convert it. Native FUSE omits the associated rclone dependency. See [InfiniDysk 2 installation and upgrade](../features/infinidysk-v2-migration.md).
@@ -15584,6 +15850,9 @@ Choosing generation 2 opens its guarded installation/migration tool without acce
 Choose exact application instances, authorized external services, provider-account allocations, library paths, quality profiles, languages, and default/4K request routes. **External server** and **No media server** are separate choices.
 
 Some profiles, roots, and generated keys are available only after first start. Leave those tasks unfinished and return to them later. Existing unowned settings require a reviewed adoption before DUMB changes them.
+
+</div>
+
 
 
 ### Embedded service access
@@ -15595,6 +15864,11 @@ Enable embedded UIs when offered to use proxied service tabs, split view, and di
 Review selected services, dependencies, credentials, instance paths, and custom options before applying. Confirmation can install, configure, and start services.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 The plan groups work into **DUMB will configure**, **Information you must provide**, and **Finish manually**. Choose **Start services** to apply the reviewed plan.
 
 ### Setup progress and retained tasks
@@ -15602,6 +15876,9 @@ The plan groups work into **DUMB will configure**, **Information you must provid
 Follow the checklist and live logs. Correct the relevant input, then apply, retry, or recheck that action. **Continue to dashboard** leaves the wizard without discarding unfinished work; the same checklist appears on the dashboard and matching service pages.
 
 Manual completion records your confirmation separately from an independently passed check. Closing the browser does not complete remaining tasks. External provider/account setup and unsupported connections remain visible as manual work.
+
+</div>
+
 
 
 
@@ -15618,11 +15895,19 @@ The wizard updates the runtime `dumb_config.json`, including enabled services, s
 Instances need distinct names, process identities, ports, and appropriate data paths. Combined Arr layouts can use list-based `core_service`; separate layouts keep independent integrations. Review the [multi-instance guide](../reference/instances.md) before changing a working topology.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ## External media and Plex authorization
 
 External endpoints must be reachable from DUMB and require explicit authorization for private-network access. The media-server choice becomes the initial connection choice for selected request/maintenance applications; review each form before applying.
 
 Plex can be claimed from its retained account task after it is ready. Use a fresh short-lived claim token when needed. Existing claimed servers retain their account; claim inputs and API tokens remain masked.
+
+</div>
+
 
 
 ## After onboarding
@@ -15639,7 +15924,14 @@ Check service status, actual application configuration, and one intended end-to-
 | Need a different topology | Review the change in onboarding; use dedicated migration tools for existing data |
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 Refreshing loses unsaved credential drafts, but the backend's retained setup run remains. Resume its checklist rather than reinstalling successful services.
+
+</div>
 
 ---
 
@@ -15664,9 +15956,17 @@ Select a service card to open its status, configuration, logs, and application i
 | Change the page's default tab | Tools → Preferences |
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ## Setup checklist
 
 Retained setup tasks are scoped to the current service and instance. Expand **Configure this step** to supply missing inputs, then apply, retry, or recheck the intended action. Manual completion records your confirmation separately from a passed connection test. See [Setup checklist](../features/setup-checklist.md).
+
+</div>
+
 
 
 ## Status and controls
@@ -15716,7 +16016,15 @@ Closing the panel does not cancel the backend job. Reopen it to follow progress.
 The [SQLite-to-PostgreSQL guide](../features/arr-postgres-migration.md) lists supported applications, schema checks, backup requirements, and the limits of rollback.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 For InfiniDysk 2, the frontend selects the separate [native conversion tool](../features/infinidysk-v2-migration.md#native-postgresql-conversion) for the active generation.
+
+</div>
+
 
 
 ## Dependency graph view
@@ -15815,7 +16123,15 @@ Enable service UIs in Settings, then open the service's **Embedded UI** tab. Cho
 DUMB login does not replace the application's own login. Root-relative APIs, assets, and WebSockets use the frontend's service context. Authelia login and TPA admin SSO open at their public HTTPS origins in a top-level tab.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 InfiniDysk 2 currently opens at its own root URL. Use the direct local/public address until a validated embedded adapter is advertised; do not substitute a subpath URL into signed playback links.
+
+</div>
+
 
 
 ### Service workers and browser notifications
@@ -15848,7 +16164,15 @@ Open **Settings** from the sidebar. Expand a section to change its values. Closi
 
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 Sections start collapsed until you choose otherwise. Each browser remembers explicit open/closed choices. A direct section link opens it for that visit without replacing the saved choice.
+
+</div>
+
 
 
 ## Find a setting
@@ -15867,7 +16191,15 @@ Sections start collapsed until you choose otherwise. Each browser remembers expl
 | Support and Contributors | Project and maintainer links |
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 The **Advanced** section also includes service utilities. **Backups and restore** appears after Authentication when supported by the backend.
+
+</div>
+
 
 
 ## Appearance
@@ -15883,7 +16215,15 @@ The About section shows the installed API, frontend, and service versions. Selec
 Dismissing a banner hides it only in that browser. The About section retains the backend's update result and can show the banner again.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 Ordinary stable notices are suppressed when the installed version is equal to or newer than that release. Explicit branch, commit, and release selections remain available for review.
+
+</div>
+
 
 
 ![About settings](../assets/images/frontend/about_settings.png){ .shadow }
@@ -15937,11 +16277,19 @@ A GitHub token should grant only the read access required by the selected source
 ## Advanced
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ### Service utilities
 
 Choose **Service or instance**, then a tool for that exact target. The selector includes enabled/running services and instances with saved utility state, and omits unconfigured disabled templates.
 
 Available shortcuts include Media Protection, Symlinks, Database Health/Migration, InfiniDysk 2 migration, Rclone Optimizer, Seerr Sync, and Plex Status. They depend on backend and service capabilities. Opening a tool does not run it or accept its confirmations. Viewing Database Health does not enable collection.
+
+</div>
+
 
 
 ### Geek Mode
@@ -15989,6 +16337,11 @@ Add, disable, enable, or delete local users under Authentication. DUMB protects 
 ![Authentication settings](../assets/images/frontend/auth_settings.png){ .shadow }
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ## Backups and restore
 
 1. Register an already-mounted destination.
@@ -16001,6 +16354,9 @@ The preview scans while applications remain running. **Cancel preview** waits fo
 A fresh installation can reach restore before application onboarding after normal authentication setup/login. **Recovery required** retains instructions and may block service/setup actions until recovery completes. Reconnect after a lost connection to establish the actual terminal state. Do not stop DUMB or the host during a running backup or restore.
 
 Use [Installation backup and restore](../features/installation-backups.md) for the complete procedure and [Backup storage](../features/backup-storage.md) for destination identity and mount checks.
+
+</div>
+
 
 
 ## Related pages
@@ -16036,17 +16392,27 @@ These are starting points, not interchangeable backends. Each service has its ow
 
 ## From install to first playback
 
+<figure class="docs-visual" markdown="1">
+
+![Five stages: prepare, install DUMB, choose services, connect the apps, then import and play a test item.](../assets/images/guides/first-playback.svg)
+
+<figcaption class="docs-visual-caption">Start with one workflow and test a real item from import to playback. The steps below link to the instructions for each stage.</figcaption>
+</figure>
+
 1. **Prepare storage and credentials.** Read [Before you install](installation.md).
 2. **Deploy DUMB.** Choose your host in [Deployment](../deployment/index.md).
 3. **Open the dashboard.** The default address is `http://<host>:3005`.
 4. **Complete onboarding.** Select services and enter provider credentials. See [Onboarding](../frontend/onboarding.md).
 
-5. **Finish application setup.** Review the [setup checklist](../features/setup-checklist.md), including accounts, indexers, root folders, libraries, and any manual tasks.
+5. <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> **Finish application setup.** Review the [setup checklist](../features/setup-checklist.md), including accounts, indexers, root folders, libraries, and any manual tasks.
 
 
 6. **Check the workflow.** Add a test item through your chosen application, confirm its import, and play it from the media server. A running process alone does not establish this.
 
 ## What runs where
+
+<details class="geek-details" markdown="1">
+<summary>Technical details: control and media paths</summary>
 
 ```mermaid
 flowchart LR
@@ -16060,6 +16426,8 @@ flowchart LR
     FE -. embedded UI .-> ARR
     FE -. embedded UI .-> FLOW
 ```
+
+</details>
 
 DUMB installs and coordinates services. Each upstream application still owns its accounts, provider behavior, database, and content decisions. The [architecture guide](../architecture/index.md) explains the boundaries.
 
@@ -16131,7 +16499,14 @@ The need for propagation comes from the deployment topology, not the workflow's 
 Choose your [deployment guide](../deployment/index.md), start DUMB, and open `http://<host>:3005`. Then follow [onboarding](../frontend/onboarding.md).
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 Review the retained [setup checklist](../features/setup-checklist.md) for automatic and manual integration tasks.
+
+</div>
 
 ---
 
@@ -16503,7 +16878,12 @@ the examples.
 
 The guides begin with the steps most users need. **Geek mode** in the shared
 header opens their technical details: configuration examples, API commands,
-and notes about how the software works. Your browser remembers the choice.
+and notes about how the software works. Open technical sections have a light green
+background and a **Geek detail** label while the mode is on. The header shows
+**On** or **Off**, and your browser remembers the choice.
+
+Some overview pages have no hidden technical sections. They show that clearly
+when Geek mode is on; the mode does not add extra content to those pages.
 
 You can also open any technical section individually. Essential warnings,
 prerequisites, and recovery steps stay visible in either mode. Direct links to
@@ -16512,6 +16892,17 @@ a heading inside a closed section open it for you.
 The [API](../api/index.md), [configuration reference](index.md), and
 [architecture](../architecture/index.md) remain directly available in either
 mode. Geek mode changes how details are displayed; it does not remove content.
+
+## Spot development additions
+
+Each page identifies its documentation channel and DUMB version. **Released
+docs** use a blue-green label; **Development docs** use amber. Words accompany
+the colors so you can tell them apart without relying on color alone.
+
+In development guides, amber panels and small **Dev** badges identify additions
+beyond the released documentation snapshot. A development-only feature page
+also states which stable DUMB release does not include that feature. A newly
+written guide for an existing feature is labelled **New guide** instead.
 
 ## How release docs stay current
 
@@ -16744,7 +17135,15 @@ Use `http://<host>:3005/api/process/processes` for REST requests. WebSocket requ
 | Emby | 8096 | Web UI/API |
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 Native InfiniDysk 2 uses its backend listener for the native application UI as well. Read the [InfiniDysk guide](../services/core/infinidysk.md) for the selected generation rather than assuming the generation 1 split applies.
+
+</div>
+
 
 
 ## Arr applications and library tools
@@ -16773,9 +17172,7 @@ These defaults refer to the first configured instance. A second Sonarr or Radarr
 |---|---:|---|
 | AIOStreams | 3006 | `/stremio/configure`; addon clients need a stable trusted HTTPS `base_url` |
 | mediastorm | 7777 | `/admin` |
-
-| Audiobookshelf | 13378 | `/audiobookshelf/`; reverse proxies must support WebSockets |
-
+| <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> Audiobookshelf | 13378 | `/audiobookshelf/`; reverse proxies must support WebSockets |
 | Traefik Proxy Admin | 3004 | Web UI/API |
 | Authelia | 9091 | Identity portal/API |
 | Cloudflared | None | Outbound tunnel connector; no local web UI listener |
@@ -16851,6 +17248,11 @@ In DUMB, AltMount is a core Usenet workflow service. DUMB installs and starts Al
 8. Send a small test NZB and confirm queue, import, library scan, and playback behavior end to end.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ## Setup checklist and remaining work
 
 Choose the mount/import arrangement deliberately. The checklist collects or references provider accounts and guides selected Arr connections. Authorize the AltMount administrator, choose direct/symlink/STRM behavior, provide external mounts and validate paths. Sharing an account does not create an unlimited connection budget.
@@ -16862,6 +17264,9 @@ The download-client/SABnzbd API key does not authorize administrator settings ch
 The WebDAV task reuses authenticated existing custom credentials when possible. To set or rotate them, enter the replacement credentials, review the masked field preview and explicitly approve that exact proposal. DUMB verifies authenticated WebDAV access and keeps the handoff to selected consumers private. Coordinate external clients separately: DUMB cannot rewrite unknown consumers. For an internal rclone mount, changing credentials requires an explicitly authorized AltMount-only restart, which can interrupt active playback. External/no-mount layouts can use the supported native hot configuration path. API/configuration checks do not prove FUSE mounts or the complete playback workflow.
 
 Requires the backend setup-arrangement capability. See [Setup checklist and automation](../../features/setup-checklist.md) for retained tasks, coverage and safe retries.
+
+</div>
+
 
 
 ## Workflow diagram
@@ -17182,6 +17587,11 @@ Source: https://dumbarr.com/dev/services/core/cli-debrid/
 CLI Debrid acquires and upgrades media through Debrid providers. Configure content sources, scrapers, provider credentials, and library paths in CLI Debrid after DUMB installs its runtime and selected dependencies.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 <details class="geek-details" markdown="1">
 <summary>Technical details: installed CLI Battery layout</summary>
 
@@ -17209,6 +17619,8 @@ CLI Debrid acquires and upgrades media through Debrid providers. Configure conte
 
 </details>
 
+</div>
+
 
 
 
@@ -17223,11 +17635,19 @@ CLI Debrid acquires and upgrades media through Debrid providers. Configure conte
 Check the CLI Battery layout note above before selecting an upstream development release.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ## Setup checklist and remaining work
 
 Review the selected source's standalone/integrated Battery layout and PhalanxDB choice. Dependencies and installation are separate from native content, collection, scraper and library choices. Finish those tasks and validate a real import/playback.
 
 Requires the backend setup-arrangement capability. See [Setup checklist and automation](../../features/setup-checklist.md) for retained tasks, coverage and safe retries.
+
+</div>
+
 
 
 ## Workflow diagram
@@ -17348,6 +17768,11 @@ flowchart TD
 </details>
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ## Persistent data after installation
 
 When the configured paths use `<config_dir>/data`, DUMB checks that this alias
@@ -17368,6 +17793,9 @@ runtime preparation error, review the exact paths in the message before
 changing their contents or ownership.
 
 ---
+
+</div>
+
 
 
 ## What CLI Debrid Does
@@ -17734,11 +18162,19 @@ Decypharr exposes qBittorrent-compatible Debrid clients and SABnzbd-compatible U
 For an existing library, preview the symlink migration tools before changing mount paths.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ## Setup checklist and remaining work
 
 The checklist separates Debrid-only, Usenet and hybrid decisions. Enter a Usenet account or reference another selected client with its own allocation. Arr/client/root wiring is reconciled after both endpoints are ready. Missing credentials or choices remain visible instead of requiring restarts to discover missed links.
 
 Requires the backend setup-arrangement capability. See [Setup checklist and automation](../../features/setup-checklist.md) for retained tasks, coverage and safe retries.
+
+</div>
+
 
 
 ## Workflow diagram
@@ -18207,11 +18643,19 @@ Source: https://dumbarr.com/dev/services/core/emby/
 4. Play and seek through a representative file. Configure remote access and hardware acceleration separately if needed.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ## Setup checklist and remaining work
 
 Complete first administrator setup where required and supply authorized credentials for supported library actions. Existing initialized servers and paths are preserved. Supported new-library forms offer an optional initial scan, off by default; this choice does not rescan an existing library. Configure Library Protection separately where required; review remote access, GPU mapping and actual playback.
 
 Requires the backend setup-arrangement capability. See [Setup checklist and automation](../../features/setup-checklist.md) for retained tasks, coverage and safe retries.
+
+</div>
+
 
 
 ## Service Relationships
@@ -18368,7 +18812,7 @@ Several core services can run together. Check shared paths, provider connection 
 - Keep raw provider mounts separate from curated library roots. Media servers must resolve the paths used by symlinks.
 - Use each Arr instance's `core_service` setting to select its workflow. Review [routing rules](../../reference/core-service.md) before combining clients.
 
-- Finish account and library choices in the [setup checklist](../../features/setup-checklist.md).
+- <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> Finish account and library choices in the [setup checklist](../../features/setup-checklist.md).
 
 
 A running process does not confirm a working import or playback path.
@@ -19200,9 +19644,17 @@ Source: https://dumbarr.com/dev/services/core/infinidysk/
 **InfiniDysk** is a combined backend + frontend WebDAV service for **Usenet** workflows. In DUMB it runs as a single service that exposes a Web UI, a WebDAV endpoint for browsing/serving content, and a backend API used for automation.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 DUMB keeps InfiniDysk 1.x as the default. DUMB API 2.24.0 or newer can offer the
 separate [InfiniDysk 2 installation and upgrade wizard](../../features/infinidysk-v2-migration.md).
 The workflow below describes the default 1.x integration unless a section says otherwise.
+
+</div>
+
 
 
 ## First start
@@ -19214,6 +19666,11 @@ The workflow below describes the default 1.x integration unless a section says o
 
 Existing NzbDAV installations should read [Migration from NzbDAV](infinidysk-migration.md) before changing names or paths.
 
+
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 
 ## Setup checklist and remaining work
 
@@ -19227,6 +19684,9 @@ mount selection. Refresh the setup plan afterward; native account/provider,
 Arr-link and import-strategy work remains manual where no generation 2 adapter
 is advertised. Native FUSE excludes the associated rclone dependency while
 preserving the existing consumer path.
+
+</div>
+
 
 
 ## Workflow diagram
@@ -19277,11 +19737,7 @@ flowchart TD
 | Classification | Role                                                     |
 | -------------- | -------------------------------------------------------- |
 | Core Service   | NZB WebDAV gateway                                       |
-
-| Mount          | [rclone](../dependent/rclone.md) by default; optional native FUSE with generation 2 |
-
-
-
+| <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> Mount          | [rclone](../dependent/rclone.md) by default; optional native FUSE with generation 2 |
 | Optional       | Sonarr, Radarr, Lidarr, Whisparr, Prowlarr, NeutArr      |
 | Exposes UI     | Yes (Web UI + WebDAV)                                    |
 
@@ -19329,6 +19785,11 @@ InfiniDysk also exposes a **Usenet download client** path in Arr by emulating a 
     remain unchanged. User-visible identity changes remain opt-in.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 !!! important "Supported InfiniDysk versions"
 
     `runtime_generation: "1"` remains the default. Its `latest` and `prerelease`
@@ -19344,6 +19805,9 @@ InfiniDysk also exposes a **Usenet download client** path in Arr by emulating a 
     field does not convert a database. See the
     [upgrade guide](../../features/infinidysk-v2-migration.md) for eligibility,
     mount choices and current containment limitations.
+
+</div>
+
 
 
 !!! tip "Support the maintainer"
@@ -19423,6 +19887,11 @@ InfiniDysk also exposes a **Usenet download client** path in Arr by emulating a 
 * `env`: Optional environment variables (see below).
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ### Generation 2 configuration
 
 The wizard prepares these fields after reviewing an eligible fresh installation
@@ -19451,6 +19920,8 @@ compatibility relay requires native **Required** authentication. DUMB applies a
 runtime lock, preserving the saved native setting and rejecting conflicting
 mode overrides. See the [compatibility authentication policy](../../features/infinidysk-v2-migration.md#authentication-with-the-retained-backend-port)
 before changing listener ports or native authentication.
+
+</div>
 
 
 
@@ -19617,6 +20088,11 @@ preserved. A saved `--rc-addr` and `--dir-cache-time` in the rclone command are
 also retained when they remain valid.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 For generation 2, the WebDAV transport uses its consolidated HTTP listener and
 native Basic login. Its mount can remain rclone or explicitly use native FUSE.
 Generation 2 does not send the 1.x rclone RC directory-refresh notifications, so
@@ -19624,6 +20100,9 @@ its rclone setup uses a shorter directory-cache policy and retains `--links` for
 `.rclonelink` handling. Native FUSE does not use rclone flags or the optimizer.
 The optimizer described below currently supports generation 1; generation 2
 needs a separately advertised and validated native adapter, even when it keeps rclone.
+
+</div>
+
 
 
 Default rclone mount path (if not overridden) is:
@@ -19785,11 +20264,19 @@ Source: https://dumbarr.com/dev/services/core/jellyfin/
 4. Test playback and seeking. If you need transcoding, configure it in Jellyfin's playback settings after mapping the GPU into the container.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ## Setup checklist and remaining work
 
 The checklist guides supported fresh-administrator setup and explicit library creation/reuse. Existing initialized servers are not reinitialized. Supported new-library forms offer an optional initial scan, off by default; review the paths before enabling it. Existing libraries are not rescanned by this creation choice. Choose sharing, remote access, hardware acceleration and playback policy, then test real library access/playback.
 
 Requires the backend setup-arrangement capability. See [Setup checklist and automation](../../features/setup-checklist.md) for retained tasks, coverage and safe retries.
+
+</div>
+
 
 
 ## Service Relationships
@@ -19877,6 +20364,11 @@ See [native Proxmox GPU setup](../../deployment/proxmox.md#gpu-passthrough-and-j
 and [Jellyfin's Intel GPU guide](https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/intel/).
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ### Intel OpenCL tone mapping
 
 AMD64 DUMB images include the distribution's current and legacy Intel OpenCL
@@ -19910,13 +20402,24 @@ then test a short HDR transcode and inspect Jellyfin's FFmpeg log before relying
 on it for playback. See [Jellyfin's Intel guide](https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/intel/)
 for the current hardware and codec requirements.
 
+</div>
+
+
 
 ## Media Library Protection
 
 Jellyfin requires an authorized API key before DUMB can inspect sessions and temporarily control scan tasks/library real-time monitoring. Create a key in Jellyfin's dashboard and save it under **Library Protection** on the Jellyfin service page. Review the configured mount scope and enablement. Without usable credentials, unattended storage maintenance is deferred because activity is unknown.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 The guided first-administrator task can create a dedicated application key. Saving it for Library Protection is a separate explicit checklist choice; a new setup-created protection policy stays disabled until reviewed.
+
+</div>
+
 
 
 See [Media Library Protection](../../features/media-library-protection.md).
@@ -19937,7 +20440,15 @@ Source: https://dumbarr.com/dev/services/core/lidarr/
 **Lidarr** is a music manager that automates searching, grabbing, and organizing albums through indexers and download clients.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 The [setup checklist](../../features/setup-checklist.md) can discover existing music roots and their native quality and metadata profiles. Select the intended defaults, preview the changes and approve saving them. DUMB reads the result back without changing existing artists, monitoring choices or tags. Profile availability depends on the installed Lidarr instance.
+
+</div>
+
 
 
 
@@ -20103,11 +20614,19 @@ NeutArr schedules missing-content and upgrade searches in selected Radarr, Sonar
 4. Observe one search cycle in the logs before widening the schedule or adding targets.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ## Setup checklist and remaining work
 
 The checklist tracks owned Arr connections independently from search policy. Review schedules and limits. Owned opt-outs/disabled targets are reconciled while unowned entries and intentional user disables are preserved. Starting NeutArr does not authorize a new search policy.
 
 Requires the backend setup-arrangement capability. See [Setup checklist and automation](../../features/setup-checklist.md) for retained tasks, coverage and safe retries.
+
+</div>
+
 
 
 ## Overview
@@ -20367,11 +20886,19 @@ For manual configuration, review the `plex` settings below. A fresh instance nee
 </details>
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ## Setup checklist and remaining work
 
 Review account/claim authorization separately from libraries. The checklist can create or reuse explicitly selected libraries when authorized, preserving existing libraries and paths. Sharing, remote access, host GPU mapping and real playback remain deliberate decisions/checks.
 
 Requires the backend setup-arrangement capability. See [Setup checklist and automation](../../features/setup-checklist.md) for retained tasks, coverage and safe retries.
+
+</div>
+
 
 
 ## Service Relationships
@@ -20632,6 +21159,11 @@ Once complete, your DUMB-based Plex server should fully replicate your prior set
 --- 
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ## Claim authorization during setup
 
 With the arrangement checklist, start Plex first and use its retained account task when a fresh claim is needed. Claim tokens are short-lived; submit one when the server is ready, then retry that account task without reinstalling the arrangement. An already claimed Plex server keeps its account.
@@ -20639,6 +21171,9 @@ With the arrangement checklist, start Plex first and use its retained account ta
 The checklist tracks account authorization, library configuration and verified connection checks separately. A successful account claim does not verify playback, sharing or remote access. See [Setup Checklist and Automation](../../features/setup-checklist.md).
 
 ---
+
+</div>
+
 
 
 ## Hardware Transcoding
@@ -20833,11 +21368,19 @@ Profilarr is a profile and custom format manager for **Sonarr** and **Radarr**. 
 ---
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ## Setup checklist and remaining work
 
 Arr connections and profile installation are separate tasks. On supported installed contracts, the retained task can authorize a profile-database repository, discover available profiles for exact Arr targets, and apply explicitly selected synchronization. Supply administrator/API authorization when requested; private repository authorization stays protected. Preview existing/proposed fields and approve the exact proposal before adopting user-managed settings. Connected Arrs do not establish that profiles were applied or their effects reviewed. Review profiles, custom formats and synchronization effects deliberately.
 
 Requires the backend setup-arrangement capability. See [Setup checklist and automation](../../features/setup-checklist.md) for retained tasks, coverage and safe retries.
+
+</div>
+
 
 
 ## Overview
@@ -21063,11 +21606,19 @@ Source: https://dumbarr.com/dev/services/core/prowlarr/
 A saved connection is not a passed indexer test. Check both before enabling automated searches.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ## Setup checklist and remaining work
 
 Select exact managed or registered external Arr targets on setup-arrangement backends. Review adoption before changing an unowned application connection. For private/Usenet indexers, add a stable entry, choose a native definition, refresh its advertised settings and provide its credentials. Preview the proposed fields and deliberately authorize its connection test and save. Enablement, synchronization policy and effective category/tag routing remain explicit decisions; a saved entry is distinct from a successful connection test. Existing unrelated indexers, application entries and tags are preserved.
 
 Requires the backend setup-arrangement capability. See [Setup checklist and automation](../../features/setup-checklist.md) for retained tasks, coverage and safe retries.
+
+</div>
+
 
 
 ## Service Relationships
@@ -21194,7 +21745,15 @@ This is an AIOStreams runtime integration, not a Prowlarr application entry that
 DUMB reads Arr API keys after initialization and can create managed Prowlarr applications. Review the resulting application targets and synchronization policy, and test connections separately from saving entries.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 The setup checklist retains exact targets per Prowlarr instance and asks you to review adoption of existing entries.
+
+</div>
+
 
 
 
@@ -21483,6 +22042,11 @@ After completing the DUMB onboarding, navigate to the **Riven Frontend** and ope
 ---
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ## Setup checklist and remaining work
 
 The checklist distinguishes selected source modes and direct supported provider inputs from legacy mounts. On recognized Riven versions, it checks the generated backend key, native settings schema and version before offering a media-server connection. Select managed Plex, Jellyfin or Emby, or supply an explicitly authorized external server. Existing custom connection changes need a fresh field-by-field preview and acceptance.
@@ -21490,6 +22054,9 @@ The checklist distinguishes selected source modes and direct supported provider 
 Saving a media-server connection preserves its existing updater enablement, library path and all content policies; supplying a URL/key does not enable an updater. Review and deliberately enable the desired native behavior in Riven. Content sources, scrapers, rankings and library policy remain separate choices. Do not enable an obsolete mount just to carry a provider key; source-specific manual work remains visible. A verified settings save is not proof of library scanning or a complete download workflow.
 
 Requires the backend setup-arrangement capability. See [Setup checklist and automation](../../features/setup-checklist.md) for retained tasks, coverage and safe retries.
+
+</div>
+
 
 
 ## Workflow diagram
@@ -21671,11 +22238,19 @@ After enabling Seerr and starting the service:
 ---
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ## Setup checklist and remaining work
 
 Choose exact media-server and Sonarr/Radarr targets, then actual discovered profiles, roots and default/4K routes. External servers and no server are different choices. Complete administrator authorization, library access and approval policy in Seerr. Review adoption of existing connections.
 
 Requires the backend setup-arrangement capability. See [Setup checklist and automation](../../features/setup-checklist.md) for retained tasks, coverage and safe retries.
+
+</div>
+
 
 
 ## Overview
@@ -22264,7 +22839,7 @@ Read [Choosing v2 or v3](#choosing-v2-or-v3-eros) before changing an existing in
 * `clear_on_update` / `exclude_dirs`: Generic install-cleanup settings. Whisparr stages a replacement of its managed binary directory; keep `config_dir` separate from that directory. These fields do not convert databases.
 * `config_dir`, `config_file`, `log_file`: Paths for configuration and logs. Keep different version families in separate data directories.
 
-* `whisparr_profiles`: Saved v2 and v3 data paths, runtime paths, and release choices managed by DUMB. You normally do not need to edit this field.
+* <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> `whisparr_profiles`: Saved v2 and v3 data paths, runtime paths, and release choices managed by DUMB. You normally do not need to edit this field.
 
 
 
@@ -22283,6 +22858,11 @@ Leaving the setting blank preserves the version indicated by the existing databa
 | v2 | [Whisparr/Whisparr](https://github.com/Whisparr/Whisparr/releases) | `v2` / `v2-develop` | `whisparr2.db`; older installs may use `whisparr.db` |
 | v3 (Eros) | [Whisparr/Whisparr-Eros](https://github.com/Whisparr/Whisparr-Eros/releases) | `eros` / `eros-develop` | `whisparr3.db` |
 
+
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 
 Both versions use `logs.db` for SQLite logs. Each saved version profile has its own data directory and managed binary directory, so its config, logs and library stay separate.
 
@@ -22313,6 +22893,9 @@ If an older configuration placed both v2 and v3 databases in the same data direc
 When you later select the other version, DUMB can prepare its own profile from the matching original database. After a profile is initialized, returning to it reuses that saved profile rather than recopying the original library.
 
 DUMB stops with an explanation if it cannot safely identify or copy the library, including directories containing only recovery files, conflicting legacy/current v2 filenames, invalid SQLite databases, or data already occupying a proposed profile directory. Preserve those files and resolve the reported ambiguity before retrying.
+
+</div>
+
 
 
 
@@ -22432,6 +23015,11 @@ This service's separate process, port, and web interface apply to the older
 standalone layout.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 <details class="geek-details" markdown="1">
 <summary>Technical details: installed CLI Battery layout</summary>
 
@@ -22456,6 +23044,8 @@ standalone layout.
     Battery commands or source directories retain their own behavior.
 
 </details>
+
+</div>
 
 
 
@@ -22616,11 +23206,7 @@ These services provide databases, mounted files, or metadata to another applicat
 
 | Dependency | Startup requirement |
 |---|---|
-
-| [CLI Battery](cli-battery.md) | Runs before CLI Debrid only when its installed layout needs the standalone API. DUMB skips the managed Battery process for a recognized embedded layout. |
-
-
-
+| <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> [CLI Battery](cli-battery.md) | Runs before CLI Debrid only when its installed layout needs the standalone API. DUMB skips the managed Battery process for a recognized embedded layout. |
 | [PostgreSQL](postgres.md) | Starts before applications configured to use its managed databases. |
 | [rclone](rclone.md) | Makes a configured WebDAV source available as local files. The source service must be ready first. |
 | [Zurg](zurg.md) | Exposes Debrid content to an rclone instance configured to use Zurg. |
@@ -22898,6 +23484,11 @@ Use [pgAdmin](../optional/pgadmin.md) for browser-based inspection and the [back
     [InfiniDysk](../core/infinidysk.md#postgresql-in-infinidysk-v120).
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 !!! info "InfiniDysk 2 uses its native conversion workflow"
 
     A generation 1 to generation 2 upgrade first imports into generation 2
@@ -22912,6 +23503,9 @@ Use [pgAdmin](../optional/pgadmin.md) for browser-based inspection and the [back
     [dedicated destination preparation example](../../features/infinidysk-v2-migration.md#prepare-a-postgresql-destination)
     before previewing. Do not change the existing cluster locale or replace an
     existing application's database to satisfy that check.
+
+</div>
+
 
 
 !!! danger "The PostgreSQL toggle is not a migration tool"
@@ -23793,6 +24387,10 @@ Use the documentation channel that matches your installed DUMB backend. A develo
 
 
 
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 DUMB's `dev` branch records the version planned for the next stable release.
 The source/API version is a plain semantic version such as `2.24.0`; a
 development image displays a rolling identity such as `v2.24.0-dev.34` and the
@@ -23851,6 +24449,9 @@ version even when synchronization has not yet landed. The build keeps that
 requested source SHA; it does not silently check out a newer `dev` commit.
 See [building a development image](dumb-frontend.md#build-a-development-image-with-a-chosen-frontend)
 for frontend selection and image digest checks.
+
+</div>
+
 
 
 <details class="geek-details" markdown="1">
@@ -23963,6 +24564,11 @@ Production starts the compiled Nitro server with `node .output/server/index.mjs`
 </details>
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 <details class="geek-details" markdown="1">
 <summary>Technical details: frontend version synchronization</summary>
 
@@ -24002,8 +24608,15 @@ remain separate.
 
 </details>
 
+</div>
 
 
+
+
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 
 <details class="geek-details" markdown="1">
 <summary>Technical details: development image builds</summary>
@@ -24073,6 +24686,8 @@ the frontend using the image's existing Node runtime and leaves the backend
 image unchanged.
 
 </details>
+
+</div>
 
 
 
@@ -24265,9 +24880,7 @@ Start with the workflow you want, then enable its services in onboarding. You do
 | Stream a Usenet library | [InfiniDysk](core/infinidysk.md), [AltMount](core/altmount.md), or [Decypharr](core/decypharr.md) | NNTP account limits, indexers, Arr clients, and import strategy |
 | Manage movies, TV, or music | [Radarr](core/radarr.md), [Sonarr](core/sonarr.md), [Lidarr](core/lidarr.md), [Whisparr](core/whisparr.md) | [Prowlarr](core/prowlarr.md), download clients, roots, and profiles |
 | Play an existing library | [Plex](core/plex-media-server.md), [Jellyfin](core/jellyfin.md), or [Emby](core/emby.md) | Readable media paths, accounts, and hardware acceleration |
-
-| Serve books or podcasts | [Audiobookshelf](optional/audiobookshelf.md) | Book/podcast folders and library access |
-
+| <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> Serve books or podcasts | [Audiobookshelf](optional/audiobookshelf.md) | Book/podcast folders and library access |
 | Take requests | [Seerr](core/seerr.md) or [Pulsarr](optional/pulsarr.md) | Exact media-server and Arr connections, approvals, and quotas |
 | Use Stremio addons | [AIOStreams](optional/aiostreams.md) | Sources and a dedicated public HTTPS addon address |
 | Use a separate streaming client | [mediastorm](optional/mediastorm.md) | PostgreSQL and playback-provider accounts |
@@ -24276,7 +24889,15 @@ Start with the workflow you want, then enable its services in onboarding. You do
 DUMB can prepare supported connections, but account authorization, profiles, library policy, and playback still need review.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 Follow the [setup checklist](../features/setup-checklist.md) after starting your chosen services.
+
+</div>
+
 
 
 ## Quick reference
@@ -24303,9 +24924,7 @@ Follow the [setup checklist](../features/setup-checklist.md) after starting your
 | [pgAdmin](optional/pgadmin.md) | PostgreSQL administration |
 | [Riven Frontend](optional/riven-frontend.md) | Optional Riven interface |
 | [Tautulli](optional/tautulli.md) | Plex playback history and monitoring |
-
-| [Audiobookshelf](optional/audiobookshelf.md) | Books and podcasts |
-
+| <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> [Audiobookshelf](optional/audiobookshelf.md) | Books and podcasts |
 | [Bazarr](optional/bazarr.md) | Subtitles for Sonarr/Radarr libraries |
 | [Pulsarr](optional/pulsarr.md) | Plex watchlist requests |
 | [Maintainerr](optional/maintainerr.md) | Rule-based review collections and optional cleanup |
@@ -24510,9 +25129,17 @@ When Cloudflare Tunnel terminates public TLS, leave TPA's **Certificate Resolver
 ## Connect DUMB services
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 On setup-arrangement backends, the retained checklist can add explicitly selected managed Prowlarr/Zilean presets and InfiniDysk/AltMount playback settings to one encrypted AIOStreams profile. Supply the existing profile UUID/password or deliberately authorize a new profile. Its password is separate from the dashboard login and stays protected for readback/retries. Select compatible Debrid credentials when a new Zilean profile requires them. Existing presets and unrelated preferences remain preserved; DUMB does not change shared templates or install an addon in your player.
 
 The guided playback-engine task requires the selected engine's WebDAV credentials and an explicitly chosen public HTTPS origin. Review public-origin TLS/private-endpoint permissions. The manual alternatives below, including AIOStreams' authenticated proxy, remain available in its native interface. See [Setup checklist and automation](../../features/setup-checklist.md) for preview, retained tasks and verification scope.
+
+</div>
+
 
 
 Use direct loopback URLs for services in the same DUMB container. Do not enter a DUMB embedded `/ui/<service>` URL. Because DUMB can resolve port conflicts dynamically, verify each service's saved port before copying the example.
@@ -24848,11 +25475,19 @@ Authelia is optional. You can instead connect DUMB authentication to an
 external Authelia deployment or another standards-compatible OIDC provider.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ## Setup checklist and remaining work
 
 The checklist retains guided bootstrap/enrollment tasks and service links. Installation intentionally can leave Authelia stopped before bootstrap. Domain/DNS/HTTPS routes, notifier verification, factor enrollment and optional OIDC/ForwardAuth remain deliberate choices.
 
 Requires the backend setup-arrangement capability. See [Setup checklist and automation](../../features/setup-checklist.md) for retained tasks, coverage and safe retries.
+
+</div>
+
 
 
 ## What DUMB manages
@@ -25255,11 +25890,19 @@ If your Arr instances use non-default ports, use the actual ports shown on their
 DUMB treats `bazarr.port` as authoritative. If DUMB assigns a different port to avoid a conflict, Bazarr's persisted **Settings -> General -> Port** value is synchronized to the same port during setup. Restart Bazarr after manually changing `bazarr.port` so both the managed launch command and Bazarr's saved setting are updated.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ## Setup checklist and remaining work
 
 Compatible checklists populate selected Sonarr/Radarr connections, guide discovered languages/profiles, and expose supported subtitle-provider credential fields. Preview the exact settings, then explicitly approve saving credentials or activating a provider. Existing providers remain preserved. Configuration readback does not verify a third-party provider login or subtitle search; test those with your account in Bazarr. Activating integrations can activate existing schedules: enable them deliberately after review. Manual instructions below remain useful for older backends or unsupported interfaces.
 
 Requires the backend setup-arrangement capability. See [Setup checklist and automation](../../features/setup-checklist.md) for retained tasks, coverage and safe retries.
+
+</div>
+
 
 
 ## How DUMB runs Bazarr
@@ -25403,11 +26046,19 @@ Cloudflared gets traffic to Traefik. Traefik still decides which local service r
 ---
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ## Setup checklist and remaining work
 
 Starting a connector and publishing a usable application are separate tasks. Supply an authorized token, create the matching tunnel/DNS/application route and check the final HTTPS origin. Connector readiness does not provision DNS or verify the external route.
 
 Requires the backend setup-arrangement capability. See [Setup checklist and automation](../../features/setup-checklist.md) for retained tasks, coverage and safe retries.
+
+</div>
+
 
 
 ## Before you start
@@ -25646,9 +26297,7 @@ Add these tools when you need their specific function. They are not required by 
 | [pgAdmin](../optional/pgadmin.md) | Web-based PostgreSQL administration UI                      | PostgreSQL                     |
 | [Riven Frontend](../optional/riven-frontend.md) | Web-based UI for management of the [Riven Backend](../core/riven-backend.md) | Riven |
 | [Tautulli](../optional/tautulli.md) | Plex monitoring and statistics                            | Plex Media Server              |
-
-| [Audiobookshelf](audiobookshelf.md) | Audiobook and podcast libraries with basic ebook reading | Standalone media libraries |
-
+| <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> [Audiobookshelf](audiobookshelf.md) | Audiobook and podcast libraries with basic ebook reading | Standalone media libraries |
 | [Bazarr](../optional/bazarr.md) | Subtitle search and management                              | Sonarr, Radarr                 |
 | [Pulsarr](../optional/pulsarr.md) | Plex watchlist request automation                         | Plex, Sonarr, Radarr           |
 | [Maintainerr](../optional/maintainerr.md) | Rule-based library cleanup and leaving-soon collections | Plex/Jellyfin/Emby, Sonarr, Radarr, Seerr, Tautulli |
@@ -25677,9 +26326,7 @@ Add these tools when you need their specific function. They are not required by 
 | Add subtitles to Sonarr/Radarr libraries | [Bazarr](bazarr.md) |
 | Route Plex watchlist requests | [Pulsarr](pulsarr.md) |
 | Review library retention rules | [Maintainerr](maintainerr.md) |
-
-| Serve books and podcasts | [Audiobookshelf](audiobookshelf.md) |
-
+| <span class="docs-channel-badge" data-channel="dev" title="Added after the released DUMB 2.23.0 documentation snapshot">Dev</span> Serve books and podcasts | [Audiobookshelf](audiobookshelf.md) |
 | Aggregate Stremio addons | [AIOStreams](aiostreams.md) |
 | Add identity and protected application routes | [Authelia](authelia.md), [Traefik Proxy Admin](traefik-proxy-admin.md), and optionally [Cloudflared](cloudflared.md) |
 
@@ -25715,11 +26362,19 @@ Maintainerr owns its application configuration inside its SQLite database; there
 ---
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ## Setup checklist and remaining work
 
 The checklist guides supported connections after authorization. Review exact instances and adoption of existing settings. Connection setup never authorizes deletion, unmonitoring or retention actions; preview and activate rules deliberately inside Maintainerr.
 
 Requires the backend setup-arrangement capability. See [Setup checklist and automation](../../features/setup-checklist.md) for retained tasks, coverage and safe retries.
+
+</div>
+
 
 
 ## Overview
@@ -25846,11 +26501,19 @@ mediastorm is a self-hosted streaming server and client ecosystem for Debrid, to
 ## Initial setup
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 With the setup-arrangement capability, the retained checklist supports the MediaStorm 1.5 settings contract. Its account task accepts your current primary administrator login; when MediaStorm confirms the default password is still active, you can explicitly authorize a replacement. DUMB retains the resulting administrator session privately and removes both submitted password inputs after authenticated readback. It preserves an already initialized account.
 
 Source tasks can add selected managed Prowlarr indexers, Zilean, InfiniDysk/Decypharr/AltMount playback-engine settings, chosen Debrid credentials and native NNTP accounts. Shared NNTP references use a separate MediaStorm connection allocation within the account budget. Provide the selected engine's authorized WebDAV account, path and category. Preview proposed changes and explicitly authorize connection tests; existing unowned settings need approval of that exact preview. Existing entries keep their order and unrelated fields. Native engine tests use the basic connection check and never submit a test NZB.
 
 The metadata task can save and test supplied TMDB/TVDB keys through the supported administrator API. Connection/settings readback does not establish download, import or playback success. Unrecognized versions retain guidance for native setup. See [Setup checklist and automation](../../features/setup-checklist.md).
+
+</div>
+
 
 
 !!! warning "First login credentials"
@@ -26086,7 +26749,15 @@ A minimal override for a fresh account:
 The pgAdmin login and the PostgreSQL connection use separate credentials. When opening a saved server, enter the database password from `postgres.password` or `POSTGRES_PASSWORD`; its public bootstrap default is `postgres`.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 The [setup checklist](../../features/setup-checklist.md) can register a connection through pgAdmin's supported provisioning command. Choose the connection name and group, review the preview, then apply it. DUMB reuses an exact existing connection and preserves unrelated definitions and saved-password settings. If automatic registration cannot use an existing pgAdmin account, the web service can still run; review or add the connection manually.
+
+</div>
+
 
 
 For a manual connection, use the managed PostgreSQL host and port saved in DUMB (normally `127.0.0.1:5432` inside the container), maintenance database `postgres`, and the configured PostgreSQL user.
@@ -26142,11 +26813,19 @@ After enabling and starting Pulsarr:
 ---
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ## Setup checklist and remaining work
 
 Select exact Sonarr/Radarr and media-server connections with discovered profiles, roots and default routes where supported. Authorize the administrator, provide required metadata credentials, then choose watchlists, approvals, quotas, notifications and activation. A connection does not establish active watchlist processing.
 
 Requires the backend setup-arrangement capability. See [Setup checklist and automation](../../features/setup-checklist.md) for retained tasks, coverage and safe retries.
+
+</div>
+
 
 
 ## Overview
@@ -26433,11 +27112,19 @@ After enabling Tautulli and starting the service:
 ---
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ## Setup checklist and remaining work
 
 The checklist can configure/check Plex after Tautulli generates configuration and authorized credentials exist. Existing nonempty settings are preserved unless a deliberate supported change is selected. Complete administrator setup, notifications and retention separately. Process readiness does not verify Plex access. Applying a connection change restarts Tautulli only after explicit permission; opening or rechecking the checklist does not grant that permission.
 
 Requires the backend setup-arrangement capability. See [Setup checklist and automation](../../features/setup-checklist.md) for retained tasks, coverage and safe retries.
+
+</div>
+
 
 
 ## Overview
@@ -26751,6 +27438,11 @@ The first TPA screen asks you to create a local admin account.
 After this, TPA admin auth protects the TPA UI and API.
 
 
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
 ## Guided domain and application routes
 
 On backends with the setup-arrangement capability, the retained checklist can
@@ -26787,6 +27479,9 @@ Complete the separate public-route checks and the DNS/tunnel configuration below
 
 !!! tip "SSO can come later"
     Start with local admin auth so you have a known-good break-glass login. You can configure admin SSO later from TPA's Security page.
+
+</div>
+
 
 
 ## Link DUMB-managed Authelia

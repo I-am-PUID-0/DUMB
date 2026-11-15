@@ -57,7 +57,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/css/main.css">
+      <link rel="stylesheet" href="../../../assets/css/main.57a1b4346c32.css">
     
     <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6358,6 +6358,18 @@
               <article class="md-content__inner md-typeset">
                 <a id="__skip" tabindex="-1"></a>
                 
+  
+    <aside class="docs-channel-context" data-channel="dev" aria-label="Documentation channel">
+      <span class="docs-channel-badge" data-channel="dev">
+        Development docs
+      </span>
+      <strong>DUMB 2.24.0</strong>
+      
+        <span>Dev labels mark additions beyond the released 2.23.0 docs.</span>
+      
+    </aside>
+  
+  
                   
 
   
@@ -6374,9 +6386,12 @@
 <li>Review scanning settings before the first scan of a remote mount.</li>
 <li>Test playback and seeking. If you need transcoding, configure it in Jellyfin's playback settings after mapping the GPU into the container.</li>
 </ol>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <h2 id="setup-checklist-and-remaining-work">Setup checklist and remaining work<a class="headerlink" href="#setup-checklist-and-remaining-work" title="Permanent link">&para;</a></h2>
 <p>The checklist guides supported fresh-administrator setup and explicit library creation/reuse. Existing initialized servers are not reinitialized. Supported new-library forms offer an optional initial scan, off by default; review the paths before enabling it. Existing libraries are not rescanned by this creation choice. Choose sharing, remote access, hardware acceleration and playback policy, then test real library access/playback.</p>
 <p>Requires the backend setup-arrangement capability. See <a href="../../../features/setup-checklist/">Setup checklist and automation</a> for retained tasks, coverage and safe retries.</p>
+</div>
 <h2 id="service-relationships">Service Relationships<a class="headerlink" href="#service-relationships" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -6464,6 +6479,8 @@ autodetection. Select the acceleration method and supported codecs in Jellyfin's
 not enable transcoding.</p>
 <p>See <a href="../../../deployment/proxmox/#gpu-passthrough-and-jellyfin">native Proxmox GPU setup</a>
 and <a href="https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/intel/">Jellyfin's Intel GPU guide</a>.</p>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <h3 id="intel-opencl-tone-mapping">Intel OpenCL tone mapping<a class="headerlink" href="#intel-opencl-tone-mapping" title="Permanent link">&para;</a></h3>
 <p>AMD64 DUMB images include the distribution's current and legacy Intel OpenCL
 GPU runtimes, generic ICD loader and <code>clinfo</code>. They are installed when the image
@@ -6490,9 +6507,13 @@ establish working GPU tone mapping. Configure OpenCL tone mapping in Jellyfin,
 then test a short HDR transcode and inspect Jellyfin's FFmpeg log before relying
 on it for playback. See <a href="https://jellyfin.org/docs/general/post-install/transcoding/hardware-acceleration/intel/">Jellyfin's Intel guide</a>
 for the current hardware and codec requirements.</p>
+</div>
 <h2 id="media-library-protection">Media Library Protection<a class="headerlink" href="#media-library-protection" title="Permanent link">&para;</a></h2>
 <p>Jellyfin requires an authorized API key before DUMB can inspect sessions and temporarily control scan tasks/library real-time monitoring. Create a key in Jellyfin's dashboard and save it under <strong>Library Protection</strong> on the Jellyfin service page. Review the configured mount scope and enablement. Without usable credentials, unattended storage maintenance is deferred because activity is unknown.</p>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>The guided first-administrator task can create a dedicated application key. Saving it for Library Protection is a separate explicit checklist choice; a new setup-created protection policy stays disabled until reviewed.</p>
+</div>
 <p>See <a href="../../../features/media-library-protection/">Media Library Protection</a>.</p>
 <hr />
 <h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">&para;</a></h2>
@@ -6518,6 +6539,7 @@ for the current hardware and codec requirements.</p>
 
 
                 
+
               </article>
             </div>
           
@@ -6645,9 +6667,9 @@ for the current hardware and codec requirements.</p>
     
       <script src="../../../assets/javascripts/bundle.3cb411a8.min.js"></script>
       
-        <script src="../../../assets/js/zoom.js"></script>
+        <script src="../../../assets/js/zoom.aa9f2a8eef1d.js"></script>
       
-        <script src="../../../assets/js/docs.js"></script>
+        <script src="../../../assets/js/docs.21624ebdff7a.js"></script>
       
     
   </body>

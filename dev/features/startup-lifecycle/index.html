@@ -57,7 +57,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.css">
+      <link rel="stylesheet" href="../../assets/css/main.57a1b4346c32.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6339,6 +6339,18 @@
               <article class="md-content__inner md-typeset">
                 <a id="__skip" tabindex="-1"></a>
                 
+  
+    <aside class="docs-channel-context" data-channel="dev" aria-label="Documentation channel">
+      <span class="docs-channel-badge" data-channel="dev">
+        Development docs
+      </span>
+      <strong>DUMB 2.24.0</strong>
+      
+        <span>Dev labels mark additions beyond the released 2.23.0 docs.</span>
+      
+    </aside>
+  
+  
                   
 
   
@@ -6356,6 +6368,8 @@ in steady state. The lifecycle is:</p>
 <li><code>ready</code> or <code>degraded</code></li>
 <li><code>shutting_down</code></li>
 </ol>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>An interrupted installation restore uses a separate <strong><code>recovery_required</code></strong>
 phase. DUMB starts only the configured API and already-installed frontend for
 recovery; normal application setup, services and background workers remain
@@ -6363,6 +6377,7 @@ paused. Use direct frontend/API access, finish the offered recovery action, then
 restart the container. Docker health checks the required recovery control plane
 instead of treating intentionally paused applications as failed startup.
 An unavailable API or missing installed frontend remains a real health failure.</p>
+</div>
 <p>The DUMB API starts before enabled-service preinstall. An already-installed
 frontend can also start early, so the dashboard can show startup progress while
 large service installs or migrations continue.</p>
@@ -6405,11 +6420,14 @@ becomes <code>ready</code>.</p>
 </tr>
 </tbody>
 </table>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>The readiness deadline starts after the dependency-aware service-launch phase
 returns; it is not a maximum duration measured from container creation. Green
 process tiles show running processes while this phase also checks their configured
 endpoints. The startup banner exposes pending readiness checks and their reasons
 so a launch delay, an unopened port and the stabilization window can be distinguished.</p>
+</div>
 <p>If the deadline expires, DUMB enters <code>degraded</code> instead of shutting down the
 API/frontend. The dashboard identifies services that missed readiness, and one
 consolidated degraded-startup notification can be routed to operators.</p>
@@ -6489,6 +6507,7 @@ per-service <code>pending</code>/<code>starting</code>/<code>ready</code> state,
 
 
                 
+
               </article>
             </div>
           
@@ -6616,9 +6635,9 @@ per-service <code>pending</code>/<code>starting</code>/<code>ready</code> state,
     
       <script src="../../assets/javascripts/bundle.3cb411a8.min.js"></script>
       
-        <script src="../../assets/js/zoom.js"></script>
+        <script src="../../assets/js/zoom.aa9f2a8eef1d.js"></script>
       
-        <script src="../../assets/js/docs.js"></script>
+        <script src="../../assets/js/docs.21624ebdff7a.js"></script>
       
     
   </body>
