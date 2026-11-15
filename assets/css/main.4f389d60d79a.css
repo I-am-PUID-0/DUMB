@@ -188,6 +188,8 @@
 .docs-community-strip { margin-top: 1.5rem; padding: .85rem 1rem; border-top: 1px solid var(--docs-border); background: var(--docs-surface); }
 .docs-community-strip nav { display: flex; flex-wrap: wrap; justify-content: center; gap: .6rem 1.6rem; font-size: .7rem; }
 .docs-community-strip a { color: var(--docs-accent); text-decoration: underline; text-underline-offset: .15em; }
+.docs-build-identity { display: flex; flex-wrap: wrap; justify-content: center; gap: .35rem 1rem; padding: .65rem 1rem; color: var(--md-default-fg-color--light); font-size: .65rem; }
+.docs-build-identity a { color: var(--docs-accent); text-decoration: underline; text-underline-offset: .15em; }
 .docs-image-button { display: block; padding: 0; border: 0; background: none; cursor: zoom-in; color: inherit; text-align: inherit; }
 .docs-image-button img { display: block; }
 .docs-lightbox { padding: .6rem; max-width: 96vw; max-height: 96vh; background: var(--md-default-bg-color); border: 1px solid var(--docs-border); border-radius: .5rem; }

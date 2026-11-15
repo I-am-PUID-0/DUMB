@@ -2,6 +2,8 @@
 
 > Channel: release. Canonical base: https://dumbarr.com/
 
+Documentation artifact: release 1.25.0. Source commit: a3d161f727d67c78d2d3f82977e264fea6583fd3. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.0.
+
 DUMB coordinates media services. Match instructions to the installed backend version. Development guides can describe features absent from the latest release.
 
 Source: https://dumbarr.com/about/
@@ -14470,6 +14472,11 @@ The selector in the site header switches between **Latest release** and
 **Development**. It shows the DUMB version each channel covers. These numbers
 refer to DUMB itself, rather than the documentation site's own releases.
 
+The footer shows **Documentation release** with a separate version number and
+a link to its release notes. That number identifies the published guides you
+are reading; it is shared by both channels. Include it when reporting a docs
+problem. A local or pull-request preview is labelled **unreleased** instead.
+
 | Choose | When to use it |
 | --- | --- |
 | **Latest release** | You run a stable DUMB image, such as `iampuid0/dumb:latest` or a numbered stable tag. |
@@ -14540,9 +14547,11 @@ edits do not silently change its description of the stable image.
 A scheduled watcher checks DUMB releases every six hours. When a new stable
 release matches the reviewed development version and includes the backend
 source covered by that review, the watcher also checks that the compatible
-dashboard code has a published stable release. The docs workflow promotes that snapshot,
-builds both channels, checks links and metadata, and publishes the site. A
-maintainer can run the workflow manually to check sooner.
+dashboard code has a published stable release. The docs workflow validates and
+records that snapshot, then Release Please prepares a documentation release.
+After its checks pass, the generated version update merges automatically and
+the site publishes from that release's exact source. A maintainer can run the
+release check or retry publication manually.
 
 If the release version or source does not match the reviewed documentation,
 promotion stops for a maintainer review. This prevents development features

@@ -25,6 +25,13 @@
   
   <link rel="icon" href="../../assets/images/favicon.ico">
   <meta name="generator" content="zensical-0.1.1">
+  
+    
+    <meta name="dumb-docs-package-version" content="1.25.0">
+    <meta name="dumb-docs-build-kind" content="release">
+    <meta name="dumb-docs-build-commit" content="a3d161f727d67c78d2d3f82977e264fea6583fd3">
+    <meta name="dumb-docs-release-tag" content="1.25.0">
+  
 
     
   
@@ -57,7 +64,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.c471c2c95ece.css">
+      <link rel="stylesheet" href="../../assets/css/main.4f389d60d79a.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -5818,6 +5825,10 @@
 <p>The selector in the site header switches between <strong>Latest release</strong> and
 <strong>Development</strong>. It shows the DUMB version each channel covers. These numbers
 refer to DUMB itself, rather than the documentation site's own releases.</p>
+<p>The footer shows <strong>Documentation release</strong> with a separate version number and
+a link to its release notes. That number identifies the published guides you
+are reading; it is shared by both channels. Include it when reporting a docs
+problem. A local or pull-request preview is labelled <strong>unreleased</strong> instead.</p>
 <table>
 <thead>
 <tr>
@@ -5899,9 +5910,11 @@ edits do not silently change its description of the stable image.</p>
 <p>A scheduled watcher checks DUMB releases every six hours. When a new stable
 release matches the reviewed development version and includes the backend
 source covered by that review, the watcher also checks that the compatible
-dashboard code has a published stable release. The docs workflow promotes that snapshot,
-builds both channels, checks links and metadata, and publishes the site. A
-maintainer can run the workflow manually to check sooner.</p>
+dashboard code has a published stable release. The docs workflow validates and
+records that snapshot, then Release Please prepares a documentation release.
+After its checks pass, the generated version update merges automatically and
+the site publishes from that release's exact source. A maintainer can run the
+release check or retry publication manually.</p>
 <p>If the release version or source does not match the reviewed documentation,
 promotion stops for a maintainer review. This prevents development features
 from being presented as released. Shared theme and accessibility fixes can
@@ -5952,6 +5965,19 @@ details are included regardless of the browser's Geek mode preference.</p>
       <a href="../../contributing/">Help improve DUMB</a>
     </nav>
   </aside>
+  
+    
+    <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
+      
+        <span>Documentation release 1.25.0</span>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.0">Release notes</a>
+      
+      
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;a3d161f727d67c78d2d3f82977e264fea6583fd3" title="Documentation source commit a3d161f727d67c78d2d3f82977e264fea6583fd3">Source a3d161f7</a>
+      
+      
+    </div>
+  
   
         <footer class="md-footer">
   

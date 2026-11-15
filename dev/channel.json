@@ -1,6 +1,15 @@
 {
   "channel": "dev",
   "version": "2.24.0",
+  "documentation": {
+    "version": "1.25.0",
+    "kind": "release",
+    "commit": "a3d161f727d67c78d2d3f82977e264fea6583fd3",
+    "tag": "1.25.0",
+    "release_url": "https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.0",
+    "source_url": "https://github.com/I-am-PUID-0/DUMB_docs/commit/a3d161f727d67c78d2d3f82977e264fea6583fd3",
+    "dirty": false
+  },
   "pages": [
     "about/",
     "api/ai/",
