@@ -204,7 +204,7 @@
   .stack-map { max-width: 32rem; }
   .md-typeset .home-paths { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@media (max-width: 36em) {
+@media (max-width: 40em) {
   .md-header__inner { position: relative; }
   .md-header__title { display: none; }
   .md-header .md-header__button:not([hidden]) { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 2.2rem; height: 2.2rem; padding: .4rem; margin: 0; }
