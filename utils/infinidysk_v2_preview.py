@@ -10,6 +10,8 @@ import threading
 import time
 import traceback
 
+from utils.infinidysk_v2_scan_progress import MetadataScanProgress, public_scan_progress
+
 ACTIVE = {"queued", "running"}
 MAX_REQUEST_ALIASES = 128
 STRINGS = {"mode", "mount_backend", "import_strategy", "backup_destination_id"}
@@ -65,6 +67,11 @@ class PreviewTasks:
                 error="The interrupted preview did not stop services or change source files.",
                 preview=None,
             )
+        scan = public_scan_progress(task.get("scan_progress"), active=active)
+        if scan is not None:
+            public["scan_progress"] = scan
+        else:
+            public.pop("scan_progress", None)
         public["can_cancel"] = active and not task.get("cancel_requested", False)
         public["preview_available"] = False
         public["preview_unavailable_reason"] = None
@@ -226,27 +233,40 @@ class PreviewTasks:
                 raise self._error(task["error"]) from None
             return {"protocol": 1, "task": self._public(task)}
 
-    def checkpoint(self, task, stage, message):
+    def checkpoint(self, task, stage, message, **detail):
         if self.cancelled.is_set():
             raise PreviewCancelled()
         now = time.monotonic()
-        if stage == task.get("stage") and now - self.last_save < 1:
+        if (
+            stage == task.get("stage")
+            and now - self.last_save < 1
+            and "scan_progress" not in detail
+        ):
             return
         with self.manager._lock:
             if self.cancelled.is_set():
                 raise PreviewCancelled()
             task.update(status="running", stage=stage, message=message)
+            if "scan_progress" in detail:
+                task["scan_progress"] = detail["scan_progress"]
             self._save(task)
             self.last_save = now
 
     def _run(self, task):
         from utils.infinidysk_v2_migration import InfiniDyskV2MigrationError
 
+        def check_cancel():
+            if self.cancelled.is_set():
+                raise PreviewCancelled()
+
+        reporter = MetadataScanProgress(
+            lambda stage, message, **detail: self.checkpoint(
+                task, stage, message, **detail
+            ),
+            check_cancel=check_cancel,
+        )
         try:
-            preview = self.manager._compute_preview(
-                task["options"],
-                progress=lambda stage, message: self.checkpoint(task, stage, message),
-            )
+            preview = self.manager._compute_preview(task["options"], progress=reporter)
             with self.manager._lock:
                 if self.cancelled.is_set():
                     raise PreviewCancelled()

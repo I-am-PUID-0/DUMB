@@ -192,7 +192,9 @@ def validate_data_link(root, row):
         ) from None
 
 
-def tree_summary(path, *, validate_links=False, role="Source", check_cancel=None):
+def tree_summary(
+    path, *, validate_links=False, role="Source", check_cancel=None, progress=None
+):
     """Metadata-only scan; neither a manifest nor file contents are read."""
     summary = {"entries": 0, "bytes": 0}
     with closing(iter_tree(path, role=role)) as entries:
@@ -204,6 +206,8 @@ def tree_summary(path, *, validate_links=False, role="Source", check_cancel=None
             summary["entries"] += 1
             if stat.S_ISREG(row["mode"]):
                 summary["bytes"] += row["size"]
+            if progress is not None:
+                progress(summary["entries"], summary["bytes"])
     return summary
 
 

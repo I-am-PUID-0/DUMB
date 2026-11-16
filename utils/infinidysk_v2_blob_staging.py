@@ -121,7 +121,7 @@ def _hash_file(path, check):
     return digest.hexdigest()
 
 
-def blob_summary(path, *, check_cancel=None):
+def blob_summary(path, *, check_cancel=None, progress=None):
     """Measure actual local allocations; never claim logical size was released."""
     root = Path(path)
     if not root.is_dir() or root.is_symlink():
@@ -161,6 +161,8 @@ def blob_summary(path, *, check_cancel=None):
                     result["allocated_bytes"] += min(
                         value.st_size, value.st_blocks * 512
                     )
+            if progress is not None:
+                progress(result["entries"], result["logical_bytes"])
     return result
 
 

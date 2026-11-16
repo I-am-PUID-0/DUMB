@@ -24,6 +24,11 @@ from urllib.parse import quote
 
 from utils.config_loader import CONFIG_MANAGER
 from utils.infinidysk_migration_admission import INFINIDYSK_MIGRATION_ADMISSION_LOCK
+from utils.infinidysk_v2_scan_progress import (
+    MetadataScanProgress,
+    metadata_progress,
+    public_scan_progress,
+)
 from utils.infinidysk_v2_inventory import (
     MAX_TREE_MANIFEST_BYTES,
     InventoryError,
@@ -131,10 +136,16 @@ def _identity(path):
     }
 
 
-def _source_summary(path, *, validate_links=False, role="Source", check_cancel=None):
+def _source_summary(
+    path, *, validate_links=False, role="Source", check_cancel=None, progress=None
+):
     try:
         return tree_summary(
-            path, validate_links=validate_links, role=role, check_cancel=check_cancel
+            path,
+            validate_links=validate_links,
+            role=role,
+            check_cancel=check_cancel,
+            progress=progress,
         )
     except InventoryError as error:
         raise InfiniDyskV2MigrationError(str(error)) from error
@@ -566,6 +577,16 @@ class InfiniDyskV2MigrationManager:
                 )
                 if key in staging
             }
+        scan = public_scan_progress(
+            (
+                (job.get("execution") or {}).get("scan_progress")
+                if isinstance(job.get("execution"), dict)
+                else None
+            ),
+            active=state in ACTIVE and job.get("stage") == "revalidating",
+        )
+        if scan is not None:
+            public["scan_progress"] = scan
         execution = job.get("execution")
         if not isinstance(execution, dict):
             execution = {}
@@ -780,30 +801,27 @@ class InfiniDyskV2MigrationManager:
             require_local_path(plan["target"]["data_dir"])
         except BackupStorageError as error:
             raise InfiniDyskV2MigrationError(str(error)) from error
+        reporter = metadata_progress(progress)
         sizes = {}
         inventories = []
         for key in ("data_dir", "runtime_dir"):
             source = Path(plan["source"][key])
             if str(source) not in sizes:
-                summary = _source_summary(
-                    source,
-                    validate_links=str(source) == plan["source"]["data_dir"],
-                    check_cancel=(
-                        (
-                            lambda: progress(
-                                "checking_capacity",
-                                "Measuring retained source files and available migration storage.",
-                            )
-                        )
-                        if progress
-                        else None
-                    ),
-                    role=(
-                        "Retained v1 data"
-                        if key == "data_dir"
-                        else "Retained v1 runtime"
-                    ),
+                role = (
+                    "Retained v1 data" if key == "data_dir" else "Retained v1 runtime"
                 )
+                phase = "source_data" if key == "data_dir" else "source_runtime"
+                with reporter.scan(
+                    phase,
+                    f"Measuring {role.lower()} files and available migration storage.",
+                ) as measured:
+                    summary = _source_summary(
+                        source,
+                        validate_links=str(source) == plan["source"]["data_dir"],
+                        check_cancel=reporter.check_cancel,
+                        progress=measured,
+                        role=role,
+                    )
                 sizes[str(source)] = summary["bytes"]
                 inventories.append({"role": key, **summary})
         data = Path(plan["source"]["data_dir"])
@@ -903,6 +921,14 @@ class InfiniDyskV2MigrationManager:
             "entries": sum(item["entries"] for item in inventories),
             "logical_bytes": sum(sizes.values()),
             "root_count": len(sizes),
+            "roots": [
+                {
+                    "role": item["role"],
+                    "entries": item["entries"],
+                    "logical_bytes": item["bytes"],
+                }
+                for item in inventories
+            ],
         }
         if plan.get("options", {}).get("offload_legacy_blobs"):
             return self._external_blob_capacity(
@@ -911,7 +937,7 @@ class InfiniDyskV2MigrationManager:
                 source_report,
                 database_bytes=database_bytes,
                 native_headroom=headroom,
-                progress=progress,
+                progress=reporter,
             )
         return _capacity_check(requirements, source=source_report)
 
@@ -927,26 +953,16 @@ class InfiniDyskV2MigrationManager:
     ):
         from utils.infinidysk_v2_blob_staging import blob_summary
 
+        reporter = metadata_progress(progress)
         blobs = Path(plan["source"]["data_dir"]) / "blobs"
         try:
-            if progress:
-                progress(
-                    "checking_blob_storage",
-                    "Measuring legacy input and space that can actually be freed.",
+            with reporter.scan(
+                "legacy_blob_allocation",
+                "Measuring legacy input and space that can actually be freed.",
+            ) as measured:
+                summary = blob_summary(
+                    blobs, check_cancel=reporter.check_cancel, progress=measured
                 )
-            summary = blob_summary(
-                blobs,
-                check_cancel=(
-                    (
-                        lambda: progress(
-                            "checking_blob_storage",
-                            "Measuring legacy input and space that can actually be freed.",
-                        )
-                    )
-                    if progress
-                    else None
-                ),
-            )
         except (ValueError, OSError, InventoryError) as error:
             raise InfiniDyskV2MigrationError(str(error)) from error
         selected = plan.get("backup_storage") or {}
@@ -1067,9 +1083,10 @@ class InfiniDyskV2MigrationManager:
         )
 
     def _plan(self, options, *, progress=None):
+        reporter = metadata_progress(progress)
+
         def report(stage, message):
-            if progress is not None:
-                progress(stage, message)
+            reporter(stage, message)
 
         report(
             "checking_source",
@@ -1387,13 +1404,13 @@ class InfiniDyskV2MigrationManager:
                     "checking_reuse",
                     "Checking local storage reuse and retained source files.",
                 )
-                preflight_reuse(
-                    plan,
-                    check_cancel=lambda: report(
-                        "checking_reuse",
-                        "Checking local storage reuse and retained source files.",
-                    ),
-                )
+                with reporter.scan(
+                    "reuse_eligibility",
+                    "Checking local storage reuse and retained source files.",
+                ) as measured:
+                    preflight_reuse(
+                        plan, check_cancel=reporter.check_cancel, progress=measured
+                    )
             except (ValueError, OSError, BackupStorageError, InventoryError) as error:
                 plan["blockers"].append(str(error))
         if offload:
@@ -1492,8 +1509,10 @@ class InfiniDyskV2MigrationManager:
                 "Measuring retained source files and available migration storage.",
             )
             plan["capacity"] = self._copy_capacity(
-                plan, postgres_size=postgres_size, progress=progress
+                plan, postgres_size=postgres_size, progress=reporter
             )
+        except InfiniDyskV2Cancelled:
+            raise
         except InfiniDyskV2CapacityError as error:
             plan["capacity"] = error.capacity
             plan["blockers"].append(str(error))
@@ -2996,12 +3015,14 @@ class InfiniDyskV2MigrationManager:
                 "revalidating",
                 "Rechecking the reviewed migration plan. Services keep running until these checks finish.",
             )
-            self._revalidate_reviewed_plan(
-                job["plan"],
-                progress=lambda stage, message: self._progress(
-                    job, "revalidating", message
+            scan_reporter = MetadataScanProgress(
+                lambda stage, message, **details: self._progress(
+                    job, "revalidating", message, **details
                 ),
+                check_cancel=lambda: self._check_cancel(job),
+                prior_capacity=job["plan"].get("capacity"),
             )
+            self._revalidate_reviewed_plan(job["plan"], progress=scan_reporter)
             self._check_cancel(job)
             self._progress(job, "running", "Starting the contained native migration.")
             operation = (
@@ -3148,24 +3169,30 @@ class InfiniDyskV2MigrationManager:
                         else self._error(recovery_failure, job["plan"])
                     )
                     restored = False
-            elif cancelled and not job.get("execution_started"):
-                restored = True
             pre_execution = not job.get("execution_started") and not cleanup_pending
             job.update(
                 status=(
-                    "recovery_required"
-                    if cleanup_pending
+                    "cancelled"
+                    if cancelled and pre_execution
                     else (
-                        ("cancelled" if cancelled else "failed_restored")
-                        if restored
+                        "recovery_required"
+                        if cleanup_pending
                         else (
-                            "recovery_required"
-                            if job.get("execution_started")
-                            else "failed"
+                            ("cancelled" if cancelled else "failed_restored")
+                            if restored
+                            else (
+                                "recovery_required"
+                                if job.get("execution_started")
+                                else "failed"
+                            )
                         )
                     )
                 ),
-                stage="cancelled" if cancelled and restored else "failed",
+                stage=(
+                    "cancelled"
+                    if cancelled and (restored or pre_execution)
+                    else "failed"
+                ),
                 message=(
                     "Migration cancelled. "
                     if cancelled
@@ -3185,14 +3212,18 @@ class InfiniDyskV2MigrationManager:
                     )
                 ),
                 error=(
-                    "The owned migration helper could not be confirmed stopped."
-                    if cleanup_pending
-                    else self._error(error, job["plan"])
-                )
-                + (
-                    f" Recovery remains pending: {recovery_error}"
-                    if recovery_error
-                    else ""
+                    None
+                    if cancelled and pre_execution
+                    else (
+                        "The owned migration helper could not be confirmed stopped."
+                        if cleanup_pending
+                        else self._error(error, job["plan"])
+                    )
+                    + (
+                        f" Recovery remains pending: {recovery_error}"
+                        if recovery_error
+                        else ""
+                    )
                 ),
                 result={
                     "validated": False,
