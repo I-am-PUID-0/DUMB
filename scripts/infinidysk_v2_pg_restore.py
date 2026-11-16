@@ -16,6 +16,7 @@ import psycopg2
 from scripts.infinidysk_v2_sandbox import confine
 from utils.infinidysk_v2_pg_snapshot import verify_restored_connection
 from utils.private_files import atomic_write_private_text
+from utils.infinidysk_v2_restore import database_characteristics, restore_failure_code
 
 
 def _dump_identity(value):
@@ -60,6 +61,17 @@ def _copy_dump(source, destination, expected, progress):
         progress(copied)
 
 
+def _create_verification_database(connection, binding):
+    encoding, collate, ctype = database_characteristics(binding)
+    connection.autocommit = True
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "CREATE DATABASE verification TEMPLATE template0 "
+            "ENCODING %s LC_COLLATE %s LC_CTYPE %s",
+            (encoding, collate, ctype),
+        )
+
+
 def main():
     payload = json.loads(Path(sys.argv[1]).read_text())
     root = Path(payload["root"])
@@ -67,12 +79,17 @@ def main():
     cluster, sockets = root / "cluster", root / "sockets"
     server = None
     log = None
+    current_stage = "copying_dump"
 
     def interrupted(*unused):
         raise InterruptedError("Restore verification interrupted")
 
-    def activity(stage, copied=None):
+    def activity(stage, copied=None, failure=None):
+        nonlocal current_stage
+        current_stage = stage
         state = {"stage": stage}
+        if failure is not None:
+            state.update(failed=True, failure_code=restore_failure_code(failure))
         if copied is not None:
             state["copied_bytes"] = copied
         atomic_write_private_text(
@@ -116,6 +133,7 @@ def main():
             stdout=log,
             stderr=log,
         )
+        activity("starting_database")
         server = subprocess.Popen(
             [
                 str(tools / "postgres"),
@@ -153,11 +171,8 @@ def main():
                 time.sleep(0.1)
         if connection is None:
             raise RuntimeError("Private PostgreSQL verifier did not become ready")
-        connection.autocommit = True
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "CREATE DATABASE verification TEMPLATE template0 LC_COLLATE 'C' LC_CTYPE 'C'"
-            )
+        activity("creating_database")
+        _create_verification_database(connection, payload["source_binding"])
         connection.close()
         activity("restoring_database")
         # Only pg_restore progress is observed, not the server's background log.
@@ -201,6 +216,12 @@ def main():
             )
         activity("verified")
         print(json.dumps(result))
+    except Exception as error:
+        try:
+            activity(current_stage, failure=error)
+        except OSError:
+            pass
+        raise
     finally:
         try:
             if server is not None:

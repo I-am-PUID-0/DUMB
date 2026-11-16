@@ -20,6 +20,7 @@ class RestoreTests(unittest.TestCase):
         self.dump = self.root / "backup.dump"
         self.dump.write_bytes(b"fixture custom dump")
         self.binding = {
+            "database_characteristics": ["UTF8", "C.UTF-8", "C.UTF-8"],
             "binding_fingerprint": "a" * 64,
             "physical_identity": {"system_identifier": "111", "database_oid": "11"},
         }
@@ -143,7 +144,7 @@ class RestoreTests(unittest.TestCase):
             str(self.dump),
             self.binding,
             {},
-            progress=lambda *args: reports.append(args),
+            progress=lambda *args, **kwargs: reports.append(args),
             idle_warning_seconds=60,
         )
         self.assertEqual(result, self.proof)
@@ -301,7 +302,9 @@ class RestoreHelperTests(unittest.TestCase):
             "tools": "/reserved-example/postgres",
             "uid": os.geteuid(),
             "gid": os.getegid(),
-            "source_binding": {"fixture": True},
+            "source_binding": {
+                "database_characteristics": ["UTF8", "C.UTF-8", "C.UTF-8"]
+            },
             "dump_path": str(self.source),
             "dump_identity": restore_helper._dump_identity(self.source.stat()),
         }

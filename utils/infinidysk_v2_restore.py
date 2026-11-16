@@ -1,6 +1,8 @@
 """Verified PostgreSQL restore callback for a major-version source snapshot."""
 
+import errno
 import json
+import logging
 import os
 from pathlib import Path
 import shutil
@@ -11,11 +13,108 @@ import tempfile
 
 from utils.infinidysk_v2_subprocess import (
     MigrationProcessCleanupError,
+    MigrationProcessError,
     run_migration_process,
 )
 from utils.private_files import atomic_write_private_text
+from utils.infinidysk_v2_pg_snapshot import InfiniDyskV2PostgresSnapshotError
 from utils.runtime_paths import project_path
 from scripts.infinidysk_v2_sandbox import namespace_command
+
+RESTORE_STAGES = {
+    "copying_dump": "copying the retained PostgreSQL backup into isolated storage",
+    "initializing_database": "initializing the isolated PostgreSQL cluster",
+    "starting_database": "starting the isolated PostgreSQL cluster",
+    "creating_database": "creating the verification database with the source encoding and locale",
+    "restoring_database": "restoring the retained PostgreSQL backup",
+    "verifying_database": "comparing the restored database with the source snapshot",
+    "verified": "completing the independent PostgreSQL verification",
+}
+RESTORE_FAILURE_CODES = {"storage", "permissions", "locale", "mismatch", "helper"}
+
+
+def database_characteristics(binding):
+    values = binding.get("database_characteristics")
+    if (
+        not isinstance(values, (list, tuple))
+        or len(values) != 3
+        or any(
+            not isinstance(value, str) or not value or len(value) > 256
+            for value in values
+        )
+    ):
+        raise InfiniDyskV2PostgresSnapshotError(
+            "The PostgreSQL snapshot has no valid source encoding and locale. Generate a fresh preview. "
+            "DUMB did not modify the source database."
+        )
+    return tuple(values)
+
+
+def restore_failure_code(error):
+    # Only fixed codes cross the helper boundary, never stderr, SQL or data.
+    if (
+        getattr(error, "errno", None) in {errno.ENOSPC, errno.EDQUOT}
+        or getattr(error, "pgcode", None) == "53100"
+    ):
+        return "storage"
+    if getattr(error, "errno", None) in {errno.EACCES, errno.EPERM, errno.EROFS}:
+        return "permissions"
+    if getattr(error, "pgcode", None) in {"22023", "0A000"}:
+        return "locale"
+    if isinstance(error, InfiniDyskV2PostgresSnapshotError):
+        return "mismatch"
+    return "helper"
+
+
+def _restore_status(root):
+    try:
+        descriptor = os.open(
+            root / "copy-progress.json",
+            os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC,
+        )
+        with os.fdopen(descriptor, "rb") as handle:
+            value = os.fstat(handle.fileno())
+            if not stat.S_ISREG(value.st_mode) or value.st_size > 4096:
+                return {}
+            state = json.loads(handle.read(4097))
+        if not isinstance(state, dict) or state.get("stage") not in RESTORE_STAGES:
+            return {}
+        return {
+            "stage": state["stage"],
+            "failed": state.get("failed") is True,
+            "failure_code": (
+                state.get("failure_code")
+                if state.get("failure_code") in RESTORE_FAILURE_CODES
+                else "helper"
+            ),
+        }
+    except (OSError, ValueError, TypeError):
+        return {}
+
+
+def _restore_failure(root, error):
+    state = _restore_status(root)
+    stage = state.get("stage")
+    description = RESTORE_STAGES.get(
+        stage, "entering the isolated PostgreSQL restore worker"
+    )
+    code = state.get("failure_code", "helper") if state.get("failed") else "helper"
+    advice = {
+        "storage": "Local verification storage has no available space or exceeded its quota.",
+        "permissions": "Check controller access to the retained backup and private verification storage.",
+        "locale": "The source database encoding or locale could not be created by the installed PostgreSQL tools.",
+        "mismatch": "The independently restored database did not match the source snapshot; acceptance remains blocked.",
+        "helper": "Check the installed PostgreSQL tools and local verification storage; keep the retained migration files.",
+    }[code]
+    logging.getLogger(__name__).error(
+        "PostgreSQL restore verification failed: stage=%s code=%s exception=%s",
+        stage,
+        code,
+        type(error).__name__,
+    )
+    return InfiniDyskV2PostgresSnapshotError(
+        f"PostgreSQL migration stopped while {description}. {advice} DUMB did not modify the source database."
+    )
 
 
 def postgres_tools():
@@ -73,6 +172,7 @@ def verify_postgres_restore(
         raise ValueError("The retained PostgreSQL dump is not a direct file.") from None
     if not stat.S_ISREG(value.st_mode):
         raise ValueError("The retained PostgreSQL dump is not a direct file.")
+    database_characteristics(source_binding)
     tools = postgres_tools()
     # The child owns every potentially slow copy/restore/verification operation.
     # Keep its scratch if cleanup cannot prove that all owned children stopped.
@@ -82,8 +182,12 @@ def verify_postgres_restore(
 
     def status(state):
         elapsed = int(state.get("elapsed_seconds", 0))
+        restore_stage = _restore_status(root).get("stage")
+        description = RESTORE_STAGES.get(
+            restore_stage, "Restoring and validating the independent PostgreSQL backup"
+        )
         message = (
-            "Restoring and validating the independent PostgreSQL backup "
+            description[:1].upper() + description[1:] + " "
             f"({elapsed:,} seconds elapsed)."
         )
         if state.get("stall_warning"):
@@ -91,7 +195,14 @@ def verify_postgres_restore(
                 " No observable progress has been reported recently; the operation "
                 "is still running and can be cancelled."
             )
-        report("postgres_restore_verification", message)
+        report(
+            "postgres_restore_verification",
+            message,
+            restore_phase=restore_stage,
+            elapsed_seconds=elapsed,
+            idle_seconds=int(state.get("idle_seconds", 0)),
+            stall_warning=state.get("stall_warning") is True,
+        )
 
     try:
         payload = {
@@ -156,6 +267,8 @@ def verify_postgres_restore(
             "identity": identity,
         }
         raise
+    except MigrationProcessError as error:
+        raise _restore_failure(root, error) from None
     finally:
         if cleanup_complete:
             shutil.rmtree(root)
