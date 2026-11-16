@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.1">
+    <meta name="dumb-docs-package-version" content="1.25.2">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="328784e3353816722a46d9c541c4a009ba50d7a2">
-    <meta name="dumb-docs-release-tag" content="1.25.1">
+    <meta name="dumb-docs-build-commit" content="da3393b7716ae2f849a21775b33c4d7eae74da66">
+    <meta name="dumb-docs-release-tag" content="1.25.2">
   
 
     
@@ -6185,6 +6185,26 @@ of those new-operation controls.</p>
 </tr>
 <tr>
 <td><code>POST</code></td>
+<td><code>/process/infinidysk-v2/preview/start</code></td>
+<td>Start a background preview using the same options as <code>/preview</code></td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/process/infinidysk-v2/preview/task</code></td>
+<td>Retrieve the latest preview task</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/process/infinidysk-v2/preview/task/{task_id}</code></td>
+<td>Poll one preview task and retrieve its completed result</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/process/infinidysk-v2/preview/task/{task_id}/cancel</code></td>
+<td>Request cancellation of that preview without stopping services</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
 <td><code>/process/infinidysk-v2/rehearse</code></td>
 <td>Run the actual contained native importer against retained source snapshots</td>
 </tr>
@@ -6319,6 +6339,36 @@ remains retained. A missing, changed or otherwise unremovable staging copy can
 leave <code>job.staging_cleanup_required: true</code> without invalidating an accepted
 import or blocking restoration from the valid archive. Preserve the warning
 and retained evidence; it does not authorize deleting a replacement directory.</p>
+<h4 id="background-preview">Background preview<a class="headerlink" href="#background-preview" title="Permanent link">&para;</a></h4>
+<p>Use the background routes only when the strict boolean
+<code>infinidysk_v2_async_preview: true</code> is advertised. The existing synchronous
+<code>POST /preview</code> remains available for older clients.</p>
+<p>Starting and polling return <code>{"protocol": 1, "task": {...}}</code>. Each task includes
+<code>task_id</code>, <code>status</code>, <code>stage</code>, <code>message</code>, <code>created_at</code>, <code>updated_at</code>, the selected
+<code>options</code>, <code>options_fingerprint</code>, <code>can_cancel</code> and <code>cancel_requested</code>. Major
+workflow status also includes <code>preview_task</code>, so reopening the panel can reconnect
+without submitting another scan. Only the latest task is retained; requesting a
+different or no-longer-retained identity returns HTTP 409.</p>
+<p>An identical request reuses the active task; changing options while it is running
+is refused. An optional <code>request_id</code> (16–128 letters, digits, underscores or
+hyphens) also deduplicates a retry of the latest request after a lost response.
+Reusing that identity with different options is refused. Wait for the active task
+to finish or cancel it before requesting a different preview.</p>
+<p>Preview performs metadata and prerequisite checks while services remain running.
+It does not stop services, copy source data or start the native importer. There is
+no overall preview time limit. Cancellation is cooperative: follow the task until
+it stops. A controller restart marks an unfinished preview as interrupted; it
+does not automatically rerun it or enter migration recovery.</p>
+<p>Task states are <code>queued</code>, <code>running</code>, <code>completed</code>, <code>cancelled</code>, <code>failed</code> and
+<code>interrupted</code>. Only a completed task returns the normal result in <code>task.preview</code>,
+with <code>preview_available: true</code>. An expired or consumed authorization returns
+<code>preview: null</code>, <code>preview_available: false</code> and <code>preview_unavailable_reason</code> of
+<code>expired</code> or <code>consumed</code>; generate a fresh preview before continuing. Status and
+result responses use <code>Cache-Control: no-store, private</code> because a completed
+preview contains its short-lived authorization token.</p>
+<p>The authorization period starts at completion, not when scanning begins. Task
+identity and progress alone never authorize rehearsal or cutover; review that
+completed result and its required acknowledgements first.</p>
 <h4 id="preview-contract">Preview contract<a class="headerlink" href="#preview-contract" title="Permanent link">&para;</a></h4>
 <p>The preview returns <code>protocol</code>, <code>ready</code>, <code>preview_token</code>, <code>expires_at</code>,
 <code>plan_fingerprint</code>, <code>confirmation_text</code>, <code>current</code>, <code>target</code>, <code>checks</code>,
@@ -6656,11 +6706,11 @@ cannot be confirmed, and disable actions until a valid current response returns.
     
     <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
       
-        <span>Documentation release 1.25.1</span>
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.1">Release notes</a>
+        <span>Documentation release 1.25.2</span>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.2">Release notes</a>
       
       
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;328784e3353816722a46d9c541c4a009ba50d7a2" title="Documentation source commit 328784e3353816722a46d9c541c4a009ba50d7a2">Source 328784e3</a>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;da3393b7716ae2f849a21775b33c4d7eae74da66" title="Documentation source commit da3393b7716ae2f849a21775b33c4d7eae74da66">Source da3393b7</a>
       
       
     </div>
