@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.2">
+    <meta name="dumb-docs-package-version" content="1.25.3">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="da3393b7716ae2f849a21775b33c4d7eae74da66">
-    <meta name="dumb-docs-release-tag" content="1.25.2">
+    <meta name="dumb-docs-build-commit" content="c27f14b4c75f482c0354dc615d89b6854df5916e">
+    <meta name="dumb-docs-release-tag" content="1.25.3">
   
 
     
@@ -6573,11 +6573,12 @@ restore overhead when applicable, up to 512 MiB for the inventory manifest, and
 a safety margin. The review shows local and external requirements separately;
 paths on the same filesystem share one budget. An unavailable estimate does not
 pass the capacity check.</p>
-<p>On supporting builds, <strong>Preview migration</strong> starts a background check and shows
-its current stage. Large installations can take several minutes to scan. Services
-keep running during preview; DUMB does not copy, move or remove source files.
-You can close the panel and reopen it to follow the same check. Use <strong>Cancel
-preview scan</strong> to stop it; this does not start migration recovery.</p>
+<p>On supporting builds, <strong>Preview migration</strong> shows the request immediately,
+then follows the background check's current stage. Large installations can take
+several minutes to scan. Services keep running during preview; DUMB does not
+copy, move or remove source files. You can close the panel and reopen it to
+follow the same check. Use <strong>Cancel preview scan</strong> to stop it; this does not
+start migration recovery.</p>
 <p>A completed preview remains available for review until its authorization expires.
 The review period starts when the scan finishes. If a connection fails, use
 <strong>Refresh status</strong> before starting another preview; a lost response does not mean
@@ -6602,8 +6603,11 @@ source locations and available space, and resolve the blocker before retrying.</
    mappings, symlinks and STRM origins, and that external writers/scanners are
    stopped. It is an operator review, not an automatic audit of external players.</li>
 <li>For existing data, select <strong>Test migration</strong> to run the isolated rehearsal.
-   Cutover requires a successful test matching the reviewed plan. A fresh installation must instead
-   prove that it will not overwrite existing data.</li>
+   The panel shows the pending request immediately, then the accepted job's
+   current phase. Wait for its result; submitting a request is not proof that
+   services have stopped or that the test has finished.
+   Cutover requires a successful test matching the reviewed plan. A fresh
+   installation must instead prove that it will not overwrite existing data.</li>
 <li>Start the installation or migration and follow the persistent job. A changed
    source or expired preview requires another review; a successful rehearsal can
    be reused only when its public plan fingerprint still matches. Successful
@@ -6626,11 +6630,42 @@ database passwords are not. A transport error does not prove that a job stopped.
 Refresh status before retrying, and retain an unconfirmed job's recovery evidence.</p>
 <h3 id="progress-cancellation-and-recovery">Progress, cancellation and recovery<a class="headerlink" href="#progress-cancellation-and-recovery" title="Permanent link">&para;</a></h3>
 <p>The displayed phase distinguishes native import, DUMB validation and source
-recovery. Native counts and any time estimate describe that phase only; unknown
-counts do not establish completion. <strong>Native stage: done</strong> means the upstream conversion finished; DUMB
-still needs to reconcile its report and database identities. A rehearsal then
-restores v1 and its previous consumers, while a cutover must validate the target
-before starting normal v2 work.</p>
+recovery. Progress is shown while work is running; a finished job shows its
+result and next step. Native counts and any time estimate describe that phase
+only, rather than an overall completion percentage. Unknown counts do not
+establish completion. <strong>Native stage: done</strong> means the upstream conversion
+finished; DUMB still needs to reconcile its report and database identities.
+A rehearsal then restores v1 and its previous consumers, while a cutover must
+validate the target before starting normal v2 work.</p>
+<table>
+<thead>
+<tr>
+<th>Result</th>
+<th>What to do next</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Test passed</td>
+<td>v1 and its previous managed services were restored. Review the matching preview and start migration while its authorization remains valid.</td>
+</tr>
+<tr>
+<td>Test failed or was cancelled, with v1 restoration confirmed</td>
+<td>v1 is available again. Read the reported error, resolve its cause, then generate a fresh preview and run another test before migration. No recovery action is needed for the completed restoration.</td>
+</tr>
+<tr>
+<td>Recovery required</td>
+<td>Restoration or target recovery has not finished. Preserve the job's evidence and use its currently offered recovery action; do not assume that v1 or v2 is ready.</td>
+</tr>
+<tr>
+<td>Migration completed</td>
+<td>Validate the running v2 installation, downstream paths and playback before resuming normal imports and scans.</td>
+</tr>
+</tbody>
+</table>
+<p>A failed test does not become a successful test because v1 was restored.
+Likewise, a retained archive or an available rollback control does not by itself
+mean that recovery is running. Follow the job's result and reported error.</p>
 <p>Bulk migration work has <strong>no fixed overall time limit</strong>. Large file copies,
 PostgreSQL dump and restore verification, and native import can take longer on
 slow local or network storage. DUMB does not stop a running worker just because
@@ -7048,11 +7083,11 @@ separate existing workflows.</p>
     
     <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
       
-        <span>Documentation release 1.25.2</span>
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.2">Release notes</a>
+        <span>Documentation release 1.25.3</span>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.3">Release notes</a>
       
       
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;da3393b7716ae2f849a21775b33c4d7eae74da66" title="Documentation source commit da3393b7716ae2f849a21775b33c4d7eae74da66">Source da3393b7</a>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;c27f14b4c75f482c0354dc615d89b6854df5916e" title="Documentation source commit c27f14b4c75f482c0354dc615d89b6854df5916e">Source c27f14b4</a>
       
       
     </div>

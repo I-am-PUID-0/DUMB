@@ -2,7 +2,7 @@
 
 > Channel: dev. Canonical base: https://dumbarr.com/dev/
 
-Documentation artifact: release 1.25.2. Source commit: da3393b7716ae2f849a21775b33c4d7eae74da66. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.2.
+Documentation artifact: release 1.25.3. Source commit: c27f14b4c75f482c0354dc615d89b6854df5916e. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.3.
 
 DUMB coordinates media services. Match instructions to the installed backend version. Development guides can describe features absent from the latest release.
 
@@ -11873,11 +11873,12 @@ a safety margin. The review shows local and external requirements separately;
 paths on the same filesystem share one budget. An unavailable estimate does not
 pass the capacity check.
 
-On supporting builds, **Preview migration** starts a background check and shows
-its current stage. Large installations can take several minutes to scan. Services
-keep running during preview; DUMB does not copy, move or remove source files.
-You can close the panel and reopen it to follow the same check. Use **Cancel
-preview scan** to stop it; this does not start migration recovery.
+On supporting builds, **Preview migration** shows the request immediately,
+then follows the background check's current stage. Large installations can take
+several minutes to scan. Services keep running during preview; DUMB does not
+copy, move or remove source files. You can close the panel and reopen it to
+follow the same check. Use **Cancel preview scan** to stop it; this does not
+start migration recovery.
 
 A completed preview remains available for review until its authorization expires.
 The review period starts when the scan finishes. If a connection fails, use
@@ -11905,8 +11906,11 @@ source locations and available space, and resolve the blocker before retrying.
    mappings, symlinks and STRM origins, and that external writers/scanners are
    stopped. It is an operator review, not an automatic audit of external players.
 5. For existing data, select **Test migration** to run the isolated rehearsal.
-   Cutover requires a successful test matching the reviewed plan. A fresh installation must instead
-   prove that it will not overwrite existing data.
+   The panel shows the pending request immediately, then the accepted job's
+   current phase. Wait for its result; submitting a request is not proof that
+   services have stopped or that the test has finished.
+   Cutover requires a successful test matching the reviewed plan. A fresh
+   installation must instead prove that it will not overwrite existing data.
 6. Start the installation or migration and follow the persistent job. A changed
    source or expired preview requires another review; a successful rehearsal can
    be reused only when its public plan fingerprint still matches. Successful
@@ -11932,11 +11936,24 @@ Refresh status before retrying, and retain an unconfirmed job's recovery evidenc
 ### Progress, cancellation and recovery
 
 The displayed phase distinguishes native import, DUMB validation and source
-recovery. Native counts and any time estimate describe that phase only; unknown
-counts do not establish completion. **Native stage: done** means the upstream conversion finished; DUMB
-still needs to reconcile its report and database identities. A rehearsal then
-restores v1 and its previous consumers, while a cutover must validate the target
-before starting normal v2 work.
+recovery. Progress is shown while work is running; a finished job shows its
+result and next step. Native counts and any time estimate describe that phase
+only, rather than an overall completion percentage. Unknown counts do not
+establish completion. **Native stage: done** means the upstream conversion
+finished; DUMB still needs to reconcile its report and database identities.
+A rehearsal then restores v1 and its previous consumers, while a cutover must
+validate the target before starting normal v2 work.
+
+| Result | What to do next |
+| --- | --- |
+| Test passed | v1 and its previous managed services were restored. Review the matching preview and start migration while its authorization remains valid. |
+| Test failed or was cancelled, with v1 restoration confirmed | v1 is available again. Read the reported error, resolve its cause, then generate a fresh preview and run another test before migration. No recovery action is needed for the completed restoration. |
+| Recovery required | Restoration or target recovery has not finished. Preserve the job's evidence and use its currently offered recovery action; do not assume that v1 or v2 is ready. |
+| Migration completed | Validate the running v2 installation, downstream paths and playback before resuming normal imports and scans. |
+
+A failed test does not become a successful test because v1 was restored.
+Likewise, a retained archive or an available rollback control does not by itself
+mean that recovery is running. Follow the job's result and reported error.
 
 Bulk migration work has **no fixed overall time limit**. Large file copies,
 PostgreSQL dump and restore verification, and native import can take longer on
