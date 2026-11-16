@@ -2238,14 +2238,14 @@ files = [
 
 [[package]]
 name = "scalar-fastapi"
-version = "1.9.1"
+version = "1.9.3"
 description = "FastAPI plugin to serve beautiful, interactive API documentation from OpenAPI/Swagger documents."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "scalar_fastapi-1.9.1-py3-none-any.whl", hash = "sha256:fc7fdba6e60fb016a57b3eca59621773179c133abb6d496611df9575f97555a8"},
-    {file = "scalar_fastapi-1.9.1.tar.gz", hash = "sha256:a54104c434655c457fdbad3c181d3368be07c63ddbb7a5a084c83fdfa7239333"},
+    {file = "scalar_fastapi-1.9.3-py3-none-any.whl", hash = "sha256:f0135591fb1b62e27969f395483b16b3d738e1c6fe3ddf423cd97f39403702f9"},
+    {file = "scalar_fastapi-1.9.3.tar.gz", hash = "sha256:4da57bcb023c722b3f6504c491be4cac4fe0fc678cd749996ffb7dba4711858b"},
 ]
 
 [package.dependencies]
@@ -2686,4 +2686,4 @@ test = ["pytest", "pytest-cov"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4.0"
-content-hash = "6817be6ca92424b6064f9f6844bebd7ae2beaed8880d24e2c875a47d78cd925a"
+content-hash = "31805302e6d7ef755a77e29bb6758ea9213f3fac9c99e5e4754f0d20ffb02498"
