@@ -198,8 +198,8 @@ class PreviewTaskTests(unittest.TestCase):
         source_bytes = (self.fixture.source / "db.sqlite").read_bytes()
         config = deepcopy(self.fixture.config.config)
 
-        def pause_after_validation(request):
-            result = original_request(request)
+        def pause_after_validation(request, **kwargs):
+            result = original_request(request, **kwargs)
             validated.set()
             if not admit.wait(timeout=4):
                 raise RuntimeError("fixture admission was not released")

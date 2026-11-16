@@ -842,7 +842,7 @@ def create_postgres_snapshot(
         nonlocal callback_error
         check()
         try:
-            progress_callback(*args, **kwargs)
+            progress_callback(*args, phase=phase, **kwargs)
         except Exception as error:
             # Cancellation can also be raised by the manager's retained
             # progress callback. Preserve that trusted callback's exact error.

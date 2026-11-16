@@ -7,10 +7,12 @@ import subprocess
 import json
 from pathlib import Path
 import tempfile
+import threading
 import unittest
 from unittest.mock import MagicMock, patch
 
 from scripts import infinidysk_v2_pg_restore as helper
+from tests import test_infinidysk_v2_migration as migration_fixtures
 from tests import test_infinidysk_v2_restore as restore_fixtures
 from utils import infinidysk_v2_restore as restore
 from utils.infinidysk_v2_subprocess import MigrationProcessError
@@ -204,3 +206,132 @@ class RestoreChildStageTests(unittest.TestCase):
                 self.assertEqual(dump.read_bytes(), b"retained dump bytes")
                 if failure_stage != "initializing_database":
                     server.wait.assert_called_once_with(timeout=5)
+
+
+class AdmissionAndPublicProgressTests(unittest.TestCase):
+    def setUp(self):
+        self.fixture = migration_fixtures.InfiniDyskV2MigrationTests("runTest")
+        self.fixture.setUp()
+        self.addCleanup(self.fixture.tearDown)
+        self.manager = self.fixture.manager
+
+    def test_start_returns_job_before_expensive_recheck_and_cancel_keeps_source_untouched(
+        self,
+    ):
+        _, request = self.fixture.preview_request()
+        entered, release = threading.Event(), threading.Event()
+        original = self.manager._plan
+        before = (self.fixture.source / "db.sqlite").read_bytes()
+
+        def slow_plan(options, *, progress=None):
+            entered.set()
+            if not release.wait(timeout=4):
+                raise RuntimeError("fixture release missing")
+            return original(options, progress=progress)
+
+        with patch.object(self.manager, "_plan", side_effect=slow_plan):
+            response = self.manager.rehearse(request)
+            try:
+                self.assertTrue(entered.wait(timeout=2))
+                job = self.manager.get_job(response["job"]["job_id"])["job"]
+                self.assertEqual(job["stage"], "revalidating")
+                self.assertEqual(self.fixture.executor.calls, [])
+                self.manager.cancel(
+                    {
+                        "job_id": job["job_id"],
+                        "confirmation": job["cancel_confirmation_text"],
+                    }
+                )
+            finally:
+                release.set()
+            finished = self.fixture.wait(response)
+        self.assertEqual(finished["status"], "cancelled")
+        self.assertEqual(self.fixture.executor.calls, [])
+        self.assertEqual((self.fixture.source / "db.sqlite").read_bytes(), before)
+
+    def test_recheck_drift_fails_before_executor_or_source_changes(self):
+        _, request = self.fixture.preview_request()
+        before = (self.fixture.source / "db.sqlite").read_bytes()
+        original = self.manager._plan
+
+        def changed(options, *, progress=None):
+            plan = original(options, progress=progress)
+            plan["plan_fingerprint"] = "0" * 64
+            return plan
+
+        with patch.object(self.manager, "_plan", side_effect=changed):
+            job = self.fixture.wait(self.manager.rehearse(request))
+        self.assertEqual(job["status"], "failed")
+        self.assertIn("changed", job["error"])
+        self.assertTrue(job["result"]["source_untouched"])
+        self.assertFalse(job["result"]["source_restored"])
+        self.assertIn("before applications were paused", job["message"])
+        self.assertNotIn("recovery", job["message"])
+        self.assertEqual(self.fixture.executor.calls, [])
+        self.assertEqual((self.fixture.source / "db.sqlite").read_bytes(), before)
+
+    def test_malformed_optional_progress_does_not_break_public_job_recovery_status(
+        self,
+    ):
+        _, request = self.fixture.preview_request()
+        response = self.manager.rehearse(request)
+        self.fixture.wait(response)
+        job = self.manager._read(self.manager._job_path(response["job"]["job_id"]))
+        for execution in (
+            "invalid",
+            [1],
+            True,
+            {"phase": [], "restore_phase": {}},
+            {"phase": {}, "restore_phase": []},
+        ):
+            with self.subTest(execution=execution):
+                job["execution"] = execution
+                public = self.manager._public_job(job)
+                self.assertEqual(public["job_id"], job["job_id"])
+                self.assertEqual(public["status"], "rehearsed")
+                self.assertNotIn("snapshot_progress", public)
+                self.assertNotIn("affected_services", public)
+
+    def test_public_progress_only_exposes_typed_counters_and_affected_names(self):
+        _, request = self.fixture.preview_request()
+        self.fixture.executor.gate = threading.Event()
+        response = self.manager.rehearse(request)
+        try:
+            self.assertTrue(self.fixture.executor.started.wait(timeout=2))
+            job = self.manager._read(self.manager._job_path(response["job"]["job_id"]))
+            job["execution"] = {
+                "phase": "native_staging",
+                "restore_phase": "restoring_database",
+                "table": "HistoryItems",
+                "table_index": 5,
+                "table_count": 7,
+                "rows": 37000,
+                "elapsed_seconds": 24,
+                "idle_seconds": 0,
+                "stall_warning": False,
+                "password": "private-secret",
+                "original_running_names": [
+                    "Sonarr",
+                    "Sonarr",
+                    "Plex",
+                    "unsafe\nname",
+                    123,
+                ],
+            }
+            public = self.manager._public_job(job)
+            self.assertEqual(public["affected_services"], ["Sonarr", "Plex"])
+            self.assertEqual(public["snapshot_progress"]["rows"], 37000)
+            self.assertEqual(public["snapshot_progress"]["table_count"], 7)
+            self.assertNotIn("private-secret", json.dumps(public))
+            job["execution"].update(
+                phase="private-secret",
+                table="private-secret/",
+                rows=True,
+                table_index=-1,
+            )
+            public = self.manager._public_job(job)["snapshot_progress"]
+            for key in ("phase", "table", "rows", "table_index"):
+                self.assertNotIn(key, public)
+        finally:
+            self.fixture.executor.gate.set()
+            self.fixture.wait(response)

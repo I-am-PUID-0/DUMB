@@ -435,8 +435,10 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
             "process_obj": process,
         }
         # A changed process identity first invalidates the saved preflight.
-        with self.assertRaisesRegex(InfiniDyskV2MigrationError, "identity changed"):
-            self.manager.rehearse(request)
+        rejected = self.wait(self.manager.rehearse(request))
+        self.assertEqual("failed", rejected["status"])
+        self.assertIn("identity changed", rejected["error"])
+        self.assertFalse(self.executor.calls)
         _, request = self.preview_request()
         job = self.wait(self.manager.rehearse(request))
         self.assertEqual("failed_restored", job["status"])
@@ -1116,10 +1118,11 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
             "utils.infinidysk_v2_migration.shutil.disk_usage",
             return_value=SimpleNamespace(free=1),
         ):
-            with self.assertRaisesRegex(InfiniDyskV2MigrationError, "free space"):
-                self.manager.rehearse(request)
+            job = self.wait(self.manager.rehearse(request))
+        self.assertEqual("failed", job["status"])
+        self.assertIn("free space", job["error"])
         self.assertEqual(self.executor.calls, [])
-        self.assertIsNone(self.manager._thread)
+        self.assertFalse(self.manager._thread.is_alive())
 
     def test_space_lost_after_dispatch_blocks_cold_copy(self):
         self.executor.gate = threading.Event()
@@ -1379,10 +1382,9 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
         destination = self.root / "cold-storage"
         destination.rename(self.root / "old-cold-storage")
         destination.mkdir()
-        with self.assertRaisesRegex(
-            InfiniDyskV2MigrationError, "unavailable|identity|destination"
-        ):
-            self.manager.rehearse(request)
+        job = self.wait(self.manager.rehearse(request))
+        self.assertEqual("failed", job["status"])
+        self.assertRegex(job["error"], "unavailable|identity|destination")
         self.assertEqual(self.executor.calls, [])
         self.assertFalse((destination / ".dumb-backups").exists())
 

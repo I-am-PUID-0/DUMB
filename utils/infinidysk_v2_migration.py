@@ -566,6 +566,65 @@ class InfiniDyskV2MigrationManager:
                 )
                 if key in staging
             }
+        execution = job.get("execution")
+        if not isinstance(execution, dict):
+            execution = {}
+        snapshot_progress = {}
+        phase = execution.get("phase")
+        if isinstance(phase, str) and phase in {
+            "source_connection",
+            "source_inventory",
+            "snapshot_export",
+            "backup_tool",
+            "native_staging",
+            "dump_storage",
+            "database_dump",
+            "source_cleanup",
+            "restore_verification",
+            "snapshot_receipt",
+        }:
+            snapshot_progress["phase"] = phase
+        restore_phase = execution.get("restore_phase")
+        if isinstance(restore_phase, str) and restore_phase in {
+            "copying_dump",
+            "initializing_database",
+            "starting_database",
+            "creating_database",
+            "restoring_database",
+            "verifying_database",
+            "verified",
+        }:
+            snapshot_progress["restore_phase"] = restore_phase
+        table = execution.get("table")
+        if isinstance(table, str) and re.fullmatch(
+            r"[A-Za-z_][A-Za-z0-9_.]{0,127}", table
+        ):
+            snapshot_progress["table"] = table
+        for field in (
+            "table_index",
+            "table_count",
+            "rows",
+            "elapsed_seconds",
+            "idle_seconds",
+        ):
+            value = execution.get(field)
+            if type(value) is int and 0 <= value <= 2**63 - 1:
+                snapshot_progress[field] = value
+        if type(execution.get("stall_warning")) is bool:
+            snapshot_progress["stall_warning"] = execution["stall_warning"]
+        if snapshot_progress:
+            public["snapshot_progress"] = snapshot_progress
+        running = execution.get("original_running_names")
+        if isinstance(running, list):
+            public["affected_services"] = list(
+                dict.fromkeys(
+                    name
+                    for name in running[:256]
+                    if isinstance(name, str)
+                    and 0 < len(name) <= 160
+                    and name.isprintable()
+                )
+            )
         return public
 
     def _consumer_recovery(self):
@@ -668,6 +727,7 @@ class InfiniDyskV2MigrationManager:
             "whisparr",
             "readarr",
             "chaptarr",
+            "bazarr",
             "prowlarr",
             "plex",
             "jellyfin",
@@ -1464,10 +1524,14 @@ class InfiniDyskV2MigrationManager:
             blockers = []
             if generation(service) != "1":
                 blockers.append("The service already selects generation 2.")
-            if self.has_blocking_job():
-                blockers.append("A major migration is active or needs recovery review.")
             if self.has_recovery_pending_job():
-                blockers.append("A retained major migration needs recovery review.")
+                blockers.append(
+                    "A previous migration needs recovery before another can start."
+                )
+            elif self.has_blocking_job():
+                blockers.append(
+                    "An InfiniDysk 2 operation is already running. Its status is shown below."
+                )
             if self.executor is None:
                 blockers.append(
                     "The contained native migration executor is unavailable."
@@ -1660,7 +1724,7 @@ class InfiniDyskV2MigrationManager:
                 "rehearsal_required": plan["mode"] == "migrate",
             }
 
-    def _request_plan(self, request):
+    def _request_plan(self, request, *, revalidate=True):
         with self._lock:
             self._preview_controller().require_idle()
         token = str(request.get("preview_token") or "")
@@ -1706,7 +1770,14 @@ class InfiniDyskV2MigrationManager:
             raise InfiniDyskV2MigrationError(
                 "Acknowledge backup, downtime, beta, login policy and downstream paths/playback."
             )
-        current = self._plan(plan["options"])
+        if plan["blockers"]:
+            raise InfiniDyskV2MigrationError("; ".join(plan["blockers"]))
+        if revalidate:
+            self._revalidate_reviewed_plan(plan)
+        return plan, path, saved
+
+    def _revalidate_reviewed_plan(self, plan, *, progress=None):
+        current = self._plan(plan["options"], progress=progress)
         if (
             current["plan_fingerprint"]
             != plan.get("restored_plan_fingerprint", plan["plan_fingerprint"])
@@ -1718,7 +1789,6 @@ class InfiniDyskV2MigrationManager:
             )
         if current["blockers"]:
             raise InfiniDyskV2MigrationError("; ".join(current["blockers"]))
-        return plan, path, saved
 
     def rehearse(self, request):
         return self._start(dict(request), "rehearsal")
@@ -1727,7 +1797,7 @@ class InfiniDyskV2MigrationManager:
         return self._start(dict(request), "cutover")
 
     def _start(self, request, mode):
-        plan, preview_path, saved = self._request_plan(request)
+        plan, preview_path, saved = self._request_plan(request, revalidate=False)
         with INFINIDYSK_MIGRATION_ADMISSION_LOCK, self._lock:
             self._preview_controller().require_idle()
             if self.has_blocking_job():
@@ -2921,6 +2991,18 @@ class InfiniDyskV2MigrationManager:
                 raise InfiniDyskV2MigrationError(
                     "A service update already owns lifecycle admission."
                 )
+            self._progress(
+                job,
+                "revalidating",
+                "Rechecking the reviewed migration plan. Services keep running until these checks finish.",
+            )
+            self._revalidate_reviewed_plan(
+                job["plan"],
+                progress=lambda stage, message: self._progress(
+                    job, "revalidating", message
+                ),
+            )
+            self._check_cancel(job)
             self._progress(job, "running", "Starting the contained native migration.")
             operation = (
                 self.executor.rehearse
@@ -3068,6 +3150,7 @@ class InfiniDyskV2MigrationManager:
                     restored = False
             elif cancelled and not job.get("execution_started"):
                 restored = True
+            pre_execution = not job.get("execution_started") and not cleanup_pending
             job.update(
                 status=(
                     "recovery_required"
@@ -3089,12 +3172,16 @@ class InfiniDyskV2MigrationManager:
                     else "Migration did not pass acceptance. "
                 )
                 + (
-                    "Owned helper termination is unconfirmed; recovery remains held."
-                    if cleanup_pending
+                    "Checks stopped before applications were paused; this operation did not change source data."
+                    if pre_execution
                     else (
-                        "Original v1 service was restored."
-                        if restored
-                        else "Inspect retained recovery state before continuing."
+                        "Owned helper termination is unconfirmed; recovery remains held."
+                        if cleanup_pending
+                        else (
+                            "Original v1 service was restored."
+                            if restored
+                            else "Inspect retained recovery state before continuing."
+                        )
                     )
                 ),
                 error=(
@@ -3111,6 +3198,7 @@ class InfiniDyskV2MigrationManager:
                     "validated": False,
                     "execution_verified": False,
                     "source_restored": restored,
+                    **({"source_untouched": True} if pre_execution else {}),
                 },
             )
         finally:
