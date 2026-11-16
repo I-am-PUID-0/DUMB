@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.3">
+    <meta name="dumb-docs-package-version" content="1.25.4">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="c27f14b4c75f482c0354dc615d89b6854df5916e">
-    <meta name="dumb-docs-release-tag" content="1.25.3">
+    <meta name="dumb-docs-build-commit" content="6c570ca868ea2394442408cf9f89d04fa099760a">
+    <meta name="dumb-docs-release-tag" content="1.25.4">
   
 
     
@@ -6461,6 +6461,20 @@ can expose <code>import_progress</code> with a native <code>stage</code>, <code>
 native conversion rather than the entire validation/cutover/recovery pipeline.</p>
 <h4 id="job-progress-and-evidence">Job progress and evidence<a class="headerlink" href="#job-progress-and-evidence" title="Permanent link">&para;</a></h4>
 <p>The outer <code>stage</code> and <code>message</code> describe the current DUMB phase.</p>
+<p>A terminal job can expose <code>result.source_untouched: true</code> when it stopped before
+migration execution began. DUMB did not pause applications or change the source
+for that attempt. This requires resolving the reported blocker and a fresh
+preview/test; it does not prove a successful rehearsal or authorize cutover.</p>
+<p>Supporting builds additionally expose optional <code>snapshot_progress</code>. Its bounded
+fields can include <code>phase</code>, <code>restore_phase</code>, <code>table</code>, <code>table_index</code>, <code>table_count</code>,
+<code>rows</code>, <code>elapsed_seconds</code>, <code>idle_seconds</code> and <code>stall_warning</code>. These are observations
+of source snapshot and verification work, not an overall migration percentage.
+Unavailable observations are omitted. Older jobs can omit this object entirely.</p>
+<p>Optional <code>affected_services</code> contains the deduplicated managed process names
+retained for this job. It describes historical scope, not proof that those
+services are currently stopped. Clients must read current service status before
+updating indicators; a failed status read must not be treated as confirmed
+running or stopped. Polling status must not replay migration mutations.</p>
 <p>Bulk native import, file copy and database snapshot/restore have no fixed
 overall deadline. Thirty minutes without observable native progress or provider
 reads produces a warning while the worker continues; polling heartbeats alone
@@ -6706,11 +6720,11 @@ cannot be confirmed, and disable actions until a valid current response returns.
     
     <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
       
-        <span>Documentation release 1.25.3</span>
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.3">Release notes</a>
+        <span>Documentation release 1.25.4</span>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.4">Release notes</a>
       
       
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;c27f14b4c75f482c0354dc615d89b6854df5916e" title="Documentation source commit c27f14b4c75f482c0354dc615d89b6854df5916e">Source c27f14b4</a>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;6c570ca868ea2394442408cf9f89d04fa099760a" title="Documentation source commit 6c570ca868ea2394442408cf9f89d04fa099760a">Source 6c570ca8</a>
       
       
     </div>

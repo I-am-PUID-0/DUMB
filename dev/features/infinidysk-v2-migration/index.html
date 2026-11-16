@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.3">
+    <meta name="dumb-docs-package-version" content="1.25.4">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="c27f14b4c75f482c0354dc615d89b6854df5916e">
-    <meta name="dumb-docs-release-tag" content="1.25.3">
+    <meta name="dumb-docs-build-commit" content="6c570ca868ea2394442408cf9f89d04fa099760a">
+    <meta name="dumb-docs-release-tag" content="1.25.4">
   
 
     
@@ -6441,6 +6441,12 @@ the selected InfiniDysk service and mount, verifies delivery readiness, then
 resumes the previously running consumers in dependency order. Sonarr/Radarr
 therefore resume before a dependent Prowlarr. Configured consumers that were
 already stopped remain stopped; DUMB does not enable unrelated applications.</p>
+<p>The recorded migration scope determines downtime. Review its source, mount and
+managed consumers before starting. Shared PostgreSQL, the DUMB API and frontend,
+proxies and utilities outside that scope can remain running. A v1 PostgreSQL
+source needs its database server available while DUMB captures and verifies the
+snapshot. Green indicators for those other services do not mean that the
+affected Arr, request or media applications are still running.</p>
 <p>With a native FUSE target, the old associated rclone process stays stopped.
 Rehearsal recovery or rollback restores the original transport when it was
 previously running. An upstream start failure or uncertain original-process
@@ -6628,6 +6634,11 @@ The global notice reopens progress or recovery after navigation and reload.
 Only job identities are saved for browser recovery; preview authorizations and
 database passwords are not. A transport error does not prove that a job stopped.
 Refresh status before retrying, and retain an unconfirmed job's recovery evidence.</p>
+<p>The migration view refreshes status automatically while visible and rechecks it
+when you return. These checks do not repeat the preview, test or migration
+request. Use <strong>Refresh status</strong> if a connection is interrupted. Supporting builds
+also refresh the affected services from their actual process status; if that
+read fails, their indicators become unknown until status can be confirmed.</p>
 <h3 id="progress-cancellation-and-recovery">Progress, cancellation and recovery<a class="headerlink" href="#progress-cancellation-and-recovery" title="Permanent link">&para;</a></h3>
 <p>The displayed phase distinguishes native import, DUMB validation and source
 recovery. Progress is shown while work is running; a finished job shows its
@@ -6637,6 +6648,11 @@ establish completion. <strong>Native stage: done</strong> means the upstream con
 finished; DUMB still needs to reconcile its report and database identities.
 A rehearsal then restores v1 and its previous consumers, while a cutover must
 validate the target before starting normal v2 work.</p>
+<p>For PostgreSQL source snapshots and verification, supporting builds show the
+current phase and observed table or row counts when available. These describe
+database preparation, not how many media files have migrated. Stages without a
+measurable total remain indeterminate; a quiet counter alone does not establish
+that the worker stopped.</p>
 <table>
 <thead>
 <tr>
@@ -6645,6 +6661,10 @@ validate the target before starting normal v2 work.</p>
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>Checks stopped before applications paused</td>
+<td>DUMB left the source unchanged. Resolve the reported blocker, then generate a fresh preview and test again. No restore is needed.</td>
+</tr>
 <tr>
 <td>Test passed</td>
 <td>v1 and its previous managed services were restored. Review the matching preview and start migration while its authorization remains valid.</td>
@@ -7083,11 +7103,11 @@ separate existing workflows.</p>
     
     <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
       
-        <span>Documentation release 1.25.3</span>
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.3">Release notes</a>
+        <span>Documentation release 1.25.4</span>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.4">Release notes</a>
       
       
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;c27f14b4c75f482c0354dc615d89b6854df5916e" title="Documentation source commit c27f14b4c75f482c0354dc615d89b6854df5916e">Source c27f14b4</a>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;6c570ca868ea2394442408cf9f89d04fa099760a" title="Documentation source commit 6c570ca868ea2394442408cf9f89d04fa099760a">Source 6c570ca8</a>
       
       
     </div>
