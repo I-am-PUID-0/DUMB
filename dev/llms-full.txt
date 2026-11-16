@@ -2,7 +2,7 @@
 
 > Channel: dev. Canonical base: https://dumbarr.com/dev/
 
-Documentation artifact: release 1.25.4. Source commit: 6c570ca868ea2394442408cf9f89d04fa099760a. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.4.
+Documentation artifact: release 1.25.5. Source commit: fc39f625e5c9e3dc86946ac19d241a4897c3d058. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.5.
 
 DUMB coordinates media services. Match instructions to the installed backend version. Development guides can describe features absent from the latest release.
 
@@ -1911,10 +1911,14 @@ For a job advertising `can_cancel: true` or `actions.cancel: true`, send
 `{"job_id": "SERVER_JOB_ID", "confirmation": "SERVER_CANCEL_CONFIRMATION"}` to
 `/process/infinidysk-v2/cancel`, using its exact `cancel_confirmation_text`.
 The response can set `cancel_requested: true` while the owned worker reaches a
-checkpoint and restores the source. Repeating that same accepted cancellation
-is idempotent. Do not treat the acknowledgement as completed recovery: poll the
-job until its terminal state and recovery flags confirm the outcome. If source
-recovery fails, retain the evidence and use the offered rollback action.
+checkpoint. Repeating that same accepted cancellation is idempotent. If the job
+stops before execution begins, it finishes with `status: "cancelled"`,
+`error: null` and `result.source_untouched: true`: applications were not paused,
+the source was not changed and no restore is needed. Once execution has begun,
+cancellation stops the contained writer and restores the source before reporting
+completion. Poll until the terminal state and recovery flags confirm the
+outcome; the acknowledgement alone does not establish it. If source recovery
+fails, retain the evidence and use the offered rollback action.
 Once `activation_exposed: true`, cancellation cannot implicitly restore v1;
 follow the current exposed-target recovery actions instead.
 
@@ -1929,8 +1933,35 @@ The outer `stage` and `message` describe the current DUMB phase.
 
 A terminal job can expose `result.source_untouched: true` when it stopped before
 migration execution began. DUMB did not pause applications or change the source
-for that attempt. This requires resolving the reported blocker and a fresh
-preview/test; it does not prove a successful rehearsal or authorize cutover.
+for that attempt, so no restore is needed. A pre-execution cancellation is
+`cancelled` with `error: null`; failed preflight checks instead report their
+blocker. Resolve any reported blocker, then obtain a fresh preview and successful
+test before migration. Untouched-source evidence does not prove a successful
+rehearsal or authorize cutover.
+
+Supporting builds can expose optional `scan_progress` during `revalidating`.
+It describes one existing metadata traversal, without an extra scan to calculate
+progress. An opaque `scan_id` identifies that scan. Supported `phase`
+values are `reuse_eligibility`, `source_data`, `source_runtime` and
+`legacy_blob_allocation`.
+
+The object contains `entries_processed`, nullable `entries_total`,
+`total_is_estimate`, `logical_bytes_processed`, `elapsed_seconds`,
+nullable `rate_entries_per_second` and `estimated_remaining_seconds`,
+`updated_at` and `complete`. Counts and elapsed/remaining seconds are
+nonnegative integers; a reported rate is finite and positive.
+`logical_bytes_processed` sums inspected file sizes, not bytes copied or read.
+Prior-review per-root counts are optional estimates; an older aggregate spanning
+multiple roots cannot establish a total for one root.
+
+`estimate_scope` is always `current_scan`. An unknown total, insufficient pace
+measurements, an overrun or progress older than 30 seconds suppresses the
+remaining-time estimate. Clients must also suppress it for an unconfirmed,
+completed or different phase/job observation. `updated_at` records observed
+scan progress, not status polling. These fields never authorize skipping source,
+capacity, cancellation or recovery checks and do not predict the entire test
+or migration duration. Older jobs can omit the object. Preview tasks can also
+expose these bounded observations; unknown totals leave their estimate null.
 
 Supporting builds additionally expose optional `snapshot_progress`. Its bounded
 fields can include `phase`, `restore_phase`, `table`, `table_index`, `table_count`,
@@ -11898,8 +11929,8 @@ paths on the same filesystem share one budget. An unavailable estimate does not
 pass the capacity check.
 
 On supporting builds, **Preview migration** shows the request immediately,
-then follows the background check's current stage. Large installations can take
-several minutes to scan. Services keep running during preview; DUMB does not
+then follows the background check's current stage. Scanning a large installation
+can take time, especially on slower storage. Services keep running during preview; DUMB does not
 copy, move or remove source files. You can close the panel and reopen it to
 follow the same check. Use **Cancel preview scan** to stop it; this does not
 start migration recovery.
@@ -11974,6 +12005,20 @@ finished; DUMB still needs to reconcile its report and database identities.
 A rehearsal then restores v1 and its previous consumers, while a cutover must
 validate the target before starting normal v2 work.
 
+Before pausing applications, supporting builds show the current filesystem
+scan's entries, measured pace and, when possible, approximate time remaining
+**in that scan**. An earlier review can supply its approximate entry total.
+Each new scan starts a separate estimate; the operation's elapsed timer keeps
+counting across phases.
+
+DUMB pauses the time estimate when the total is unknown, the measured pace is
+not ready, the count grows beyond the earlier estimate or measurements are more
+than 30 seconds old. The scanned count and elapsed time remain useful while an
+estimate is unavailable. Later copying, database checks, native import and v1
+recovery have separate work, so this estimate does not predict the whole test's
+finish time. Older backends show their existing stage and message without a
+scan estimate.
+
 For PostgreSQL source snapshots and verification, supporting builds show the
 current phase and observed table or row counts when available. These describe
 database preparation, not how many media files have migrated. Stages without a
@@ -11982,7 +12027,8 @@ that the worker stopped.
 
 | Result | What to do next |
 | --- | --- |
-| Checks stopped before applications paused | DUMB left the source unchanged. Resolve the reported blocker, then generate a fresh preview and test again. No restore is needed. |
+| Cancelled before applications paused | DUMB left the source unchanged. No restore or recovery action is needed. Generate a fresh preview and complete a test before a later migration. |
+| Checks failed before applications paused | DUMB left the source unchanged. Resolve the reported blocker, then generate a fresh preview and test again. No restore is needed. |
 | Test passed | v1 and its previous managed services were restored. Review the matching preview and start migration while its authorization remains valid. |
 | Test failed or was cancelled, with v1 restoration confirmed | v1 is available again. Read the reported error, resolve its cause, then generate a fresh preview and run another test before migration. No recovery action is needed for the completed restoration. |
 | Recovery required | Restoration or target recovery has not finished. Preserve the job's evidence and use its currently offered recovery action; do not assume that v1 or v2 is ready. |
@@ -12007,13 +12053,15 @@ stops acceptance and preserves the recovery path.
 
 A supporting backend offers **Cancel migration** while its current job permits
 restoring v1. Use that job's exact confirmation. Cancellation is cooperative:
-DUMB records the request, waits for an owned checkpoint, stops the contained
-native writer and restores v1 before reporting completion. Once the live v2
-target has been exposed and may have accepted writes, cancellation cannot
-silently restore v1. Closing the panel does not request cancellation.
+DUMB records the request and waits for an owned checkpoint. If cancelled before
+applications were paused, the job confirms that the source was unchanged; no
+restore is needed. Once execution has begun, DUMB stops the contained native
+writer and restores v1 before reporting completion. Once the live v2 target has
+been exposed and may have accepted writes, cancellation cannot silently restore
+v1. Closing the panel does not request cancellation.
 A slow or blocked operating-system I/O call can delay a cancellation checkpoint;
-wait for the job to confirm recovery rather than assuming the request completed.
-Keep imports, scans and playback stopped while cancellation or recovery runs.
+wait for the job's confirmed outcome rather than assuming the request completed.
+Keep imports, scans and playback stopped while source restoration or recovery runs.
 
 After a controller restart, or if recovery fails, review the retained job's
 current authorized actions. A pre-activation job can offer **Rollback** with its

@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.4">
+    <meta name="dumb-docs-package-version" content="1.25.5">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="6c570ca868ea2394442408cf9f89d04fa099760a">
-    <meta name="dumb-docs-release-tag" content="1.25.4">
+    <meta name="dumb-docs-build-commit" content="fc39f625e5c9e3dc86946ac19d241a4897c3d058">
+    <meta name="dumb-docs-release-tag" content="1.25.5">
   
 
     
@@ -6580,8 +6580,8 @@ a safety margin. The review shows local and external requirements separately;
 paths on the same filesystem share one budget. An unavailable estimate does not
 pass the capacity check.</p>
 <p>On supporting builds, <strong>Preview migration</strong> shows the request immediately,
-then follows the background check's current stage. Large installations can take
-several minutes to scan. Services keep running during preview; DUMB does not
+then follows the background check's current stage. Scanning a large installation
+can take time, especially on slower storage. Services keep running during preview; DUMB does not
 copy, move or remove source files. You can close the panel and reopen it to
 follow the same check. Use <strong>Cancel preview scan</strong> to stop it; this does not
 start migration recovery.</p>
@@ -6648,6 +6648,18 @@ establish completion. <strong>Native stage: done</strong> means the upstream con
 finished; DUMB still needs to reconcile its report and database identities.
 A rehearsal then restores v1 and its previous consumers, while a cutover must
 validate the target before starting normal v2 work.</p>
+<p>Before pausing applications, supporting builds show the current filesystem
+scan's entries, measured pace and, when possible, approximate time remaining
+<strong>in that scan</strong>. An earlier review can supply its approximate entry total.
+Each new scan starts a separate estimate; the operation's elapsed timer keeps
+counting across phases.</p>
+<p>DUMB pauses the time estimate when the total is unknown, the measured pace is
+not ready, the count grows beyond the earlier estimate or measurements are more
+than 30 seconds old. The scanned count and elapsed time remain useful while an
+estimate is unavailable. Later copying, database checks, native import and v1
+recovery have separate work, so this estimate does not predict the whole test's
+finish time. Older backends show their existing stage and message without a
+scan estimate.</p>
 <p>For PostgreSQL source snapshots and verification, supporting builds show the
 current phase and observed table or row counts when available. These describe
 database preparation, not how many media files have migrated. Stages without a
@@ -6662,7 +6674,11 @@ that the worker stopped.</p>
 </thead>
 <tbody>
 <tr>
-<td>Checks stopped before applications paused</td>
+<td>Cancelled before applications paused</td>
+<td>DUMB left the source unchanged. No restore or recovery action is needed. Generate a fresh preview and complete a test before a later migration.</td>
+</tr>
+<tr>
+<td>Checks failed before applications paused</td>
 <td>DUMB left the source unchanged. Resolve the reported blocker, then generate a fresh preview and test again. No restore is needed.</td>
 </tr>
 <tr>
@@ -6699,13 +6715,15 @@ Actual process failure, a failed native report or failed verification still
 stops acceptance and preserves the recovery path.</p>
 <p>A supporting backend offers <strong>Cancel migration</strong> while its current job permits
 restoring v1. Use that job's exact confirmation. Cancellation is cooperative:
-DUMB records the request, waits for an owned checkpoint, stops the contained
-native writer and restores v1 before reporting completion. Once the live v2
-target has been exposed and may have accepted writes, cancellation cannot
-silently restore v1. Closing the panel does not request cancellation.
+DUMB records the request and waits for an owned checkpoint. If cancelled before
+applications were paused, the job confirms that the source was unchanged; no
+restore is needed. Once execution has begun, DUMB stops the contained native
+writer and restores v1 before reporting completion. Once the live v2 target has
+been exposed and may have accepted writes, cancellation cannot silently restore
+v1. Closing the panel does not request cancellation.
 A slow or blocked operating-system I/O call can delay a cancellation checkpoint;
-wait for the job to confirm recovery rather than assuming the request completed.
-Keep imports, scans and playback stopped while cancellation or recovery runs.</p>
+wait for the job's confirmed outcome rather than assuming the request completed.
+Keep imports, scans and playback stopped while source restoration or recovery runs.</p>
 <p>After a controller restart, or if recovery fails, review the retained job's
 current authorized actions. A pre-activation job can offer <strong>Rollback</strong> with its
 exact confirmation to recover v1. A job that still blocks new work takes priority
@@ -7103,11 +7121,11 @@ separate existing workflows.</p>
     
     <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
       
-        <span>Documentation release 1.25.4</span>
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.4">Release notes</a>
+        <span>Documentation release 1.25.5</span>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.5">Release notes</a>
       
       
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;6c570ca868ea2394442408cf9f89d04fa099760a" title="Documentation source commit 6c570ca868ea2394442408cf9f89d04fa099760a">Source 6c570ca8</a>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;fc39f625e5c9e3dc86946ac19d241a4897c3d058" title="Documentation source commit fc39f625e5c9e3dc86946ac19d241a4897c3d058">Source fc39f625</a>
       
       
     </div>

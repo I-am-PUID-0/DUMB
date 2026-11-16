@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.4">
+    <meta name="dumb-docs-package-version" content="1.25.5">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="6c570ca868ea2394442408cf9f89d04fa099760a">
-    <meta name="dumb-docs-release-tag" content="1.25.4">
+    <meta name="dumb-docs-build-commit" content="fc39f625e5c9e3dc86946ac19d241a4897c3d058">
+    <meta name="dumb-docs-release-tag" content="1.25.5">
   
 
     
@@ -6448,10 +6448,14 @@ For a job advertising <code>can_cancel: true</code> or <code>actions.cancel: tru
 <code>{"job_id": "SERVER_JOB_ID", "confirmation": "SERVER_CANCEL_CONFIRMATION"}</code> to
 <code>/process/infinidysk-v2/cancel</code>, using its exact <code>cancel_confirmation_text</code>.
 The response can set <code>cancel_requested: true</code> while the owned worker reaches a
-checkpoint and restores the source. Repeating that same accepted cancellation
-is idempotent. Do not treat the acknowledgement as completed recovery: poll the
-job until its terminal state and recovery flags confirm the outcome. If source
-recovery fails, retain the evidence and use the offered rollback action.
+checkpoint. Repeating that same accepted cancellation is idempotent. If the job
+stops before execution begins, it finishes with <code>status: "cancelled"</code>,
+<code>error: null</code> and <code>result.source_untouched: true</code>: applications were not paused,
+the source was not changed and no restore is needed. Once execution has begun,
+cancellation stops the contained writer and restores the source before reporting
+completion. Poll until the terminal state and recovery flags confirm the
+outcome; the acknowledgement alone does not establish it. If source recovery
+fails, retain the evidence and use the offered rollback action.
 Once <code>activation_exposed: true</code>, cancellation cannot implicitly restore v1;
 follow the current exposed-target recovery actions instead.</p>
 <p><code>status.job</code> prioritizes a retained blocking job over newer completed attempts;
@@ -6463,8 +6467,32 @@ native conversion rather than the entire validation/cutover/recovery pipeline.</
 <p>The outer <code>stage</code> and <code>message</code> describe the current DUMB phase.</p>
 <p>A terminal job can expose <code>result.source_untouched: true</code> when it stopped before
 migration execution began. DUMB did not pause applications or change the source
-for that attempt. This requires resolving the reported blocker and a fresh
-preview/test; it does not prove a successful rehearsal or authorize cutover.</p>
+for that attempt, so no restore is needed. A pre-execution cancellation is
+<code>cancelled</code> with <code>error: null</code>; failed preflight checks instead report their
+blocker. Resolve any reported blocker, then obtain a fresh preview and successful
+test before migration. Untouched-source evidence does not prove a successful
+rehearsal or authorize cutover.</p>
+<p>Supporting builds can expose optional <code>scan_progress</code> during <code>revalidating</code>.
+It describes one existing metadata traversal, without an extra scan to calculate
+progress. An opaque <code>scan_id</code> identifies that scan. Supported <code>phase</code>
+values are <code>reuse_eligibility</code>, <code>source_data</code>, <code>source_runtime</code> and
+<code>legacy_blob_allocation</code>.</p>
+<p>The object contains <code>entries_processed</code>, nullable <code>entries_total</code>,
+<code>total_is_estimate</code>, <code>logical_bytes_processed</code>, <code>elapsed_seconds</code>,
+nullable <code>rate_entries_per_second</code> and <code>estimated_remaining_seconds</code>,
+<code>updated_at</code> and <code>complete</code>. Counts and elapsed/remaining seconds are
+nonnegative integers; a reported rate is finite and positive.
+<code>logical_bytes_processed</code> sums inspected file sizes, not bytes copied or read.
+Prior-review per-root counts are optional estimates; an older aggregate spanning
+multiple roots cannot establish a total for one root.</p>
+<p><code>estimate_scope</code> is always <code>current_scan</code>. An unknown total, insufficient pace
+measurements, an overrun or progress older than 30 seconds suppresses the
+remaining-time estimate. Clients must also suppress it for an unconfirmed,
+completed or different phase/job observation. <code>updated_at</code> records observed
+scan progress, not status polling. These fields never authorize skipping source,
+capacity, cancellation or recovery checks and do not predict the entire test
+or migration duration. Older jobs can omit the object. Preview tasks can also
+expose these bounded observations; unknown totals leave their estimate null.</p>
 <p>Supporting builds additionally expose optional <code>snapshot_progress</code>. Its bounded
 fields can include <code>phase</code>, <code>restore_phase</code>, <code>table</code>, <code>table_index</code>, <code>table_count</code>,
 <code>rows</code>, <code>elapsed_seconds</code>, <code>idle_seconds</code> and <code>stall_warning</code>. These are observations
@@ -6720,11 +6748,11 @@ cannot be confirmed, and disable actions until a valid current response returns.
     
     <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
       
-        <span>Documentation release 1.25.4</span>
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.4">Release notes</a>
+        <span>Documentation release 1.25.5</span>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.5">Release notes</a>
       
       
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;6c570ca868ea2394442408cf9f89d04fa099760a" title="Documentation source commit 6c570ca868ea2394442408cf9f89d04fa099760a">Source 6c570ca8</a>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;fc39f625e5c9e3dc86946ac19d241a4897c3d058" title="Documentation source commit fc39f625e5c9e3dc86946ac19d241a4897c3d058">Source fc39f625</a>
       
       
     </div>
