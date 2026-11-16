@@ -8,8 +8,10 @@ configuration-singleton imports and is safe for the isolated restore helper.
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import json
+import logging
 import os
 from pathlib import Path
 import re
@@ -44,6 +46,111 @@ MAX_ROW_BYTES = 256 * 1024 * 1024
 
 class InfiniDyskV2PostgresSnapshotError(RuntimeError):
     pass
+
+
+_SNAPSHOT_PHASES = {
+    "source_connection": (
+        "opening the read-only PostgreSQL source connection",
+        "Check source database availability and the configured connection settings.",
+    ),
+    "source_inventory": (
+        "reading and validating the PostgreSQL source snapshot",
+        "Check source database logs and the role's read and inspection permissions.",
+    ),
+    "snapshot_export": (
+        "exporting the PostgreSQL snapshot for the backup tool",
+        "Check source database logs and snapshot-export permissions.",
+    ),
+    "backup_tool": (
+        "checking the PostgreSQL backup tool",
+        "Check that the matching PostgreSQL client tools are installed and executable.",
+    ),
+    "native_staging": (
+        "creating the local SQLite copy used by the native importer",
+        "Check local migration storage and the reported source-copy stage before retrying.",
+    ),
+    "dump_storage": (
+        "preparing the local PostgreSQL backup file",
+        "Check local free space and controller access to the private migration directory.",
+    ),
+    "database_dump": (
+        "running pg_dump to create the full PostgreSQL backup",
+        "Check PostgreSQL server logs and matching client tools before retrying.",
+    ),
+    "source_cleanup": (
+        "closing the read-only PostgreSQL snapshot connection",
+        "Check source database availability before retrying.",
+    ),
+    "restore_verification": (
+        "restoring and validating the independent PostgreSQL backup",
+        "Check local restore storage and PostgreSQL tools; keep the retained migration files.",
+    ),
+    "snapshot_receipt": (
+        "verifying and saving the PostgreSQL snapshot files",
+        "Check local migration storage and keep the retained files for review.",
+    ),
+}
+
+
+def _snapshot_failure(phase, error):
+    """Describe trusted stages/codes, never driver text, SQL or database values."""
+    description, action = _SNAPSHOT_PHASES[phase]
+    sqlstate = getattr(error, "pgcode", None)
+    if not isinstance(sqlstate, str) or not re.fullmatch(r"[A-Z0-9]{5}", sqlstate):
+        sqlstate = None
+    os_error = getattr(error, "errno", None)
+    if type(os_error) is not int:
+        os_error = None
+    sqlite_code = getattr(error, "sqlite_errorcode", None)
+    if type(sqlite_code) is not int:
+        sqlite_code = None
+    basic_sqlite = sqlite_code & 255 if sqlite_code is not None else None
+    reason = ""
+    if os_error in {errno.ENOSPC, errno.EDQUOT} or basic_sqlite == sqlite3.SQLITE_FULL:
+        reason = (
+            "Local migration storage has no available space or exceeded its quota. "
+        )
+        action = "Free sufficient local space before generating another preview."
+    elif sqlstate == "53100":
+        reason = "PostgreSQL reported insufficient storage. "
+        action = "Check free space on the source database server and migration storage."
+    elif sqlstate == "42501":
+        reason = "The PostgreSQL role lacks a required permission. "
+        action = "Review the source role's read and inspection permissions; do not grant broad privileges without checking the denied operation."
+    elif sqlstate is not None and sqlstate.startswith("28"):
+        reason = "PostgreSQL rejected authentication. "
+        action = (
+            "Check the configured source credentials and server authentication policy."
+        )
+    elif sqlstate is not None and sqlstate.startswith("08"):
+        reason = "The PostgreSQL source connection failed. "
+        action = "Check source database availability and connection logs."
+    elif sqlstate == "57014":
+        reason = "PostgreSQL cancelled a query. "
+        action = "Check source server timeout and cancellation logs before retrying."
+    elif os_error in {errno.EACCES, errno.EPERM, errno.EROFS}:
+        reason = "DUMB could not access a required file or writable storage. "
+        action = (
+            "Check controller access to required files and private migration storage."
+        )
+    elif basic_sqlite == sqlite3.SQLITE_IOERR:
+        reason = "Local SQLite staging storage reported an I/O error. "
+        action = "Check container mounts, storage health and host logs."
+    elif basic_sqlite == sqlite3.SQLITE_TOOBIG:
+        reason = "A source record could not fit in the native SQLite staging format. "
+        action = "Keep the source data and report this staging failure before retrying."
+    logging.getLogger(__name__).error(
+        "PostgreSQL migration snapshot failed: phase=%s exception=%s sqlstate=%s errno=%s sqlite_code=%s",
+        phase,
+        type(error).__name__,
+        sqlstate,
+        os_error,
+        sqlite_code,
+    )
+    return InfiniDyskV2PostgresSnapshotError(
+        f"PostgreSQL migration stopped while {description}. {reason}{action} "
+        "DUMB did not modify the source database."
+    )
 
 
 def _digest(value):
@@ -401,6 +508,14 @@ def _database_inventory(connection, *, rows, check_cancel=None, progress=None):
     if rows:
         for index, (key, table) in enumerate(catalog.items(), start=1):
             cancel()
+            report(
+                "postgres_snapshot",
+                "Validating source database contents.",
+                table=key,
+                table_index=index,
+                table_count=len(catalog),
+                rows=0,
+            )
             columns = ",".join(
                 f"{_quote(column[0])}::text" for column in table["columns"]
             )
@@ -415,6 +530,7 @@ def _database_inventory(connection, *, rows, check_cancel=None, progress=None):
                     progress=lambda count: report(
                         "postgres_snapshot",
                         "Validating source database contents.",
+                        table=key,
                         table_index=index,
                         table_count=len(catalog),
                         rows=count,
@@ -451,7 +567,7 @@ def _physical(connection):
             "SELECT oid::text FROM pg_database WHERE datname=current_database()"
         )
         database = str(cursor.fetchone()[0])
-        cursor.execute("SELECT inet_server_addr()::text,inet_server_port()")
+        cursor.execute("SELECT pg_catalog.host(inet_server_addr()),inet_server_port()")
         address, port = cursor.fetchone()
     if not system.isdigit() or not database.isdigit():
         raise InfiniDyskV2PostgresSnapshotError(
@@ -517,8 +633,16 @@ def _stage_legacy(connection, destination, binding, progress, *, check_cancel=No
             sqlite.execute("PRAGMA journal_mode=OFF")
             sqlite.execute("PRAGMA synchronous=OFF")
             sqlite.execute("BEGIN")
-            for name in LEGACY_TABLES:
+            for index, name in enumerate(LEGACY_TABLES, start=1):
                 cancel()
+                progress(
+                    "postgres_snapshot",
+                    f"Copying native source table {name}.",
+                    table=name,
+                    table_index=index,
+                    table_count=len(LEGACY_TABLES),
+                    rows=0,
+                )
                 table = binding["tables"].get(f"public.{name}")
                 if not table:
                     raise InfiniDyskV2PostgresSnapshotError(
@@ -570,9 +694,19 @@ def _stage_legacy(connection, destination, binding, progress, *, check_cancel=No
                                 "postgres_snapshot",
                                 f"Copying native source table {name}.",
                                 table=name,
+                                table_index=index,
+                                table_count=len(LEGACY_TABLES),
                                 rows=count,
                             )
                 copied[name] = count
+                progress(
+                    "postgres_snapshot",
+                    f"Copied native source table {name}.",
+                    table=name,
+                    table_index=index,
+                    table_count=len(LEGACY_TABLES),
+                    rows=count,
+                )
             sqlite.commit()
         with temporary.open("rb") as handle:
             os.fsync(handle.fileno())
@@ -715,6 +849,11 @@ def create_postgres_snapshot(
             callback_error = error
             raise
 
+    def set_phase(name, stage, message):
+        nonlocal phase
+        phase = name
+        report(stage, message, table=None, table_index=0, table_count=0, rows=0)
+
     def dump_progress(status):
         warning = bool(status.get("stall_warning"))
         report(
@@ -753,10 +892,17 @@ def create_postgres_snapshot(
     connection = None
     temporary = dump.with_suffix(".partial")
     retain_partial = False
+    phase = "source_connection"
     try:
+        report("postgres_snapshot", "Opening the read-only PostgreSQL source snapshot.")
         check()
         connection = (connect or _connect_default)(**params)
         _readonly(connection, long_running=True)
+        set_phase(
+            "source_inventory",
+            "postgres_snapshot",
+            "Reading and validating the PostgreSQL source snapshot.",
+        )
         physical, server = _physical(connection)
         binding = _database_inventory(
             connection, rows=True, check_cancel=check, progress=report
@@ -778,6 +924,11 @@ def create_postgres_snapshot(
                 (tempfile.gettempdir(), database_size * 3),
             ]
         )
+        set_phase(
+            "snapshot_export",
+            "postgres_snapshot",
+            "Exporting the PostgreSQL snapshot for the full backup.",
+        )
         with connection.cursor() as cursor:
             cursor.execute("SELECT current_setting('server_version_num')::int")
             server_major = int(cursor.fetchone()[0]) // 10000
@@ -787,6 +938,11 @@ def create_postgres_snapshot(
             raise InfiniDyskV2PostgresSnapshotError(
                 "The exported PostgreSQL snapshot identity is invalid."
             )
+        set_phase(
+            "backup_tool",
+            "postgres_snapshot",
+            "Checking the matching PostgreSQL backup tool.",
+        )
         version = runner(
             [str(program), "--version"],
             capture_output=True,
@@ -804,8 +960,18 @@ def create_postgres_snapshot(
             raise InfiniDyskV2PostgresSnapshotError(
                 "pg_dump must match the PostgreSQL source major version."
             )
+        set_phase(
+            "native_staging",
+            "postgres_snapshot",
+            "Creating the local SQLite copy used by the native importer.",
+        )
         staged_counts = _stage_legacy(
             connection, staged, binding, report, check_cancel=check
+        )
+        set_phase(
+            "dump_storage",
+            "postgres_snapshot",
+            "Preparing the local PostgreSQL backup file.",
         )
         _space_check([(root, database_size * 2)])
         descriptor = os.open(
@@ -815,7 +981,8 @@ def create_postgres_snapshot(
         if server["address"]:
             environment["PGHOSTADDR"] = server["address"]
             environment["PGPORT"] = str(server["port"])
-        report(
+        set_phase(
+            "database_dump",
             "postgres_dump",
             "Writing a full PostgreSQL backup from the same read-only snapshot.",
         )
@@ -866,10 +1033,16 @@ def create_postgres_snapshot(
             os.fsync(handle.fileno())
         os.replace(temporary, dump)
         binding["binding_fingerprint"] = _digest(binding)
+        set_phase(
+            "source_cleanup",
+            "postgres_snapshot",
+            "Closing the read-only PostgreSQL snapshot connection.",
+        )
         connection.rollback()
         connection.close()
         connection = None
-        report(
+        set_phase(
+            "restore_verification",
             "postgres_restore_verification",
             "Restoring and validating the independent PostgreSQL backup.",
         )
@@ -887,6 +1060,11 @@ def create_postgres_snapshot(
                 "The PostgreSQL backup has no matching successful isolated restore proof."
             )
         check()
+        set_phase(
+            "snapshot_receipt",
+            "postgres_snapshot",
+            "Verifying and saving the PostgreSQL snapshot files.",
+        )
         receipt = {
             "dump_path": str(dump),
             "staged_sqlite": str(staged),
@@ -925,9 +1103,7 @@ def create_postgres_snapshot(
         if error is callback_error:
             raise
         # Driver/tool exceptions can contain credentials or row values.
-        raise InfiniDyskV2PostgresSnapshotError(
-            "The PostgreSQL source snapshot or isolated restore verification failed."
-        ) from None
+        raise _snapshot_failure(phase, error) from None
     finally:
         if not retain_partial:
             temporary.unlink(missing_ok=True)

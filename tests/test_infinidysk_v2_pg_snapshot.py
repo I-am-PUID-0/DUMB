@@ -143,7 +143,11 @@ class Cursor:
         elif "FROM pg_database" in sql:
             self.results = [(data["database"],)]
         elif "inet_server_addr()" in sql:
-            self.results = [("192.0.2.10", 5432)]
+            address = data.get("server_address", "192.0.2.10")
+            # PostgreSQL inet::text includes the prefix; host(inet) does not.
+            if address is not None and "host(inet_server_addr())" not in sql:
+                address += "/128" if ":" in address else "/32"
+            self.results = [(address, 5432 if address is not None else None)]
         elif "server_version_num" in sql:
             self.results = [(data.get("server_version_num", 160015),)]
         elif "pg_export_snapshot()" in sql:
