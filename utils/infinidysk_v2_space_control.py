@@ -63,7 +63,7 @@ def rename_exclusive(source, destination, expected, source_parent, destination_p
             )
 
 
-def preflight_reuse(plan):
+def preflight_reuse(plan, *, check_cancel=None):
     """A directory rename reuses blocks; it never manufactures free space."""
     source = Path(plan["source"]["data_dir"])
     runtime = Path(plan["source"]["runtime_dir"])
@@ -110,7 +110,8 @@ def preflight_reuse(plan):
         iter_tree(source, role="Source for local storage reuse", reject_hardlinks=True)
     ) as rows:
         for _ in rows:
-            pass
+            if check_cancel is not None:
+                check_cancel()
     if Path(backup["artifact_root"]).stat().st_dev == source.stat().st_dev:
         raise ValueError(
             "Choose an archive destination on a different filesystem before reusing local v1 storage."

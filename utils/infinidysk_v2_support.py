@@ -38,6 +38,7 @@ def versioned_capabilities(version):
         "infinidysk_v2_postgres": supported,
         "infinidysk_v2_low_space_migration": supported,
         "infinidysk_v2_external_blob_staging": supported,
+        "infinidysk_v2_async_preview": supported,
         "infinidysk_v2_reviewed_skips": supported,
         "infinidysk_v2_cancel": supported,
         "infinidysk_v2_rclone_optimizer": False,

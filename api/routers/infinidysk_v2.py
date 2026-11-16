@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Response
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import PlainTextResponse
 
@@ -52,7 +52,7 @@ def _invoke(kind, operation, payload, handler, updater, *, mutation=False):
     manager = _manager(kind, handler, updater)
     try:
         callback = getattr(manager, operation)
-        if mutation and operation not in {"preview"}:
+        if mutation and operation not in {"preview", "preview_start", "preview_cancel"}:
             existing = operation in {
                 "rollback",
                 "cutover",
@@ -79,13 +79,82 @@ def _invoke(kind, operation, payload, handler, updater, *, mutation=False):
         raise HTTPException(status_code=409, detail=message) from None
 
 
+def _private_preview_response(response):
+    if response is not None:
+        response.headers["Cache-Control"] = "no-store, private"
+        response.headers["Pragma"] = "no-cache"
+
+
 @infinidysk_v2_router.get("/status")
 async def major_status(
+    response: Response = None,
     handler=Depends(get_process_handler),
     updater=Depends(get_updater),
     current_user=Depends(get_optional_current_user),
 ):
+    _private_preview_response(response)
     return await run_in_threadpool(_invoke, "major", "status", None, handler, updater)
+
+
+@infinidysk_v2_router.post("/preview/start")
+async def major_preview_start(
+    response: Response = None,
+    request: dict[str, Any] = Body(...),
+    handler=Depends(get_process_handler),
+    updater=Depends(get_updater),
+    current_user=Depends(get_optional_current_user),
+):
+    _private_preview_response(response)
+    return await run_in_threadpool(
+        _invoke, "major", "preview_start", request, handler, updater, mutation=True
+    )
+
+
+@infinidysk_v2_router.get("/preview/task")
+async def major_preview_latest(
+    response: Response = None,
+    handler=Depends(get_process_handler),
+    updater=Depends(get_updater),
+    current_user=Depends(get_optional_current_user),
+):
+    _private_preview_response(response)
+    return await run_in_threadpool(
+        _invoke, "major", "preview_task", None, handler, updater
+    )
+
+
+@infinidysk_v2_router.get("/preview/task/{task_id}")
+async def major_preview_task(
+    task_id: str,
+    response: Response = None,
+    handler=Depends(get_process_handler),
+    updater=Depends(get_updater),
+    current_user=Depends(get_optional_current_user),
+):
+    _private_preview_response(response)
+    return await run_in_threadpool(
+        _invoke, "major", "preview_task", {"task_id": task_id}, handler, updater
+    )
+
+
+@infinidysk_v2_router.post("/preview/task/{task_id}/cancel")
+async def major_preview_cancel(
+    task_id: str,
+    response: Response = None,
+    handler=Depends(get_process_handler),
+    updater=Depends(get_updater),
+    current_user=Depends(get_optional_current_user),
+):
+    _private_preview_response(response)
+    return await run_in_threadpool(
+        _invoke,
+        "major",
+        "preview_cancel",
+        {"task_id": task_id},
+        handler,
+        updater,
+        mutation=True,
+    )
 
 
 @infinidysk_v2_router.post("/preview")

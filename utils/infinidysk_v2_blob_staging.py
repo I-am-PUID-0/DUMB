@@ -121,7 +121,7 @@ def _hash_file(path, check):
     return digest.hexdigest()
 
 
-def blob_summary(path):
+def blob_summary(path, *, check_cancel=None):
     """Measure actual local allocations; never claim logical size was released."""
     root = Path(path)
     if not root.is_dir() or root.is_symlink():
@@ -132,6 +132,8 @@ def blob_summary(path):
     root_device = root.stat().st_dev
     with closing(iter_tree(root, include_identity=True, reject_hardlinks=True)) as rows:
         for row in rows:
+            if check_cancel is not None:
+                check_cancel()
             result["entries"] += 1
             kind = stat.S_IFMT(row["mode"])
             if kind not in {stat.S_IFDIR, stat.S_IFREG}:

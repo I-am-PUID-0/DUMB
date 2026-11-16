@@ -131,9 +131,11 @@ def _identity(path):
     }
 
 
-def _source_summary(path, *, validate_links=False, role="Source"):
+def _source_summary(path, *, validate_links=False, role="Source", check_cancel=None):
     try:
-        return tree_summary(path, validate_links=validate_links, role=role)
+        return tree_summary(
+            path, validate_links=validate_links, role=role, check_cancel=check_cancel
+        )
     except InventoryError as error:
         raise InfiniDyskV2MigrationError(str(error)) from error
 
@@ -274,6 +276,7 @@ class InfiniDyskV2MigrationManager:
         self._rollback_active = False
         self._cancel_requested = set()
         self._cleanup = None
+        self._preview_tasks = None
 
     def configure(
         self, *, process_handler=None, updater=None, config_manager=None, executor=None
@@ -703,7 +706,9 @@ class InfiniDyskV2MigrationManager:
             "strm": [],
         }
 
-    def _copy_capacity(self, plan, *, postgres_size=None, postgres_snapshot=None):
+    def _copy_capacity(
+        self, plan, *, postgres_size=None, postgres_snapshot=None, progress=None
+    ):
         from utils.backup_storage import (
             BackupStorageError,
             get_backup_storage,
@@ -723,6 +728,16 @@ class InfiniDyskV2MigrationManager:
                 summary = _source_summary(
                     source,
                     validate_links=str(source) == plan["source"]["data_dir"],
+                    check_cancel=(
+                        (
+                            lambda: progress(
+                                "checking_capacity",
+                                "Measuring retained source files and available migration storage.",
+                            )
+                        )
+                        if progress
+                        else None
+                    ),
                     role=(
                         "Retained v1 data"
                         if key == "data_dir"
@@ -836,18 +851,43 @@ class InfiniDyskV2MigrationManager:
                 source_report,
                 database_bytes=database_bytes,
                 native_headroom=headroom,
+                progress=progress,
             )
         return _capacity_check(requirements, source=source_report)
 
     def _external_blob_capacity(
-        self, plan, requirements, source, *, database_bytes, native_headroom
+        self,
+        plan,
+        requirements,
+        source,
+        *,
+        database_bytes,
+        native_headroom,
+        progress=None,
     ):
         from utils.infinidysk_v2_blob_staging import blob_summary
 
         blobs = Path(plan["source"]["data_dir"]) / "blobs"
         try:
-            summary = blob_summary(blobs)
-        except (ValueError, OSError) as error:
+            if progress:
+                progress(
+                    "checking_blob_storage",
+                    "Measuring legacy input and space that can actually be freed.",
+                )
+            summary = blob_summary(
+                blobs,
+                check_cancel=(
+                    (
+                        lambda: progress(
+                            "checking_blob_storage",
+                            "Measuring legacy input and space that can actually be freed.",
+                        )
+                    )
+                    if progress
+                    else None
+                ),
+            )
+        except (ValueError, OSError, InventoryError) as error:
             raise InfiniDyskV2MigrationError(str(error)) from error
         selected = plan.get("backup_storage") or {}
         if not selected.get("artifact_root"):
@@ -966,7 +1006,15 @@ class InfiniDyskV2MigrationManager:
             capacity=report,
         )
 
-    def _plan(self, options):
+    def _plan(self, options, *, progress=None):
+        def report(stage, message):
+            if progress is not None:
+                progress(stage, message)
+
+        report(
+            "checking_source",
+            "Checking source paths and migration selections. Services keep running.",
+        )
         from utils.backup_storage import BackupStorageError, paths_overlap
 
         def overlaps(first, second):
@@ -1275,8 +1323,18 @@ class InfiniDyskV2MigrationManager:
 
             plan["options"]["reclaim_source_space"] = True
             try:
-                preflight_reuse(plan)
-            except (ValueError, OSError, BackupStorageError) as error:
+                report(
+                    "checking_reuse",
+                    "Checking local storage reuse and retained source files.",
+                )
+                preflight_reuse(
+                    plan,
+                    check_cancel=lambda: report(
+                        "checking_reuse",
+                        "Checking local storage reuse and retained source files.",
+                    ),
+                )
+            except (ValueError, OSError, BackupStorageError, InventoryError) as error:
                 plan["blockers"].append(str(error))
         if offload:
             plan["options"]["offload_legacy_blobs"] = True
@@ -1284,12 +1342,6 @@ class InfiniDyskV2MigrationManager:
                 plan["blockers"].append(
                     "Select a registered backup location on another filesystem for external legacy input."
                 )
-            try:
-                from utils.infinidysk_v2_blob_staging import blob_summary
-
-                blob_summary(source_data / "blobs")
-            except (ValueError, OSError) as error:
-                plan["blockers"].append(str(error))
         plan["source_storage"] = {
             "mode": "archive_recovery" if reclaim else "retain_local",
             "reclaim_source_space": reclaim,
@@ -1323,6 +1375,10 @@ class InfiniDyskV2MigrationManager:
         postgres_size = None
         check = getattr(self.executor, "preflight", None)
         if callable(check):
+            report(
+                "checking_runtime",
+                "Checking migration runtime, mount support and database identity.",
+            )
             extra = check(copy.deepcopy(plan))
             if not isinstance(extra, dict):
                 raise InfiniDyskV2MigrationError(
@@ -1371,7 +1427,13 @@ class InfiniDyskV2MigrationManager:
                     plan["plan_fingerprint"] = _digest(binding)
         plan["capacity"] = _unavailable_capacity()
         try:
-            plan["capacity"] = self._copy_capacity(plan, postgres_size=postgres_size)
+            report(
+                "checking_capacity",
+                "Measuring retained source files and available migration storage.",
+            )
+            plan["capacity"] = self._copy_capacity(
+                plan, postgres_size=postgres_size, progress=progress
+            )
         except InfiniDyskV2CapacityError as error:
             plan["capacity"] = error.capacity
             plan["blockers"].append(str(error))
@@ -1443,12 +1505,33 @@ class InfiniDyskV2MigrationManager:
                 "supported_mount_backends": ["rclone", "fuse"],
                 "job": latest,
                 "blocking_job_count": len(blocking),
-                "capabilities": {"external_blob_staging": True},
+                "capabilities": {"external_blob_staging": True, "async_preview": True},
+                "preview_task": self._preview_controller().status()["task"],
                 "eligibility": {"ready": not blockers, "blockers": blockers},
             }
 
+    def _preview_controller(self):
+        with self._lock:
+            if self._preview_tasks is None:
+                from utils.infinidysk_v2_preview import PreviewTasks
+
+                self._preview_tasks = PreviewTasks(self)
+            return self._preview_tasks
+
+    def preview_start(self, request):
+        return self._preview_controller().start(request)
+
+    def preview_task(self, request=None):
+        return self._preview_controller().status((request or {}).get("task_id"))
+
+    def preview_cancel(self, request):
+        return self._preview_controller().cancel(request.get("task_id"))
+
     def preview(self, options=None):
-        plan = self._plan(dict(options or {}))
+        return self._preview_controller().run_sync(options)
+
+    def _compute_preview(self, options=None, *, progress=None):
+        plan = self._plan(dict(options or {}), progress=progress)
         with self._lock:
             if self.has_blocking_job():
                 plan["blockers"].append(
@@ -1578,6 +1661,8 @@ class InfiniDyskV2MigrationManager:
             }
 
     def _request_plan(self, request):
+        with self._lock:
+            self._preview_controller().require_idle()
         token = str(request.get("preview_token") or "")
         if not _TOKEN.fullmatch(token):
             raise InfiniDyskV2MigrationError("Run a fresh preview before continuing.")
@@ -1644,6 +1729,7 @@ class InfiniDyskV2MigrationManager:
     def _start(self, request, mode):
         plan, preview_path, saved = self._request_plan(request)
         with INFINIDYSK_MIGRATION_ADMISSION_LOCK, self._lock:
+            self._preview_controller().require_idle()
             if self.has_blocking_job():
                 raise InfiniDyskV2MigrationError(
                     "A major migration is active or needs recovery."

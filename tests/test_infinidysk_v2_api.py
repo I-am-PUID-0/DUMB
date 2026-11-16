@@ -74,6 +74,10 @@ class NativeMigrationAPITests(unittest.TestCase):
                     'shortfall_bytes': 64, 'sufficient': False}],
             }
             manager.preview.return_value = {'protocol': 1, 'ready': False, 'capacity': capacity}
+            preview_task = {'protocol': 1, 'task': {'task_id': 'a' * 32, 'status': 'running', 'preview': None}}
+            manager.preview_start.return_value = preview_task
+            manager.preview_task.return_value = preview_task
+            manager.preview_cancel.return_value = preview_task
             manager.start.return_value = {'job': {'job_id': 'a' * 32}}
             manager.cleanup_preview.return_value = {'protocol': 1, 'ready': False, 'blockers': ['Source ownership review is required.']}
             manager.cleanup.return_value = {'job': {'status': 'completed', 'cleanup': {'state': 'queued'}}}
@@ -89,6 +93,13 @@ class NativeMigrationAPITests(unittest.TestCase):
                  patch.object(router.INFINIDYSK_V2_POSTGRES_MANAGER, 'has_blocking_job', return_value=False):
                 client = Client()
                 assert client.get('/process/infinidysk-v2/status').status_code == 401
+                assert client.post('/process/infinidysk-v2/preview/start', json={}).status_code == 401
+                assert client.get('/process/infinidysk-v2/preview/task').status_code == 401
+                assert client.get('/process/infinidysk-v2/preview/task/' + 'a' * 32).status_code == 401
+                assert client.post('/process/infinidysk-v2/preview/task/' + 'a' * 32 + '/cancel', json={}).status_code == 401
+                manager.preview_start.assert_not_called()
+                manager.preview_task.assert_not_called()
+                manager.preview_cancel.assert_not_called()
                 assert client.get('/process/infinidysk-v2/jobs/' + 'a' * 32 + '/report').status_code == 401
                 manager.get_report.assert_not_called()
                 assert client.post('/process/infinidysk-v2/start', json={}).status_code == 401
@@ -99,7 +110,19 @@ class NativeMigrationAPITests(unittest.TestCase):
                 assert client.post('/process/infinidysk-v2/cleanup', json={}).status_code == 401
                 with patch('utils.auth.decode_token', return_value=SimpleNamespace(type='access', sub='example')), patch('utils.auth_config.AuthConfigManager.validate_token_principal', return_value=True):
                     client.headers['Authorization'] = 'Bearer fixture'
-                    assert client.get('/process/infinidysk-v2/status').json()['protocol'] == 1
+                    status = client.get('/process/infinidysk-v2/status')
+                    assert status.json()['protocol'] == 1
+                    task_responses = [
+                        status,
+                        client.post('/process/infinidysk-v2/preview/start', json={'mode': 'migrate'}),
+                        client.get('/process/infinidysk-v2/preview/task'),
+                        client.get('/process/infinidysk-v2/preview/task/' + 'a' * 32),
+                        client.post('/process/infinidysk-v2/preview/task/' + 'a' * 32 + '/cancel', json={}),
+                    ]
+                    for response in task_responses:
+                        assert response.status_code == 200, response.text
+                        assert response.headers['cache-control'] == 'no-store, private'
+                        assert response.headers['pragma'] == 'no-cache'
                     report = client.get('/process/infinidysk-v2/jobs/' + 'a' * 32 + '/report')
                     assert report.status_code == 200, report.text
                     assert report.text == 'Native fixture report\\n'

@@ -192,11 +192,13 @@ def validate_data_link(root, row):
         ) from None
 
 
-def tree_summary(path, *, validate_links=False, role="Source"):
+def tree_summary(path, *, validate_links=False, role="Source", check_cancel=None):
     """Metadata-only scan; neither a manifest nor file contents are read."""
     summary = {"entries": 0, "bytes": 0}
     with closing(iter_tree(path, role=role)) as entries:
         for row in entries:
+            if check_cancel is not None:
+                check_cancel()
             if validate_links:
                 validate_data_link(path, row)
             summary["entries"] += 1
