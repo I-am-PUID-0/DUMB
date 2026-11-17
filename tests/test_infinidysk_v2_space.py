@@ -288,8 +288,8 @@ class ArchiveSpaceRecoveryTests(unittest.TestCase):
     def test_archive_change_after_initial_verification_refuses_second_open(self):
         original_verify = space_module.verify_retained_archive
 
-        def change_after_verify(*args):
-            proof = original_verify(*args)
+        def change_after_verify(*args, **kwargs):
+            proof = original_verify(*args, **kwargs)
             with self.archive_path().open("r+b") as handle:
                 handle.seek(1024)
                 handle.write(b"changed after readback")

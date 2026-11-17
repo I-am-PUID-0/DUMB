@@ -15,6 +15,7 @@ import stat
 import tarfile
 
 from utils.backup_storage import _directory, require_local_path
+from utils.infinidysk_v2_io_progress import IOProgress, ProgressReader
 from utils.infinidysk_v2_archive import (
     ArchiveError,
     _BoundedTarInfo,
@@ -122,6 +123,7 @@ def restore_archive_tree(
     destination,
     expected_identity,
     owner_check=None,
+    progress=None,
 ):
     """Restore a source into its owned empty original or derived candidate path.
 
@@ -209,12 +211,21 @@ def restore_archive_tree(
                     )
             # Verify the entire archive, including unrelated roots and extras,
             # before writing any file or changing destination metadata.
-            proof = verify_retained_archive(snapshot, plan, storage)
+            proof = verify_retained_archive(
+                snapshot, plan, storage, progress=progress, owner_check=check_root
+            )
             check_root()
             receipt = snapshot["cold_archive"]
             prefix = "trees/" + roots[source]
             restored = 0
             root_record = None
+            measured = IOProgress(
+                progress,
+                "archive_restore",
+                total=receipt["size_bytes"],
+                check=check_root,
+                message="Reading the recovery archive and restoring v1 files.",
+            )
             with _manifest(snapshot["source_snapshot"]) as database:
                 # Keep both ancestor lookups and postorder metadata application
                 # inside the same bounded SQLite file, without external sorting.
@@ -223,7 +234,7 @@ def restore_archive_tree(
                     "CREATE INDEX recovery_order ON entries(length(path) DESC,path DESC)"
                 )
                 with storage.open_artifact(receipt["reference"]) as handle:
-                    reader = _DigestReader(handle)
+                    reader = _DigestReader(ProgressReader(handle, measured))
                     with tarfile.open(
                         fileobj=reader,
                         mode="r|",
@@ -335,12 +346,26 @@ def restore_archive_tree(
                     raise ArchiveError(
                         "The requested source tree is absent from the archive."
                     )
+                measured.finish()
                 # Restore children before parents, retaining private writable
                 # permissions while their descendants are still being created.
+                metadata = IOProgress(
+                    progress,
+                    "restore_metadata",
+                    total=restored,
+                    check=check_root,
+                    message="Restoring the saved v1 directory metadata.",
+                )
+                metadata_entries = 0
+                logical_bytes = database.execute(
+                    "SELECT COALESCE(SUM(CASE WHEN json_extract(payload,'$.sha256') IS NOT NULL THEN json_extract(payload,'$.size') ELSE 0 END),0) FROM entries"
+                ).fetchone()[0]
                 for payload, identity in database.execute(
                     "SELECT payload,expected FROM entries ORDER BY length(path) DESC,path DESC"
                 ):
                     record = json.loads(payload)
+                    metadata_entries += 1
+                    metadata.update(metadata_entries)
                     if stat.S_ISDIR(record["mode"]):
                         check_root()
                         with _parent(root, record["relative"], database, mount) as (
@@ -354,18 +379,28 @@ def restore_archive_tree(
                 _metadata(parent, destination.name, root_record, expected, mount)
                 os.fsync(root)
                 os.fsync(parent)
+                metadata.finish()
             check_root()
+            measured = IOProgress(
+                progress,
+                "restore_verify",
+                total=logical_bytes,
+                check=check_root,
+                message="Reading and verifying every restored v1 file.",
+            )
             actual = tree_fingerprint(
                 destination,
                 scratch_root=snapshot["source_snapshot"],
                 validate_links=source == (plan.get("source") or {}).get("data_dir"),
                 role="Restored v1 source",
+                progress=measured.add,
             )
             check_root()
             if actual != fingerprints[source]:
                 raise ArchiveError(
                     "The recovered source tree differs from its retained fingerprint."
                 )
+            measured.finish()
             return {
                 **proof,
                 "source": source,

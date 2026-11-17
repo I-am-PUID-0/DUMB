@@ -150,6 +150,43 @@ class SourceSpaceControllerTests(unittest.TestCase):
             self.controller._save(self.job)
         return result
 
+    def test_real_restore_reports_each_pass_without_observing_the_original_cancel(self):
+        events = []
+        self.job["status"] = "running"
+
+        def report(job, stage, message, **detail):
+            if "io_progress" in detail:
+                events.append(detail["io_progress"])
+
+        self.manager._progress = report
+        self.prepare()
+        self.job["status"] = "rolling_back"
+        self.manager._recovery_progress = report
+        self.manager._check_cancel = Mock(
+            side_effect=AssertionError("recovery must not re-observe cancellation")
+        )
+        self.controller.restore(self.job, self.unmounted)
+        self.assert_original_restored()
+        self.manager._check_cancel.assert_not_called()
+        phases = {row["phase"]: row for row in events if row["complete"]}
+        for phase in (
+            "archive_recheck",
+            "archive_restore",
+            "restore_metadata",
+            "restore_verify",
+        ):
+            self.assertIn(phase, phases)
+        self.assertEqual(
+            self.snapshot["cold_archive"]["size_bytes"],
+            phases["archive_restore"]["processed"],
+        )
+        self.assertEqual(
+            phases["restore_verify"]["total"], phases["restore_verify"]["processed"]
+        )
+        self.assertEqual(
+            phases["restore_metadata"]["total"], phases["restore_metadata"]["processed"]
+        )
+
     def reload(self):
         self.job = json.loads(self.disk.read_text())
         self.snapshot = self.job["snapshot"]

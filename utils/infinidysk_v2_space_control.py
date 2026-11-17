@@ -9,6 +9,7 @@ import stat
 import shutil
 
 from utils.backup_storage import _directory, _mount, get_backup_storage, mount_records
+from utils.infinidysk_v2_io_progress import IOProgress
 from utils.infinidysk_v2_archive import verify_retained_archive
 from utils.infinidysk_v2_rehearsal_cleanup import discard_rehearsal_candidate
 from utils.infinidysk_v2_space import restore_archive_tree
@@ -149,12 +150,40 @@ class SpaceReuse:
             )
         return storage
 
+    def _report(self, job):
+        recovery = (
+            job.get("status") == "rolling_back"
+            or getattr(self.manager, "_rollback_active", False) is True
+        )
+        callback = getattr(
+            self.manager, "_recovery_progress" if recovery else "_progress", None
+        )
+        if not callable(callback):
+            return None
+        return lambda stage, message, **detail: callback(job, stage, message, **detail)
+
+    def _io_check(self, job):
+        self._check_owner(job)
+        cancel = getattr(self.manager, "_check_cancel", None)
+        if (
+            job.get("status") != "rolling_back"
+            and getattr(self.manager, "_rollback_active", False) is not True
+            and callable(cancel)
+        ):
+            cancel(job)
+
     def verify(self, job):
         snapshot = job.get("snapshot") or {}
         recovery = snapshot.get("space_recovery")
         if not recovery:
             raise ValueError("Archive-backed source recovery evidence is missing.")
-        proof = verify_retained_archive(snapshot, job["plan"], self._storage(job))
+        proof = verify_retained_archive(
+            snapshot,
+            job["plan"],
+            self._storage(job),
+            progress=self._report(job),
+            owner_check=lambda: self._io_check(job),
+        )
         return proof
 
     def prepare(self, job, workspace, snapshot, owner_check):
@@ -354,6 +383,7 @@ class SpaceReuse:
             destination=str(candidate),
             expected_identity=recovery["restore_identity"],
             owner_check=lambda: self._check_owner(job),
+            progress=self._report(job),
         )
         self.manager._assert_stopped(plan)
         if (
@@ -378,13 +408,38 @@ class SpaceReuse:
         from utils.infinidysk_v2_inventory import tree_fingerprint
 
         snapshot = job["snapshot"]
+        inventory = (job["plan"].get("capacity") or {}).get("source") or {}
+        total = next(
+            (
+                row.get("logical_bytes")
+                for row in inventory.get("roots", [])
+                if isinstance(row, dict) and row.get("role") == "data_dir"
+            ),
+            None,
+        )
+        if total is None and inventory.get("root_count") == 1:
+            total = inventory.get("logical_bytes")
+        if type(total) is not int or total < 0:
+            total = None
+        measured = IOProgress(
+            self._report(job),
+            "restore_verify",
+            total=total,
+            total_is_estimate=True,
+            check=lambda: self._io_check(job),
+            message="Reading and verifying the retained v1 source files.",
+        )
         if (
             tree_fingerprint(
-                source, scratch_root=snapshot["source_snapshot"], validate_links=True
+                source,
+                scratch_root=snapshot["source_snapshot"],
+                validate_links=True,
+                progress=measured.add,
             )
             != snapshot["original_fingerprints"][job["plan"]["source"]["data_dir"]]
         ):
             raise ValueError("The restored v1 tree does not match its archived source.")
+        measured.finish()
 
 
 def restored_plan_matches(previous, current):
