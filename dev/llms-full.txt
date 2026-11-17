@@ -2,7 +2,7 @@
 
 > Channel: dev. Canonical base: https://dumbarr.com/dev/
 
-Documentation artifact: release 1.25.6. Source commit: ced8db0df4ce9264112a4cc62552428ba5916333. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.6.
+Documentation artifact: release 1.25.7. Source commit: 35075485915e38f9943b4625cfd893de1e4bb8e4. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.7.
 
 DUMB coordinates media services. Match instructions to the installed backend version. Development guides can describe features absent from the latest release.
 
@@ -1697,6 +1697,46 @@ Preview body:
 only `import_strategy: "preserve"`; it does not regenerate existing outputs.
 The exact consumer-visible mount path is retained. Generation 2 uses separate
 runtime/data directories and the verified beta artifact.
+
+#### Queued-download policy
+
+For a backend advertising the strict boolean
+`infinidysk_v2_queue_omission: true`, an existing-source preview can request
+`omit_queued_downloads: true`. This optional boolean defaults to `false`. Selecting it requires
+`mode: "migrate"`. It is not an option for fresh installation or
+native v2 PostgreSQL conversion. Clients must hide the choice and omit the field
+when the capability is absent, even if a stale form value remains selected.
+
+The default requires an empty v1 `QueueItems` table. Known live queued work blocks
+the preview before large inventory/capacity walks. A second authoritative check
+runs after quiescence, before PostgreSQL snapshot and full source fingerprints.
+An unavailable live observation is not an empty queue.
+
+Optional `preview.source_queue` and `job.source_queue` contain:
+
+| Field | Meaning |
+| --- | --- |
+| `policy` | `require_empty` or explicit `omit_from_v2` |
+| `observed_count` | Nonnegative count, or `null` when unavailable |
+| `observed_at` | Observation time in Unix seconds, or `null` |
+| `observation` | `live`, `unavailable` or authoritative `captured` |
+| `omitted_count` | `null` until the separate importer input is verified, then the actual nonnegative omitted count |
+| `source_queue_preserved` | `true`: the original/recovery queue records remain preserved |
+
+The live count can change before capture. Omission applies to the whole captured
+queue and is bound to the reviewed option; it is not a failed-job heuristic.
+The backend records the captured identities/digest privately. It derives a
+separate closed, queue-free native importer database while preserving the
+original source database, complete archive/dump, media and history. Native
+acceptance still requires zero imported queued jobs. No live API/SQL deletion
+or blob cleanup is part of this option.
+
+The explicit choice uses the existing preview, confirmation and successful-test
+requirements; it adds no extra acknowledgement. Changing it invalidates an older
+review/test. Rehearsal and rollback restore the original queued work. A successful
+v2 cutover does not carry those jobs over; external Arr producers can submit them
+again. `source_queue_preserved` is specific to queue evidence and does not claim
+that low-space reuse kept every original file locally.
 
 #### Low-space migration
 
@@ -11805,11 +11845,10 @@ signing keys, symlink trees and existing STRM files. DUMB's retained migration
 state is useful recovery evidence, not a replacement for those backups.
 
 An existing source must meet the 1.3-era database schema floor checked by the
-backend and have an empty **InfiniDysk 1 download-task queue** after quiescence.
-The preview identifies that queue; a stopped-source snapshot refusal reports
-its remaining task count. Review and finish those tasks, or explicitly remove
-tasks you intend to discard, before retrying. Failed history records alone do
-not block this queue check.
+backend. By default its **InfiniDysk 1 download-task queue** must be empty after
+applications stop. Supporting builds offer an explicit
+[option to continue without queued downloads](#queued-downloads).
+Failed history records alone do not block this queue check.
 
 This check does not require deleting Sonarr history or media-library files.
 If an Arr application reports a separate failed-download problem, review that
@@ -11872,6 +11911,31 @@ A v1 PostgreSQL source also needs a backend-supported source snapshot adapter
 and successful dump/restore proof. If that path is unavailable or unverified,
 the preview blocks it. The major importer does not directly reuse the v1
 PostgreSQL database as a generation 2 database.
+
+### Queued downloads
+
+DUMB checks the available live queue before large preview scans. It checks again
+after stopping the affected applications, before PostgreSQL backup and full file
+checks. A live count is advisory and can change before that stopped-source
+check. If the live queue cannot be inspected, its count is unknown.
+
+By default, finish the pending tasks before migrating. On a supporting backend,
+**Continue without queued downloads** instead excludes the entire captured queue
+from the private database supplied to the v2 importer. It does not cancel jobs
+through the live v1 API or delete the original queue, completed/failed history,
+library files or blobs. The original database and recovery backup retain those
+queued jobs.
+
+Review the displayed policy and count in the fresh preview. Changing the option
+invalidates the previous review and test. The running job reports its captured
+count; an omitted count is confirmed only after the private importer database
+has been verified. This choice applies to the whole queue, rather than guessing
+which jobs are failed.
+
+A completed test or rollback restores v1 with its original pending queue.
+After successful migration those jobs are absent from v2, and Arr applications
+may submit them again. This option is for an existing v1-to-v2 upgrade only;
+older backends keep the empty-queue requirement.
 
 ## Choose migration storage
 
@@ -12007,7 +12071,8 @@ source locations and available space, and resolve the blocker before retrying.
    database and exact mount path.
 2. Keep **historical rclone over WebDAV**, or explicitly choose **native FUSE**.
    The backend must verify ownership, prerequisites and consumer visibility.
-3. Generate a preview. Review its checks, blockers, warnings and recorded scope.
+3. Generate a preview. Review its checks, blockers, warnings and recorded scope,
+   including the queued-download policy and any observed count.
    Existing migrations preserve the exact mount path; they do not rename the
    virtual library namespace or change import strategy.
 4. Confirm the independent backup, downtime, beta, login/OIDC policy and

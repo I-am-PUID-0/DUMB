@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.6">
+    <meta name="dumb-docs-package-version" content="1.25.7">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="ced8db0df4ce9264112a4cc62552428ba5916333">
-    <meta name="dumb-docs-release-tag" content="1.25.6">
+    <meta name="dumb-docs-build-commit" content="35075485915e38f9943b4625cfd893de1e4bb8e4">
+    <meta name="dumb-docs-release-tag" content="1.25.7">
   
 
     
@@ -6267,6 +6267,65 @@ of those new-operation controls.</p>
 only <code>import_strategy: "preserve"</code>; it does not regenerate existing outputs.
 The exact consumer-visible mount path is retained. Generation 2 uses separate
 runtime/data directories and the verified beta artifact.</p>
+<h4 id="queued-download-policy">Queued-download policy<a class="headerlink" href="#queued-download-policy" title="Permanent link">&para;</a></h4>
+<p>For a backend advertising the strict boolean
+<code>infinidysk_v2_queue_omission: true</code>, an existing-source preview can request
+<code>omit_queued_downloads: true</code>. This optional boolean defaults to <code>false</code>. Selecting it requires
+<code>mode: "migrate"</code>. It is not an option for fresh installation or
+native v2 PostgreSQL conversion. Clients must hide the choice and omit the field
+when the capability is absent, even if a stale form value remains selected.</p>
+<p>The default requires an empty v1 <code>QueueItems</code> table. Known live queued work blocks
+the preview before large inventory/capacity walks. A second authoritative check
+runs after quiescence, before PostgreSQL snapshot and full source fingerprints.
+An unavailable live observation is not an empty queue.</p>
+<p>Optional <code>preview.source_queue</code> and <code>job.source_queue</code> contain:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>policy</code></td>
+<td><code>require_empty</code> or explicit <code>omit_from_v2</code></td>
+</tr>
+<tr>
+<td><code>observed_count</code></td>
+<td>Nonnegative count, or <code>null</code> when unavailable</td>
+</tr>
+<tr>
+<td><code>observed_at</code></td>
+<td>Observation time in Unix seconds, or <code>null</code></td>
+</tr>
+<tr>
+<td><code>observation</code></td>
+<td><code>live</code>, <code>unavailable</code> or authoritative <code>captured</code></td>
+</tr>
+<tr>
+<td><code>omitted_count</code></td>
+<td><code>null</code> until the separate importer input is verified, then the actual nonnegative omitted count</td>
+</tr>
+<tr>
+<td><code>source_queue_preserved</code></td>
+<td><code>true</code>: the original/recovery queue records remain preserved</td>
+</tr>
+</tbody>
+</table>
+<p>The live count can change before capture. Omission applies to the whole captured
+queue and is bound to the reviewed option; it is not a failed-job heuristic.
+The backend records the captured identities/digest privately. It derives a
+separate closed, queue-free native importer database while preserving the
+original source database, complete archive/dump, media and history. Native
+acceptance still requires zero imported queued jobs. No live API/SQL deletion
+or blob cleanup is part of this option.</p>
+<p>The explicit choice uses the existing preview, confirmation and successful-test
+requirements; it adds no extra acknowledgement. Changing it invalidates an older
+review/test. Rehearsal and rollback restore the original queued work. A successful
+v2 cutover does not carry those jobs over; external Arr producers can submit them
+again. <code>source_queue_preserved</code> is specific to queue evidence and does not claim
+that low-space reuse kept every original file locally.</p>
 <h4 id="low-space-migration">Low-space migration<a class="headerlink" href="#low-space-migration" title="Permanent link">&para;</a></h4>
 <p>A supporting backend advertises
 <code>infinidysk_v2_low_space_migration: true</code>. For an existing-data migration only,
@@ -6856,11 +6915,11 @@ cannot be confirmed, and disable actions until a valid current response returns.
     
     <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
       
-        <span>Documentation release 1.25.6</span>
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.6">Release notes</a>
+        <span>Documentation release 1.25.7</span>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.7">Release notes</a>
       
       
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;ced8db0df4ce9264112a4cc62552428ba5916333" title="Documentation source commit ced8db0df4ce9264112a4cc62552428ba5916333">Source ced8db0d</a>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;35075485915e38f9943b4625cfd893de1e4bb8e4" title="Documentation source commit 35075485915e38f9943b4625cfd893de1e4bb8e4">Source 35075485</a>
       
       
     </div>

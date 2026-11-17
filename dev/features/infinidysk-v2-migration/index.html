@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.6">
+    <meta name="dumb-docs-package-version" content="1.25.7">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="ced8db0df4ce9264112a4cc62552428ba5916333">
-    <meta name="dumb-docs-release-tag" content="1.25.6">
+    <meta name="dumb-docs-build-commit" content="35075485915e38f9943b4625cfd893de1e4bb8e4">
+    <meta name="dumb-docs-release-tag" content="1.25.7">
   
 
     
@@ -6417,11 +6417,10 @@ Do not toggle the generation or provider fields to bypass the wizard.</p>
 signing keys, symlink trees and existing STRM files. DUMB's retained migration
 state is useful recovery evidence, not a replacement for those backups.</p>
 <p>An existing source must meet the 1.3-era database schema floor checked by the
-backend and have an empty <strong>InfiniDysk 1 download-task queue</strong> after quiescence.
-The preview identifies that queue; a stopped-source snapshot refusal reports
-its remaining task count. Review and finish those tasks, or explicitly remove
-tasks you intend to discard, before retrying. Failed history records alone do
-not block this queue check.</p>
+backend. By default its <strong>InfiniDysk 1 download-task queue</strong> must be empty after
+applications stop. Supporting builds offer an explicit
+<a href="#queued-downloads">option to continue without queued downloads</a>.
+Failed history records alone do not block this queue check.</p>
 <p>This check does not require deleting Sonarr history or media-library files.
 If an Arr application reports a separate failed-download problem, review that
 queue item and its actual error in the Arr application. DUMB does not
@@ -6475,6 +6474,26 @@ media still prevent activation. There is no unrestricted network fallback.</p>
 and successful dump/restore proof. If that path is unavailable or unverified,
 the preview blocks it. The major importer does not directly reuse the v1
 PostgreSQL database as a generation 2 database.</p>
+<h3 id="queued-downloads">Queued downloads<a class="headerlink" href="#queued-downloads" title="Permanent link">&para;</a></h3>
+<p>DUMB checks the available live queue before large preview scans. It checks again
+after stopping the affected applications, before PostgreSQL backup and full file
+checks. A live count is advisory and can change before that stopped-source
+check. If the live queue cannot be inspected, its count is unknown.</p>
+<p>By default, finish the pending tasks before migrating. On a supporting backend,
+<strong>Continue without queued downloads</strong> instead excludes the entire captured queue
+from the private database supplied to the v2 importer. It does not cancel jobs
+through the live v1 API or delete the original queue, completed/failed history,
+library files or blobs. The original database and recovery backup retain those
+queued jobs.</p>
+<p>Review the displayed policy and count in the fresh preview. Changing the option
+invalidates the previous review and test. The running job reports its captured
+count; an omitted count is confirmed only after the private importer database
+has been verified. This choice applies to the whole queue, rather than guessing
+which jobs are failed.</p>
+<p>A completed test or rollback restores v1 with its original pending queue.
+After successful migration those jobs are absent from v2, and Arr applications
+may submit them again. This option is for an existing v1-to-v2 upgrade only;
+older backends keep the empty-queue requirement.</p>
 <h2 id="choose-migration-storage">Choose migration storage<a class="headerlink" href="#choose-migration-storage" title="Permanent link">&para;</a></h2>
 <p><strong>Migration backup location</strong> is where DUMB saves the verified v1 recovery
 archive for this migration. It does not select the live v2 database location.
@@ -6606,7 +6625,8 @@ source locations and available space, and resolve the blocker before retrying.</
    database and exact mount path.</li>
 <li>Keep <strong>historical rclone over WebDAV</strong>, or explicitly choose <strong>native FUSE</strong>.
    The backend must verify ownership, prerequisites and consumer visibility.</li>
-<li>Generate a preview. Review its checks, blockers, warnings and recorded scope.
+<li>Generate a preview. Review its checks, blockers, warnings and recorded scope,
+   including the queued-download policy and any observed count.
    Existing migrations preserve the exact mount path; they do not rename the
    virtual library namespace or change import strategy.</li>
 <li>Confirm the independent backup, downtime, beta, login/OIDC policy and
@@ -7142,11 +7162,11 @@ separate existing workflows.</p>
     
     <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
       
-        <span>Documentation release 1.25.6</span>
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.6">Release notes</a>
+        <span>Documentation release 1.25.7</span>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.7">Release notes</a>
       
       
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;ced8db0df4ce9264112a4cc62552428ba5916333" title="Documentation source commit ced8db0df4ce9264112a4cc62552428ba5916333">Source ced8db0d</a>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;35075485915e38f9943b4625cfd893de1e4bb8e4" title="Documentation source commit 35075485915e38f9943b4625cfd893de1e4bb8e4">Source 35075485</a>
       
       
     </div>
