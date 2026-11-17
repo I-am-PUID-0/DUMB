@@ -2,7 +2,7 @@
 
 > Channel: dev. Canonical base: https://dumbarr.com/dev/
 
-Documentation artifact: release 1.25.7. Source commit: 35075485915e38f9943b4625cfd893de1e4bb8e4. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.7.
+Documentation artifact: release 1.25.8. Source commit: d25d7d409d53deaf12339919d4c13c2580d0d326. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.8.
 
 DUMB coordinates media services. Match instructions to the installed backend version. Development guides can describe features absent from the latest release.
 
@@ -12170,6 +12170,11 @@ that the worker stopped.
 A failed test does not become a successful test because v1 was restored.
 Likewise, a retained archive or an available rollback control does not by itself
 mean that recovery is running. Follow the job's result and reported error.
+
+CIFS/SMB shares can finalize file timestamps when an upload closes. Supporting
+builds record those closed-file values before later checks; every copied file
+still needs complete content verification before local blobs are removed.
+
 A failed input check can identify the source or staged copy, entry type, changed
 metadata fields and a digest reference without exposing the original path.
 Preserve that reference and the job evidence when reporting a failure; do not

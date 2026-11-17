@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.7">
+    <meta name="dumb-docs-package-version" content="1.25.8">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="35075485915e38f9943b4625cfd893de1e4bb8e4">
-    <meta name="dumb-docs-release-tag" content="1.25.7">
+    <meta name="dumb-docs-build-commit" content="d25d7d409d53deaf12339919d4c13c2580d0d326">
+    <meta name="dumb-docs-release-tag" content="1.25.8">
   
 
     
@@ -6738,8 +6738,11 @@ that the worker stopped.</p>
 </table>
 <p>A failed test does not become a successful test because v1 was restored.
 Likewise, a retained archive or an available rollback control does not by itself
-mean that recovery is running. Follow the job's result and reported error.
-A failed input check can identify the source or staged copy, entry type, changed
+mean that recovery is running. Follow the job's result and reported error.</p>
+<p>CIFS/SMB shares can finalize file timestamps when an upload closes. Supporting
+builds record those closed-file values before later checks; every copied file
+still needs complete content verification before local blobs are removed.</p>
+<p>A failed input check can identify the source or staged copy, entry type, changed
 metadata fields and a digest reference without exposing the original path.
 Preserve that reference and the job evidence when reporting a failure; do not
 change timestamps, move files or delete retained input to make a check pass.</p>
@@ -7162,11 +7165,11 @@ separate existing workflows.</p>
     
     <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
       
-        <span>Documentation release 1.25.7</span>
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.7">Release notes</a>
+        <span>Documentation release 1.25.8</span>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.8">Release notes</a>
       
       
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;35075485915e38f9943b4625cfd893de1e4bb8e4" title="Documentation source commit 35075485915e38f9943b4625cfd893de1e4bb8e4">Source 35075485</a>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;d25d7d409d53deaf12339919d4c13c2580d0d326" title="Documentation source commit d25d7d409d53deaf12339919d4c13c2580d0d326">Source d25d7d40</a>
       
       
     </div>

@@ -2,12 +2,12 @@
   "channel": "dev",
   "version": "2.24.0",
   "documentation": {
-    "version": "1.25.7",
+    "version": "1.25.8",
     "kind": "release",
-    "commit": "35075485915e38f9943b4625cfd893de1e4bb8e4",
-    "tag": "1.25.7",
-    "release_url": "https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.7",
-    "source_url": "https://github.com/I-am-PUID-0/DUMB_docs/commit/35075485915e38f9943b4625cfd893de1e4bb8e4",
+    "commit": "d25d7d409d53deaf12339919d4c13c2580d0d326",
+    "tag": "1.25.8",
+    "release_url": "https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.8",
+    "source_url": "https://github.com/I-am-PUID-0/DUMB_docs/commit/d25d7d409d53deaf12339919d4c13c2580d0d326",
     "dirty": false
   },
   "pages": [
