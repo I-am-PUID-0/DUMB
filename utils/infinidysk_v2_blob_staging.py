@@ -327,14 +327,16 @@ class ExternalBlobStaging:
             message=messages[phase],
         )
 
-    def _changed(self, job, relative, value, wanted, *, stage, content=False):
+    def _changed(
+        self, job, relative, value, wanted, *, stage, content=False, fields=FIELDS
+    ):
         changed = (
             ["sha256"]
             if content
             else [
                 name
                 for name, actual, expected in zip(FIELDS, _stamp(value), wanted)
-                if actual != expected
+                if name in fields and actual != expected
             ]
         )
         evidence = input_change(
@@ -347,6 +349,49 @@ class ExternalBlobStaging:
         job["input_integrity"] = evidence
         self._save(job)
         raise ValueError(integrity_message(evidence))
+
+    def _closed_copy_stamp(
+        self, job, root, relative, database, written, *, staged_cifs, check
+    ):
+        # CIFS can finalize timestamps when OUR write handle closes. Adopt the
+        # stable anchored read-handle view once, never a historical mtime waiver.
+        fields = tuple(
+            name
+            for name in FIELDS
+            if not (staged_cifs and name in {"mtime_ns", "ctime_ns"})
+        )
+        record = job["snapshot"]["external_blob_staging"]
+        check()
+        with _parent(
+            root,
+            relative,
+            expected=record["blobs_identity"],
+            database=database,
+            column="staged",
+        ) as (parent, name):
+            descriptor = os.open(
+                name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent
+            )
+            try:
+                opened = os.fstat(descriptor)
+                if any(
+                    field in fields and actual != expected
+                    for field, actual, expected in zip(FIELDS, _stamp(opened), written)
+                ):
+                    self._changed(
+                        job, relative, opened, written, stage=True, fields=fields
+                    )
+                observed = _stamp(opened)
+                check()
+                finished = os.fstat(descriptor)
+                if _stamp(finished) != observed:
+                    self._changed(job, relative, finished, observed, stage=True)
+                current = os.stat(name, dir_fd=parent, follow_symlinks=False)
+                if _stamp(current) != observed:
+                    self._changed(job, relative, current, observed, stage=True)
+                return observed
+            finally:
+                os.close(descriptor)
 
     def _verify_tree(
         self,
@@ -415,7 +460,23 @@ class ExternalBlobStaging:
                     if not _matches_staged(
                         value, wanted, cifs=stage and staged_cifs and content
                     ):
-                        self._changed(job, row["path"], value, wanted, stage=stage)
+                        self._changed(
+                            job,
+                            row["path"],
+                            value,
+                            wanted,
+                            stage=stage,
+                            fields=tuple(
+                                field
+                                for field in FIELDS
+                                if not (
+                                    stage
+                                    and staged_cifs
+                                    and content
+                                    and field == "ctime_ns"
+                                )
+                            ),
+                        )
                     observed = _stamp(value)
                     if stat.S_ISREG(value.st_mode) and content:
                         descriptor = os.open(
@@ -484,6 +545,7 @@ class ExternalBlobStaging:
         self._check(job, owner_check)
         self.manager._assert_stopped(plan)
         storage, bound = self._storage(job)
+        staged_cifs = bound.get("filesystem_type") == "cifs"
         verify_retained_archive(
             snapshot,
             plan,
@@ -689,6 +751,15 @@ class ExternalBlobStaging:
                                         staged_stamp = _stamp(os.fstat(dst))
                                     finally:
                                         os.close(dst)
+                                    staged_stamp = self._closed_copy_stamp(
+                                        job,
+                                        directory / "blobs",
+                                        relative,
+                                        database,
+                                        staged_stamp,
+                                        staged_cifs=staged_cifs,
+                                        check=lambda: (check(), lease_check()),
+                                    )
                                 finally:
                                     os.close(src)
                             else:
@@ -717,6 +788,9 @@ class ExternalBlobStaging:
                         "Legacy input changed since its complete space inventory; no local input was freed."
                     )
                 record["copied_bytes"] = copied
+                # Retain every canonical copied stamp even if permission
+                # preparation subsequently fails or the controller stops.
+                database.commit()
                 copying.finish()
                 metadata = self._io(
                     job,
@@ -725,7 +799,6 @@ class ExternalBlobStaging:
                     check=lambda: (check(), lease_check()),
                 )
                 metadata_count = 0
-                staged_cifs = bound.get("filesystem_type") == "cifs"
                 # Make only the staged tree readable to the contained configured
                 # user. The registered namespace remains controller-owned.
                 for relative, recorded in database.execute(
@@ -756,8 +829,21 @@ class ExternalBlobStaging:
                                     value, original, cifs=staged_cifs
                                 )
                             ):
-                                raise ValueError(
-                                    "A staged input entry was replaced before metadata preparation."
+                                self._changed(
+                                    job,
+                                    os.fsdecode(relative),
+                                    value,
+                                    original,
+                                    stage=True,
+                                    fields=(
+                                        FIELDS[:3]
+                                        if stat.S_ISDIR(value.st_mode)
+                                        else tuple(
+                                            field
+                                            for field in FIELDS
+                                            if not (staged_cifs and field == "ctime_ns")
+                                        )
+                                    ),
                                 )
                             value = _prepare_metadata(
                                 descriptor,

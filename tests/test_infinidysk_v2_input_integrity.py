@@ -1,11 +1,13 @@
 """CIFS metadata refresh cannot replace content, identity or release proofs."""
 
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
+import fcntl
 import hashlib
 import json
 import os
 from pathlib import Path
 import stat
+import sqlite3
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -17,12 +19,14 @@ from utils.infinidysk_v2_inventory import InventoryError
 
 
 @contextmanager
-def fixture(cifs=True):
+def fixture(cifs=True, *, additional=None):
     value = fixtures.ExternalBlobInputTests("runTest")
 
     def nested(data):
         (data / "blobs/nested").mkdir()
         (data / "blobs/nested/child").write_bytes(b"nested retained data")
+        if additional is not None:
+            additional(data)
 
     value._source_preparer = nested
     value.setUp()
@@ -52,7 +56,199 @@ def historical_ctime(database):
         )
 
 
+@contextmanager
+def cached_copy_stamp():
+    """Model the measured owned WRFD timestamps; reopened observations are real."""
+    original = os.fstat
+    observed = []
+
+    def stat_copy(descriptor):
+        value = original(descriptor)
+        try:
+            path = Path(os.readlink(f"/proc/self/fd/{descriptor}"))
+            write_only = (
+                fcntl.fcntl(descriptor, fcntl.F_GETFL) & os.O_ACCMODE == os.O_WRONLY
+            )
+        except OSError:
+            return value
+        if (
+            write_only
+            and staging.NAMESPACE in path.parts
+            and stat.S_ISREG(value.st_mode)
+        ):
+            fields = {
+                name: getattr(value, name)
+                for name in dir(value)
+                if name.startswith("st_")
+            }
+            fields["st_mtime_ns"] -= 12_000_000
+            fields["st_ctime_ns"] -= 12_000_000
+            observed.append(path.name)
+            return SimpleNamespace(**fields)
+        return value
+
+    with patch.object(os, "fstat", side_effect=stat_copy):
+        yield observed
+
+
 class StagedCifsIntegrityTests(unittest.TestCase):
+    def test_cifs_write_close_finalization_uses_the_stable_reopened_stamp(self):
+        with fixture() as f, cached_copy_stamp() as observed:
+            output = f.prepare()
+            self.assertIn("metadata", observed)
+            with closing(
+                sqlite3.connect(f.snapshot["external_blob_staging"]["manifest"])
+            ) as database:
+                recorded = json.loads(
+                    database.execute(
+                        "SELECT staged FROM entries WHERE path=?", (b"metadata",)
+                    ).fetchone()[0]
+                )
+            self.assertEqual(recorded[4], (output / "metadata").stat().st_mtime_ns)
+            self.assertEqual(
+                (output / "metadata").read_bytes(), b"retained original blob"
+            )
+            self.assertEqual(f.staging.verify(f.job), output)
+            f.controller.restore(f.job, lambda *_: None)
+            self.assertEqual(
+                (f.data / "blobs/metadata").read_bytes(), b"retained original blob"
+            )
+            f.staging.cleanup(f.job)
+            self.assertEqual(f.snapshot["external_blob_staging"]["state"], "cleaned")
+
+    def test_non_cifs_write_close_timestamp_change_is_refused(self):
+        with fixture(cifs=False) as f, cached_copy_stamp():
+            with self.assertRaisesRegex(ValueError, "mtime_ns"):
+                f.prepare()
+            self.assertEqual(f.snapshot["external_blob_staging"]["released_bytes"], 0)
+            self.assertEqual(
+                f.job["input_integrity"]["changed_fields"], ["mtime_ns", "ctime_ns"]
+            )
+            self.assertTrue((f.candidate / "blobs/metadata").exists())
+
+    def test_fresh_reopened_ctime_mutation_is_never_close_finalization(self):
+        with fixture() as f:
+            original = f.staging._closed_copy_stamp
+            changed = []
+
+            def closing_stamp(job, root, relative, database, written, **options):
+                check = options["check"]
+                calls = 0
+
+                def window():
+                    nonlocal calls
+                    check()
+                    calls += 1
+                    if relative == "metadata" and calls == 2:
+                        path = root / relative
+                        path.chmod(stat.S_IMODE(path.stat().st_mode))
+                        changed.append(relative)
+
+                return original(
+                    job,
+                    root,
+                    relative,
+                    database,
+                    written,
+                    **dict(options, check=window),
+                )
+
+            with patch.object(
+                f.staging, "_closed_copy_stamp", side_effect=closing_stamp
+            ):
+                with self.assertRaisesRegex(ValueError, "ctime_ns"):
+                    f.prepare()
+            self.assertEqual(changed, ["metadata"])
+            self.assertEqual(f.snapshot["external_blob_staging"]["released_bytes"], 0)
+
+    def test_tampering_after_canonical_close_still_requires_full_sha_readback(self):
+        with fixture() as f:
+            original = f.staging._closed_copy_stamp
+
+            def tamper(job, root, relative, database, written, **options):
+                result = original(job, root, relative, database, written, **options)
+                if relative == "metadata":
+                    path = root / relative
+                    before = path.stat()
+                    path.write_bytes(b"x" * before.st_size)
+                    os.utime(path, ns=(before.st_atime_ns, result[4]))
+                return result
+
+            with patch.object(f.staging, "_closed_copy_stamp", side_effect=tamper):
+                with self.assertRaisesRegex(ValueError, "changed fields: sha256"):
+                    f.prepare()
+            self.assertEqual(f.job["input_integrity"]["changed_fields"], ["sha256"])
+            self.assertEqual(f.snapshot["external_blob_staging"]["released_bytes"], 0)
+            self.assertEqual(
+                (f.candidate / "blobs/metadata").read_bytes(), b"retained original blob"
+            )
+
+    def test_pre_metadata_failure_keeps_the_complete_ledger_and_safe_fields(self):
+        relative = "private-media-label"
+        with fixture(
+            additional=lambda data: (data / "blobs" / relative).write_bytes(b"retained")
+        ) as f:
+            original = f.staging._io
+            checked = []
+
+            def phase(job, name, **options):
+                if name == "blob_metadata":
+                    record = f.snapshot["external_blob_staging"]
+                    with closing(sqlite3.connect(record["manifest"])) as database:
+                        checked.append(
+                            database.execute("SELECT COUNT(*) FROM entries").fetchone()[
+                                0
+                            ]
+                        )
+                    path = Path(record["directory"]) / "blobs" / relative
+                    before = path.stat()
+                    os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns + 10**9))
+                return original(job, name, **options)
+
+            with patch.object(f.staging, "_io", side_effect=phase):
+                with self.assertRaises(ValueError) as caught:
+                    f.prepare()
+            record = f.snapshot["external_blob_staging"]
+            self.assertEqual(checked, [record["entries"]])
+            with closing(sqlite3.connect(record["manifest"])) as database:
+                self.assertEqual(
+                    database.execute("SELECT COUNT(*) FROM entries").fetchone()[0],
+                    record["entries"],
+                )
+            evidence = f.job["input_integrity"]
+            self.assertEqual(evidence["changed_fields"], ["mtime_ns"])
+            self.assertEqual(evidence["entry_type"], "file")
+            self.assertEqual(
+                evidence["path_digest"], hashlib.sha256(relative.encode()).hexdigest()
+            )
+            self.assertNotIn(relative, str(caught.exception))
+            self.assertNotIn(relative, json.dumps(evidence))
+            self.assertEqual(record["released_bytes"], 0)
+
+    def test_directory_pre_metadata_diagnostics_include_only_guarded_fields(self):
+        relative = "private-directory-label"
+        with fixture(additional=lambda data: (data / "blobs" / relative).mkdir()) as f:
+            original = f.staging._io
+
+            def phase(job, name, **options):
+                if name == "blob_metadata":
+                    path = (
+                        Path(f.snapshot["external_blob_staging"]["directory"])
+                        / "blobs"
+                        / relative
+                    )
+                    before = path.stat()
+                    path.chmod(stat.S_IMODE(before.st_mode) | stat.S_IRGRP)
+                    os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns + 10**9))
+                return original(job, name, **options)
+
+            with patch.object(f.staging, "_io", side_effect=phase):
+                with self.assertRaises(ValueError):
+                    f.prepare()
+            self.assertEqual(f.job["input_integrity"]["entry_type"], "directory")
+            self.assertEqual(f.job["input_integrity"]["changed_fields"], ["mode"])
+            self.assertEqual(f.snapshot["external_blob_staging"]["released_bytes"], 0)
+
     def test_cifs_historical_ctime_refresh_preserves_full_readback_release_and_cleanup(
         self,
     ):
