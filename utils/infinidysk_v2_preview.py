@@ -19,6 +19,7 @@ BOOLEANS = {
     "use_default_backup_destination",
     "reclaim_source_space",
     "offload_legacy_blobs",
+    "omit_queued_downloads",
 }
 
 

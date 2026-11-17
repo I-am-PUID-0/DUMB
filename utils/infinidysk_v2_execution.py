@@ -861,6 +861,9 @@ class InfiniDyskV2Executor:
     def _execute(self, plan, workspace, progress, *, cutover):
         uid, gid = self._execution_ids()
         was_running = self._quiesce(plan, progress)
+        check_queue = workspace.get("check_source_queue")
+        if plan["mode"] == "migrate" and callable(check_queue):
+            check_queue()
         postgres_snapshot = None
         if plan["source"].get("provider") in {"postgres", "postgresql"}:
             postgres_snapshot = self._postgres_snapshot(plan, workspace, progress)
@@ -882,6 +885,8 @@ class InfiniDyskV2Executor:
             value = json.loads(contract.read_text()) if contract.is_file() else {}
             value["provider"] = "sqlite"
             atomic_write_private_text(contract, json.dumps(value))
+        if plan.get("options", {}).get("omit_queued_downloads"):
+            workspace["prepare_import_database"]()
         self._own_candidate(candidate, uid, gid)
         service = copy.deepcopy(plan["target"]["service"])
         service.update(v2_data_dir=str(candidate), branch_enabled=False, commit_sha="")
@@ -903,6 +908,8 @@ class InfiniDyskV2Executor:
             "rehearsing",
             "Running the isolated native importer. Only read-only requests to captured NNTP providers are permitted; original library writes and other network access remain denied.",
         )
+        if plan.get("options", {}).get("omit_queued_downloads"):
+            workspace["verify_queue_input"]()
         with NativeCandidate(
             service,
             candidate,
@@ -1010,6 +1017,8 @@ class InfiniDyskV2Executor:
             "report": report,
             "native_report_private": report_text,
         }
+        if plan.get("options", {}).get("omit_queued_downloads"):
+            receipt["queue_omission_verified"] = True
         # The manager independently verifies original hashes and this receipt.
         if external_blobs is not None:
             receipt["external_blob_staging_verified"] = True

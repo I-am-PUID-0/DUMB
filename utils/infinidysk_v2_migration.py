@@ -26,6 +26,19 @@ from utils.config_loader import CONFIG_MANAGER
 from utils.infinidysk_migration_admission import INFINIDYSK_MIGRATION_ADMISSION_LOCK
 from utils.infinidysk_v2_io_progress import IOProgress, public_io_progress
 from utils.infinidysk_v2_input_integrity import public_input_integrity
+from utils.infinidysk_v2_queue import (
+    QueueInputError,
+    _private_sqlite_copy,
+    create_import_input,
+    empty_queue_message,
+    inspect_queue,
+    observe_queue,
+    public_queue,
+    public_queue_state,
+    queue_matches,
+    sqlite_queue,
+    verify_import_input,
+)
 from utils.infinidysk_v2_scan_progress import (
     MetadataScanProgress,
     metadata_progress,
@@ -124,6 +137,22 @@ def _source_path(value, data_root):
             }
         )
     return _path(path.resolve()), aliases
+
+
+def _queue_input_allocations(state, target, database_bytes):
+    def device(path):
+        path = Path(path)
+        while not path.exists():
+            path = path.parent
+        return path.stat().st_dev
+
+    # Derivation needs a disposable read copy and its projected output on the
+    # local state filesystem. That copy is gone before atomic candidate publish.
+    same = device(state) == device(target)
+    rows = [(state, database_bytes * 2 + 64 * 1024**2, "queue_import_input")]
+    if not same:
+        rows.append((target, database_bytes + 64 * 1024**2, "queue_import_input"))
+    return rows
 
 
 def _identity(path):
@@ -570,6 +599,9 @@ class InfiniDyskV2MigrationManager:
                 "Helper termination is confirmed. Review and run rollback "
                 "to restore the retained v1 service."
             )
+        queue = public_queue_state(job.get("source_queue"))
+        if queue is not None:
+            public["source_queue"] = queue
         staging = (job.get("snapshot") or {}).get("external_blob_staging")
         if isinstance(staging, dict):
             public["external_blob_staging"] = {
@@ -879,7 +911,15 @@ class InfiniDyskV2MigrationManager:
         requirements = [
             (
                 self.state_root,
-                sum(sizes.values()) + database_bytes + MAX_TREE_MANIFEST_BYTES,
+                sum(sizes.values())
+                + database_bytes
+                * (
+                    1
+                    if plan.get("options", {}).get("omit_queued_downloads")
+                    or plan["source"]["provider"] in {"postgres", "postgresql"}
+                    else 2
+                )
+                + MAX_TREE_MANIFEST_BYTES,
                 "retained_backup",
             ),
             (
@@ -937,6 +977,14 @@ class InfiniDyskV2MigrationManager:
                     (self.state_root, postgres_size * 6, "retained_backup"),
                     (tempfile.gettempdir(), postgres_size * 3, "postgres_temporary"),
                 ]
+            )
+        if plan.get("options", {}).get("omit_queued_downloads"):
+            requirements.extend(
+                _queue_input_allocations(
+                    self.state_root,
+                    Path(plan["target"]["data_dir"]).parent,
+                    database_bytes,
+                )
             )
         source_report = {
             "entries": sum(item["entries"] for item in inventories),
@@ -1015,6 +1063,7 @@ class InfiniDyskV2MigrationManager:
                 "local_verification",
             ),
         ]
+        after.extend(item for item in requirements if item[2] == "queue_import_input")
         filesystem_ids = {}
         for path, _size, _role in before + after:
             parent = Path(path)
@@ -1166,7 +1215,16 @@ class InfiniDyskV2MigrationManager:
             raise InfiniDyskV2MigrationError(
                 "External legacy input staging must be an explicit boolean choice."
             )
+        omit_queue = options.get("omit_queued_downloads", False)
+        if type(omit_queue) is not bool:
+            raise InfiniDyskV2MigrationError(
+                "Queued-download omission must be an explicit boolean choice."
+            )
         blockers = []
+        if omit_queue and (mode != "migrate" or old != "1"):
+            blockers.append(
+                "Queued downloads can only be left out during a v1-to-v2 migration."
+            )
         if offload and (not reclaim or mode != "migrate"):
             blockers.append(
                 "Moving legacy input to the backup location requires archive-backed v1 storage reuse during migration."
@@ -1344,6 +1402,27 @@ class InfiniDyskV2MigrationManager:
             "owned_config_paths": [["infinidysk"]],
             "blockers": blockers,
         }
+        if omit_queue:
+            plan["options"]["omit_queued_downloads"] = True
+        report(
+            "checking_queue",
+            "Checking the current v1 download queue. Services keep running.",
+        )
+        observed_queue = (
+            observe_queue(
+                plan,
+                check=reporter.check_cancel,
+                scratch_root=self._directory(self.state_root / "queue-checks"),
+            )
+            if mode == "migrate"
+            else None
+        )
+        plan["source_queue"] = public_queue(plan["options"], observed_queue)
+        queue_blocked = bool(
+            observed_queue and observed_queue["count"] and not omit_queue
+        )
+        if queue_blocked:
+            plan["blockers"].append(empty_queue_message(observed_queue["count"]))
         try:
             compatibility_auth_environment(target_service)
         except ValueError as error:
@@ -1420,20 +1499,26 @@ class InfiniDyskV2MigrationManager:
             from utils.infinidysk_v2_space_control import preflight_reuse
 
             plan["options"]["reclaim_source_space"] = True
-            try:
-                report(
-                    "checking_reuse",
-                    "Checking local storage reuse and retained source files.",
-                )
-                with reporter.scan(
-                    "reuse_eligibility",
-                    "Checking local storage reuse and retained source files.",
-                ) as measured:
-                    preflight_reuse(
-                        plan, check_cancel=reporter.check_cancel, progress=measured
+            if not queue_blocked:
+                try:
+                    report(
+                        "checking_reuse",
+                        "Checking local storage reuse and retained source files.",
                     )
-            except (ValueError, OSError, BackupStorageError, InventoryError) as error:
-                plan["blockers"].append(str(error))
+                    with reporter.scan(
+                        "reuse_eligibility",
+                        "Checking local storage reuse and retained source files.",
+                    ) as measured:
+                        preflight_reuse(
+                            plan, check_cancel=reporter.check_cancel, progress=measured
+                        )
+                except (
+                    ValueError,
+                    OSError,
+                    BackupStorageError,
+                    InventoryError,
+                ) as error:
+                    plan["blockers"].append(str(error))
         if offload:
             plan["options"]["offload_legacy_blobs"] = True
             if not (plan.get("backup_storage") or {}).get("artifact_root"):
@@ -1525,6 +1610,8 @@ class InfiniDyskV2MigrationManager:
                     plan["plan_fingerprint"] = _digest(binding)
         plan["capacity"] = _unavailable_capacity()
         try:
+            if queue_blocked:
+                return plan
             report(
                 "checking_capacity",
                 "Measuring retained source files and available migration storage.",
@@ -1609,7 +1696,11 @@ class InfiniDyskV2MigrationManager:
                 "supported_mount_backends": ["rclone", "fuse"],
                 "job": latest,
                 "blocking_job_count": len(blocking),
-                "capabilities": {"external_blob_staging": True, "async_preview": True},
+                "capabilities": {
+                    "external_blob_staging": True,
+                    "async_preview": True,
+                    "queue_omission": True,
+                },
                 "preview_task": self._preview_controller().status()["task"],
                 "eligibility": {"ready": not blockers, "blockers": blockers},
             }
@@ -1711,6 +1802,7 @@ class InfiniDyskV2MigrationManager:
                     }
                 ),
                 "source_storage": copy.deepcopy(plan["source_storage"]),
+                "source_queue": copy.deepcopy(plan["source_queue"]),
                 "capacity": copy.deepcopy(plan["capacity"]),
                 "checks": [
                     {
@@ -1720,8 +1812,16 @@ class InfiniDyskV2MigrationManager:
                     },
                     {
                         "name": "source_queue",
-                        "status": "must_be_empty_after_quiescence",
-                        "message": "Finish or review queued download tasks in InfiniDysk 1 before rehearsal. Failed history entries alone do not block this check; DUMB does not delete Arr history or library files.",
+                        "status": (
+                            "omitted_from_private_input"
+                            if plan["options"].get("omit_queued_downloads")
+                            else "must_be_empty_after_quiescence"
+                        ),
+                        "message": (
+                            "Queued downloads will be left out of the private v2 import input. Original v1 queue records and all history remain retained."
+                            if plan["options"].get("omit_queued_downloads")
+                            else "Finish queued download tasks or choose to leave them out of v2. Completed and failed history is preserved; DUMB does not delete source queue tasks."
+                        ),
                     },
                     {"name": "contained_native_import", "status": "required"},
                 ],
@@ -1924,6 +2024,7 @@ class InfiniDyskV2MigrationManager:
                         "rollback_requires_archive": False,
                     }
                 ),
+                "source_queue": copy.deepcopy(plan.get("source_queue")),
                 "reviewed_skip_digest": (reviewed_report or {}).get("review_digest"),
                 "reviewed_omission_proof": reviewed_proof,
                 "status": "queued",
@@ -2052,11 +2153,126 @@ class InfiniDyskV2MigrationManager:
                     f"{name} is still running; no source snapshot was taken."
                 )
 
-    def _source_schema(self, database):
+    def _check_source_queue(self, job):
+        plan = job["plan"]
+        if plan["mode"] != "migrate":
+            return None
+        self._assert_stopped(plan)
+        self._check_cancel(job)
+        self._progress(
+            job,
+            "checking_queue",
+            "Checking the stopped download queue before the migration backup.",
+        )
+        try:
+            observed = inspect_queue(
+                plan,
+                captured=True,
+                check=lambda: self._check_cancel(job),
+                scratch_root=self._directory(self.state_root / "queue-checks"),
+            )
+        except QueueInputError as error:
+            raise InfiniDyskV2MigrationError(str(error)) from None
+        except (OSError, sqlite3.Error):
+            raise InfiniDyskV2MigrationError(
+                "The stopped InfiniDysk 1 download queue could not be verified; no source tasks were changed."
+            ) from None
+        previous = job.get("cold_queue")
+        if previous and not queue_matches(previous, observed):
+            raise InfiniDyskV2MigrationError(
+                "The stopped source download queue changed before capture; source tasks were retained."
+            )
+        job["cold_queue"] = observed
+        job["source_queue"] = public_queue(plan["options"], observed, captured=True)
+        self._progress(
+            job,
+            "checking_queue",
+            "Verified the stopped source download queue before database backup or source copying.",
+        )
+        if observed["count"] and not plan["options"].get("omit_queued_downloads"):
+            raise InfiniDyskV2MigrationError(empty_queue_message(observed["count"]))
+        return observed
+
+    def _prepare_import_database(self, job):
+        if not job["plan"]["options"].get("omit_queued_downloads"):
+            return None
+        workspace = self._workspace(job)
+        snapshot = job.get("snapshot") or {}
+        source = Path(snapshot["source_database"])
+        candidate = Path(workspace["candidate_data"])
+        root = self._directory(Path(workspace["root"]))
+        source_bytes = source.stat().st_size
+        wal = Path(str(source) + "-wal")
+        if wal.exists():
+            source_bytes += wal.stat().st_size
+        _capacity_check(_queue_input_allocations(root, candidate, source_bytes))
+        self._progress(
+            job,
+            "preparing_import_database",
+            "Preparing a separate queue-free v2 input. Original v1 queued downloads and history remain retained.",
+        )
+        receipt = create_import_input(
+            source,
+            root / "native-import-no-queue.sqlite",
+            job["cold_queue"],
+            check=lambda: self._assert_job_owner(job),
+            progress=lambda stage, message, **detail: self._progress(
+                job, stage, message, **detail
+            ),
+        )
+        self._stage_candidate_database(
+            candidate,
+            root / "native-import-no-queue.sqlite",
+            snapshot["candidate_identity"],
+        )
+        job["queue_input"] = receipt
+        job["source_queue"] = public_queue(
+            job["plan"]["options"],
+            job["cold_queue"],
+            captured=True,
+            omitted=receipt["omitted_count"],
+        )
+        self._write(self._job_path(job["job_id"]), job)
+        return receipt
+
+    def _verify_queue_input(self, job):
+        if not job["plan"]["options"].get("omit_queued_downloads"):
+            return None
+        snapshot = job.get("snapshot") or {}
+        verify_import_input(
+            snapshot["source_database"],
+            Path(self._workspace(job)["candidate_data"]) / "db.sqlite",
+            job.get("queue_input") or {},
+            check=lambda: self._assert_job_owner(job),
+        )
+        job["queue_input_verified"] = True
+        self._write(self._job_path(job["job_id"]), job)
+        return True
+
+    def _source_schema(
+        self, database, *, allow_queued=False, expected_queue=None, check=None
+    ):
         value = database.lstat()
         if not stat.S_ISREG(value.st_mode) or value.st_nlink != 1:
             raise InfiniDyskV2MigrationError(
                 "The captured source database must be a direct regular file."
+            )
+        descriptor = os.open(database, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        try:
+            header = os.read(descriptor, 20)
+        finally:
+            os.close(descriptor)
+        if (
+            header[:16] != b"SQLite format 3\x00"
+            or header[18:20] != b"\x01\x01"
+            or any(
+                Path(str(database) + suffix).exists()
+                or Path(str(database) + suffix).is_symlink()
+                for suffix in ("-wal", "-shm", "-journal")
+            )
+        ):
+            raise InfiniDyskV2MigrationError(
+                "The captured source database must be closed and standalone; retain its original WAL backup."
             )
         with closing(
             sqlite3.connect(f"file:{quote(str(database))}?mode=ro", uri=True)
@@ -2069,8 +2285,15 @@ class InfiniDyskV2MigrationManager:
                 raise InfiniDyskV2MigrationError(
                     "The captured source schema is older than the v1.3 import floor."
                 )
-            queued = connection.execute("SELECT COUNT(*) FROM QueueItems").fetchone()[0]
-            if queued:
+            queue = sqlite_queue(
+                connection, identities=expected_queue is not None, check=check
+            )
+            queued = queue["count"]
+            if expected_queue is not None and not queue_matches(expected_queue, queue):
+                raise InfiniDyskV2MigrationError(
+                    "The captured download queue changed after the stopped-source check; source tasks were retained."
+                )
+            if queued and not allow_queued:
                 raise InfiniDyskV2MigrationError(
                     f"The captured InfiniDysk 1 download queue contains {queued} item(s). "
                     "Finish or explicitly remove those download tasks using InfiniDysk or the Arr download-client controls, then rehearse again. "
@@ -2102,13 +2325,15 @@ class InfiniDyskV2MigrationManager:
                 )
             counts = {}
             for name in names:
+                if check is not None:
+                    check()
                 quoted = str(name).replace('"', '""')
                 counts[str(name)] = connection.execute(
                     f'SELECT COUNT(*) FROM "{quoted}"'
                 ).fetchone()[0]
         return {
             "terminal_migration": terminal,
-            "queue_count": 0,
+            "queue_count": queued,
             "oidc_configured": oidc,
             "tables": counts,
             "database_path": str(database),
@@ -2179,6 +2404,8 @@ class InfiniDyskV2MigrationManager:
                 raise InfiniDyskV2MigrationError(
                     "An original source root changed before capture."
                 )
+        if not job.get("cold_queue"):
+            self._check_source_queue(job)
         self._copy_capacity(plan, postgres_snapshot=postgres_snapshot)
         self._progress(
             job, "snapshotting", "Retaining the complete original v1 data and runtime."
@@ -2195,6 +2422,46 @@ class InfiniDyskV2MigrationManager:
             job.pop("capture_lease", None)
             self._write(self._job_path(job["job_id"]), job)
         return copy.deepcopy(snapshot)
+
+    def _closed_source_database(self, job, source, root):
+        source_bytes = sum(
+            path.stat().st_size
+            for path in (
+                source,
+                Path(str(source) + "-wal"),
+                Path(str(source) + "-journal"),
+            )
+            if path.exists()
+        )
+        _capacity_check([(root, source_bytes * 2 + 64 * 1024**2, "local_verification")])
+        database = root / "source-database.sqlite"
+        descriptor = os.open(
+            database, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600
+        )
+        os.close(descriptor)
+        check = lambda: self._assert_job_owner(job)
+        self._progress(
+            job,
+            "snapshotting",
+            "Creating a closed original database for native verification; the raw retained v1 tree stays unchanged.",
+        )
+        with _private_sqlite_copy(source, check=check, scratch_root=root) as temporary:
+            with (
+                closing(
+                    sqlite3.connect(f"file:{quote(str(temporary))}?mode=ro", uri=True)
+                ) as original,
+                closing(sqlite3.connect(database)) as closed,
+            ):
+                original.backup(closed, pages=128, progress=lambda *_: check())
+                closed.execute("PRAGMA journal_mode=DELETE")
+                if closed.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
+                    raise InfiniDyskV2MigrationError(
+                        "The closed original source database did not validate."
+                    )
+        with database.open("rb") as handle:
+            os.fsync(handle.fileno())
+        check()
+        return database
 
     def _capture_local_trees(self, job, workspace, postgres_snapshot=None):
         plan = job["plan"]
@@ -2247,6 +2514,8 @@ class InfiniDyskV2MigrationManager:
         schema = None
         if plan["mode"] == "migrate":
             database = data_snapshot / "db.sqlite"
+            if plan["source"]["provider"] == "sqlite":
+                database = self._closed_source_database(job, database, root)
             if plan["source"]["provider"] in {"postgres", "postgresql"}:
                 receipt = postgres_snapshot or {}
                 if (
@@ -2269,7 +2538,12 @@ class InfiniDyskV2MigrationManager:
                         "PostgreSQL backup artifacts are outside this private job."
                     )
                 database = staged
-            schema = self._source_schema(database)
+            schema = self._source_schema(
+                database,
+                allow_queued=plan["options"].get("omit_queued_downloads") is True,
+                expected_queue=job.get("cold_queue"),
+                check=lambda: self._assert_job_owner(job),
+            )
         candidate = Path(workspace["candidate_data"])
         _path(candidate.parent)
         candidate.parent.mkdir(parents=True, exist_ok=True)
@@ -2279,7 +2553,7 @@ class InfiniDyskV2MigrationManager:
         shutil.copytree(data_snapshot, candidate, symlinks=True, dirs_exist_ok=True)
         os.chmod(candidate, 0o700)
         candidate_identity = _identity(candidate)
-        if schema and plan["source"]["provider"] in {"postgres", "postgresql"}:
+        if schema:
             self._stage_candidate_database(candidate, database, candidate_identity)
         snapshot = {
             "candidate_identity": candidate_identity,
@@ -2288,7 +2562,7 @@ class InfiniDyskV2MigrationManager:
             "runtime_snapshot": copied[plan["source"]["runtime_dir"]],
             "config_backup": workspace["config_backup"],
             "source_schema": schema,
-            "source_database": str(data_snapshot / "db.sqlite") if schema else None,
+            "source_database": str(database) if schema else None,
             "original_fingerprints": originals,
             "snapshot_fingerprint": _digest(originals),
             "postgres_snapshot": postgres_snapshot,
@@ -2496,7 +2770,12 @@ class InfiniDyskV2MigrationManager:
                 with database.open("rb") as handle:
                     os.fsync(handle.fileno())
                 shutil.rmtree(raw)
-            schema = self._source_schema(database)
+            schema = self._source_schema(
+                database,
+                allow_queued=plan["options"].get("omit_queued_downloads") is True,
+                expected_queue=job.get("cold_queue"),
+                check=lambda: self._assert_job_owner(job),
+            )
             extras["source-database.sqlite"] = database
         storage = get_backup_storage(self.config_manager)
         archived = create_retained_archive(
@@ -2578,7 +2857,7 @@ class InfiniDyskV2MigrationManager:
         if snapshot.get("space_recovery"):
             snapshot["space_recovery"]["native_mutations_authorized"] = True
             self._write(self._job_path(job["job_id"]), job)
-        if schema and plan["source"]["provider"] in {"postgres", "postgresql"}:
+        if schema:
             self._stage_candidate_database(candidate, database, candidate_identity)
         if plan["options"].get("offload_legacy_blobs"):
             from utils.infinidysk_v2_blob_staging import ExternalBlobStaging
@@ -2592,6 +2871,14 @@ class InfiniDyskV2MigrationManager:
         return snapshot
 
     def _validate_receipt(self, job, receipt):
+        if job["plan"]["options"].get("omit_queued_downloads") and (
+            receipt.get("queue_omission_verified") is not True
+            or job.get("queue_input_verified") is not True
+            or not job.get("queue_input")
+        ):
+            raise InfiniDyskV2MigrationError(
+                "The native import did not verify its separate queue-free working input."
+            )
         required = (
             "execution_verified",
             "isolation_verified",
@@ -2894,6 +3181,11 @@ class InfiniDyskV2MigrationManager:
         workspace["capture_source"] = lambda postgres_snapshot=None: self._capture(
             job, workspace, postgres_snapshot
         )
+        workspace["check_source_queue"] = lambda: self._check_source_queue(job)
+        workspace["prepare_import_database"] = lambda: self._prepare_import_database(
+            job
+        )
+        workspace["verify_queue_input"] = lambda: self._verify_queue_input(job)
         workspace["accept_import"] = lambda receipt: self._accept(job, receipt)
         workspace["record_import_report"] = (
             lambda raw, diagnostics=None: self._record_import_report(

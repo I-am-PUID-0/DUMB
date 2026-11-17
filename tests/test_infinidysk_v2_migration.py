@@ -337,12 +337,14 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
         self.assertIn("skipped", job["error"])
         self.assertEqual("1", self.config.config["infinidysk"]["runtime_generation"])
 
-    def test_queue_revalidated_from_quiesced_snapshot_before_native_import(self):
+    def test_queue_revalidated_before_services_stop_or_native_import(self):
         _, request = self.preview_request()
         with sqlite3.connect(self.source / "db.sqlite") as db:
             db.execute("INSERT INTO QueueItems VALUES(1)")
         job = self.wait(self.manager.rehearse(request))
-        self.assertEqual("failed_restored", job["status"])
+        self.assertEqual("failed", job["status"])
+        self.assertTrue(job["result"]["source_untouched"])
+        self.assertEqual([], self.executor.calls)
         self.assertIn("queue", job["error"])
         self.assertIn("1 item(s)", job["error"])
         self.assertIn("did not delete", job["error"])
@@ -994,10 +996,10 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
         capacity = plan["capacity"]
         self.assertEqual(
             sum(row["base_required_bytes"] for row in capacity["filesystems"]),
-            2 * source_bytes
-            + MAX_TREE_MANIFEST_BYTES
-            + 2 * database_bytes
-            + max(64 * 1024**2, database_bytes * 3, source_bytes),
+            2 * source_bytes + MAX_TREE_MANIFEST_BYTES
+            # A private WAL read clone and closed original database coexist;
+            # candidate publication also retains its existing DB allowance.
+            + 3 * database_bytes + max(64 * 1024**2, database_bytes * 3, source_bytes),
         )
         self.assertEqual(capacity["source"]["root_count"], 1)
         self.assertEqual(capacity["source"]["entries"], 350_000)
@@ -1492,8 +1494,17 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
             return {**receipt, "source_restored": True}
 
         self.executor.rehearse = rehearse
-        _, request = self.archive_request()
-        job = self.wait(self.manager.rehearse(request))
+        with patch(
+            "utils.infinidysk_v2_migration.inspect_queue",
+            return_value={
+                "count": 0,
+                "ids_xor": "0" * 64,
+                "ids_sum": "0" * 64,
+                "observed_at": 1,
+            },
+        ):
+            _, request = self.archive_request()
+            job = self.wait(self.manager.rehearse(request))
         self.assertEqual(job["status"], "rehearsed", job)
         private = self.manager._read(self.manager._job_path(job["job_id"]))
         snapshot = private["snapshot"]
@@ -1900,7 +1911,7 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
                     private = child.manager._read(
                         child.manager._job_path(job["job_id"])
                     )
-                    self.assertNotIn("omitted", json.dumps(private))
+                    self.assertNotIn('"omitted":', json.dumps(private))
                     self.assertNotIn("omission_proof_ref", job)
                 finally:
                     child.tearDown()
