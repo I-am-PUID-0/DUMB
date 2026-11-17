@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.5">
+    <meta name="dumb-docs-package-version" content="1.25.6">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="fc39f625e5c9e3dc86946ac19d241a4897c3d058">
-    <meta name="dumb-docs-release-tag" content="1.25.5">
+    <meta name="dumb-docs-build-commit" content="ced8db0df4ce9264112a4cc62552428ba5916333">
+    <meta name="dumb-docs-release-tag" content="1.25.6">
   
 
     
@@ -6535,6 +6535,12 @@ then checks the actual available local space again before import. Preview's
 projected release is an estimate, not free space already available to use.
 The importer reads that expanded legacy input without changing it while writing
 the new v2 database locally.</p>
+<p>Copying, preparing access permissions, reading back the staged files, checking
+the retained local input and releasing the verified local files are separate
+steps. A completed copy does not mean its readback has finished. Network storage
+can spend substantial time checking many small files even after all bytes have
+been transferred. DUMB can read the input and archive again at later verification
+boundaries; keep the share available until the job reaches its confirmed result.</p>
 <p>The recovery archive and expanded input have different jobs: the archive can
 restore v1, while the expanded files let the importer read individual legacy
 blobs. DUMB needs space for both on the share. Moving only the archive does not
@@ -6660,6 +6666,17 @@ estimate is unavailable. Later copying, database checks, native import and v1
 recovery have separate work, so this estimate does not predict the whole test's
 finish time. Older backends show their existing stage and message without a
 scan estimate.</p>
+<p>Supporting builds also show bytes or entries processed for the current archive,
+input-copy, verification or restoration pass, with measured pace and approximate
+time remaining when available. Archive writing can use an estimated total;
+archive readback and restoration use the retained archive's size. Each new pass
+starts its own counters and estimate. These numbers do not predict the whole
+test or migration's finish time, and reaching the byte total does not establish
+that integrity checks or service recovery have passed.</p>
+<p>An unknown total, a new or stale measurement, or work exceeding an earlier
+estimate can leave time remaining unavailable. A test can still need a lengthy
+v1 restoration after native import or a failure. Wait for the terminal result
+rather than treating the end of copying as completion.</p>
 <p>For PostgreSQL source snapshots and verification, supporting builds show the
 current phase and observed table or row counts when available. These describe
 database preparation, not how many media files have migrated. Stages without a
@@ -6701,7 +6718,11 @@ that the worker stopped.</p>
 </table>
 <p>A failed test does not become a successful test because v1 was restored.
 Likewise, a retained archive or an available rollback control does not by itself
-mean that recovery is running. Follow the job's result and reported error.</p>
+mean that recovery is running. Follow the job's result and reported error.
+A failed input check can identify the source or staged copy, entry type, changed
+metadata fields and a digest reference without exposing the original path.
+Preserve that reference and the job evidence when reporting a failure; do not
+change timestamps, move files or delete retained input to make a check pass.</p>
 <p>Bulk migration work has <strong>no fixed overall time limit</strong>. Large file copies,
 PostgreSQL dump and restore verification, and native import can take longer on
 slow local or network storage. DUMB does not stop a running worker just because
@@ -7121,11 +7142,11 @@ separate existing workflows.</p>
     
     <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
       
-        <span>Documentation release 1.25.5</span>
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.5">Release notes</a>
+        <span>Documentation release 1.25.6</span>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.6">Release notes</a>
       
       
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;fc39f625e5c9e3dc86946ac19d241a4897c3d058" title="Documentation source commit fc39f625e5c9e3dc86946ac19d241a4897c3d058">Source fc39f625</a>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;ced8db0df4ce9264112a4cc62552428ba5916333" title="Documentation source commit ced8db0df4ce9264112a4cc62552428ba5916333">Source ced8db0d</a>
       
       
     </div>

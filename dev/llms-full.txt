@@ -2,7 +2,7 @@
 
 > Channel: dev. Canonical base: https://dumbarr.com/dev/
 
-Documentation artifact: release 1.25.5. Source commit: fc39f625e5c9e3dc86946ac19d241a4897c3d058. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.5.
+Documentation artifact: release 1.25.6. Source commit: ced8db0df4ce9264112a4cc62552428ba5916333. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.6.
 
 DUMB coordinates media services. Match instructions to the installed backend version. Development guides can describe features absent from the latest release.
 
@@ -1962,6 +1962,54 @@ scan progress, not status polling. These fields never authorize skipping source,
 capacity, cancellation or recovery checks and do not predict the entire test
 or migration duration. Older jobs can omit the object. Preview tasks can also
 expose these bounded observations; unknown totals leave their estimate null.
+
+Supporting builds can also expose optional `io_progress` for an existing copy,
+archive or verification pass. Its fixed fields are `phase_id`, `phase`, `unit`,
+`processed`, nullable `total`, `total_is_estimate`, `elapsed_seconds`,
+nullable `rate_per_second` and `estimated_remaining_seconds`, `updated_at` and
+`complete`. Counts and timestamps are nonnegative integers; a rate is finite and
+positive in the selected unit per second. `phase_id` is opaque and changes for
+each pass, including repeated checks of the same archive or input.
+
+| `phase` | Outer `stage` | `unit` |
+| --- | --- | --- |
+| `source_fingerprint` | `snapshotting` | `bytes` |
+| `archive_inventory` | `archive_inventory` | `entries` |
+| `archive_write` | `archiving` | `bytes` |
+| `archive_readback`, `archive_recheck` | `verifying_archive` | `bytes` |
+| `archive_restore` | `restoring_archive` | `bytes` |
+| `restore_metadata` | `restoring_metadata` | `entries` |
+| `restore_verify` | `verifying_restored_source` | `bytes` |
+| `blob_copy` | `staging_blobs` | `bytes` |
+| `blob_metadata` | `preparing_blob_staging` | `entries` |
+| `blob_verify_staged` | `verifying_blob_staging` | `bytes` |
+| `blob_verify_source` | `verifying_blob_staging` | `entries` |
+| `blob_release` | `releasing_local_blobs` | `entries` |
+| `blob_verify_input` | `verifying_blob_input` | `bytes` |
+| `blob_cleanup` | `cleaning_blob_staging` | `entries` |
+
+Archive writing estimates physical output from the existing manifest and tar
+metadata; `total_is_estimate` distinguishes it from an exact archive-size bound
+used for readback or restoration. Counters observe the existing operation
+without another scan or read solely for progress.
+
+These observations describe the current pass, not overall completion or
+acceptance. Clients must require a confirmed active job and matching outer stage,
+and suppress rate/ETA for completed, stale or mismatched observations. Pace needs
+at least ten seconds in the phase and measured progress; observations older than
+30 seconds are stale.
+Unknown totals cannot provide remaining time; an overrun suppresses the estimate.
+Status polling does not refresh `updated_at`. Byte completion alone is not
+verified integrity, successful restoration or permission to start services.
+Older jobs can omit this object.
+
+A failed input check can expose optional `input_integrity` with authored `code`
+equal to `recorded_entry_changed` or `input_content_mismatch`, `side` equal to
+`source` or `staged`, `entry_type` equal to `file`, `directory` or `other`, and a
+64-character lowercase hexadecimal `path_digest`. `changed_fields` contains only
+`dev`, `inode`, `mode`, `size`, `mtime_ns`, `ctime_ns`, `nlink` or `sha256`.
+Raw paths and expected/actual values are not public fields. The digest helps
+correlate private evidence; it does not authorize retry, cleanup or acceptance.
 
 Supporting builds additionally expose optional `snapshot_progress`. Its bounded
 fields can include `phase`, `restore_phase`, `table`, `table_index`, `table_count`,
@@ -11875,6 +11923,13 @@ projected release is an estimate, not free space already available to use.
 The importer reads that expanded legacy input without changing it while writing
 the new v2 database locally.
 
+Copying, preparing access permissions, reading back the staged files, checking
+the retained local input and releasing the verified local files are separate
+steps. A completed copy does not mean its readback has finished. Network storage
+can spend substantial time checking many small files even after all bytes have
+been transferred. DUMB can read the input and archive again at later verification
+boundaries; keep the share available until the job reaches its confirmed result.
+
 The recovery archive and expanded input have different jobs: the archive can
 restore v1, while the expanded files let the importer read individual legacy
 blobs. DUMB needs space for both on the share. Moving only the archive does not
@@ -12019,6 +12074,19 @@ recovery have separate work, so this estimate does not predict the whole test's
 finish time. Older backends show their existing stage and message without a
 scan estimate.
 
+Supporting builds also show bytes or entries processed for the current archive,
+input-copy, verification or restoration pass, with measured pace and approximate
+time remaining when available. Archive writing can use an estimated total;
+archive readback and restoration use the retained archive's size. Each new pass
+starts its own counters and estimate. These numbers do not predict the whole
+test or migration's finish time, and reaching the byte total does not establish
+that integrity checks or service recovery have passed.
+
+An unknown total, a new or stale measurement, or work exceeding an earlier
+estimate can leave time remaining unavailable. A test can still need a lengthy
+v1 restoration after native import or a failure. Wait for the terminal result
+rather than treating the end of copying as completion.
+
 For PostgreSQL source snapshots and verification, supporting builds show the
 current phase and observed table or row counts when available. These describe
 database preparation, not how many media files have migrated. Stages without a
@@ -12037,6 +12105,10 @@ that the worker stopped.
 A failed test does not become a successful test because v1 was restored.
 Likewise, a retained archive or an available rollback control does not by itself
 mean that recovery is running. Follow the job's result and reported error.
+A failed input check can identify the source or staged copy, entry type, changed
+metadata fields and a digest reference without exposing the original path.
+Preserve that reference and the job evidence when reporting a failure; do not
+change timestamps, move files or delete retained input to make a check pass.
 
 Bulk migration work has **no fixed overall time limit**. Large file copies,
 PostgreSQL dump and restore verification, and native import can take longer on

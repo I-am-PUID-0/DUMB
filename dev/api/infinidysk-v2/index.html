@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.5">
+    <meta name="dumb-docs-package-version" content="1.25.6">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="fc39f625e5c9e3dc86946ac19d241a4897c3d058">
-    <meta name="dumb-docs-release-tag" content="1.25.5">
+    <meta name="dumb-docs-build-commit" content="ced8db0df4ce9264112a4cc62552428ba5916333">
+    <meta name="dumb-docs-release-tag" content="1.25.6">
   
 
     
@@ -6493,6 +6493,114 @@ scan progress, not status polling. These fields never authorize skipping source,
 capacity, cancellation or recovery checks and do not predict the entire test
 or migration duration. Older jobs can omit the object. Preview tasks can also
 expose these bounded observations; unknown totals leave their estimate null.</p>
+<p>Supporting builds can also expose optional <code>io_progress</code> for an existing copy,
+archive or verification pass. Its fixed fields are <code>phase_id</code>, <code>phase</code>, <code>unit</code>,
+<code>processed</code>, nullable <code>total</code>, <code>total_is_estimate</code>, <code>elapsed_seconds</code>,
+nullable <code>rate_per_second</code> and <code>estimated_remaining_seconds</code>, <code>updated_at</code> and
+<code>complete</code>. Counts and timestamps are nonnegative integers; a rate is finite and
+positive in the selected unit per second. <code>phase_id</code> is opaque and changes for
+each pass, including repeated checks of the same archive or input.</p>
+<table>
+<thead>
+<tr>
+<th><code>phase</code></th>
+<th>Outer <code>stage</code></th>
+<th><code>unit</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>source_fingerprint</code></td>
+<td><code>snapshotting</code></td>
+<td><code>bytes</code></td>
+</tr>
+<tr>
+<td><code>archive_inventory</code></td>
+<td><code>archive_inventory</code></td>
+<td><code>entries</code></td>
+</tr>
+<tr>
+<td><code>archive_write</code></td>
+<td><code>archiving</code></td>
+<td><code>bytes</code></td>
+</tr>
+<tr>
+<td><code>archive_readback</code>, <code>archive_recheck</code></td>
+<td><code>verifying_archive</code></td>
+<td><code>bytes</code></td>
+</tr>
+<tr>
+<td><code>archive_restore</code></td>
+<td><code>restoring_archive</code></td>
+<td><code>bytes</code></td>
+</tr>
+<tr>
+<td><code>restore_metadata</code></td>
+<td><code>restoring_metadata</code></td>
+<td><code>entries</code></td>
+</tr>
+<tr>
+<td><code>restore_verify</code></td>
+<td><code>verifying_restored_source</code></td>
+<td><code>bytes</code></td>
+</tr>
+<tr>
+<td><code>blob_copy</code></td>
+<td><code>staging_blobs</code></td>
+<td><code>bytes</code></td>
+</tr>
+<tr>
+<td><code>blob_metadata</code></td>
+<td><code>preparing_blob_staging</code></td>
+<td><code>entries</code></td>
+</tr>
+<tr>
+<td><code>blob_verify_staged</code></td>
+<td><code>verifying_blob_staging</code></td>
+<td><code>bytes</code></td>
+</tr>
+<tr>
+<td><code>blob_verify_source</code></td>
+<td><code>verifying_blob_staging</code></td>
+<td><code>entries</code></td>
+</tr>
+<tr>
+<td><code>blob_release</code></td>
+<td><code>releasing_local_blobs</code></td>
+<td><code>entries</code></td>
+</tr>
+<tr>
+<td><code>blob_verify_input</code></td>
+<td><code>verifying_blob_input</code></td>
+<td><code>bytes</code></td>
+</tr>
+<tr>
+<td><code>blob_cleanup</code></td>
+<td><code>cleaning_blob_staging</code></td>
+<td><code>entries</code></td>
+</tr>
+</tbody>
+</table>
+<p>Archive writing estimates physical output from the existing manifest and tar
+metadata; <code>total_is_estimate</code> distinguishes it from an exact archive-size bound
+used for readback or restoration. Counters observe the existing operation
+without another scan or read solely for progress.</p>
+<p>These observations describe the current pass, not overall completion or
+acceptance. Clients must require a confirmed active job and matching outer stage,
+and suppress rate/ETA for completed, stale or mismatched observations. Pace needs
+at least ten seconds in the phase and measured progress; observations older than
+30 seconds are stale.
+Unknown totals cannot provide remaining time; an overrun suppresses the estimate.
+Status polling does not refresh <code>updated_at</code>. Byte completion alone is not
+verified integrity, successful restoration or permission to start services.
+Older jobs can omit this object.</p>
+<p>A failed input check can expose optional <code>input_integrity</code> with authored <code>code</code>
+equal to <code>recorded_entry_changed</code> or <code>input_content_mismatch</code>, <code>side</code> equal to
+<code>source</code> or <code>staged</code>, <code>entry_type</code> equal to <code>file</code>, <code>directory</code> or <code>other</code>, and a
+64-character lowercase hexadecimal <code>path_digest</code>. <code>changed_fields</code> contains only
+<code>dev</code>, <code>inode</code>, <code>mode</code>, <code>size</code>, <code>mtime_ns</code>, <code>ctime_ns</code>, <code>nlink</code> or <code>sha256</code>.
+Raw paths and expected/actual values are not public fields. The digest helps
+correlate private evidence; it does not authorize retry, cleanup or acceptance.</p>
 <p>Supporting builds additionally expose optional <code>snapshot_progress</code>. Its bounded
 fields can include <code>phase</code>, <code>restore_phase</code>, <code>table</code>, <code>table_index</code>, <code>table_count</code>,
 <code>rows</code>, <code>elapsed_seconds</code>, <code>idle_seconds</code> and <code>stall_warning</code>. These are observations
@@ -6748,11 +6856,11 @@ cannot be confirmed, and disable actions until a valid current response returns.
     
     <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
       
-        <span>Documentation release 1.25.5</span>
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.5">Release notes</a>
+        <span>Documentation release 1.25.6</span>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.6">Release notes</a>
       
       
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;fc39f625e5c9e3dc86946ac19d241a4897c3d058" title="Documentation source commit fc39f625e5c9e3dc86946ac19d241a4897c3d058">Source fc39f625</a>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;ced8db0df4ce9264112a4cc62552428ba5916333" title="Documentation source commit ced8db0df4ce9264112a4cc62552428ba5916333">Source ced8db0d</a>
       
       
     </div>
