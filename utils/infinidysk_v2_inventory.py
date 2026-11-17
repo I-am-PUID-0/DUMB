@@ -84,6 +84,7 @@ def iter_tree(
     role="Source",
     include_identity=False,
     reject_hardlinks=False,
+    progress=None,
 ):
     """Yield every descendant without following links or collecting directory lists."""
     root = Path(path)
@@ -136,7 +137,13 @@ def iter_tree(
                         f"{role} contains a hard-linked file; local storage reuse requires independent files."
                     )
                 if content:
-                    row["sha256"] = _content_hash(entry.name, directory_fd, value)
+                    row["sha256"] = (
+                        _content_hash(entry.name, directory_fd, value)
+                        if progress is None
+                        else _content_hash(
+                            entry.name, directory_fd, value, progress=progress
+                        )
+                    )
             elif stat.S_ISDIR(value.st_mode):
                 if depth + 1 > MAX_TREE_DEPTH:
                     raise InventoryError(
@@ -211,7 +218,9 @@ def tree_summary(
     return summary
 
 
-def tree_fingerprint(path, *, scratch_root, validate_links=False, role="Source"):
+def tree_fingerprint(
+    path, *, scratch_root, validate_links=False, role="Source", progress=None
+):
     """Stream the exact legacy sorted JSON-array digest using private disk ordering."""
     root = Path(path).resolve()
     scratch = Path(scratch_root).resolve()
@@ -241,9 +250,12 @@ def tree_fingerprint(path, *, scratch_root, validate_links=False, role="Source")
                     "CREATE TABLE manifest (path BLOB PRIMARY KEY, row BLOB NOT NULL) "
                     "WITHOUT ROWID"
                 )
+                options = {"content": True, "role": role}
+                if progress is not None:
+                    options["progress"] = progress
                 with (
                     connection,
-                    closing(iter_tree(path, content=True, role=role)) as entries,
+                    closing(iter_tree(path, **options)) as entries,
                 ):
                     for row in entries:
                         if validate_links:

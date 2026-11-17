@@ -24,6 +24,8 @@ from urllib.parse import quote
 
 from utils.config_loader import CONFIG_MANAGER
 from utils.infinidysk_migration_admission import INFINIDYSK_MIGRATION_ADMISSION_LOCK
+from utils.infinidysk_v2_io_progress import IOProgress, public_io_progress
+from utils.infinidysk_v2_input_integrity import public_input_integrity
 from utils.infinidysk_v2_scan_progress import (
     MetadataScanProgress,
     metadata_progress,
@@ -151,11 +153,16 @@ def _source_summary(
         raise InfiniDyskV2MigrationError(str(error)) from error
 
 
-def _source_fingerprint(path, *, scratch_root, validate_links=False, role="Source"):
+def _source_fingerprint(
+    path, *, scratch_root, validate_links=False, role="Source", progress=None
+):
     try:
-        return tree_fingerprint(
-            path, scratch_root=scratch_root, validate_links=validate_links, role=role
+        options = dict(
+            scratch_root=scratch_root, validate_links=validate_links, role=role
         )
+        if progress is not None:
+            options["progress"] = progress
+        return tree_fingerprint(path, **options)
     except InventoryError as error:
         raise InfiniDyskV2MigrationError(str(error)) from error
 
@@ -587,6 +594,20 @@ class InfiniDyskV2MigrationManager:
         )
         if scan is not None:
             public["scan_progress"] = scan
+        io = public_io_progress(
+            (
+                (job.get("execution") or {}).get("io_progress")
+                if isinstance(job.get("execution"), dict)
+                else None
+            ),
+            active=state in ACTIVE,
+            stage=job.get("stage"),
+        )
+        if io is not None:
+            public["io_progress"] = io
+        integrity = public_input_integrity(job.get("input_integrity"))
+        if integrity is not None:
+            public["input_integrity"] = integrity
         execution = job.get("execution")
         if not isinstance(execution, dict):
             execution = {}
@@ -2093,6 +2114,35 @@ class InfiniDyskV2MigrationManager:
             "database_path": str(database),
         }
 
+    def _fingerprint(self, job, source, **options):
+        capacity = job["plan"].get("capacity") or {}
+        summary = capacity.get("source") or {}
+        total = None
+        for row in summary.get("roots") or []:
+            if not isinstance(row, dict):
+                continue
+            if str(source) == job["plan"]["source"].get(row.get("role")):
+                candidate = row.get("logical_bytes")
+                if type(candidate) is int and candidate >= 0:
+                    total = candidate
+        if total is None and summary.get("root_count") == 1:
+            candidate = summary.get("logical_bytes")
+            if type(candidate) is int and candidate >= 0:
+                total = candidate
+        telemetry = IOProgress(
+            lambda stage, message, **detail: self._progress(
+                job, stage, message, **detail
+            ),
+            "source_fingerprint",
+            total=total,
+            total_is_estimate=total is not None,
+            check=lambda: self._assert_job_owner(job),
+            message="Reading retained source content to verify its complete fingerprint.",
+        )
+        result = _source_fingerprint(source, progress=telemetry.add, **options)
+        telemetry.finish()
+        return result
+
     def _capture(self, job, workspace, postgres_snapshot=None):
         with self._lock:
             if job.get("snapshot") or job.get("capture_lease"):
@@ -2169,7 +2219,8 @@ class InfiniDyskV2MigrationManager:
                     raise InfiniDyskV2MigrationError(
                         "A retained snapshot path is already occupied."
                     )
-                originals[str(source)] = _source_fingerprint(
+                originals[str(source)] = self._fingerprint(
+                    job,
                     source,
                     scratch_root=root,
                     validate_links=label == "data",
@@ -2177,7 +2228,8 @@ class InfiniDyskV2MigrationManager:
                 )
                 shutil.copytree(source, destination, symlinks=True)
                 if (
-                    _source_fingerprint(
+                    self._fingerprint(
+                        job,
                         destination,
                         scratch_root=root,
                         validate_links=label == "data",
@@ -2317,7 +2369,8 @@ class InfiniDyskV2MigrationManager:
         for key in ("data_dir", "runtime_dir"):
             source = plan["source"][key]
             if source not in originals:
-                originals[source] = _source_fingerprint(
+                originals[source] = self._fingerprint(
+                    job,
                     source,
                     scratch_root=root,
                     validate_links=source == plan["source"]["data_dir"],
@@ -2451,7 +2504,9 @@ class InfiniDyskV2MigrationManager:
             workspace,
             storage,
             originals,
-            progress=lambda stage, message=None: self._progress(job, stage, message),
+            progress=lambda stage, message=None, **detail: self._progress(
+                job, stage, message, **detail
+            ),
             extra_files=extras,
             owner_check=owner_check,
         )
@@ -2460,7 +2515,8 @@ class InfiniDyskV2MigrationManager:
         # before they can enter an unbacked candidate or native conversion.
         for source, fingerprint in originals.items():
             if (
-                _source_fingerprint(
+                self._fingerprint(
+                    job,
                     source,
                     scratch_root=root,
                     validate_links=source == plan["source"]["data_dir"],
@@ -2513,7 +2569,7 @@ class InfiniDyskV2MigrationManager:
             candidate_identity=candidate_identity,
         )
         if (
-            _source_fingerprint(candidate, scratch_root=root, validate_links=True)
+            self._fingerprint(job, candidate, scratch_root=root, validate_links=True)
             != originals[plan["source"]["data_dir"]]
         ):
             raise InfiniDyskV2MigrationError(
@@ -2683,7 +2739,8 @@ class InfiniDyskV2MigrationManager:
             ):
                 continue
             if (
-                _source_fingerprint(
+                self._fingerprint(
+                    job,
                     source,
                     scratch_root=snapshot["source_snapshot"],
                     validate_links=source == job["plan"]["source"]["data_dir"],

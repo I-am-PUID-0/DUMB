@@ -12,7 +12,7 @@ from pathlib import Path
 import shutil
 import sqlite3
 import stat
-import time
+import tempfile
 from urllib.parse import quote
 
 from utils.backup_storage import _directory, get_backup_storage
@@ -22,6 +22,8 @@ from utils.infinidysk_v2_inventory import (
     iter_tree,
 )
 from utils.infinidysk_v2_space_control import identity
+from utils.infinidysk_v2_io_progress import IOProgress
+from utils.infinidysk_v2_input_integrity import FIELDS, input_change, integrity_message
 
 NAMESPACE = "infinidysk-v2-input"
 
@@ -40,6 +42,79 @@ def _stamp(value):
         value.st_ctime_ns,
         value.st_nlink,
     ]
+
+
+def _matches_staged(value, wanted, *, cifs=False):
+    actual = _stamp(value)
+    if not isinstance(wanted, list) or len(wanted) != len(FIELDS):
+        raise ValueError("The retained migration input stamp is invalid.")
+    return all(
+        current == expected
+        for index, (current, expected) in enumerate(zip(actual, wanted))
+        if not (cifs and index == 5)
+    )
+
+
+def _readable(value, uid, gid):
+    required = stat.S_IRUSR | (stat.S_IXUSR if stat.S_ISDIR(value.st_mode) else 0)
+    if value.st_uid == uid:
+        return value.st_mode & required == required
+    required >>= 3
+    if value.st_gid == gid:
+        return value.st_mode & required == required
+    required >>= 3
+    return value.st_mode & required == required
+
+
+def _prepare_metadata(descriptor, uid, gid, *, allowed, staged_cifs):
+    value = os.fstat(descriptor)
+    try:
+        # Shared CIFS can expose fixed owner/mode bits. Do not issue futile
+        # permission RPCs when the explicitly accepted policy already works.
+        if not (allowed and staged_cifs and _readable(value, uid, gid)):
+            if (value.st_uid, value.st_gid) != (uid, gid):
+                os.fchown(descriptor, uid, gid)
+            mode = 0o700 if stat.S_ISDIR(value.st_mode) else 0o600
+            if stat.S_IMODE(value.st_mode) != mode:
+                os.fchmod(descriptor, mode)
+    except PermissionError:
+        if not allowed:
+            raise
+    value = os.fstat(descriptor)
+    if not allowed and (
+        (value.st_uid, value.st_gid) != (uid, gid)
+        or stat.S_IMODE(value.st_mode)
+        != (0o700 if stat.S_ISDIR(value.st_mode) else 0o600)
+    ):
+        raise ValueError(
+            "Private staged input ownership or permissions could not be applied."
+        )
+    if not _readable(value, uid, gid):
+        raise ValueError("The contained importer cannot read staged legacy input.")
+    return value
+
+
+@contextmanager
+def _verification_ledger(private):
+    # Temporary, bounded controller-local evidence carries the exact fresh
+    # hash/read stamp to cleanup; historical CIFS ctime is never a deletion proof.
+    with tempfile.TemporaryDirectory(
+        prefix=".input-verified-", dir=private
+    ) as temporary:
+        path = Path(temporary) / "verified.sqlite"
+        descriptor = os.open(
+            path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600
+        )
+        os.close(descriptor)
+        with closing(sqlite3.connect(path)) as database:
+            database.execute("PRAGMA journal_mode=OFF")
+            database.execute("PRAGMA synchronous=OFF")
+            database.execute("PRAGMA cache_size=-2048")
+            database.execute(f"PRAGMA max_page_count={MAX_TREE_MANIFEST_BYTES // 4096}")
+            database.execute(
+                "CREATE TABLE verified(path BLOB PRIMARY KEY,stamp BLOB NOT NULL) WITHOUT ROWID"
+            )
+            yield database
 
 
 def _mount(descriptor):
@@ -229,7 +304,63 @@ class ExternalBlobStaging:
             raise ValueError("The verified migration input manifest changed.")
         return sqlite3.connect(f"file:{quote(str(path))}?mode=ro&immutable=1", uri=True)
 
-    def _verify_tree(self, job, root, database, *, stage, check, content=True):
+    def _io(self, job, phase, *, total, check):
+        messages = {
+            "blob_copy": "Copying legacy input to the migration backup location.",
+            "blob_metadata": "Preparing access to copied legacy input. No local input has been freed.",
+            "blob_verify_staged": "Reading back every copied legacy input file before freeing local files.",
+            "blob_verify_source": "Checking that local legacy input stayed unchanged during its copy.",
+            "blob_release": "Freeing only the verified local legacy input files.",
+            "blob_verify_input": "Reading back the verified legacy input used by the isolated importer.",
+            "blob_cleanup": "Removing only freshly verified temporary legacy input.",
+        }
+        publish = self.manager._progress
+        if job.get("status") == "rolling_back" or getattr(
+            self.manager, "_rollback_active", False
+        ):
+            publish = getattr(self.manager, "_recovery_progress", publish)
+        return IOProgress(
+            lambda stage, message, **fields: publish(job, stage, message, **fields),
+            phase,
+            total=total,
+            check=check,
+            message=messages[phase],
+        )
+
+    def _changed(self, job, relative, value, wanted, *, stage, content=False):
+        changed = (
+            ["sha256"]
+            if content
+            else [
+                name
+                for name, actual, expected in zip(FIELDS, _stamp(value), wanted)
+                if actual != expected
+            ]
+        )
+        evidence = input_change(
+            relative,
+            value.st_mode,
+            staged=stage,
+            changed_fields=changed,
+            content=content,
+        )
+        job["input_integrity"] = evidence
+        self._save(job)
+        raise ValueError(integrity_message(evidence))
+
+    def _verify_tree(
+        self,
+        job,
+        root,
+        database,
+        *,
+        stage,
+        check,
+        content=True,
+        staged_cifs=False,
+        phase=None,
+        on_verified=None,
+    ):
         record = job["snapshot"]["external_blob_staging"]
         expected_identity = (
             record["blobs_identity"] if stage else record["source_identity"]
@@ -246,13 +377,19 @@ class ExternalBlobStaging:
                 raise ValueError(
                     "The verified migration input root changed while opening it."
                 )
+        expected_count = database.execute("SELECT COUNT(*) FROM entries").fetchone()[0]
+        telemetry = self._io(
+            job,
+            phase or ("blob_verify_staged" if stage else "blob_verify_source"),
+            total=record["logical_bytes"] if stage and content else expected_count,
+            check=check,
+        )
         count = 0
         with closing(
             iter_tree(root, include_identity=True, reject_hardlinks=True)
         ) as rows:
             for row in rows:
                 check()
-                count += 1
                 found = database.execute(
                     "SELECT payload,source,staged FROM entries WHERE path=?",
                     (os.fsencode(row["path"]),),
@@ -271,8 +408,15 @@ class ExternalBlobStaging:
                 ) as (parent, name):
                     value = os.stat(name, dir_fd=parent, follow_symlinks=False)
                     wanted = staged_stamp if stage else source_stamp
-                    if _stamp(value) != wanted:
-                        raise ValueError("A recorded migration input file changed.")
+                    # CIFS may refresh ctime from server creation/change metadata
+                    # after chmod/chown. It is not a stable historical token.
+                    # All other fields remain exact, and every staged file is
+                    # fully hashed with an exact fresh within-open stamp.
+                    if not _matches_staged(
+                        value, wanted, cifs=stage and staged_cifs and content
+                    ):
+                        self._changed(job, row["path"], value, wanted, stage=stage)
+                    observed = _stamp(value)
                     if stat.S_ISREG(value.st_mode) and content:
                         descriptor = os.open(
                             name,
@@ -280,28 +424,49 @@ class ExternalBlobStaging:
                             dir_fd=parent,
                         )
                         try:
-                            if _stamp(os.fstat(descriptor)) != wanted:
-                                raise ValueError(
-                                    "Migration input changed while opening it."
+                            opened = os.fstat(descriptor)
+                            if _stamp(opened) != observed:
+                                self._changed(
+                                    job, row["path"], opened, observed, stage=stage
                                 )
                             digest = hashlib.sha256()
                             while chunk := os.read(descriptor, 1024 * 1024):
                                 check()
                                 digest.update(chunk)
-                            if (
-                                _stamp(os.fstat(descriptor)) != wanted
-                                or digest.hexdigest() != payload["sha256"]
-                            ):
-                                raise ValueError(
-                                    "Migration input content did not verify."
+                                telemetry.add(len(chunk))
+                            finished = os.fstat(descriptor)
+                            if _stamp(finished) != observed:
+                                self._changed(
+                                    job, row["path"], finished, observed, stage=stage
+                                )
+                            current = os.stat(
+                                name, dir_fd=parent, follow_symlinks=False
+                            )
+                            if _stamp(current) != observed:
+                                self._changed(
+                                    job, row["path"], current, observed, stage=stage
+                                )
+                            if digest.hexdigest() != payload["sha256"]:
+                                self._changed(
+                                    job,
+                                    row["path"],
+                                    current,
+                                    observed,
+                                    stage=stage,
+                                    content=True,
                                 )
                         finally:
                             os.close(descriptor)
-        expected_count = database.execute("SELECT COUNT(*) FROM entries").fetchone()[0]
+                    if on_verified is not None:
+                        on_verified(os.fsencode(row["path"]), observed)
+                count += 1
+                if not stage or not content:
+                    telemetry.update(count)
         if count != expected_count:
             raise ValueError("Migration input files disappeared after verification.")
         if identity(root) != expected_identity:
             raise ValueError("Migration input root changed during verification.")
+        telemetry.finish()
 
     def prepare(self, job, workspace, snapshot, owner_check):
         plan = job["plan"]
@@ -319,7 +484,15 @@ class ExternalBlobStaging:
         self._check(job, owner_check)
         self.manager._assert_stopped(plan)
         storage, bound = self._storage(job)
-        verify_retained_archive(snapshot, plan, storage)
+        verify_retained_archive(
+            snapshot,
+            plan,
+            storage,
+            progress=lambda stage, message, **detail: self.manager._progress(
+                job, stage, message, **detail
+            ),
+            owner_check=lambda: self._check(job, owner_check),
+        )
         source = Path(workspace["candidate_data"]) / "blobs"
         summary = blob_summary(source)
         require_external_filesystem(source, bound["artifact_root"])
@@ -352,20 +525,11 @@ class ExternalBlobStaging:
         job["snapshot"] = snapshot
         self._save(job)
         uid, gid = self.manager.executor._execution_ids()
-        last = float("-inf")
         copied = 0
+        copied_entries = 0
 
         def check():
             self._check(job, owner_check)
-
-        def progress(stage, message):
-            nonlocal last
-            check()
-            now = time.monotonic()
-            if now - last >= 1:
-                record["copied_bytes"] = copied
-                self.manager._progress(job, stage, message)
-                last = now
 
         with storage._lease(bound["destination_id"], NAMESPACE, create=True) as (
             _profile,
@@ -427,6 +591,12 @@ class ExternalBlobStaging:
                 )
                 record["state"] = "copying"
                 self._save(job)
+                copying = self._io(
+                    job,
+                    "blob_copy",
+                    total=summary["logical_bytes"],
+                    check=lambda: (check(), lease_check()),
+                )
                 with closing(
                     iter_tree(source, include_identity=True, reject_hardlinks=True)
                 ) as rows:
@@ -505,10 +675,8 @@ class ExternalBlobStaging:
                                             digest.update(chunk)
                                             amount += len(chunk)
                                             copied += len(chunk)
-                                            progress(
-                                                "staging_blobs",
-                                                "Copying legacy input to the migration backup location.",
-                                            )
+                                            record["copied_bytes"] = copied
+                                            copying.add(len(chunk))
                                         os.fsync(dst)
                                         if (
                                             amount != value.st_size
@@ -536,10 +704,28 @@ class ExternalBlobStaging:
                                 _json(staged_stamp),
                             ),
                         )
+                        copied_entries += 1
                         if copied > summary["logical_bytes"]:
                             raise ValueError(
                                 "Legacy input grew after its space estimate."
                             )
+                if (
+                    copied != summary["logical_bytes"]
+                    or copied_entries != summary["entries"]
+                ):
+                    raise ValueError(
+                        "Legacy input changed since its complete space inventory; no local input was freed."
+                    )
+                record["copied_bytes"] = copied
+                copying.finish()
+                metadata = self._io(
+                    job,
+                    "blob_metadata",
+                    total=summary["entries"],
+                    check=lambda: (check(), lease_check()),
+                )
+                metadata_count = 0
+                staged_cifs = bound.get("filesystem_type") == "cifs"
                 # Make only the staged tree readable to the contained configured
                 # user. The registered namespace remains controller-owned.
                 for relative, recorded in database.execute(
@@ -559,30 +745,27 @@ class ExternalBlobStaging:
                         )
                         try:
                             value = os.fstat(descriptor)
-                            if _stamp(value)[:3] != json.loads(recorded)[:3]:
+                            metadata.update(metadata_count)
+                            original = json.loads(recorded)
+                            if (
+                                stat.S_ISDIR(value.st_mode)
+                                and _stamp(value)[:3] != original[:3]
+                            ) or (
+                                not stat.S_ISDIR(value.st_mode)
+                                and not _matches_staged(
+                                    value, original, cifs=staged_cifs
+                                )
+                            ):
                                 raise ValueError(
                                     "A staged input entry was replaced before metadata preparation."
                                 )
-                            try:
-                                os.fchown(descriptor, uid, gid)
-                                os.fchmod(
-                                    descriptor,
-                                    0o700 if stat.S_ISDIR(value.st_mode) else 0o600,
-                                )
-                            except PermissionError:
-                                if not allowed:
-                                    raise
-                            value = os.fstat(descriptor)
-                            if not (
-                                (value.st_uid == uid and value.st_mode & stat.S_IRUSR)
-                                or (
-                                    value.st_gid == gid and value.st_mode & stat.S_IRGRP
-                                )
-                                or value.st_mode & stat.S_IROTH
-                            ):
-                                raise ValueError(
-                                    "The contained importer cannot read staged legacy input."
-                                )
+                            value = _prepare_metadata(
+                                descriptor,
+                                uid,
+                                gid,
+                                allowed=allowed,
+                                staged_cifs=staged_cifs,
+                            )
                             if _stamp(
                                 os.stat(name, dir_fd=parent, follow_symlinks=False)
                             ) != _stamp(value):
@@ -595,6 +778,9 @@ class ExternalBlobStaging:
                             )
                         finally:
                             os.close(descriptor)
+                    metadata_count += 1
+                    metadata.update(metadata_count)
+                metadata.finish()
                 with _directory(directory / "blobs") as blobs_fd:
                     value = os.fstat(blobs_fd)
                     if {
@@ -603,12 +789,9 @@ class ExternalBlobStaging:
                         "mode": stat.S_IFMT(value.st_mode),
                     } != record["blobs_identity"]:
                         raise ValueError("The staged input root was replaced.")
-                    try:
-                        os.fchown(blobs_fd, uid, gid)
-                        os.fchmod(blobs_fd, 0o700)
-                    except PermissionError:
-                        if not allowed:
-                            raise
+                    _prepare_metadata(
+                        blobs_fd, uid, gid, allowed=allowed, staged_cifs=staged_cifs
+                    )
                     os.fsync(blobs_fd)
                 database.commit()
                 self.manager._progress(
@@ -617,10 +800,20 @@ class ExternalBlobStaging:
                     "Reading back the complete staged legacy input before freeing local files.",
                 )
                 self._verify_tree(
-                    job, directory / "blobs", database, stage=True, check=check
+                    job,
+                    directory / "blobs",
+                    database,
+                    stage=True,
+                    check=lambda: (check(), lease_check()),
+                    staged_cifs=staged_cifs,
                 )
                 self._verify_tree(
-                    job, source, database, stage=False, check=check, content=False
+                    job,
+                    source,
+                    database,
+                    stage=False,
+                    check=lambda: (check(), lease_check()),
+                    content=False,
                 )
             with manifest.open("rb") as handle:
                 os.fsync(handle.fileno())
@@ -632,11 +825,26 @@ class ExternalBlobStaging:
             self._save(job)
             lease_check()
             # Reverify the archive immediately before any local file is removed.
-            verify_retained_archive(snapshot, plan, storage)
+            verify_retained_archive(
+                snapshot,
+                plan,
+                storage,
+                progress=lambda stage, message, **detail: self.manager._progress(
+                    job, stage, message, **detail
+                ),
+                owner_check=check,
+            )
             self.manager._assert_stopped(plan)
             record["state"] = "releasing"
             self._save(job)
             before_free = shutil.disk_usage(source).free
+            releasing = self._io(
+                job,
+                "blob_release",
+                total=summary["entries"],
+                check=lambda: (check(), lease_check()),
+            )
+            release_count = 0
             with closing(self._database(job, record, check)) as database:
                 for relative, payload, original in database.execute(
                     "SELECT path,payload,source FROM entries ORDER BY length(path) DESC,path DESC"
@@ -674,10 +882,9 @@ class ExternalBlobStaging:
                                 "A local legacy input was replaced by a link."
                             )
                         os.fsync(parent)
-                    progress(
-                        "releasing_local_blobs",
-                        "Freeing only the verified local legacy input files.",
-                    )
+                    release_count += 1
+                    releasing.update(release_count)
+            releasing.finish()
             record.update(
                 state="released",
                 released_bytes=min(
@@ -690,7 +897,7 @@ class ExternalBlobStaging:
             return directory / "blobs"
 
     def verify(self, job, owner_check=None):
-        record, storage, _bound = self._record(job)
+        record, storage, bound = self._record(job)
         if record.get("state") not in {"released", "verified"}:
             raise ValueError("External migration input is not completely verified.")
         check = lambda: self._check(job, owner_check)
@@ -707,7 +914,9 @@ class ExternalBlobStaging:
                     Path(record["directory"]) / "blobs",
                     database,
                     stage=True,
-                    check=check,
+                    check=lambda: (check(), lease_check()),
+                    staged_cifs=bound.get("filesystem_type") == "cifs",
+                    phase="blob_verify_input",
                 )
             lease_check()
         return Path(record["directory"]) / "blobs"
@@ -716,7 +925,7 @@ class ExternalBlobStaging:
         record = (job.get("snapshot") or {}).get("external_blob_staging")
         if not record or record.get("state") == "cleaned":
             return
-        record, storage, _bound = self._record(job)
+        record, storage, bound = self._record(job)
         check = lambda: self._check(job, owner_check)
         # Never walk an unrecorded or changed tree during cleanup.
         with storage._lease(record["destination_id"], NAMESPACE) as (
@@ -725,14 +934,32 @@ class ExternalBlobStaging:
             lease_check,
             _allowed,
         ):
-            with closing(self._database(job, record, check)) as database:
+            with (
+                closing(self._database(job, record, check)) as database,
+                _verification_ledger(
+                    Path(self.manager._workspace(job)["root"])
+                ) as verified,
+            ):
                 self._verify_tree(
                     job,
                     Path(record["directory"]) / "blobs",
                     database,
                     stage=True,
-                    check=check,
+                    check=lambda: (check(), lease_check()),
+                    staged_cifs=bound.get("filesystem_type") == "cifs",
+                    phase="blob_verify_input",
+                    on_verified=lambda path, stamp: verified.execute(
+                        "INSERT INTO verified VALUES (?,?)", (path, _json(stamp))
+                    ),
                 )
+                verified.commit()
+                cleaning = self._io(
+                    job,
+                    "blob_cleanup",
+                    total=record["entries"],
+                    check=lambda: (check(), lease_check()),
+                )
+                cleaned_count = 0
                 root = Path(record["directory"]) / "blobs"
                 for relative, staged in database.execute(
                     "SELECT path,staged FROM entries ORDER BY length(path) DESC,path DESC"
@@ -747,7 +974,14 @@ class ExternalBlobStaging:
                         column="staged",
                     ) as (parent, name):
                         value = os.stat(name, dir_fd=parent, follow_symlinks=False)
-                        expected = json.loads(staged)
+                        fresh = verified.execute(
+                            "SELECT stamp FROM verified WHERE path=?", (relative,)
+                        ).fetchone()
+                        if fresh is None:
+                            raise ValueError(
+                                "A staged input entry has no fresh cleanup verification."
+                            )
+                        expected = json.loads(fresh[0])
                         if stat.S_ISDIR(value.st_mode):
                             if _stamp(value)[:3] != expected[:3]:
                                 raise ValueError(
@@ -761,6 +995,8 @@ class ExternalBlobStaging:
                                 "A staged input file was replaced before cleanup."
                             )
                         os.fsync(parent)
+                    cleaned_count += 1
+                    cleaning.update(cleaned_count)
                 stage_fd = os.open(
                     job["job_id"],
                     os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
@@ -782,5 +1018,6 @@ class ExternalBlobStaging:
                     os.close(stage_fd)
                 os.rmdir(job["job_id"], dir_fd=namespace)
                 os.fsync(namespace)
+                cleaning.finish()
             record["state"] = "cleaned"
             self._save(job)

@@ -22,6 +22,7 @@ from utils.infinidysk_v2_archive import (
     create_retained_archive,
     verify_retained_archive,
 )
+from utils.infinidysk_v2_io_progress import IOProgress
 from utils.infinidysk_v2_inventory import tree_fingerprint
 
 
@@ -104,6 +105,93 @@ class ColdArchiveTests(unittest.TestCase):
         self.assertTrue(proof["verified"])
         self.assertEqual(fingerprints, proof["original_fingerprints"])
         return snapshot
+
+    def test_transfer_counters_match_real_archive_bytes_without_an_extra_walk(self):
+        unusual = self.source / "content" / ("long-" * 30 + "\u00e9")
+        unusual.write_bytes(b"payload" * 500)
+        os.utime(unusual, ns=(-1, -1))
+        fingerprints = self._fingerprints()
+        events = []
+        original = archive_module.iter_tree
+        with patch.object(archive_module, "iter_tree", wraps=original) as traversals:
+            result = create_retained_archive(
+                self.plan,
+                self.workspace,
+                self.storage,
+                fingerprints,
+                progress=lambda stage, message, **detail: events.append(
+                    detail["io_progress"]
+                ),
+            )
+        self.assertEqual(2, traversals.call_count)
+        complete = {item["phase"]: item for item in events if item["complete"]}
+        size = result["receipt"]["size_bytes"]
+        self.assertEqual(size, complete["archive_write"]["processed"])
+        self.assertEqual(size, complete["archive_write"]["total"])
+        self.assertTrue(complete["archive_write"]["total_is_estimate"])
+        self.assertEqual(size, complete["archive_readback"]["processed"])
+        self.assertEqual(size, complete["archive_readback"]["total"])
+        self.assertNotEqual(
+            complete["archive_write"]["phase_id"],
+            complete["archive_readback"]["phase_id"],
+        )
+        snapshot = {
+            "source_snapshot": str(self.scratch),
+            "original_fingerprints": fingerprints,
+            "archive_roots": result["archive_roots"],
+            "cold_archive": result["receipt"],
+        }
+        verify_retained_archive(
+            snapshot,
+            self.plan,
+            self.storage,
+            progress=lambda stage, message, **detail: events.append(
+                detail["io_progress"]
+            ),
+        )
+        final = events[-1]
+        self.assertEqual("archive_recheck", final["phase"])
+        self.assertEqual(size, final["processed"])
+        self.assertTrue(final["complete"])
+
+    def test_cancellation_during_transfer_publishes_no_archive(self):
+        (self.source / "large").write_bytes(b"x" * (3 * 1024 * 1024))
+        fingerprints = self._fingerprints()
+        cancelled = False
+        ticks = 0
+
+        def clock():
+            nonlocal ticks
+            ticks += 2
+            return ticks
+
+        def check():
+            if cancelled:
+                raise RuntimeError("cancel during archive stream")
+
+        def report(stage, message, **detail):
+            nonlocal cancelled
+            value = detail["io_progress"]
+            if value["phase"] == "archive_write" and value["processed"] > 0:
+                cancelled = True
+
+        self.workspace["check_cancel"] = check
+
+        def measured(*args, **kwargs):
+            return IOProgress(*args, **kwargs, monotonic=clock)
+
+        with patch.object(archive_module, "IOProgress", side_effect=measured):
+            with self.assertRaisesRegex(RuntimeError, "cancel during archive stream"):
+                create_retained_archive(
+                    self.plan,
+                    self.workspace,
+                    self.storage,
+                    fingerprints,
+                    progress=report,
+                )
+        self.assertFalse(list(self.destination.rglob("*.tar")))
+        self.assertFalse(list(self.destination.rglob("*.partial")))
+        self.assertEqual(fingerprints, self._fingerprints())
 
     def test_archived_postgres_dump_must_match_the_independent_restore_receipt(self):
         dump = self.scratch / "v1-postgres.dump"

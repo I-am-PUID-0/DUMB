@@ -13,6 +13,7 @@ import tarfile
 import tempfile
 
 from utils.backup_storage import _directory, require_local_path
+from utils.infinidysk_v2_io_progress import IOProgress, ProgressReader, ProgressWriter
 from utils.infinidysk_v2_inventory import (
     MAX_TREE_ENTRIES,
     MAX_TREE_MANIFEST_BYTES,
@@ -258,7 +259,7 @@ def _record_from_header(info, digest=None):
     return record
 
 
-def _verify_stream(handle, scratch, roots, fingerprints):
+def _verify_stream(handle, scratch, roots, fingerprints, *, check=None):
     allowed_metadata = {
         "metadata/roots.json",
         "metadata/extras/config.json",
@@ -278,6 +279,8 @@ def _verify_stream(handle, scratch, roots, fingerprints):
             errors="surrogateescape",
         ) as archive:
             while (info := archive.next()) is not None:
+                if check is not None:
+                    check()
                 archive.members.clear()
                 _safe_name(info.name)
                 if info.sparse is not None:
@@ -301,6 +304,8 @@ def _verify_stream(handle, scratch, roots, fingerprints):
                         raise ArchiveError("The archive manifest could not be read.")
                     with stream:
                         while raw := stream.readline(MAX_RECORD_BYTES + 2):
+                            if check is not None:
+                                check()
                             if len(raw) > MAX_RECORD_BYTES + 1 or not raw.endswith(
                                 b"\n"
                             ):
@@ -423,7 +428,9 @@ def _verify_stream(handle, scratch, roots, fingerprints):
     }
 
 
-def verify_retained_archive(snapshot, plan, storage):
+def verify_retained_archive(
+    snapshot, plan, storage, *, progress=None, owner_check=None
+):
     receipt = snapshot.get("cold_archive") or {}
     if receipt.get("verified") is not True or receipt.get("extension") != "tar":
         raise ArchiveError("No verified cold archive is retained for this job.")
@@ -432,9 +439,18 @@ def verify_retained_archive(snapshot, plan, storage):
     fingerprints = snapshot.get("original_fingerprints") or {}
     if not roots or set(roots) != set(fingerprints):
         raise ArchiveError("The retained archive source binding is incomplete.")
+    measured = IOProgress(
+        progress,
+        "archive_recheck",
+        total=receipt["size_bytes"],
+        check=owner_check,
+        message="Reading and verifying the retained recovery archive.",
+    )
     with storage.open_artifact(receipt["reference"]) as handle:
-        reader = _DigestReader(handle)
-        proof = _verify_stream(reader, scratch, roots, fingerprints)
+        reader = _DigestReader(ProgressReader(handle, measured))
+        proof = _verify_stream(
+            reader, scratch, roots, fingerprints, check=measured.check
+        )
         while reader.read(1024 * 1024):
             pass
         if (
@@ -463,6 +479,7 @@ def verify_retained_archive(snapshot, plan, storage):
             raise ArchiveError(
                 "The archived PostgreSQL dump does not match its verified independent restore proof."
             )
+    measured.finish()
     return {
         **proof,
         "archive_sha256": receipt["sha256"],
@@ -603,9 +620,50 @@ def create_retained_archive(
     if set(extras) - allowed:
         raise ArchiveError("The archive contains an unexpected local artifact.")
     report = progress or (lambda *args, **kwargs: None)
+    written_size = None
+
+    def check():
+        if owner_check is not None:
+            owner_check()
+        cancel = workspace.get("check_cancel")
+        if callable(cancel):
+            cancel()
 
     def producer(handle):
+        nonlocal written_size
+        previous = (plan.get("capacity") or {}).get("source") or {}
+        total = previous.get("entries")
+        if type(total) is not int or total < 0:
+            total = None
+        inventory = IOProgress(
+            report,
+            "archive_inventory",
+            total=total,
+            total_is_estimate=True,
+            check=check,
+            message="Recording the files included in the recovery archive.",
+        )
+        count = predicted_bytes = footer_bytes = 0
         with _manifest(scratch) as database:
+
+            def record_entry(record, **kwargs):
+                nonlocal count, predicted_bytes, footer_bytes
+                _insert(database, record, **kwargs)
+                # Estimate the actual uncompressed tar stream from this existing
+                # inventory. No second filesystem walk or content read is needed.
+                predicted = dict(record)
+                if stat.S_ISREG(record["mode"]):
+                    predicted["sha256"] = "0" * 64
+                header = _header(record).tobuf(
+                    tarfile.PAX_FORMAT, encoding="utf-8", errors="surrogateescape"
+                )
+                predicted_bytes += len(header)
+                if stat.S_ISREG(record["mode"]):
+                    predicted_bytes += (record["size"] + 511) // 512 * 512
+                footer_bytes += len(_json(predicted)) + 1
+                count += 1
+                inventory.update(count)
+
             for source, key in roots.items():
                 path = Path(source)
                 try:
@@ -625,7 +683,7 @@ def create_retained_archive(
                         "source_key": key,
                         "relative": "",
                     }
-                    _insert(database, root_record)
+                    record_entry(root_record)
                     continue
                 expected_root = _root_identity(plan, source)
                 if expected_root is not None and (
@@ -649,7 +707,7 @@ def create_retained_archive(
                 )
                 expected = list(_stamp(value))
                 expected[3] = 0
-                _insert(database, root_record, source=source, expected=expected)
+                record_entry(root_record, source=source, expected=expected)
                 with closing(iter_tree(source, include_identity=True)) as rows:
                     for row in rows:
                         record = _portable_record(
@@ -658,8 +716,7 @@ def create_retained_archive(
                             key=key,
                             relative=row["path"],
                         )
-                        _insert(
-                            database,
+                        record_entry(
                             record,
                             source=str(path / row["path"]),
                             expected=_expected_row(row),
@@ -673,9 +730,7 @@ def create_retained_archive(
                 record = _portable_record(
                     f"metadata/extras/{label}", _metadata_row(value)
                 )
-                _insert(
-                    database, record, source=str(path), expected=list(_stamp(value))
-                )
+                record_entry(record, source=str(path), expected=list(_stamp(value)))
             roots_payload = _json(
                 {
                     "format": FORMAT,
@@ -692,13 +747,40 @@ def create_retained_archive(
                 "size": len(roots_payload),
                 "sha256": hashlib.sha256(roots_payload).hexdigest(),
             }
-            _insert(database, roots_record)
-            report(
-                "archiving",
-                "Writing the complete retained v1 archive to the selected mounted storage.",
+            record_entry(roots_record)
+            inventory.finish()
+            predicted_footer = {
+                "name": FOOTER,
+                "mode": stat.S_IFREG | 0o600,
+                "mtime_ns": 0,
+                "uid": 0,
+                "gid": 0,
+                "size": footer_bytes,
+            }
+            predicted_bytes += (
+                len(
+                    _header(predicted_footer).tobuf(
+                        tarfile.PAX_FORMAT, encoding="utf-8", errors="surrogateescape"
+                    )
+                )
+                + (footer_bytes + 511) // 512 * 512
+                + 1024
+            )
+            predicted_bytes = (
+                (predicted_bytes + tarfile.RECORDSIZE - 1)
+                // tarfile.RECORDSIZE
+                * tarfile.RECORDSIZE
+            )
+            measured = IOProgress(
+                report,
+                "archive_write",
+                total=predicted_bytes,
+                total_is_estimate=True,
+                check=check,
+                message="Writing the recovery archive to the selected storage.",
             )
             with tarfile.open(
-                fileobj=handle,
+                fileobj=ProgressWriter(handle, measured),
                 mode="w|",
                 bufsize=1024 * 1024,
                 copybufsize=1024 * 1024,
@@ -797,13 +879,26 @@ def create_retained_archive(
                     "size": length,
                 }
                 _add(archive, footer, _Lines(database))
+            written_size = measured.processed
+            measured.finish()
 
     def verifier(handle):
-        report(
-            "verifying_archive",
-            "Reading back and verifying every retained archive member and source fingerprint.",
+        measured = IOProgress(
+            report,
+            "archive_readback",
+            total=written_size,
+            check=check,
+            message="Reading back and verifying the completed recovery archive.",
         )
-        return _verify_stream(handle, scratch, roots, fingerprints)
+        result = _verify_stream(
+            ProgressReader(handle, measured),
+            scratch,
+            roots,
+            fingerprints,
+            check=measured.check,
+        )
+        measured.finish()
+        return result
 
     receipt = storage.write_file(
         destination,
