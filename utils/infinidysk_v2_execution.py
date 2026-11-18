@@ -41,6 +41,7 @@ from utils.infinidysk_v2_runtime import (
 from utils.private_files import atomic_write_private_text
 from utils.infinidysk_v2_rehearsal_cleanup import discard_rehearsal_candidate
 from utils.infinidysk_v2_nntp import NntpBridge, NntpBridgeError, read_source_providers
+from utils.infinidysk_v2_provider_diagnostics import sanitize_provider_diagnostics
 from utils.infinidysk_v2_pg_snapshot import (
     InfiniDyskV2PostgresSnapshotError,
     create_postgres_snapshot,
@@ -135,6 +136,7 @@ class NativeCandidate:
         timeout=30 * 60,
         check_cancel=None,
         record_report=None,
+        record_provider_diagnostics=None,
         external_blobs=None,
     ):
         self.service, self.candidate, self.private = (
@@ -145,6 +147,7 @@ class NativeCandidate:
         self.uid, self.gid, self.timeout = uid, gid, timeout
         self.check_cancel = check_cancel or (lambda: None)
         self.record_report = record_report or (lambda *args: None)
+        self.record_provider_diagnostics = record_provider_diagnostics
         self.process = None
         self.stopped = False
         self.output = None
@@ -251,9 +254,37 @@ class NativeCandidate:
             if self.output is not None:
                 self.output.close()
             self.payload_path.unlink(missing_ok=True)
-            if self.nntp_bridge is not None:
-                self.nntp_bridge.close()
+            self._close_provider_bridge()
             raise
+
+    def _checkpoint_provider_diagnostics(self, *, final=False):
+        bridge = getattr(self, "nntp_bridge", None)
+        record = getattr(self, "record_provider_diagnostics", None)
+        if bridge is None or not callable(record):
+            return
+        safe = sanitize_provider_diagnostics(bridge.stats.get("provider_diagnostics"))
+        if safe is not None:
+            record(safe, final=final)
+
+    def _close_provider_bridge(self):
+        bridge = getattr(self, "nntp_bridge", None)
+        if bridge is None:
+            return
+        try:
+            bridge.close()
+        except BaseException:
+            # A diagnostic write must not hide uncertain provider-worker cleanup.
+            try:
+                self._checkpoint_provider_diagnostics()
+            except Exception:
+                pass
+            raise
+        # This also runs in __exit__'s finally block. Optional observations must
+        # never replace an authoritative native-writer cleanup failure.
+        try:
+            self._checkpoint_provider_diagnostics(final=True)
+        except Exception:
+            pass
 
     def probe(self, path):
         if self.process.poll() is not None:
@@ -341,6 +372,7 @@ class NativeCandidate:
                 if not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_-]{0,63}", stage):
                     stage = "importing"
             if changed or now - last_published >= 2:
+                self._checkpoint_provider_diagnostics()
                 safe = {"stage": stage, "elapsed_seconds": int(now - started)}
                 for public, alternatives in (
                     ("processed", ("processed", "done", "current", "files_done")),
@@ -455,9 +487,13 @@ class NativeCandidate:
                 ) from None
             raise
         finally:
-            bridge = getattr(self, "nntp_bridge", None)
-            if bridge is not None:
-                bridge.close()
+            cleanup_failure = sys.exc_info()[1]
+            try:
+                self._close_provider_bridge()
+            except BaseException:
+                if getattr(cleanup_failure, "cleanup_complete", None) is False:
+                    raise cleanup_failure from None
+                raise
 
 
 class InfiniDyskV2Executor:
@@ -924,6 +960,7 @@ class InfiniDyskV2Executor:
             },
             check_cancel=workspace.get("check_cancel"),
             record_report=workspace.get("record_import_report"),
+            record_provider_diagnostics=workspace.get("record_provider_diagnostics"),
             **(
                 {"external_blobs": external_blobs} if external_blobs is not None else {}
             ),

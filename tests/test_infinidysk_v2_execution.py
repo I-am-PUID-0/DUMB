@@ -755,6 +755,111 @@ class NativeShutdownTests(unittest.TestCase):
             candidate.output.close.assert_called_once()
             self.assertFalse(candidate.payload_path.exists())
 
+    def test_provider_diagnostics_are_finalized_even_when_native_shutdown_fails(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            candidate = self.candidate(Path(temporary))
+            diagnostics = {
+                "schema_version": 1,
+                "providers": [
+                    {
+                        "provider_ordinal": 1,
+                        "requests": 3,
+                        "bytes_received": 80,
+                        "retries": 1,
+                        "failures": {"timeout": 1},
+                    }
+                ],
+                "unbound_failures": {},
+            }
+            candidate.nntp_bridge = SimpleNamespace(
+                stats={"provider_diagnostics": diagnostics}, close=Mock()
+            )
+            candidate.record_provider_diagnostics = Mock()
+            with (
+                patch("utils.infinidysk_v2_execution.os.killpg"),
+                patch(
+                    "utils.infinidysk_v2_execution._native_group_has_live_members",
+                    return_value=True,
+                ),
+                patch(
+                    "utils.infinidysk_v2_execution.time.monotonic", side_effect=[0, 4]
+                ),
+            ):
+                with self.assertRaisesRegex(
+                    MigrationProcessCleanupError, "live writers"
+                ):
+                    candidate.__exit__()
+            candidate.nntp_bridge.close.assert_called_once()
+            candidate.record_provider_diagnostics.assert_called_once_with(
+                diagnostics, final=True
+            )
+
+    def test_provider_cleanup_failure_is_not_masked_by_diagnostics_write_failure(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            candidate = self.candidate(Path(temporary))
+            candidate.nntp_bridge = SimpleNamespace(
+                stats={
+                    "provider_diagnostics": {
+                        "schema_version": 1,
+                        "providers": [],
+                        "unbound_failures": {},
+                    }
+                },
+                close=Mock(side_effect=ValueError("Provider cleanup unconfirmed")),
+            )
+            candidate.record_provider_diagnostics = Mock(side_effect=OSError("disk"))
+            with self.assertRaisesRegex(ValueError, "Provider cleanup unconfirmed"):
+                candidate._close_provider_bridge()
+            self.assertFalse(
+                candidate.record_provider_diagnostics.call_args.kwargs["final"]
+            )
+
+    def test_native_writer_cleanup_failure_survives_final_observation_failures(self):
+        for bridge_failure in (None, ValueError("Provider cleanup unconfirmed")):
+            with (
+                self.subTest(bridge_cleanup_failed=bridge_failure is not None),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                candidate = self.candidate(Path(temporary))
+                candidate.nntp_bridge = SimpleNamespace(
+                    stats={
+                        "provider_diagnostics": {
+                            "schema_version": 1,
+                            "providers": [],
+                            "unbound_failures": {},
+                        }
+                    },
+                    close=Mock(side_effect=bridge_failure),
+                )
+                candidate.record_provider_diagnostics = Mock(
+                    side_effect=OSError("Diagnostic state unavailable")
+                )
+                with (
+                    patch("utils.infinidysk_v2_execution.os.killpg"),
+                    patch(
+                        "utils.infinidysk_v2_execution._native_group_has_live_members",
+                        return_value=True,
+                    ),
+                    patch(
+                        "utils.infinidysk_v2_execution.time.monotonic",
+                        side_effect=[0, 4],
+                    ),
+                ):
+                    with self.assertRaisesRegex(
+                        MigrationProcessCleanupError, "live writers"
+                    ) as caught:
+                        candidate.__exit__()
+                self.assertFalse(caught.exception.cleanup_complete)
+                self.assertEqual(
+                    caught.exception.cleanup_evidence, {"process_group": 987654}
+                )
+                self.assertFalse(candidate.stopped)
+                candidate.nntp_bridge.close.assert_called_once()
+                self.assertEqual(
+                    candidate.record_provider_diagnostics.call_args.kwargs["final"],
+                    bridge_failure is None,
+                )
+
     def test_process_group_check_ignores_zombies_but_detects_running_members(self):
         from utils.infinidysk_v2_execution import _native_group_has_live_members
 

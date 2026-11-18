@@ -12,6 +12,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from utils.infinidysk_v2_omissions import make_omission_proof
+from utils.infinidysk_v2_execution import NativeCandidate
 
 from utils.infinidysk_v2_migration import (
     ACKNOWLEDGEMENTS,
@@ -558,6 +559,68 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
                     self.assertFalse(
                         self.manager._owned_process_cleanup_complete(private)
                     )
+
+    def test_failed_native_shutdown_and_final_diagnostics_keep_recovery_held(self):
+        candidate = object.__new__(NativeCandidate)
+        candidate.process = Mock(pid=987654, poll=Mock(return_value=0))
+        candidate.output = Mock()
+        candidate.payload_path = self.root / "candidate-payload.json"
+        candidate.payload_path.write_text("fixture")
+        candidate.stopped = False
+        candidate.nntp_bridge = SimpleNamespace(
+            stats={
+                "provider_diagnostics": {
+                    "schema_version": 1,
+                    "providers": [],
+                    "unbound_failures": {},
+                }
+            },
+            close=Mock(),
+        )
+        candidate.record_provider_diagnostics = Mock(side_effect=OSError("disk"))
+
+        def fail(plan, workspace, progress):
+            self.executor.calls.append("rehearse")
+            workspace["capture_source"]()
+            with (
+                patch("utils.infinidysk_v2_execution.os.killpg"),
+                patch(
+                    "utils.infinidysk_v2_execution._native_group_has_live_members",
+                    return_value=True,
+                ),
+                patch(
+                    "utils.infinidysk_v2_execution.time.monotonic", side_effect=[0, 4]
+                ),
+            ):
+                candidate.__exit__()
+
+        with (
+            patch.object(self.executor, "rehearse", side_effect=fail),
+            patch(
+                "utils.infinidysk_v2_migration.migration_process_cleanup_complete",
+                return_value=False,
+            ),
+        ):
+            _, request = self.preview_request()
+            job = self.wait(self.manager.rehearse(request))
+            self.assertEqual(job["status"], "recovery_required")
+            self.assertFalse(job["can_rollback"])
+            self.assertFalse(job["result"]["source_restored"])
+            private = self.manager._read(self.manager._job_path(job["job_id"]))
+            self.assertEqual(
+                private["owned_process_cleanup"], {"process_group": 987654}
+            )
+            self.assertTrue(self.manager.has_blocking_job())
+            with self.assertRaisesRegex(InfiniDyskV2MigrationError, "termination"):
+                self.manager.rollback(
+                    {
+                        "job_id": job["job_id"],
+                        "confirmation": job["rollback_confirmation_text"],
+                    }
+                )
+        self.assertEqual(self.executor.calls, ["rehearse"])
+        candidate.nntp_bridge.close.assert_called_once()
+        self.assertTrue(candidate.record_provider_diagnostics.call_args.kwargs["final"])
 
     def test_confirmed_helper_exit_allows_explicit_rollback_and_clears_hold(self):
         class CleanupFailure(RuntimeError):
@@ -1856,6 +1919,45 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
         report_path.chmod(0o644)
         with self.assertRaisesRegex(InfiniDyskV2MigrationError, "ownership"):
             self.manager.get_report(job["job_id"])
+
+    def test_final_provider_diagnostics_preserve_recovery_and_accepted_cancellation(
+        self,
+    ):
+        _, request = self.preview_request()
+        public = self.wait(self.manager.rehearse(request))
+        job = self.manager._read(self.manager._job_path(public["job_id"]))
+        job.update(status="rolling_back", stage="restoring_archive", message="Recovery")
+        self.manager._cancel_requested.add(job["job_id"])
+        raw = {
+            "schema_version": 1,
+            "providers": [
+                {
+                    "provider_ordinal": 1,
+                    "requests": 7,
+                    "bytes_received": 800,
+                    "retries": 2,
+                    "failures": {"timeout": 2, "private-error-message": 1},
+                    "host": "private.example.invalid",
+                }
+            ],
+            "unbound_failures": {},
+            "password": "private-password",
+        }
+        self.manager._record_provider_diagnostics(job, raw, final=True)
+        saved = self.manager._read(self.manager._job_path(job["job_id"]))
+        self.assertEqual(saved["status"], "rolling_back")
+        self.assertEqual(saved["stage"], "restoring_archive")
+        self.assertEqual(saved["message"], "Recovery")
+        self.assertTrue(saved["cancel_requested"])
+        diagnostics = self.manager._public_job(saved)["provider_diagnostics"]
+        self.assertTrue(diagnostics["final"])
+        self.assertIs(type(diagnostics["recorded_at"]), int)
+        self.assertEqual(diagnostics["providers"][0]["failures"], {"timeout": 2})
+        self.assertNotIn("private", json.dumps(diagnostics))
+        saved["provider_diagnostics"]["providers"][0][
+            "host"
+        ] = "private.example.invalid"
+        self.assertNotIn("private", json.dumps(self.manager._public_job(saved)))
 
     def test_fewer_reviewed_omissions_can_complete_cutover(self):
         for remaining in (1, 0):

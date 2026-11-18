@@ -26,6 +26,7 @@ from utils.config_loader import CONFIG_MANAGER
 from utils.infinidysk_migration_admission import INFINIDYSK_MIGRATION_ADMISSION_LOCK
 from utils.infinidysk_v2_io_progress import IOProgress, public_io_progress
 from utils.infinidysk_v2_input_integrity import public_input_integrity
+from utils.infinidysk_v2_provider_diagnostics import sanitize_provider_diagnostics
 from utils.infinidysk_v2_queue import (
     QueueInputError,
     _private_sqlite_copy,
@@ -553,6 +554,9 @@ class InfiniDyskV2MigrationManager:
                 "preview_expires_at",
             )
         } | {
+            "provider_diagnostics": sanitize_provider_diagnostics(
+                job.get("provider_diagnostics")
+            ),
             "status": state,
             "state": state,
             "can_rollback": rollback,
@@ -3220,6 +3224,11 @@ class InfiniDyskV2MigrationManager:
                 job, raw, diagnostics
             )
         )
+        workspace["record_provider_diagnostics"] = (
+            lambda diagnostics, *, final=False: self._record_provider_diagnostics(
+                job, diagnostics, final=final
+            )
+        )
         workspace["external_blob_source"] = lambda: self._verified_external_blobs(job)
         workspace["cleanup_blob_staging"] = lambda: self._cleanup_external_blobs(job)
         if job["plan"]["options"].get("offload_legacy_blobs"):
@@ -3305,6 +3314,17 @@ class InfiniDyskV2MigrationManager:
         if diagnostics is not None:
             job["import_report"] = copy.deepcopy(diagnostics)
         self._write(self._job_path(job["job_id"]), job)
+
+    def _record_provider_diagnostics(self, job, diagnostics, *, final=False):
+        safe = sanitize_provider_diagnostics(diagnostics)
+        if safe is None:
+            return
+        with self._lock:
+            # This callback also runs during cancellation and failed cleanup.
+            # Preserve lifecycle state rather than publishing running progress.
+            safe.update(final=final is True, recorded_at=int(time.time()))
+            job["provider_diagnostics"] = safe
+            self._write(self._job_path(job["job_id"]), job)
 
     def get_report(self, job_id):
         job = self._read(self._job_path(job_id))
