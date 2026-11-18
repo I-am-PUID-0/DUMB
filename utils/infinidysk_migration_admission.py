@@ -66,7 +66,10 @@ def infinidysk_major_recovery_pending():
     """Hold boot mutations while an interrupted major import needs recovery."""
     from utils.infinidysk_v2_migration import INFINIDYSK_V2_MIGRATION_MANAGER
 
-    return INFINIDYSK_V2_MIGRATION_MANAGER.has_recovery_pending_job()
+    return (
+        INFINIDYSK_V2_MIGRATION_MANAGER.has_recovery_pending_job()
+        or INFINIDYSK_V2_MIGRATION_MANAGER.has_prepared_job()
+    )
 
 
 def infinidysk_v2_recovery_pending():

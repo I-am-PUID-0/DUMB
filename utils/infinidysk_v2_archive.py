@@ -446,11 +446,17 @@ def verify_retained_archive(
         check=owner_check,
         message="Reading and verifying the retained recovery archive.",
     )
-    with storage.open_artifact(receipt["reference"]) as handle:
+
+    def verifier(handle):
         reader = _DigestReader(ProgressReader(handle, measured))
-        proof = _verify_stream(
-            reader, scratch, roots, fingerprints, check=measured.check
-        )
+        try:
+            proof = _verify_stream(
+                reader, scratch, roots, fingerprints, check=measured.check
+            )
+        except tarfile.TarError:
+            raise ArchiveError(
+                "The retained archive structure did not verify."
+            ) from None
         while reader.read(1024 * 1024):
             pass
         if (
@@ -460,6 +466,11 @@ def verify_retained_archive(
             raise ArchiveError(
                 "The retained archive bytes differ from the original job receipt."
             )
+        return proof
+
+    proof = storage.verify_artifact(
+        receipt["reference"], verifier, owner_check=owner_check
+    )
     if (plan.get("source") or {}).get("provider") in {"postgres", "postgresql"}:
         postgres = snapshot.get("postgres_snapshot") or {}
         binding = (postgres.get("source_binding") or {}).get("binding_fingerprint")

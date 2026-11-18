@@ -295,7 +295,7 @@ def _source_records(connection, table, fields):
     return columns, rows
 
 
-def _blob_census(blob_root, value, cache):
+def _blob_census(blob_root, value, cache, lookup=None):
     if value is None:
         return None
     try:
@@ -304,6 +304,25 @@ def _blob_census(blob_root, value, cache):
         return {"state": "invalid_identity"}
     key = identifier.hex
     if key in cache:
+        return cache[key]
+    if lookup is not None:
+        # Internal proof hook only: its owner has just fully hashed the staged
+        # tree against ORIGINAL source hashes. It must recheck fresh identity
+        # before returning that original digest, never trust native output.
+        result = lookup(blob_root, identifier)
+        if not isinstance(result, dict) or not (
+            result == {"state": "missing"}
+            or (
+                set(result) == {"state", "bytes", "sha256"}
+                and result.get("state") == "present"
+                and type(result.get("bytes")) is int
+                and result["bytes"] >= 0
+                and isinstance(result.get("sha256"), str)
+                and re.fullmatch(r"[0-9a-f]{64}", result["sha256"])
+            )
+        ):
+            raise ImportReportError("The verified source blob census is invalid.")
+        cache[key] = dict(result)
         return cache[key]
     descriptors = []
     try:
@@ -361,7 +380,7 @@ def _blob_census(blob_root, value, cache):
     return result
 
 
-def _census(blob_root, columns, rows, cache, *, count):
+def _census(blob_root, columns, rows, cache, *, count, lookup=None):
     digest = hashlib.sha256()
     digest.update(json.dumps(columns, separators=(",", ":")).encode() + b"\n")
     entries = []
@@ -375,7 +394,7 @@ def _census(blob_root, columns, rows, cache, *, count):
                 value = {"bytes": value.hex()}
             values.append(value)
             if field in {"FileBlobId", "NzbBlobId"}:
-                values.append(_blob_census(blob_root, value, cache))
+                values.append(_blob_census(blob_root, value, cache, lookup))
         entries.append((identifier, values))
     for _identifier, values in sorted(entries, key=lambda row: row[0]):
         digest.update(
@@ -391,7 +410,9 @@ def _census(blob_root, columns, rows, cache, *, count):
     return {"count": count, "sha256": digest.hexdigest()}
 
 
-def verify_import_inventory(source, destination, report, *, source_blob_root=None):
+def verify_import_inventory(
+    source, destination, report, *, source_blob_root=None, source_blob_census=None
+):
     """Reconcile each imported identity and each exact, classified omission.
 
     Reviewable omissions return review_required; the caller must bind explicit
@@ -502,7 +523,12 @@ def verify_import_inventory(source, destination, report, *, source_blob_root=Non
                     )
             blob_cache = {}
             media_census = _census(
-                blob_root, media_columns, media_rows, blob_cache, count=len(files)
+                blob_root,
+                media_columns,
+                media_rows,
+                blob_cache,
+                count=len(files),
+                lookup=source_blob_census,
             )
             history_census = _census(
                 blob_root,
@@ -510,6 +536,7 @@ def verify_import_inventory(source, destination, report, *, source_blob_root=Non
                 history_rows_source,
                 blob_cache,
                 count=len(history),
+                lookup=source_blob_census,
             )
         with closing(
             sqlite3.connect(f"file:{quote(str(Path(destination)))}?mode=ro", uri=True)

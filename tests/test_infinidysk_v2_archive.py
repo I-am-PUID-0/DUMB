@@ -322,7 +322,9 @@ class ColdArchiveTests(unittest.TestCase):
         with path.open("r+b") as handle:
             handle.seek(1024)
             handle.write(b"corruption")
-        with self.assertRaises(BackupStorageError):
+        # Single-pass validation may reject malformed structure before reaching
+        # the complete receipt digest; either refusal grants no archive proof.
+        with self.assertRaises((BackupStorageError, ArchiveError)):
             verify_retained_archive(snapshot, self.plan, self.storage)
 
     def test_nonzero_bytes_after_tar_end_marker_are_rejected(self):
