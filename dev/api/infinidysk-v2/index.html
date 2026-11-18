@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.8">
+    <meta name="dumb-docs-package-version" content="1.25.9">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="d25d7d409d53deaf12339919d4c13c2580d0d326">
-    <meta name="dumb-docs-release-tag" content="1.25.8">
+    <meta name="dumb-docs-build-commit" content="c2f6eb1a7747958308351b826703584b90bbbdaa">
+    <meta name="dumb-docs-release-tag" content="1.25.9">
   
 
     
@@ -6163,6 +6163,12 @@ to the DUMB API; the dashboard accesses them through its <code>/api</code> proxy
 <code>infinidysk_v2_postgres=true</code>. Missing, malformed, older or unknown versions and
 protocols disable mutations. Retained job/recovery displays remain independent
 of those new-operation controls.</p>
+<p>The strict boolean <code>infinidysk_v2_prepared_activation: true</code> selects the default
+prepare-once workflow. Clients prepare and review one candidate, then explicitly
+activate that same job. With the capability absent, retain the legacy separate
+test/start workflow. InfiniDysk's native engines perform the major data-format
+conversion and the later optional v2 SQLite-to-PostgreSQL conversion; DUMB
+coordinates snapshots, checks, containment, activation and recovery.</p>
 <h3 id="major-installation-and-upgrade">Major installation and upgrade<a class="headerlink" href="#major-installation-and-upgrade" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -6205,13 +6211,23 @@ of those new-operation controls.</p>
 </tr>
 <tr>
 <td><code>POST</code></td>
+<td><code>/process/infinidysk-v2/prepare</code></td>
+<td>Prepare and verify one retained candidate for explicit activation</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/process/infinidysk-v2/activate</code></td>
+<td>Activate that same prepared job after current proof and confirmation checks</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
 <td><code>/process/infinidysk-v2/rehearse</code></td>
-<td>Run the actual contained native importer against retained source snapshots</td>
+<td>Legacy separate test using the contained native importer</td>
 </tr>
 <tr>
 <td><code>POST</code></td>
 <td><code>/process/infinidysk-v2/start</code></td>
-<td>Start an eligible fresh install or guarded major cutover</td>
+<td>Legacy eligible fresh install or guarded major cutover</td>
 </tr>
 <tr>
 <td><code>GET</code></td>
@@ -6320,11 +6336,12 @@ separate closed, queue-free native importer database while preserving the
 original source database, complete archive/dump, media and history. Native
 acceptance still requires zero imported queued jobs. No live API/SQL deletion
 or blob cleanup is part of this option.</p>
-<p>The explicit choice uses the existing preview, confirmation and successful-test
-requirements; it adds no extra acknowledgement. Changing it invalidates an older
-review/test. Rehearsal and rollback restore the original queued work. A successful
-v2 cutover does not carry those jobs over; external Arr producers can submit them
-again. <code>source_queue_preserved</code> is specific to queue evidence and does not claim
+<p>The explicit choice uses the current preview and confirmation requirements; it
+adds no extra acknowledgement. Its value is pinned to the prepared job; changing
+it needs a new review and preparation. The legacy flow also invalidates the old
+test proof when options change. Rollback restores the original queued work, as
+does a completed legacy test. Successful v2 activation does not carry those jobs
+over; external Arr producers can submit them again. <code>source_queue_preserved</code> is specific to queue evidence and does not claim
 that low-space reuse kept every original file locally.</p>
 <h4 id="low-space-migration">Low-space migration<a class="headerlink" href="#low-space-migration" title="Permanent link">&para;</a></h4>
 <p>A supporting backend advertises
@@ -6338,7 +6355,7 @@ backends or treat archive selection alone as permission to reuse source data.</p
 <p>A low-space preview includes <code>source_storage</code> with
 <code>mode: "archive_recovery"</code>, <code>reclaim_source_space: true</code> and
 <code>rollback_requires_archive: true</code>. Its <code>required_acknowledgements</code> additionally
-requires <code>archive_recovery</code>. Both rehearsal and rollback can release the exact
+requires <code>archive_recovery</code>. Source recovery or rollback can release the exact
 owned candidate before restoring original v1 files from the retained archive.
 Recovery refuses an unavailable/replaced archive or changed owned path.
 The capacity review retains actual free-space readings and includes remaining
@@ -6370,7 +6387,7 @@ using its explicit capability rather than the backend version alone.</p>
 <p>The preview retains <code>source_storage.mode: "archive_recovery"</code> and adds
 <code>source_storage.offload_legacy_blobs: true</code> for the chosen mode.
 <code>required_acknowledgements</code> additionally requires <code>external_blob_staging</code>.
-Use the acknowledgements returned by that preview for rehearsal and start.</p>
+Use the acknowledgements returned by that preview for preparation, or for the legacy test/start flow.</p>
 <p>DUMB verifies the cold recovery archive, copies and verifies a separate expanded
 legacy blob input at the destination, then releases only the corresponding owned
 local blob files. Public job stages distinguish <code>staging_blobs</code>,
@@ -6426,15 +6443,17 @@ with <code>preview_available: true</code>. An expired or consumed authorization 
 result responses use <code>Cache-Control: no-store, private</code> because a completed
 preview contains its short-lived authorization token.</p>
 <p>The authorization period starts at completion, not when scanning begins. Task
-identity and progress alone never authorize rehearsal or cutover; review that
+identity and progress alone never authorize preparation or activation; review that
 completed result and its required acknowledgements first.</p>
 <h4 id="preview-contract">Preview contract<a class="headerlink" href="#preview-contract" title="Permanent link">&para;</a></h4>
 <p>The preview returns <code>protocol</code>, <code>ready</code>, <code>preview_token</code>, <code>expires_at</code>,
 <code>plan_fingerprint</code>, <code>confirmation_text</code>, <code>current</code>, <code>target</code>, <code>checks</code>,
 <code>blockers</code>, <code>warnings</code>, <code>inventory</code>, <code>required_acknowledgements</code> and
-<code>rehearsal_required</code>. The public fingerprint binds a rehearsal to its plan;
-it is not an authorization token. Recorded inventory is not proof that
-unmanaged consumers or STRM URLs are absent.</p>
+<code>rehearsal_required</code>. The public fingerprint binds the job to its reviewed plan;
+it is not an authorization token. <code>rehearsal_required</code> describes the legacy
+test/start contract; prepared-activation clients select their workflow using the
+strict capability above. Recorded inventory is not proof that unmanaged
+consumers or STRM URLs are absent.</p>
 <h4 id="compatibility-authentication-policy">Compatibility authentication policy<a class="headerlink" href="#compatibility-authentication-policy" title="Permanent link">&para;</a></h4>
 <p>Updated status responses include <code>current.compatibility_auth_policy</code>; previews
 include <code>target.compatibility_auth_policy</code>. When the legacy compatibility relay
@@ -6444,20 +6463,75 @@ This is a read-only explanation of the authentication policy DUMB enforces at
 native launch, not a runtime settings probe or a mutation option. With no relay the values are <code>false</code>, <code>null</code> and <code>null</code>.
 The backend rejects conflicting explicit authentication overrides before native
 setup or migration. Older backends may omit the object.</p>
-<h4 id="rehearse-and-start">Rehearse and start<a class="headerlink" href="#rehearse-and-start" title="Permanent link">&para;</a></h4>
-<p>Rehearse and start body, using values from the current preview:</p>
+<h4 id="prepare-once-review-then-activate">Prepare once, review, then activate<a class="headerlink" href="#prepare-once-review-then-activate" title="Permanent link">&para;</a></h4>
+<p>With <code>infinidysk_v2_prepared_activation: true</code>, post the current preview's token,
+exact confirmation and required acknowledgements to <code>/process/infinidysk-v2/prepare</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="p">{</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">"preview_token"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;current-preview-token&gt;"</span><span class="p">,</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nt">"confirmation"</span><span class="p">:</span><span class="w"> </span><span class="s2">"MIGRATE INFINIDYSK TO V2"</span><span class="p">,</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nt">"confirmation"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;server-confirmation&gt;"</span><span class="p">,</span>
 <a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="nt">"acknowledgements"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span><span class="nt">"backup"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">    </span><span class="nt">"downtime"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">    </span><span class="nt">"beta"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">    </span><span class="nt">"oidc_policy"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">    </span><span class="nt">"downstream"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">  </span><span class="p">},</span>
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">  </span><span class="nt">"rehearsal_job_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;validated-rehearsal-job-id&gt;"</span>
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="p">}</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="p">}</span>
+</code></pre></div>
+<p>Use only the acknowledgements required by that preview, including any selected
+storage options. Do not send a <code>rehearsal_job_id</code>. Both supported fresh
+installation and existing-source migration can use preparation.</p>
+<p>The persisted job uses <code>mode: "prepare"</code> and <code>prepare_mode: "fresh"</code> or
+<code>"migrate"</code>. After native conversion and DUMB's verification, it reports
+<code>status: "prepared"</code>, <code>stage: "awaiting_activation"</code> and <code>result.validated: true</code>.
+Existing-source jobs retain the verified import report; a fresh installation has
+no legacy import report. This is a deliberate paused review session: the candidate is retained and affected managed applications stay
+stopped. It is neither an activated installation nor a source-restoration error.</p>
+<p>Only a fresh confirmed job advertising <code>can_activate: true</code> admits activation.
+Post its <code>job_id</code> and exact <code>activate_confirmation</code> as <code>confirmation</code> to
+<code>/process/infinidysk-v2/activate</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="p">{</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">"job_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;prepared-job-id&gt;"</span><span class="p">,</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="nt">"confirmation"</span><span class="p">:</span><span class="w"> </span><span class="s2">"ACTIVATE INFINIDYSK V2 &lt;prepared-job-id&gt;"</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="p">}</span>
+</code></pre></div>
+<p>For a report requiring omission review, also send
+<code>acknowledgements: {"skipped_media": true}</code> and <code>skip_review_digest</code> matching that
+prepared job's current report. Public samples cannot replace the full retained
+proof. Activation returns the <strong>same job</strong>, still <code>mode: "prepare"</code>, with
+<code>status: "queued"</code> or <code>"running"</code> and <code>stage: "activating"</code>. It uses the already converted
+candidate; it does not rebuild it or repeat native conversion.</p>
+<p>Poll the existing job/status routes through live delivery validation and
+consumer resumption. Acknowledgement alone does not establish completed
+activation. The existing advertised rollback action restores the retained v1
+state when eligible. A missing or invalid proof keeps activation unavailable;
+retain the candidate and recovery evidence.</p>
+<p>A controller restart preserves <code>status: "prepared"</code> and
+<code>stage: "awaiting_activation"</code>. It boots the installed API/frontend in a minimal
+control plane; normal applications and background workers remain held.
+Reconcile the retained job and current guards before offering activation or
+rollback. Neither action is automatic.</p>
+<p>If activation or restoration completes in that minimal boot, the result exposes
+<code>restart_required: true</code>. Activation itself starts the verified target and
+retained affected consumers; the user must then restart DUMB once to initialize
+normal workers and unrelated applications. A prepared review hold alone does not
+request a restart. Retain this instruction on the completed or restored job
+instead of treating its terminal status as proof of full normal startup.</p>
+<h4 id="legacy-separate-test-and-start">Legacy separate test and start<a class="headerlink" href="#legacy-separate-test-and-start" title="Permanent link">&para;</a></h4>
+<p>Use this compatibility flow when prepared activation is not advertised.
+Rehearse and start body, using values from the current preview:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="p">{</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="nt">"preview_token"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;current-preview-token&gt;"</span><span class="p">,</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span><span class="nt">"confirmation"</span><span class="p">:</span><span class="w"> </span><span class="s2">"MIGRATE INFINIDYSK TO V2"</span><span class="p">,</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span><span class="nt">"acknowledgements"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span><span class="nt">"backup"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">    </span><span class="nt">"downtime"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">    </span><span class="nt">"beta"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">    </span><span class="nt">"oidc_policy"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">    </span><span class="nt">"downstream"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">  </span><span class="p">},</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="w">  </span><span class="nt">"rehearsal_job_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;validated-rehearsal-job-id&gt;"</span>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="p">}</span>
 </code></pre></div>
 <p>Omit <code>rehearsal_job_id</code> for the rehearsal request and for a fresh installation
 that does not require one. Always use the backend's exact confirmation text;
@@ -6482,8 +6556,9 @@ The required <code>downstream</code> review covers current Arr/media mount paths
 path mappings, symlinks/STRM origins and stopped external writers/scanners.
 OIDC-configured sources remain blocked until their target policy is verified;
 the acknowledgement is not an authorization to bypass a blocker.</p>
-<p>Start/rehearse responses and <code>status.job</code> expose a public job, including its
-identity, mode, status, stage, message, fingerprint and result. A successful
+<p>Prepare/activate and legacy start/rehearse responses, plus <code>status.job</code>, expose
+a public job, including its identity, mode, status, stage, message, fingerprint
+and result. A successful
 cutover uses <code>status: "completed"</code>. The terminal <code>status: "failed_restored"</code>
 confirms the source was restored and permits a fresh preview; recovery flags
 remain authoritative for available actions. Rollback is available only when
@@ -6528,9 +6603,9 @@ native conversion rather than the entire validation/cutover/recovery pipeline.</
 migration execution began. DUMB did not pause applications or change the source
 for that attempt, so no restore is needed. A pre-execution cancellation is
 <code>cancelled</code> with <code>error: null</code>; failed preflight checks instead report their
-blocker. Resolve any reported blocker, then obtain a fresh preview and successful
-test before migration. Untouched-source evidence does not prove a successful
-rehearsal or authorize cutover.</p>
+blocker. Resolve any reported blocker, then obtain a fresh preview before
+preparing again, or before the legacy test/start sequence. Untouched-source
+evidence does not prove successful preparation or authorize activation.</p>
 <p>Supporting builds can expose optional <code>scan_progress</code> during <code>revalidating</code>.
 It describes one existing metadata traversal, without an extra scan to calculate
 progress. An opaque <code>scan_id</code> identifies that scan. Supported <code>phase</code>
@@ -6689,8 +6764,13 @@ and <code>imported_this_attempt</code>. Verified history adds <code>verified_pre
 <code>attempt_count_differs</code>; missing required identities can add <code>missing_completed</code>
 and <code>missing_failed</code> counts. These diagnostics distinguish a per-attempt report
 count from actual preserved history; they do not relax identity checks.</p>
-<p>Known source incompatibilities may complete a validated rehearsal with
-<code>import_report.status: "review_required"</code>. Starting its cutover also requires
+<p>A prepared job can report <code>import_report.status: "review_required"</code> for fully
+accounted known source incompatibilities. Activating that same candidate requires
+its current <code>review_digest</code> as <code>skip_review_digest</code> and
+<code>acknowledgements.skipped_media: true</code>. These values authorize only that retained
+candidate and its full verified omission evidence.</p>
+<p>In the legacy flow, known incompatibilities may complete a validated rehearsal
+with <code>import_report.status: "review_required"</code>. Starting its cutover also requires
 <code>acknowledgements.skipped_media: true</code> and <code>skip_review_digest</code> matching that
 rehearsal's server-issued <code>review_digest</code>. The digest covers every omitted
 identity, path and reason, including entries beyond a public sample. Actual
@@ -6701,10 +6781,11 @@ and failed history identity must still exist in the actual native database;
 a lower per-attempt report count alone is not a history-loss allowance.
 The private complete census also binds referenced metadata/NZB blob contents
 while excluding volatile health scheduling. Changed source facts or stale proof
-require a fresh isolated rehearsal; public samples cannot reauthorize it.
+require a fresh preparation and review, or a fresh isolated test in the legacy
+flow; public samples cannot reauthorize it.
 Unknown/provider failures, ambiguous identities and unrecognized reports remain blockers; the
 acknowledgement is not a general skip override.</p>
-<p>A successful rehearsal can record <code>candidate_discarded=true</code> after the native
+<p>Only the legacy separate-test flow can record <code>candidate_discarded=true</code> after the native
 candidate/group is proven stopped and v1 plus managed consumers are restored.
 Only its full job-owned candidate is removed; receipts, the source archive or
 backup and minimal database proof remain. Default-mode failed rehearsal
@@ -6768,16 +6849,16 @@ reused; their archive remains required for rollback.</p>
 <p>Preview with <code>{"job_id": "SERVER_JOB_ID"}</code>. The response supplies the exact
 removal/retention lists, estimated reclaim, expiring <code>preview_token</code>, typed
 <code>confirmation_text</code> and acknowledgement names. Start using those server values:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="p">{</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">"job_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"SERVER_JOB_ID"</span><span class="p">,</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="nt">"preview_token"</span><span class="p">:</span><span class="w"> </span><span class="s2">"SERVER_PREVIEW_TOKEN"</span><span class="p">,</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span><span class="nt">"confirmation"</span><span class="p">:</span><span class="w"> </span><span class="s2">"SERVER_CONFIRMATION_TEXT"</span><span class="p">,</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span><span class="nt">"acknowledgements"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">    </span><span class="nt">"playback"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">    </span><span class="nt">"test_import"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">    </span><span class="nt">"rollback_retirement"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">  </span><span class="p">}</span>
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="p">{</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">"job_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"SERVER_JOB_ID"</span><span class="p">,</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span><span class="nt">"preview_token"</span><span class="p">:</span><span class="w"> </span><span class="s2">"SERVER_PREVIEW_TOKEN"</span><span class="p">,</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span><span class="nt">"confirmation"</span><span class="p">:</span><span class="w"> </span><span class="s2">"SERVER_CONFIRMATION_TEXT"</span><span class="p">,</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">  </span><span class="nt">"acknowledgements"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">    </span><span class="nt">"playback"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">    </span><span class="nt">"test_import"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">    </span><span class="nt">"rollback_retirement"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="p">}</span>
 </code></pre></div>
 <p>Poll the existing job endpoint for cleanup progress. The backend verifies the
 full retained backup and a bounded immutable deletion whitelist before durably
@@ -6787,6 +6868,11 @@ whitelist. Backups, retirement receipts and PostgreSQL databases remain retained
 See <a href="../../features/infinidysk-v2-migration/#retire-the-old-v1-installation">Retire the old v1 installation</a>
 for operator checks and recovery limits.</p>
 <h3 id="native-generation-2-postgresql">Native generation 2 PostgreSQL<a class="headerlink" href="#native-generation-2-postgresql" title="Permanent link">&para;</a></h3>
+<p>This existing workflow delegates copy, incremental synchronization and cutover
+to InfiniDysk's built-in database API. It is separate from major prepared
+activation and remains optional after the generation 2 SQLite installation is
+activated and validated. DUMB guards the destination, retains recovery state and observes the
+native engine.</p>
 <table>
 <thead>
 <tr>
@@ -6829,7 +6915,7 @@ for operator checks and recovery limits.</p>
 </tbody>
 </table>
 <p>Managed destination preview:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="p">{</span><span class="nt">"target"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"use_managed_postgres"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nt">"database"</span><span class="p">:</span><span class="w"> </span><span class="s2">"infinidysk_v2"</span><span class="p">}}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">{</span><span class="nt">"target"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"use_managed_postgres"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nt">"database"</span><span class="p">:</span><span class="w"> </span><span class="s2">"infinidysk_v2"</span><span class="p">}}</span>
 </code></pre></div>
 <p>An external <code>target</code> supplies <code>host</code>, <code>port</code>, <code>database</code>, <code>user</code>, <code>password</code>
 and <code>sslmode</code>. Remote connections require verified TLS or explicit <code>require</code>
@@ -6915,11 +7001,11 @@ cannot be confirmed, and disable actions until a valid current response returns.
     
     <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
       
-        <span>Documentation release 1.25.8</span>
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.8">Release notes</a>
+        <span>Documentation release 1.25.9</span>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.9">Release notes</a>
       
       
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;d25d7d409d53deaf12339919d4c13c2580d0d326" title="Documentation source commit d25d7d409d53deaf12339919d4c13c2580d0d326">Source d25d7d40</a>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;c2f6eb1a7747958308351b826703584b90bbbdaa" title="Documentation source commit c2f6eb1a7747958308351b826703584b90bbbdaa">Source c2f6eb1a</a>
       
       
     </div>
