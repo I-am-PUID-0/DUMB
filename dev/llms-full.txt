@@ -2,7 +2,7 @@
 
 > Channel: dev. Canonical base: https://dumbarr.com/dev/
 
-Documentation artifact: release 1.25.10. Source commit: f875b345a1806c551c0834290d30a198d78dbd76. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.10.
+Documentation artifact: release 1.25.11. Source commit: 4b7e71543619327400357ad2abc1936f0a7ad58b. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.11.
 
 DUMB coordinates media services. Match instructions to the installed backend version. Development guides can describe features absent from the latest release.
 
@@ -7114,6 +7114,53 @@ Verify playback by forcing a transcode and checking the Jellyfin FFmpeg log for
 the selected binary, QSV/VA-API codec, and successful device initialization.
 Testing only as root can conceal service-user permission failures. See the
 [Jellyfin service guide](../services/core/jellyfin.md#hardware-acceleration).
+
+### Intel OpenCL tone mapping
+
+QSV/VA-API video acceleration and OpenCL tone mapping use separate Intel
+runtimes. QSV can keep working after a compute-runtime update drops support for
+an older GPU. An OpenCL error such as `CL_PLATFORM_NOT_FOUND_KHR` or
+`Failed to get number of OpenCL platforms: -1001` means that no OpenCL platform
+was available to that process.
+
+!!! note "Unreleased native helper correction"
+
+    The native helper correction adds Intel's
+    [legacy compute runtime](https://github.com/intel/compute-runtime/blob/master/documentation/LEGACY_PLATFORMS.md)
+    alongside the current runtime for its supported Intel GPU setup path on
+    amd64 Debian 13 (trixie). This includes Gen9–Gen11 GPUs recognized by that
+    path; older GPU setup paths are unchanged.
+
+    Once the corrected helper is published, run `update` inside the LXC.
+    Selecting DUMB's `dev` controller branch or updating Jellyfin alone does
+    not install this helper change. The helper checks OpenCL device enumeration
+    and warns if no Intel GPU is found.
+
+Check the installed compute packages and ICD registrations inside the LXC:
+
+```bash
+dpkg-query -W 'intel-opencl*' 'intel-igc*'
+ls -l /etc/OpenCL/vendors/
+```
+
+Then check OpenCL as the account running DUMB's Jellyfin process, using the PID
+from the earlier process check:
+
+```bash
+ps -o user=,pid=,args= -p <PID>
+# Replace <service-user> with the account shown above.
+runuser -u <service-user> -- clinfo -l
+```
+
+The output should list an Intel GPU platform and device. This checks runtime
+loading and device access; it does not prove that Jellyfin's FFmpeg can use
+OpenCL with QSV. After applying the corrected native helper, force an HDR-to-SDR
+transcode with tone mapping enabled and inspect its FFmpeg log. A listed
+`tonemap_opencl` filter or `opencl` hardware-acceleration type only describes
+FFmpeg's compiled features.
+
+If playback still fails, include the package versions, `clinfo` output and
+Jellyfin FFmpeg error in the report.
 
 ## Manage and update DUMB
 

@@ -2,7 +2,7 @@
 
 > Channel: release. Canonical base: https://dumbarr.com/
 
-Documentation artifact: release 1.25.10. Source commit: f875b345a1806c551c0834290d30a198d78dbd76. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.10.
+Documentation artifact: release 1.25.11. Source commit: 4b7e71543619327400357ad2abc1936f0a7ad58b. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.11.
 
 DUMB coordinates media services. Match instructions to the installed backend version. Development guides can describe features absent from the latest release.
 

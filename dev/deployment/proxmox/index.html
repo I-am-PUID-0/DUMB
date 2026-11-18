@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.10">
+    <meta name="dumb-docs-package-version" content="1.25.11">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="f875b345a1806c551c0834290d30a198d78dbd76">
-    <meta name="dumb-docs-release-tag" content="1.25.10">
+    <meta name="dumb-docs-build-commit" content="4b7e71543619327400357ad2abc1936f0a7ad58b">
+    <meta name="dumb-docs-release-tag" content="1.25.11">
   
 
     
@@ -6380,25 +6380,61 @@ not required by DUMB.</p>
 the selected binary, QSV/VA-API codec, and successful device initialization.
 Testing only as root can conceal service-user permission failures. See the
 <a href="../../services/core/jellyfin/#hardware-acceleration">Jellyfin service guide</a>.</p>
+<h3 id="intel-opencl-tone-mapping">Intel OpenCL tone mapping<a class="headerlink" href="#intel-opencl-tone-mapping" title="Permanent link">&para;</a></h3>
+<p>QSV/VA-API video acceleration and OpenCL tone mapping use separate Intel
+runtimes. QSV can keep working after a compute-runtime update drops support for
+an older GPU. An OpenCL error such as <code>CL_PLATFORM_NOT_FOUND_KHR</code> or
+<code>Failed to get number of OpenCL platforms: -1001</code> means that no OpenCL platform
+was available to that process.</p>
+<div class="admonition note">
+<p class="admonition-title">Unreleased native helper correction</p>
+<p>The native helper correction adds Intel's
+<a href="https://github.com/intel/compute-runtime/blob/master/documentation/LEGACY_PLATFORMS.md">legacy compute runtime</a>
+alongside the current runtime for its supported Intel GPU setup path on
+amd64 Debian 13 (trixie). This includes Gen9–Gen11 GPUs recognized by that
+path; older GPU setup paths are unchanged.</p>
+<p>Once the corrected helper is published, run <code>update</code> inside the LXC.
+Selecting DUMB's <code>dev</code> controller branch or updating Jellyfin alone does
+not install this helper change. The helper checks OpenCL device enumeration
+and warns if no Intel GPU is found.</p>
+</div>
+<p>Check the installed compute packages and ICD registrations inside the LXC:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>dpkg-query<span class="w"> </span>-W<span class="w"> </span><span class="s1">'intel-opencl*'</span><span class="w"> </span><span class="s1">'intel-igc*'</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>ls<span class="w"> </span>-l<span class="w"> </span>/etc/OpenCL/vendors/
+</code></pre></div>
+<p>Then check OpenCL as the account running DUMB's Jellyfin process, using the PID
+from the earlier process check:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>ps<span class="w"> </span>-o<span class="w"> </span><span class="nv">user</span><span class="o">=</span>,pid<span class="o">=</span>,args<span class="o">=</span><span class="w"> </span>-p<span class="w"> </span>&lt;PID&gt;
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="c1"># Replace &lt;service-user&gt; with the account shown above.</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>runuser<span class="w"> </span>-u<span class="w"> </span>&lt;service-user&gt;<span class="w"> </span>--<span class="w"> </span>clinfo<span class="w"> </span>-l
+</code></pre></div>
+<p>The output should list an Intel GPU platform and device. This checks runtime
+loading and device access; it does not prove that Jellyfin's FFmpeg can use
+OpenCL with QSV. After applying the corrected native helper, force an HDR-to-SDR
+transcode with tone mapping enabled and inspect its FFmpeg log. A listed
+<code>tonemap_opencl</code> filter or <code>opencl</code> hardware-acceleration type only describes
+FFmpeg's compiled features.</p>
+<p>If playback still fails, include the package versions, <code>clinfo</code> output and
+Jellyfin FFmpeg error in the report.</p>
 <h2 id="manage-and-update-dumb">Manage and update DUMB<a class="headerlink" href="#manage-and-update-dumb" title="Permanent link">&para;</a></h2>
 <p>Useful commands inside the LXC:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>systemctl<span class="w"> </span>status<span class="w"> </span>dumb
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>journalctl<span class="w"> </span>-u<span class="w"> </span>dumb<span class="w"> </span>-f
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>systemctl<span class="w"> </span>restart<span class="w"> </span>dumb
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>systemctl<span class="w"> </span>status<span class="w"> </span>dumb
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>journalctl<span class="w"> </span>-u<span class="w"> </span>dumb<span class="w"> </span>-f
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>systemctl<span class="w"> </span>restart<span class="w"> </span>dumb
 </code></pre></div>
 <p>Run the Community Scripts updater inside the LXC to update the currently
 selected DUMB source. Stable installations follow the latest published release,
 while branch installations follow the current head of their saved branch:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>update
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>update
 </code></pre></div>
 <p>To switch an existing LXC to <code>dev</code> or another DUMB branch, pass the branch for
 one update run:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nv">DUMB_CONTROLLER_BRANCH</span><span class="o">=</span>dev<span class="w"> </span>update
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="nv">DUMB_CONTROLLER_BRANCH</span><span class="o">=</span>dev<span class="w"> </span>update
 </code></pre></div>
 <p>The branch choice is saved only after the candidate starts and passes the API
 health check, so later <code>update</code> runs continue following it. Return to the stable
 release channel with:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="nv">DUMB_CONTROLLER_BRANCH</span><span class="o">=</span>latest<span class="w"> </span>update
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nv">DUMB_CONTROLLER_BRANCH</span><span class="o">=</span>latest<span class="w"> </span>update
 </code></pre></div>
 <p>Switching back to stable can be a controller downgrade. Verify that the branch
 did not introduce configuration or data changes that the stable release cannot
@@ -6459,13 +6495,13 @@ over an active deployment and assume the old files moved into it.</p>
 </div>
 <p>For a custom propagation topology, verify all of the following before allowing
 an Arr import or media-server scan:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># DUMB LXC</span>
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>findmnt<span class="w"> </span>-R<span class="w"> </span>/mnt/debrid
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>findmnt<span class="w"> </span>-no<span class="w"> </span>TARGET,PROPAGATION<span class="w"> </span>/mnt/debrid
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>
-<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="c1"># Proxmox host and every consumer LXC</span>
-<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>findmnt<span class="w"> </span>-R<span class="w"> </span>&lt;shared-path&gt;
-<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>readlink<span class="w"> </span>&lt;representative-symlink&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="c1"># DUMB LXC</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>findmnt<span class="w"> </span>-R<span class="w"> </span>/mnt/debrid
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>findmnt<span class="w"> </span>-no<span class="w"> </span>TARGET,PROPAGATION<span class="w"> </span>/mnt/debrid
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="c1"># Proxmox host and every consumer LXC</span>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>findmnt<span class="w"> </span>-R<span class="w"> </span>&lt;shared-path&gt;
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>readlink<span class="w"> </span>&lt;representative-symlink&gt;
 </code></pre></div>
 <p>Test a provider remount while each consumer is running. A consumer should see
 the replacement mount without retaining <code>Transport endpoint is not connected</code>.
@@ -6474,30 +6510,30 @@ producer mount.</p>
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <h3 id="the-dumb-page-is-unavailable">The DUMB page is unavailable<a class="headerlink" href="#the-dumb-page-is-unavailable" title="Permanent link">&para;</a></h3>
 <p>Inside the LXC:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>systemctl<span class="w"> </span>status<span class="w"> </span>dumb<span class="w"> </span>--no-pager
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>journalctl<span class="w"> </span>-u<span class="w"> </span>dumb<span class="w"> </span>-n<span class="w"> </span><span class="m">200</span><span class="w"> </span>--no-pager
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>ss<span class="w"> </span>-lntp<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">':(8000|3005)\b'</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>systemctl<span class="w"> </span>status<span class="w"> </span>dumb<span class="w"> </span>--no-pager
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>journalctl<span class="w"> </span>-u<span class="w"> </span>dumb<span class="w"> </span>-n<span class="w"> </span><span class="m">200</span><span class="w"> </span>--no-pager
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>ss<span class="w"> </span>-lntp<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">':(8000|3005)\b'</span>
 </code></pre></div>
 <p>The API normally listens on port <code>8000</code>; the user-facing frontend is port
 <code>3005</code>. The LXC firewall and network must allow the frontend port from your
 operator workstation.</p>
 <h3 id="devfuse-is-missing"><code>/dev/fuse</code> is missing<a class="headerlink" href="#devfuse-is-missing" title="Permanent link">&para;</a></h3>
 <p>On the Proxmox host, inspect the generated container configuration:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>pct<span class="w"> </span>config<span class="w"> </span>&lt;CTID&gt;<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">'features|dev/fuse'</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>pct<span class="w"> </span>config<span class="w"> </span>&lt;CTID&gt;<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">'features|dev/fuse'</span>
 </code></pre></div>
 <p>The Community Scripts default enables FUSE. Stop and start the LXC after fixing
 its configuration; restarting only the DUMB service cannot add a missing device
 to the LXC.</p>
 <h3 id="a-managed-service-cannot-find-a-runtime">A managed service cannot find a runtime<a class="headerlink" href="#a-managed-service-cannot-find-a-runtime" title="Permanent link">&para;</a></h3>
 <p>Confirm the native toolchain and controller environment:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>python3.11<span class="w"> </span>--version
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>python3.12<span class="w"> </span>--version
-<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>node<span class="w"> </span>--version
-<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>pnpm<span class="w"> </span>--version
-<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>go<span class="w"> </span>version
-<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>dotnet<span class="w"> </span>--info
-<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>rclone<span class="w"> </span>version
-<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>/opt/dumb/venv/bin/python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>check
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>python3.11<span class="w"> </span>--version
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>python3.12<span class="w"> </span>--version
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>node<span class="w"> </span>--version
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>pnpm<span class="w"> </span>--version
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>go<span class="w"> </span>version
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>dotnet<span class="w"> </span>--info
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>rclone<span class="w"> </span>version
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>/opt/dumb/venv/bin/python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>check
 </code></pre></div>
 <p>Run <code>update</code> to repair the DUMB controller source/environment. Service-specific
 install failures remain visible in <code>journalctl -u dumb</code> and can then be retried
@@ -6506,7 +6542,7 @@ from the DUMB UI.</p>
 <p>If several PostgreSQL-backed services fail together and the journal contains
 <code>could not open shared memory segment "/PostgreSQL..."</code>, verify the native LXC
 safeguard:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>systemd-analyze<span class="w"> </span>cat-config<span class="w"> </span>systemd/logind.conf<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-A2<span class="w"> </span>dumb.conf
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>systemd-analyze<span class="w"> </span>cat-config<span class="w"> </span>systemd/logind.conf<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-A2<span class="w"> </span>dumb.conf
 </code></pre></div>
 <p>The effective configuration must include <code>RemoveIPC=no</code>. Run <code>update</code>, then
 restart DUMB, if the drop-in is absent. A healthy restart recreates the
@@ -6520,20 +6556,20 @@ its pre-install check. If the package was then repaired manually, the generated
 <p>Current LXC helpers use a supported systemd drop-in with an unmet condition.
 That lets the Debian package install successfully without starting its own Plex
 process; DUMB remains the only process supervisor and repairs the writable tree.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="nb">test</span><span class="w"> </span>!<span class="w"> </span>-e<span class="w"> </span>/etc/systemd/system/plexmediaserver.service
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>systemctl<span class="w"> </span>cat<span class="w"> </span>plexmediaserver.service<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-F<span class="w"> </span><span class="s1">'ConditionPathExists=/run/dumb-allow-package-services'</span>
-<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>systemctl<span class="w"> </span>is-active<span class="w"> </span>plexmediaserver.service
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="nb">test</span><span class="w"> </span>!<span class="w"> </span>-e<span class="w"> </span>/etc/systemd/system/plexmediaserver.service
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>systemctl<span class="w"> </span>cat<span class="w"> </span>plexmediaserver.service<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-F<span class="w"> </span><span class="s1">'ConditionPathExists=/run/dumb-allow-package-services'</span>
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>systemctl<span class="w"> </span>is-active<span class="w"> </span>plexmediaserver.service
 </code></pre></div>
 <p>The first command should produce no output, the second should show the condition,
 and the package-owned unit should report <code>inactive</code>. For an LXC created with an
 older test build, reconcile the helper and restart the DUMB controller:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>update
-<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>systemctl<span class="w"> </span>restart<span class="w"> </span>dumb
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>update
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>systemctl<span class="w"> </span>restart<span class="w"> </span>dumb
 </code></pre></div>
 <p>If <code>dpkg</code> still reports an interrupted installation, complete its pending work
 after <code>update</code> has removed the legacy mask:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>dpkg<span class="w"> </span>--configure<span class="w"> </span>-a
-<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>apt-get<span class="w"> </span>-f<span class="w"> </span>install
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>dpkg<span class="w"> </span>--configure<span class="w"> </span>-a
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>apt-get<span class="w"> </span>-f<span class="w"> </span>install
 </code></pre></div>
 <h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
 <ul>
@@ -6587,11 +6623,11 @@ after <code>update</code> has removed the legacy mask:</p>
     
     <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
       
-        <span>Documentation release 1.25.10</span>
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.10">Release notes</a>
+        <span>Documentation release 1.25.11</span>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.11">Release notes</a>
       
       
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;f875b345a1806c551c0834290d30a198d78dbd76" title="Documentation source commit f875b345a1806c551c0834290d30a198d78dbd76">Source f875b345</a>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;4b7e71543619327400357ad2abc1936f0a7ad58b" title="Documentation source commit 4b7e71543619327400357ad2abc1936f0a7ad58b">Source 4b7e7154</a>
       
       
     </div>
