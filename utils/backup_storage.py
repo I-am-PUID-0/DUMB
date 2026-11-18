@@ -3,6 +3,7 @@
 from contextlib import contextmanager
 import copy
 import errno
+from functools import lru_cache
 import hashlib
 import json
 import os
@@ -47,8 +48,16 @@ def _decode_mount(value):
 
 
 def mount_records():
+    # Always reread the current namespace. Only identical bytes reuse parsing;
+    # caller mutation cannot poison a future mount-identity observation.
+    raw = Path("/proc/self/mountinfo").read_bytes()
+    return [dict(row) for row in _parsed_mount_records(raw)]
+
+
+@lru_cache(maxsize=1)
+def _parsed_mount_records(raw):
     records = []
-    for line in Path("/proc/self/mountinfo").read_text().splitlines():
+    for line in raw.decode().splitlines():
         before, separator, after = line.partition(" - ")
         fields, filesystem = before.split(), after.split()
         if not separator or len(fields) < 6 or len(filesystem) < 2:
@@ -66,7 +75,7 @@ def mount_records():
                 ),
             }
         )
-    return records
+    return tuple(tuple(row.items()) for row in records)
 
 
 def _durable_inspection(value):
@@ -95,11 +104,8 @@ def _absolute(value):
 
 def _mount(path):
     target = Path(path)
-    matches = [
-        row
-        for row in mount_records()
-        if target == Path(row["path"]) or Path(row["path"]) in target.parents
-    ]
+    ancestors = {target, *target.parents}
+    matches = [row for row in mount_records() if Path(row["path"]) in ancestors]
     if not matches:
         raise BackupStorageError("The selected mounted storage is unavailable.")
     return max(matches, key=lambda row: len(Path(row["path"]).parts))
@@ -2110,8 +2116,7 @@ class BackupStorage:
             profile, namespace, producer, extension="json", metadata=metadata
         )
 
-    @contextmanager
-    def open_artifact(self, reference):
+    def _artifact_receipt(self, reference):
         profile, namespace, artifact = parse_backup_reference(reference)
         receipt = self._read(self._catalog(profile, namespace, artifact))
         if (
@@ -2130,6 +2135,65 @@ class BackupStorage:
             or receipt.get("namespace") != namespace
         ):
             raise BackupStorageError("The owned backup receipt is unavailable.")
+        return profile, namespace, receipt
+
+    def verify_artifact(self, reference, verifier, *, owner_check=None):
+        """Read once for a validation-only consumer; grant proof only after EOF.
+
+        The callback may inspect bytes in bounded private scratch, but must not
+        publish or activate their contents. Ordinary consumers retain the
+        preverified open_artifact API.
+        """
+        profile, namespace, receipt = self._artifact_receipt(reference)
+        with self._lease(profile, namespace) as (
+            _resolved,
+            directory_fd,
+            lease_check,
+            allowed,
+        ):
+
+            def check():
+                lease_check()
+                if owner_check is not None:
+                    owner_check()
+
+            check()
+            descriptor = os.open(
+                receipt["filename"],
+                os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+                dir_fd=directory_fd,
+            )
+            with os.fdopen(descriptor, "rb") as handle:
+                value = os.fstat(handle.fileno())
+                _external_permissions(value, allow_shared_permissions=allowed)
+                if value.st_size != receipt["size_bytes"]:
+                    raise BackupStorageError("The owned backup artifact size changed.")
+                reader = _Reader(handle, check)
+                result = verifier(reader)
+                # Parsers may stop at their format footer. The receipt covers
+                # every trailing byte too, including padding and unexpected data.
+                while reader.read(1024 * 1024):
+                    pass
+                check()
+                current = os.stat(
+                    receipt["filename"], dir_fd=directory_fd, follow_symlinks=False
+                )
+                _external_permissions(current, allow_shared_permissions=allowed)
+                if (
+                    reader.size != receipt["size_bytes"]
+                    or reader.digest.hexdigest() != receipt["sha256"]
+                    or _file_stamp(value) != _file_stamp(os.fstat(handle.fileno()))
+                    or _file_stamp(value) != _file_stamp(current)
+                ):
+                    raise BackupStorageError(
+                        "The owned backup artifact changed or did not verify."
+                    )
+            check()
+            return result
+
+    @contextmanager
+    def open_artifact(self, reference):
+        profile, namespace, receipt = self._artifact_receipt(reference)
         with self._lease(profile, namespace) as (
             _resolved,
             directory_fd,

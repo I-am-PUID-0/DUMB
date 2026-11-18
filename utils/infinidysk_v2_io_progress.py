@@ -106,6 +106,7 @@ class IOProgress:
         total=None,
         total_is_estimate=False,
         check=None,
+        publish_check=None,
         monotonic=None,
         wall_clock=None,
         message=None,
@@ -132,6 +133,7 @@ class IOProgress:
         self.stage, self.unit = PHASES[phase]
         self.total, self.total_is_estimate = total, bool(total_is_estimate)
         self.check = check or (lambda: None)
+        self.publish_check = publish_check or (lambda: None)
         self.clock = monotonic or time.monotonic
         self.wall = wall_clock or time.time
         self.message = message or "Processing the current migration phase."
@@ -142,6 +144,7 @@ class IOProgress:
         self.samples = deque([(self.started, 0)], maxlen=11)
         self.processed = 0
         self.complete = False
+        self.check()
         self._publish(force=True)
 
     def update(self, processed):
@@ -157,10 +160,10 @@ class IOProgress:
         self.update(self.processed + amount)
 
     def _publish(self, *, force=False):
-        self.check()
         now = self.clock()
         if not force and now - self.last_save < 1:
             return
+        self.publish_check()
         if now - self.last_sample > MAX_AGE:
             self.samples.clear()
         self.samples.append((now, self.processed))

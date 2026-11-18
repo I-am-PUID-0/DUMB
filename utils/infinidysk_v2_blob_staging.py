@@ -323,7 +323,11 @@ class ExternalBlobStaging:
             lambda stage, message, **fields: publish(job, stage, message, **fields),
             phase,
             total=total,
-            check=check,
+            # Every loop performs its explicit integrity/lease check. Telemetry
+            # still checks ownership/cancellation on each update, but repeats
+            # expensive destination validation only when it publishes.
+            check=lambda: self.manager._assert_job_owner(job),
+            publish_check=check,
             message=messages[phase],
         )
 
@@ -1006,6 +1010,130 @@ class ExternalBlobStaging:
                 )
             lease_check()
         return Path(record["directory"]) / "blobs"
+
+    @contextmanager
+    def verified_census(self, job, owner_check=None):
+        """Reuse ORIGINAL digests only after this complete fresh staged readback.
+
+        The short-lived controller-local ledger binds each lookup to the exact
+        file just hashed. It is never a cross-attempt or historical cache.
+        """
+        record, storage, bound = self._record(job)
+        if record.get("state") not in {"released", "verified"}:
+            raise ValueError("External migration input is not completely verified.")
+        root = Path(record["directory"]) / "blobs"
+        check = lambda: self._check(job, owner_check)
+        with storage._lease(record["destination_id"], NAMESPACE) as (
+            _profile,
+            _directory_fd,
+            lease_check,
+            _allowed,
+        ):
+            with (
+                closing(self._database(job, record, check)) as database,
+                _verification_ledger(
+                    Path(self.manager._workspace(job)["root"])
+                ) as verified,
+            ):
+                self._verify_tree(
+                    job,
+                    root,
+                    database,
+                    stage=True,
+                    check=lambda: (check(), lease_check()),
+                    staged_cifs=bound.get("filesystem_type") == "cifs",
+                    phase="blob_verify_input",
+                    on_verified=lambda path, stamp: verified.execute(
+                        "INSERT INTO verified VALUES (?,?)", (path, _json(stamp))
+                    ),
+                )
+                verified.commit()
+                active = True
+
+                def lookup(blob_root, identifier):
+                    if not active or Path(blob_root) != root:
+                        raise ValueError(
+                            "The verified source blob census is out of scope."
+                        )
+                    check()
+                    lease_check()
+                    key = identifier.hex
+                    relative = str(Path(key[:2]) / key[2:4] / str(identifier))
+                    row = database.execute(
+                        "SELECT payload FROM entries WHERE path=?",
+                        (os.fsencode(relative),),
+                    ).fetchone()
+                    fresh = verified.execute(
+                        "SELECT stamp FROM verified WHERE path=?",
+                        (os.fsencode(relative),),
+                    ).fetchone()
+                    if row is None:
+                        # The preceding complete walk proved this name absent.
+                        # An appearance after that pass cannot inherit a proof.
+                        try:
+                            with _parent(
+                                root,
+                                relative,
+                                expected=record["blobs_identity"],
+                                database=database,
+                                column="staged",
+                            ) as (parent, name):
+                                os.stat(name, dir_fd=parent, follow_symlinks=False)
+                        except FileNotFoundError:
+                            return {"state": "missing"}
+                        raise ValueError(
+                            "Unrecorded source blob appeared after verification."
+                        )
+                    payload = json.loads(row[0])
+                    if fresh is None or payload.get("kind") != stat.S_IFREG:
+                        raise ValueError(
+                            "The verified source blob census lacks its file proof."
+                        )
+                    wanted = json.loads(fresh[0])
+                    with _parent(
+                        root,
+                        relative,
+                        expected=record["blobs_identity"],
+                        database=database,
+                        column="staged",
+                    ) as (parent, name):
+                        descriptor = os.open(
+                            name,
+                            os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+                            dir_fd=parent,
+                        )
+                        try:
+                            opened = os.fstat(descriptor)
+                            if _stamp(opened) != wanted:
+                                self._changed(job, relative, opened, wanted, stage=True)
+                            current = os.stat(
+                                name, dir_fd=parent, follow_symlinks=False
+                            )
+                            if _stamp(current) != wanted:
+                                self._changed(
+                                    job, relative, current, wanted, stage=True
+                                )
+                            finished = os.fstat(descriptor)
+                            if _stamp(finished) != wanted:
+                                self._changed(
+                                    job, relative, finished, wanted, stage=True
+                                )
+                        finally:
+                            os.close(descriptor)
+                    return {
+                        "state": "present",
+                        "bytes": payload["size"],
+                        "sha256": payload["sha256"],
+                    }
+
+                try:
+                    yield root, lookup
+                    check()
+                    lease_check()
+                    if identity(root) != record["blobs_identity"]:
+                        raise ValueError("The verified source blob root changed.")
+                finally:
+                    active = False
 
     def cleanup(self, job, owner_check=None):
         record = (job.get("snapshot") or {}).get("external_blob_staging")
