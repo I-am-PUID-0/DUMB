@@ -1123,6 +1123,16 @@ def _major_migration_recovery_reason():
         )
 
         if infinidysk_major_recovery_pending():
+            from utils.infinidysk_v2_migration import INFINIDYSK_V2_MIGRATION_MANAGER
+
+            if (
+                INFINIDYSK_V2_MIGRATION_MANAGER.has_prepared_job() is True
+                and INFINIDYSK_V2_MIGRATION_MANAGER.has_recovery_pending_job() is False
+            ):
+                return {
+                    "maintenance_kind": "infinidysk_prepared",
+                    "message": "InfiniDysk 2 is prepared and waiting for your decision. Open its migration panel to activate the prepared installation or restore v1. Applications stay paused until you choose.",
+                }
             return (
                 "An interrupted InfiniDysk major migration needs review. Preserve "
                 "the retained data, archive and job state. Use the job's offered "
@@ -1139,14 +1149,19 @@ def _major_migration_recovery_reason():
 
 
 def _start_recovery_control_plane(
-    process_handler, config_manager, reason, *, label="Installation recovery"
+    process_handler,
+    config_manager,
+    reason,
+    *,
+    label="Installation recovery",
+    maintenance_kind=None,
 ):
     """Serve recovery using installed artifacts; never install or configure apps."""
     dumb_config = config_manager.get("dumb", {}) or {}
     api_config = dumb_config.get("api_service", {}) or {}
     frontend_config = dumb_config.get("frontend", {}) or {}
     expected = []
-    failures = {label: reason}
+    failures = {} if maintenance_kind == "infinidysk_prepared" else {label: reason}
     if api_config.get("enabled"):
         api_name = api_config.get("process_name") or "DUMB API"
         expected.append(api_name)
@@ -1204,7 +1219,12 @@ def _start_recovery_control_plane(
             "The recovery frontend is disabled in the saved configuration."
         )
     process_handler.set_startup_expected_services(expected)
-    process_handler.set_recovery_required(failures)
+    if maintenance_kind == "infinidysk_prepared":
+        process_handler.set_recovery_required(
+            failures, maintenance_kind=maintenance_kind
+        )
+    else:
+        process_handler.set_recovery_required(failures)
     logger.warning(
         "%s requires attention. Only the configured API and installed frontend "
         "are started. Complete recovery, then restart DUMB; normal services and "
@@ -1240,8 +1260,17 @@ def main():
             _start_recovery_control_plane(
                 process_handler,
                 config,
-                major_recovery,
+                (
+                    major_recovery["message"]
+                    if isinstance(major_recovery, dict)
+                    else major_recovery
+                ),
                 label="InfiniDysk migration recovery",
+                **(
+                    {"maintenance_kind": major_recovery["maintenance_kind"]}
+                    if isinstance(major_recovery, dict)
+                    else {}
+                ),
             )
         else:
             _start_recovery_control_plane(

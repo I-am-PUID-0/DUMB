@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import ExitStack
 import copy
 import ctypes
 import hashlib
@@ -858,7 +859,7 @@ class InfiniDyskV2Executor:
                 raise callback_error
             raise
 
-    def _execute(self, plan, workspace, progress, *, cutover):
+    def _execute(self, plan, workspace, progress, *, cutover, prepare=False):
         uid, gid = self._execution_ids()
         was_running = self._quiesce(plan, progress)
         check_queue = workspace.get("check_source_queue")
@@ -957,42 +958,54 @@ class InfiniDyskV2Executor:
         if temporary.exists():
             shutil.rmtree(temporary)
         if plan["mode"] == "migrate":
-            blob_root = candidate / "blobs"
-            if external_blobs is not None:
-                blob_root = Path(workspace["external_blob_source"]())
-                if blob_root != external_blobs:
-                    raise ContainedImportError(
-                        "External migration input changed after native import."
+            with ExitStack() as verification:
+                blob_root = candidate / "blobs"
+                source_census = None
+                if external_blobs is not None:
+                    census = workspace.get("source_blob_census")
+                    if callable(census):
+                        blob_root, source_census = verification.enter_context(census())
+                        blob_root = Path(blob_root)
+                    else:
+                        blob_root = Path(workspace["external_blob_source"]())
+                    if blob_root != external_blobs:
+                        raise ContainedImportError(
+                            "External migration input changed after native import."
+                        )
+                if blob_root.is_symlink():
+                    from utils.infinidysk_v2_inventory import (
+                        InventoryError,
+                        validate_data_link,
                     )
-            if blob_root.is_symlink():
-                from utils.infinidysk_v2_inventory import (
-                    InventoryError,
-                    validate_data_link,
-                )
 
+                    try:
+                        validate_data_link(
+                            candidate, {"path": "blobs", "link": os.readlink(blob_root)}
+                        )
+                        blob_root = blob_root.resolve(strict=True)
+                        blob_root.relative_to(candidate)
+                    except (OSError, ValueError, RuntimeError, InventoryError):
+                        raise ContainedImportError(
+                            "The staged legacy blob alias leaves its verified candidate scope."
+                        ) from None
                 try:
-                    validate_data_link(
-                        candidate, {"path": "blobs", "link": os.readlink(blob_root)}
+                    report = verify_import_inventory(
+                        snapshot["source_database"],
+                        candidate / "infinidysk.sqlite",
+                        report_text,
+                        source_blob_root=blob_root,
+                        **(
+                            {"source_blob_census": source_census}
+                            if source_census is not None
+                            else {}
+                        ),
                     )
-                    blob_root = blob_root.resolve(strict=True)
-                    blob_root.relative_to(candidate)
-                except (OSError, ValueError, RuntimeError, InventoryError):
-                    raise ContainedImportError(
-                        "The staged legacy blob alias leaves its verified candidate scope."
-                    ) from None
-            try:
-                report = verify_import_inventory(
-                    snapshot["source_database"],
-                    candidate / "infinidysk.sqlite",
-                    report_text,
-                    source_blob_root=blob_root,
-                )
-            except ContainedImportError as error:
-                diagnostics = getattr(error, "import_report", None)
-                if diagnostics is not None:
-                    record_report(None, diagnostics)
-                raise
-            record_report(None, report.get("import_report"))
+                except ContainedImportError as error:
+                    diagnostics = getattr(error, "import_report", None)
+                    if diagnostics is not None:
+                        record_report(None, diagnostics)
+                    raise
+                record_report(None, report.get("import_report"))
         else:
             with sqlite3.connect(
                 f"file:{quote(str(candidate / 'infinidysk.sqlite'))}?mode=ro", uri=True
@@ -1023,8 +1036,12 @@ class InfiniDyskV2Executor:
         if external_blobs is not None:
             receipt["external_blob_staging_verified"] = True
         workspace["accept_import"](receipt)
-        if external_blobs is not None:
-            workspace["cleanup_blob_staging"]()
+        if prepare:
+            if getattr(process, "stopped", False) is not True:
+                raise ContainedImportError(
+                    "The prepared native importer is not confirmed stopped."
+                )
+            return {**receipt, "candidate_prepared": True}
         if not cutover:
             if getattr(process, "stopped", False) is not True:
                 raise ContainedImportError(
@@ -1047,6 +1064,20 @@ class InfiniDyskV2Executor:
                 self._discard_rehearsal_candidate(plan, workspace, snapshot)
             receipt["candidate_discarded"] = True
             return receipt
+        return self.activate(
+            plan, {**workspace, "snapshot": snapshot}, progress, receipt
+        )
+
+    def prepare(self, plan, workspace, progress):
+        return self._execute(plan, workspace, progress, cutover=False, prepare=True)
+
+    def activate(self, plan, workspace, progress, receipt):
+        """Publish an already accepted, stopped candidate without another import."""
+        candidate = Path(workspace["candidate_data"])
+        snapshot = workspace.get("snapshot") or {}
+        if not snapshot:
+            # The combined legacy cutover captures it in the same invocation.
+            snapshot = workspace["get_snapshot"]()
         target = Path(plan["target"]["data_dir"])
         if target.exists():
             if target.is_symlink() or any(target.iterdir()) or os.path.ismount(target):

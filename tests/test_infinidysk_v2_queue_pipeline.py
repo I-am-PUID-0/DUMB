@@ -213,7 +213,7 @@ class QueueCapturePipelineTests(unittest.TestCase):
             )
         if offload:
             self.assertEqual(
-                "cleaned", job["snapshot"]["external_blob_staging"]["state"]
+                "released", job["snapshot"]["external_blob_staging"]["state"]
             )
         self.assertEqual(
             "original metadata", (self.source / "blobs/original").read_text()

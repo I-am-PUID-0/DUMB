@@ -243,6 +243,33 @@ class ExecutionTests(unittest.TestCase):
         ):
             return controller.resume(job)
 
+    def test_prepare_then_activate_reuses_one_native_import_and_keeps_apps_paused(self):
+        receipt = self.executor.prepare(self.plan, self.workspace, self.progress)
+        self.assertTrue(receipt["candidate_prepared"])
+        self.assertEqual(1, self.native.call_count)
+        self.assertEqual(1, self.candidate.wait_import.call_count)
+        self.assertFalse(any(call[0] == "start" for call in self.handler.calls))
+        candidate = Path(self.workspace["candidate_data"])
+        self.assertTrue((candidate / "infinidysk.sqlite").is_file())
+        stamp = candidate.stat()
+        workspace = {
+            **self.workspace,
+            "snapshot": {
+                "candidate_identity": {
+                    "device": stamp.st_dev,
+                    "inode": stamp.st_ino,
+                    "mode": stat.S_IFDIR,
+                }
+            },
+        }
+        result = self.executor.activate(self.plan, workspace, self.progress, receipt)
+        self.assertTrue(result["generation_2_started"])
+        self.assertEqual(1, self.native.call_count)
+        self.assertEqual(1, self.candidate.wait_import.call_count)
+        self.assertTrue(
+            (Path(self.plan["target"]["data_dir"]) / "infinidysk.sqlite").is_file()
+        )
+
     def test_cutover_starts_delivery_before_any_consumer(self):
         observed = []
 

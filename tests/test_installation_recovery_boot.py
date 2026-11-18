@@ -125,6 +125,61 @@ class RecoveryBootTests(unittest.TestCase):
         )
         return namespace, controller, handler, manager, users, events, hold
 
+    def test_prepared_review_boot_is_typed_maintenance_and_never_starts_apps(self):
+        ns, controller, handler, _, users, events, _ = self.namespace()
+        sys.modules[
+            "utils.infinidysk_migration_admission"
+        ].infinidysk_major_recovery_pending.return_value = True
+        native = ModuleType("utils.infinidysk_v2_migration")
+        native.INFINIDYSK_V2_MIGRATION_MANAGER = SimpleNamespace(
+            has_prepared_job=lambda: True, has_recovery_pending_job=lambda: False
+        )
+        with patch.dict(sys.modules, {"utils.infinidysk_v2_migration": native}):
+            ns["_start_recovery_control_plane"] = Mock()
+            ns["main"]()
+        users.create_system_user.assert_not_called()
+        controller.start_scheduler.assert_not_called()
+        handler.start_auto_restart_monitor.assert_not_called()
+        self.assertTrue(ns["initialize_dependencies"].call_args.kwargs["recovery_only"])
+        self.assertEqual(
+            "infinidysk_prepared",
+            ns["_start_recovery_control_plane"].call_args.kwargs["maintenance_kind"],
+        )
+
+    def test_actual_recovery_takes_priority_over_a_retained_prepared_review(self):
+        ns, _, _, _, _, _, _ = self.namespace()
+        sys.modules[
+            "utils.infinidysk_migration_admission"
+        ].infinidysk_major_recovery_pending.return_value = True
+        native = ModuleType("utils.infinidysk_v2_migration")
+        native.INFINIDYSK_V2_MIGRATION_MANAGER = SimpleNamespace(
+            has_prepared_job=lambda: True, has_recovery_pending_job=lambda: True
+        )
+        with patch.dict(sys.modules, {"utils.infinidysk_v2_migration": native}):
+            ns["_start_recovery_control_plane"] = Mock()
+            ns["main"]()
+        self.assertNotIn(
+            "maintenance_kind", ns["_start_recovery_control_plane"].call_args.kwargs
+        )
+
+    def test_prepared_control_plane_has_no_synthetic_recovery_failure(self):
+        ns, _, handler, manager, _, _, _ = self.namespace()
+        root = {
+            "api_service": {"enabled": True, "process_name": "DUMB API"},
+            "frontend": {
+                "enabled": True,
+                "process_name": "DUMB Frontend",
+                "command": ["node", "installed.mjs"],
+            },
+        }
+        manager.get = lambda key, default=None: root if key == "dumb" else default
+        ns["_start_recovery_control_plane"](
+            handler, manager, "Prepared review", maintenance_kind="infinidysk_prepared"
+        )
+        handler.set_recovery_required.assert_called_once_with(
+            {}, maintenance_kind="infinidysk_prepared"
+        )
+
     def test_major_migration_recovery_branches_before_user_aliases_and_workers(self):
         ns, controller, handler, _, users, events, _ = self.namespace()
         admission = sys.modules["utils.infinidysk_migration_admission"]
@@ -396,6 +451,13 @@ class RecoveryBootTests(unittest.TestCase):
         self.assertGreater(handler.startup_completed_at, 0)
         self.assertTrue(result["terminal"])
         handler._write_startup_state.assert_called_once()
+        namespace["set_recovery_required"](
+            handler, {}, maintenance_kind="infinidysk_prepared"
+        )
+        self.assertEqual("infinidysk_prepared", handler.startup_maintenance_kind)
+        self.assertFalse(event.is_set())
+        namespace["set_recovery_required"](handler, {}, maintenance_kind="unrecognized")
+        self.assertIsNone(handler.startup_maintenance_kind)
 
     def test_metrics_snapshot_and_write_share_one_persistence_reservation(self):
         source = Path(__file__).parents[1] / "main.py"

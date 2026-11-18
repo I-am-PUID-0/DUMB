@@ -260,7 +260,7 @@ class InfiniDyskV2ConsumerRecovery:
             manager._assert_job_owner(job)
             manager._check_cancel(job)
             if (
-                job.get("mode") != "cutover"
+                job.get("mode") not in {"cutover", "prepare"}
                 or not job.get("accepted_import")
                 or job.get("activation_exposed")
             ):

@@ -253,7 +253,7 @@ class InfiniDyskV2Cleanup:
         }
         possible = bool(
             job.get("status") == "completed"
-            and job.get("mode") == "cutover"
+            and job.get("mode") in {"cutover", "prepare"}
             and (job.get("plan") or {}).get("mode") == "migrate"
             and (job.get("result") or {}).get("validated") is True
             and cleanup.get("state") != "completed"
@@ -278,7 +278,7 @@ class InfiniDyskV2Cleanup:
             or type(job.get("protocol")) is not int
             or job.get("protocol") != 1
             or job.get("status") != "completed"
-            or job.get("mode") != "cutover"
+            or job.get("mode") not in {"cutover", "prepare"}
             or (job.get("plan") or {}).get("mode") != "migrate"
             or (job.get("result") or {}).get("validated") is not True
             or (job.get("result") or {}).get("execution_verified") is not True

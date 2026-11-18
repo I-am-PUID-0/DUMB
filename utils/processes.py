@@ -119,6 +119,7 @@ class ProcessHandler:
         self.startup_completed_at = None
         self.startup_expected_services = set()
         self.startup_failures = {}
+        self.startup_maintenance_kind = None
         self.startup_lock = threading.RLock()
         self.startup_complete_event = threading.Event()
         self.startup_state_path = "/healthcheck/startup_state.json"
@@ -134,6 +135,7 @@ class ProcessHandler:
         with self.startup_lock:
             payload = {
                 "phase": self.startup_phase,
+                "maintenance_kind": getattr(self, "startup_maintenance_kind", None),
                 "started_at": self.startup_started_at,
                 "completed_at": self.startup_completed_at,
                 "expected_services": sorted(self.startup_expected_services),
@@ -180,16 +182,22 @@ class ProcessHandler:
             self.startup_failures = failures
             self.startup_completed_at = time.time()
             self.startup_phase = "degraded" if failures else "ready"
+            self.startup_maintenance_kind = None
             self.startup_complete_event.set()
         self._write_startup_state()
         return self.get_startup_status()
 
-    def set_recovery_required(self, failures):
+    def set_recovery_required(self, failures, *, maintenance_kind=None):
         """Terminal control-plane state which never enables background restarts."""
         with self.startup_lock:
             self.startup_failures = dict(failures or {})
             self.startup_completed_at = time.time()
             self.startup_phase = "recovery_required"
+            self.startup_maintenance_kind = (
+                "infinidysk_prepared"
+                if maintenance_kind == "infinidysk_prepared"
+                else None
+            )
             self.startup_complete_event.clear()
         self._write_startup_state()
         return self.get_startup_status()
@@ -197,6 +205,7 @@ class ProcessHandler:
     def get_startup_status(self):
         with self.startup_lock:
             phase = self.startup_phase
+            maintenance_kind = getattr(self, "startup_maintenance_kind", None)
             expected = sorted(self.startup_expected_services)
             failures = dict(self.startup_failures)
             started_at = self.startup_started_at
@@ -204,6 +213,7 @@ class ProcessHandler:
         services = {name: self.get_service_readiness(name) for name in expected}
         return {
             "phase": phase,
+            "maintenance_kind": maintenance_kind,
             "terminal": phase in STARTUP_TERMINAL_PHASES,
             "started_at": started_at,
             "completed_at": completed_at,

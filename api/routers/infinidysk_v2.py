@@ -55,6 +55,7 @@ def _invoke(kind, operation, payload, handler, updater, *, mutation=False):
         if mutation and operation not in {"preview", "preview_start", "preview_cancel"}:
             existing = operation in {
                 "rollback",
+                "activate",
                 "cutover",
                 "cancel",
                 "retry_consumers",
@@ -178,6 +179,30 @@ async def major_rehearse(
 ):
     return await run_in_threadpool(
         _invoke, "major", "rehearse", request, handler, updater, mutation=True
+    )
+
+
+@infinidysk_v2_router.post("/prepare")
+async def major_prepare(
+    request: dict[str, Any] = Body(...),
+    handler=Depends(get_process_handler),
+    updater=Depends(get_updater),
+    current_user=Depends(get_optional_current_user),
+):
+    return await run_in_threadpool(
+        _invoke, "major", "prepare", request, handler, updater, mutation=True
+    )
+
+
+@infinidysk_v2_router.post("/activate")
+async def major_activate(
+    request: dict[str, Any] = Body(...),
+    handler=Depends(get_process_handler),
+    updater=Depends(get_updater),
+    current_user=Depends(get_optional_current_user),
+):
+    return await run_in_threadpool(
+        _invoke, "major", "activate", request, handler, updater, mutation=True
     )
 
 

@@ -74,6 +74,7 @@ ACTIVE = {
     "cutover",
     "rolling_back",
 }
+PREPARED = {"prepared"}
 RECOVERY = {"interrupted", "recovery_required"}
 ACKNOWLEDGEMENTS = ("backup", "downtime", "beta", "oidc_policy", "downstream")
 _ID = re.compile(r"[0-9a-f]{32}")
@@ -503,10 +504,10 @@ class InfiniDyskV2MigrationManager:
             and not cancel_requested
         )
         rollback = bool(
-            state in RECOVERY
+            state in RECOVERY | PREPARED
             or (
                 job.get("snapshot")
-                and job.get("mode") == "cutover"
+                and job.get("mode") in {"cutover", "prepare"}
                 and state == "completed"
             )
         )
@@ -518,7 +519,7 @@ class InfiniDyskV2MigrationManager:
                 state == "completed"
                 and (job.get("activation_committed") is True or legacy_exposed)
                 and job.get("snapshot")
-                and job.get("mode") == "cutover"
+                and job.get("mode") in {"cutover", "prepare"}
             )
         cleanup = self._cleanup_controller().public_state(job)
         if exposed and state != "completed":
@@ -555,6 +556,15 @@ class InfiniDyskV2MigrationManager:
             "status": state,
             "state": state,
             "can_rollback": rollback,
+            "prepare_mode": (
+                job.get("plan", {}).get("mode")
+                if job.get("mode") == "prepare"
+                else None
+            ),
+            "can_activate": state == "prepared"
+            and job.get("mode") == "prepare"
+            and not exposed,
+            "activate_confirmation": f"ACTIVATE INFINIDYSK V2 {job['job_id']}",
             "can_cancel": can_cancel,
             "cancel_requested": cancel_requested,
             "cancel_confirmation_text": f"CANCEL INFINIDYSK V2 {job['job_id']}",
@@ -571,7 +581,7 @@ class InfiniDyskV2MigrationManager:
             **cleanup,
         }
         if (
-            state == "completed"
+            state in {"completed", "rolled_back", "failed_restored", "cancelled"}
             and (public.get("result") or {}).get("restart_required") is True
             and job.get("worker_id") != self._worker_id
             and getattr(self.process_handler, "startup_phase", None)
@@ -582,6 +592,8 @@ class InfiniDyskV2MigrationManager:
             public["result"]["restart_required"] = False
             public["message"] = (
                 "Generation 2 consumer recovery finished and normal DUMB startup completed. Review any retained consumer warnings below."
+                if state == "completed"
+                else "v1 restoration finished and normal DUMB startup completed. The migration result and any error remain recorded below."
             )
         if legacy_exposed and state in ACTIVE | RECOVERY:
             public.update(
@@ -742,12 +754,17 @@ class InfiniDyskV2MigrationManager:
             if self._cleanup is not None and self._cleanup.has_blocking_job():
                 return True
             return any(
-                self._effective_status(job) in ACTIVE | RECOVERY for job in self._jobs()
+                self._effective_status(job) in ACTIVE | RECOVERY | PREPARED
+                for job in self._jobs()
             )
 
     def has_recovery_pending_job(self):
         with self._lock:
             return any(self._effective_status(job) in RECOVERY for job in self._jobs())
+
+    def has_prepared_job(self):
+        with self._lock:
+            return any(job.get("status") == "prepared" for job in self._jobs())
 
     def _config(self):
         value = getattr(self.config_manager, "config", None)
@@ -1637,7 +1654,9 @@ class InfiniDyskV2MigrationManager:
                 key=lambda item: item.get("created_at_ns", item.get("created_at", 0)),
             )
             blocking = [
-                job for job in jobs if self._effective_status(job) in ACTIVE | RECOVERY
+                job
+                for job in jobs
+                if self._effective_status(job) in ACTIVE | RECOVERY | PREPARED
             ]
             # A newer finished attempt must never hide older recovery evidence.
             selected = blocking[0] if blocking else (jobs[-1] if jobs else None)
@@ -1936,6 +1955,14 @@ class InfiniDyskV2MigrationManager:
     def start(self, request):
         return self._start(dict(request), "cutover")
 
+    def prepare(self, request):
+        return self._start(dict(request), "prepare")
+
+    def activate(self, request):
+        from utils.infinidysk_v2_prepared import PreparedMigration
+
+        return PreparedMigration(self).start(request)
+
     def _start(self, request, mode):
         plan, preview_path, saved = self._request_plan(request, revalidate=False)
         with INFINIDYSK_MIGRATION_ADMISSION_LOCK, self._lock:
@@ -2051,7 +2078,7 @@ class InfiniDyskV2MigrationManager:
                 daemon=True,
             )
             self._write(self._job_path(job_id), job)
-            if mode == "cutover":
+            if mode in {"cutover", "prepare"}:
                 saved["used_for_start"] = True
                 self._write(preview_path, saved)
             try:
@@ -2988,7 +3015,7 @@ class InfiniDyskV2MigrationManager:
                     "The native import worker no longer owns acceptance."
                 )
 
-    def _accept(self, job, receipt):
+    def _accept(self, job, receipt, *, persist_proof=True):
         self._assert_job_owner(job)
         self._validate_receipt(job, receipt)
         if (receipt.get("report") or {}).get("import_report") is not None:
@@ -3040,7 +3067,7 @@ class InfiniDyskV2MigrationManager:
                 )
         with self._lock:
             self._assert_job_owner(job)
-            if job["plan"].get("mode") == "migrate":
+            if job["plan"].get("mode") == "migrate" and persist_proof:
                 from utils.infinidysk_v2_omission_store import write_proof
 
                 proof = receipt["report"].pop("omission_proof")
@@ -3178,6 +3205,7 @@ class InfiniDyskV2MigrationManager:
             "config_backup": str(root / "dumb-config.json"),
             "receipt_path": str(root / "native-receipt.json"),
         }
+        workspace["get_snapshot"] = lambda: copy.deepcopy(job.get("snapshot"))
         workspace["capture_source"] = lambda postgres_snapshot=None: self._capture(
             job, workspace, postgres_snapshot
         )
@@ -3194,6 +3222,12 @@ class InfiniDyskV2MigrationManager:
         )
         workspace["external_blob_source"] = lambda: self._verified_external_blobs(job)
         workspace["cleanup_blob_staging"] = lambda: self._cleanup_external_blobs(job)
+        if job["plan"]["options"].get("offload_legacy_blobs"):
+            from utils.infinidysk_v2_blob_staging import ExternalBlobStaging
+
+            workspace["source_blob_census"] = lambda: ExternalBlobStaging(
+                self
+            ).verified_census(job)
         workspace["restore_source"] = (
             lambda assert_unmounted: self._restore_reused_source(job, assert_unmounted)
         )
@@ -3236,11 +3270,23 @@ class InfiniDyskV2MigrationManager:
             job.pop("staging_cleanup_required", None)
             self._write(self._job_path(job["job_id"]), job)
 
+    def _defer_external_cleanup(self, job):
+        record = (job.get("snapshot") or {}).get("external_blob_staging")
+        if not record or record.get("state") == "cleaned":
+            return
+        from utils.infinidysk_v2_prepared import defer_cleanup
+
+        try:
+            defer_cleanup(self, job)
+        except Exception:
+            # Optional cleanup scheduling must never revoke a durable accepted
+            # activation/restoration, even when its worker cannot be started.
+            return
+
     def _restore_reused_source(self, job, assert_unmounted):
         from utils.infinidysk_v2_space_control import SpaceReuse
 
         SpaceReuse(self).restore(job, assert_unmounted)
-        self._cleanup_external_blobs(job)
 
     def _record_import_report(self, job, raw, diagnostics=None):
         from utils.private_files import atomic_write_private_text
@@ -3350,7 +3396,8 @@ class InfiniDyskV2MigrationManager:
             r"(?i)(postgres(?:ql)?://)[^\s/@:]+:[^\s/@]+@", r"\1[REDACTED]@", message
         )
 
-    def _run(self, job):
+    def _run(self, job, *, activating=False):
+        worker = threading.current_thread()
         update_lock = getattr(self.updater, "updating", None)
         acquired = update_lock is not None and update_lock.acquire(blocking=False)
         try:
@@ -3359,26 +3406,45 @@ class InfiniDyskV2MigrationManager:
                 raise InfiniDyskV2MigrationError(
                     "A service update already owns lifecycle admission."
                 )
-            self._progress(
-                job,
-                "revalidating",
-                "Rechecking the reviewed migration plan. Services keep running until these checks finish.",
-            )
-            scan_reporter = MetadataScanProgress(
-                lambda stage, message, **details: self._progress(
-                    job, "revalidating", message, **details
-                ),
-                check_cancel=lambda: self._check_cancel(job),
-                prior_capacity=job["plan"].get("capacity"),
-            )
-            self._revalidate_reviewed_plan(job["plan"], progress=scan_reporter)
-            self._check_cancel(job)
-            self._progress(job, "running", "Starting the contained native migration.")
-            operation = (
-                self.executor.rehearse
-                if job["mode"] == "rehearsal"
-                else self.executor.cutover
-            )
+            if activating:
+                from utils.infinidysk_v2_prepared import PreparedMigration
+
+                self._progress(
+                    job,
+                    "activating",
+                    "Checking the prepared database before activation.",
+                )
+                receipt = PreparedMigration(self).verify(job, workspace)
+                operation = lambda plan, space, progress: self.executor.activate(
+                    plan, space, progress, receipt
+                )
+            else:
+                self._progress(
+                    job,
+                    "revalidating",
+                    "Rechecking the reviewed migration plan. Services keep running until these checks finish.",
+                )
+                scan_reporter = MetadataScanProgress(
+                    lambda stage, message, **details: self._progress(
+                        job, "revalidating", message, **details
+                    ),
+                    check_cancel=lambda: self._check_cancel(job),
+                    prior_capacity=job["plan"].get("capacity"),
+                )
+                self._revalidate_reviewed_plan(job["plan"], progress=scan_reporter)
+                self._check_cancel(job)
+                self._progress(
+                    job, "running", "Starting the contained native migration."
+                )
+                operation = {
+                    "rehearsal": self.executor.rehearse,
+                    "cutover": self.executor.cutover,
+                    "prepare": getattr(self.executor, "prepare", None),
+                }[job["mode"]]
+                if not callable(operation):
+                    raise InfiniDyskV2MigrationError(
+                        "The prepared migration executor is unavailable."
+                    )
             from utils.infinidysk_migration_admission import v2_migration_owner
 
             job["execution_started"] = True
@@ -3397,7 +3463,12 @@ class InfiniDyskV2MigrationManager:
                 raise InfiniDyskV2MigrationError(
                     "The executor did not pass native import acceptance."
                 )
-            if job["mode"] == "rehearsal":
+            if job["mode"] == "prepare" and not activating:
+                from utils.infinidysk_v2_prepared import PreparedMigration
+
+                PreparedMigration(self).record(job, workspace, receipt)
+                state = "prepared"
+            elif job["mode"] == "rehearsal":
                 if receipt.get("source_restored") is not True:
                     raise InfiniDyskV2MigrationError(
                         "Rehearsal did not restore the original v1 service."
@@ -3440,17 +3511,24 @@ class InfiniDyskV2MigrationManager:
                 self._check_cancel(job)
                 job.update(
                     status=state,
-                    stage=state,
+                    stage="awaiting_activation" if state == "prepared" else state,
                     message=(
-                        "Contained rehearsal verified; v1 is retained."
-                        if state == "rehearsed"
-                        else "Generation 2 cutover verified; retained v1 rollback is available."
+                        "The converted v2 database is ready. Apps remain stopped. Activate it or restore v1."
+                        if state == "prepared"
+                        else (
+                            "Contained rehearsal verified; v1 is retained."
+                            if state == "rehearsed"
+                            else "Generation 2 cutover verified; retained v1 rollback is available."
+                        )
                     ),
                     result={
                         "validated": True,
                         "execution_verified": True,
                         "plan_fingerprint": job["plan_fingerprint"],
                         "import_strategy": "preserve",
+                        "restart_required": state == "completed"
+                        and getattr(self.process_handler, "startup_phase", None)
+                        == "recovery_required",
                         **(
                             {"download_credentials_verified": True}
                             if receipt.get("download_credentials_verified") is True
@@ -3464,6 +3542,8 @@ class InfiniDyskV2MigrationManager:
                 # Publish completion and release admission in the same lane.
                 update_lock.release()
                 acquired = False
+            if state != "prepared":
+                self._defer_external_cleanup(job)
         except Exception as error:
             restored = False
             recovery_error = None
@@ -3578,6 +3658,9 @@ class InfiniDyskV2MigrationManager:
                     "validated": False,
                     "execution_verified": False,
                     "source_restored": restored,
+                    "restart_required": restored
+                    and getattr(self.process_handler, "startup_phase", None)
+                    == "recovery_required",
                     **({"source_untouched": True} if pre_execution else {}),
                 },
             )
@@ -3586,11 +3669,13 @@ class InfiniDyskV2MigrationManager:
                 try:
                     # A completed worker must not overwrite a later rollback or
                     # clear a newer worker's ownership after releasing its lane.
-                    if self._active_id == job["job_id"]:
+                    if self._active_id == job["job_id"] and self._thread is worker:
                         job["updated_at"] = int(time.time())
                         self._write(self._job_path(job["job_id"]), job)
                         self._active_id = None
                         self._cancel_requested.discard(job["job_id"])
+                        if job.get("status") in {"failed_restored", "cancelled"}:
+                            self._defer_external_cleanup(job)
                 finally:
                     if acquired:
                         update_lock.release()
@@ -3617,7 +3702,10 @@ class InfiniDyskV2MigrationManager:
                 raise InfiniDyskV2MigrationError(
                     "Explicitly acknowledge that retained v1 rollback discards later generation 2 writes."
                 )
-            if self.has_blocking_job() and self._effective_status(job) not in RECOVERY:
+            if (
+                self.has_blocking_job()
+                and self._effective_status(job) not in RECOVERY | PREPARED
+            ):
                 raise InfiniDyskV2MigrationError(
                     "Another migration must finish before rollback."
                 )
@@ -3630,7 +3718,9 @@ class InfiniDyskV2MigrationManager:
                 status="rolling_back", stage="rolling_back", worker_id=self._worker_id
             )
             self._write(self._job_path(job["job_id"]), job)
-        if job["plan"].get("options", {}).get("offload_legacy_blobs"):
+        if job.get("mode") == "prepare" or job["plan"].get("options", {}).get(
+            "offload_legacy_blobs"
+        ):
             from utils.infinidysk_v2_recovery_worker import start_rollback_worker
 
             try:
@@ -3672,7 +3762,14 @@ class InfiniDyskV2MigrationManager:
                 status="rolled_back",
                 stage="rolled_back",
                 message="Retained v1 runtime/configuration restored. Later v2 writes were not copied back.",
-                result={"validated": True, "reverse_copy_performed": False},
+                result={
+                    "validated": True,
+                    "reverse_copy_performed": False,
+                    "restart_required": getattr(
+                        self.process_handler, "startup_phase", None
+                    )
+                    == "recovery_required",
+                },
             )
         except Exception as error:
             self._retain_owned_process_cleanup(job, error)
@@ -3688,6 +3785,8 @@ class InfiniDyskV2MigrationManager:
                     self._write(self._job_path(job["job_id"]), job)
                     self._active_id = None
                     self._rollback_active = False
+                    if job.get("status") == "rolled_back":
+                        self._defer_external_cleanup(job)
             finally:
                 lock.release()
         return {"job": self._public_job(job)}
