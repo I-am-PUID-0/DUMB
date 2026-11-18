@@ -2,7 +2,7 @@
 
 > Channel: dev. Canonical base: https://dumbarr.com/dev/
 
-Documentation artifact: release 1.25.11. Source commit: 4b7e71543619327400357ad2abc1936f0a7ad58b. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.11.
+Documentation artifact: release 1.25.12. Source commit: ea75d5db1478c64055187eb21f0cd19c8da289e1. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.12.
 
 DUMB coordinates media services. Match instructions to the installed backend version. Development guides can describe features absent from the latest release.
 
@@ -11954,8 +11954,19 @@ Source: https://dumbarr.com/dev/features/infinidysk-v2-migration/
 DUMB keeps InfiniDysk 1.x as the default. InfiniDysk 2 uses a different native
 runtime, configuration and data layout. Install it or move existing data through
 **Tools → InfiniDysk 2 migration** on the InfiniDysk service page.
-When the backend identifies an eligible empty installation, a dashboard notice
-opens the same wizard in fresh-install mode.
+For an eligible empty installation, the wizard uses fresh-install mode. To choose
+2.x during setup, use the runtime choice in
+[service options](../frontend/onboarding.md#step-5-service-specific-options).
+Fresh installations and services already running 2.x do not receive upgrade
+invitations. An enabled, eligible 1.x service with existing data can show an
+optional invitation: **Review upgrade** opens the wizard, **Remind me tomorrow**
+or **Remind me in a week** hides it for that period, and **Don't show again**
+hides it permanently in this browser. The service's **Tools** menu remains
+available.
+
+These preferences do not hide progress or required recovery for previews and jobs
+you have started. During onboarding, those status notices appear below the
+controls.
 
 The wizard requires DUMB API **2.24.0 or newer**, explicit InfiniDysk 2 capabilities
 and migration protocol **1**. An older, unknown or temporarily unavailable
