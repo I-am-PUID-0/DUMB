@@ -28,6 +28,8 @@ import time
 from urllib.parse import quote
 import uuid
 
+from utils.infinidysk_v2_provider_diagnostics import PROVIDER_FAILURE_CATEGORIES
+
 MAX_PROVIDERS = 64
 MAX_CONFIG_BYTES = 1024 * 1024
 MAX_COMMAND_BYTES = 8192
@@ -38,11 +40,43 @@ MAX_TOTAL_CONNECTIONS = 4
 MAX_WORKERS = 32
 SOCKET_TIMEOUT = 30
 CLIENT_IDLE_TIMEOUT = 3
+MAX_TRANSIENT_ATTEMPTS = 2
 PROVIDER_ENV = "NZBDAV_CONFIG__USENET__PROVIDERS"
 
 
 class NntpBridgeError(ValueError):
     """A captured-provider bridge could not safely complete its operation."""
+
+
+class _ProviderFailure(NntpBridgeError):
+    def __init__(self, category, *, retryable=False):
+        super().__init__("The captured provider could not complete an NNTP read.")
+        self.category = category
+        self.retryable = retryable
+
+
+class _ProviderStatus(_ProviderFailure):
+    def __init__(self, reply):
+        super().__init__(
+            "authentication"
+            if reply[:3] in {b"480", b"481", b"482", b"502"}
+            else "provider_reply"
+        )
+        self.reply = reply
+
+
+def _provider_failure(error):
+    if isinstance(error, _ProviderFailure):
+        return error
+    if isinstance(error, (ssl.SSLZeroReturnError, ssl.SSLEOFError)):
+        return _ProviderFailure("connection_closed", retryable=True)
+    if isinstance(error, ssl.SSLError):
+        return _ProviderFailure("tls")
+    if isinstance(error, (socket.timeout, TimeoutError)):
+        return _ProviderFailure("timeout", retryable=True)
+    if isinstance(error, OSError):
+        return _ProviderFailure("connection_closed", retryable=True)
+    return _ProviderFailure("protocol")
 
 
 def _text(value, label, *, empty=True):
@@ -154,7 +188,7 @@ def read_source_providers(database, environment=None):
     return validate_providers(raw)
 
 
-def _resolve_targets(host, port):
+def _resolve_targets(host, port, *, timeout=8):
     """Resolve only the captured host, once, with a killable DNS deadline."""
     try:
         direct = ipaddress.ip_address(host.strip("[]"))
@@ -173,7 +207,7 @@ def _resolve_targets(host, port):
                 [sys.executable, "-I", "-B", "-c", program, host, str(port)],
                 capture_output=True,
                 text=True,
-                timeout=8,
+                timeout=timeout,
                 check=False,
             )
             if result.returncode or len(result.stdout) > 8192:
@@ -214,8 +248,14 @@ def _line(handle, limit=MAX_COMMAND_BYTES, *, eof=False):
     value = handle.readline(limit + 1)
     if not value and eof:
         return None
-    if not value or len(value) > limit or not value.endswith(b"\r\n"):
-        raise NntpBridgeError("An NNTP protocol line is incomplete or too large.")
+    if not value:
+        raise _ProviderFailure("connection_closed", retryable=True)
+    if len(value) > limit:
+        raise _ProviderFailure("response_limit")
+    if not value.endswith(b"\n"):
+        raise _ProviderFailure("connection_closed", retryable=True)
+    if not value.endswith(b"\r\n"):
+        raise _ProviderFailure("protocol")
     return value
 
 
@@ -226,7 +266,7 @@ def _allowed_command(line, provider):
         return bool(
             separator and re.fullmatch(rb"<[^<>\s\x00-\x1f\x7f]{1,2000}>", argument)
         )
-    if command in {b"CAPABILITIES", b"QUIT"}:
+    if command in {b"CAPABILITIES", b"DATE", b"QUIT"}:
         return not separator
     if command == b"MODE":
         return argument.upper() == b"READER"
@@ -237,6 +277,249 @@ def _allowed_command(line, provider):
         expected = provider["User" if kind.upper() == b"USER" else "Pass"].encode()
         return hmac.compare_digest(credential, expected)
     return False
+
+
+def _virtual_limit(providers):
+    return max(
+        MAX_WORKERS,
+        sum(
+            min(MAX_CONNECTIONS_PER_PROVIDER, row["MaxConnections"])
+            for row in providers
+            if row["Type"] in {1, 2, 3}
+        ),
+    )
+
+
+class _ClientReader:
+    """Keep buffered commands usable across idle periods and split TCP writes."""
+
+    def __init__(self, stream, stop):
+        self.stream, self.stop = stream, stop
+        self.buffer = bytearray()
+
+    def line(self, limit, *, idle=lambda: None, timeout=None):
+        deadline = None if timeout is None else time.monotonic() + timeout
+        while not self.stop.is_set():
+            end = self.buffer.find(b"\n")
+            if end >= 0:
+                if end + 1 > limit:
+                    raise NntpBridgeError("A private NNTP command is too large.")
+                value = bytes(self.buffer[: end + 1])
+                del self.buffer[: end + 1]
+                return value
+            if len(self.buffer) >= limit:
+                raise NntpBridgeError("A private NNTP command is too large.")
+            if self.buffer and deadline is None:
+                deadline = time.monotonic() + SOCKET_TIMEOUT
+            if deadline is not None and time.monotonic() >= deadline:
+                raise NntpBridgeError("A private NNTP command is incomplete.")
+            idle()
+            ready, _, _ = select.select([self.stream], [], [], 0.05)
+            if ready:
+                data = self.stream.recv(min(64 * 1024, limit - len(self.buffer)))
+                if not data:
+                    if self.buffer:
+                        raise NntpBridgeError("A private NNTP command is incomplete.")
+                    return None
+                self.buffer.extend(data)
+        return None
+
+
+class _ProviderSession:
+    """A native session survives replacement of its bounded upstream lease."""
+
+    def __init__(self, bridge, index):
+        self.bridge, self.index = bridge, index
+        self.provider = bridge.providers[index]
+        self.stream = self.response = None
+        self.held = False
+        self.deadline = None
+        self.initialization = []
+        self.last_command = time.monotonic()
+
+    def close(self):
+        stream, response = self.stream, self.response
+        self.stream = self.response = None
+        try:
+            if response is not None:
+                response.close()
+        finally:
+            try:
+                if stream is not None:
+                    with self.bridge._lock:
+                        self.bridge._sockets.discard(stream)
+                    try:
+                        stream.close()
+                    finally:
+                        self.bridge._record("active_connections", -1)
+            finally:
+                if self.held:
+                    self.held = False
+                    self.bridge._release_budget(self.index)
+
+    def idle(self):
+        if self.stream is not None and (
+            self.bridge._has_waiters()
+            or time.monotonic() - self.last_command >= CLIENT_IDLE_TIMEOUT
+        ):
+            self.close()
+
+    def _read_reply(self):
+        self._io_deadline()
+        reply = _line(self.response)
+        if not re.match(rb"^[1-5][0-9]{2}(?: |\r)", reply):
+            raise _ProviderFailure("protocol")
+        self.bridge._received(self.index, len(reply))
+        return reply
+
+    def _open(self):
+        self.bridge._acquire_budget(self.index, self.deadline)
+        self.held = True
+        try:
+            self.stream = self.bridge._connect(self.provider, deadline=self.deadline)
+            with self.bridge._lock:
+                self.bridge._counts["active_connections"] += 1
+                self.bridge._counts["peak_connections"] = max(
+                    self.bridge._counts["peak_connections"],
+                    self.bridge._counts["active_connections"],
+                )
+            self.response = self.stream.makefile("rb")
+            greeting = self._read_reply()
+            if greeting[:3] not in {b"200", b"201"}:
+                raise _ProviderStatus(greeting)
+            authenticated = False
+            for command in self.initialization:
+                if command.upper().startswith(b"AUTHINFO PASS ") and authenticated:
+                    continue
+                self._io_deadline()
+                self.stream.sendall(command)
+                reply = self._read_reply()
+                if command.upper().startswith(b"AUTHINFO USER "):
+                    if reply[:3] not in {b"281", b"381"}:
+                        raise _ProviderFailure("authentication")
+                    authenticated = reply[:3] == b"281"
+                elif command.upper().startswith(b"AUTHINFO PASS "):
+                    if reply[:3] != b"281":
+                        raise _ProviderFailure("authentication")
+                    authenticated = True
+                elif reply[:3] not in {b"200", b"201"}:
+                    raise _ProviderFailure("authentication")
+            return greeting
+        except BaseException:
+            self.close()
+            raise
+
+    def _remember(self, command, reply):
+        upper = command.upper()
+        if upper.startswith(b"AUTHINFO USER ") and reply[:3] in {b"281", b"381"}:
+            self.initialization = [
+                row
+                for row in self.initialization
+                if not row.upper().startswith(b"AUTHINFO ")
+            ]
+            self.initialization.append(command)
+        elif upper.startswith(b"AUTHINFO PASS ") and reply[:3] == b"281":
+            self.initialization = [
+                row
+                for row in self.initialization
+                if not row.upper().startswith(b"AUTHINFO PASS ")
+            ]
+            self.initialization.append(command)
+        elif upper == b"MODE READER\r\n" and reply[:3] in {b"200", b"201"}:
+            self.initialization = [
+                row for row in self.initialization if row.upper() != upper
+            ]
+            self.initialization.append(command)
+
+    def _retry(self, error, attempt):
+        failure = _provider_failure(error)
+        if not self.bridge._stop.is_set():
+            self.bridge._failure(self.index, failure.category)
+        self.close()
+        if (
+            not failure.retryable
+            or attempt + 1 >= MAX_TRANSIENT_ATTEMPTS
+            or self.bridge._stop.is_set()
+            or time.monotonic() >= self.deadline
+        ):
+            raise failure from error
+        self.bridge._provider_record(self.index, "retries")
+        self.bridge._stop.wait(min(0.05, self.deadline - time.monotonic()))
+
+    def _io_deadline(self):
+        remaining = self.deadline - time.monotonic()
+        if remaining <= 0:
+            raise _ProviderFailure("timeout", retryable=True)
+        self.stream.settimeout(remaining)
+
+    def greeting(self):
+        self.deadline = time.monotonic() + SOCKET_TIMEOUT
+        for attempt in range(MAX_TRANSIENT_ATTEMPTS):
+            try:
+                return self._open()
+            except _ProviderStatus as error:
+                self.bridge._failure(self.index, error.category)
+                return error.reply
+            except (OSError, ValueError) as error:
+                self._retry(error, attempt)
+
+    def command(self, command, client):
+        self.deadline = time.monotonic() + SOCKET_TIMEOUT
+        # Yield a warm connection to older queued work before taking new work.
+        if self.bridge._has_waiters():
+            self.close()
+        for attempt in range(MAX_TRANSIENT_ATTEMPTS):
+            try:
+                if self.stream is None:
+                    self._open()
+                self._io_deadline()
+                self.stream.sendall(command)
+                reply = self._read_reply()
+                break
+            except _ProviderStatus as error:
+                self.bridge._failure(self.index, error.category)
+                _send_client(client, error.reply)
+                raise
+            except (OSError, ValueError) as error:
+                self._retry(error, attempt)
+        self._remember(command, reply)
+        if reply[:1] in {b"4", b"5"}:
+            category = (
+                "authentication"
+                if command.upper().startswith(b"AUTHINFO ")
+                else (
+                    "article_missing"
+                    if reply[:3] in {b"423", b"430", b"451"}
+                    else "provider_reply"
+                )
+            )
+            self.bridge._failure(self.index, category)
+        # Once any response is exposed, never replay the command: a partial
+        # BODY must remain a failed read, not a concatenation of two articles.
+        _send_client(client, reply)
+        try:
+            if reply[:3] in {b"100", b"101", b"215", b"220", b"221", b"222"}:
+                size = 0
+                while True:
+                    # After exposure the native client uses a read-inactivity
+                    # timeout; continuous article data may take longer overall.
+                    self.stream.settimeout(SOCKET_TIMEOUT)
+                    row = _line(self.response, MAX_BODY_LINE)
+                    size += len(row)
+                    if size > MAX_RESPONSE_BYTES:
+                        raise _ProviderFailure("response_limit")
+                    self.bridge._received(self.index, len(row))
+                    _send_client(client, row)
+                    if row == b".\r\n":
+                        break
+        except (OSError, ValueError) as error:
+            failure = _provider_failure(error)
+            self.bridge._failure(self.index, failure.category)
+            raise failure from error
+        self.last_command = time.monotonic()
+        if self.bridge._has_waiters():
+            self.close()
+        return reply
 
 
 class NntpBridge:
@@ -258,14 +541,12 @@ class NntpBridge:
         self._lock = threading.Lock()
         self._threads = set()
         self._sockets = set()
-        self._workers = threading.BoundedSemaphore(MAX_WORKERS)
-        self._total = threading.BoundedSemaphore(MAX_TOTAL_CONNECTIONS)
-        self._per_provider = [
-            threading.BoundedSemaphore(
-                min(MAX_CONNECTIONS_PER_PROVIDER, max(1, provider["MaxConnections"]))
-            )
-            for provider in self.providers
-        ]
+        self._virtual_limit = _virtual_limit(self.providers)
+        self._workers = threading.BoundedSemaphore(self._virtual_limit)
+        self._budget = threading.Condition()
+        self._queue = []
+        self._leased_total = 0
+        self._leased_providers = [0 for _ in self.providers]
         self._resolved = {}
         self._activity = time.monotonic()
         self._counts = {
@@ -275,6 +556,20 @@ class NntpBridge:
             "provider_failures": 0,
             "active_connections": 0,
             "peak_connections": 0,
+        }
+        self._diagnostics = {
+            "schema_version": 1,
+            "providers": [
+                {
+                    "provider_ordinal": index + 1,
+                    "requests": 0,
+                    "bytes_received": 0,
+                    "retries": 0,
+                    "failures": {},
+                }
+                for index in range(len(self.providers))
+            ],
+            "unbound_failures": {},
         }
         self._socket_identity = None
         self._directory_fd = None
@@ -292,6 +587,7 @@ class NntpBridge:
                 "read_only": True,
                 "max_connections_per_provider": MAX_CONNECTIONS_PER_PROVIDER,
                 "max_total_connections": MAX_TOTAL_CONNECTIONS,
+                "provider_diagnostics": copy.deepcopy(self._diagnostics),
             }
 
     @property
@@ -309,6 +605,70 @@ class NntpBridge:
             self._counts[key] += count
             if activity:
                 self._activity = time.monotonic()
+
+    def _provider_record(self, index, key, count=1):
+        with self._lock:
+            self._diagnostics["providers"][index][key] += count
+
+    def _received(self, index, count):
+        self._record("bytes_received", count, activity=True)
+        self._provider_record(index, "bytes_received", count)
+
+    def _failure(self, index, category):
+        assert category in PROVIDER_FAILURE_CATEGORIES
+        with self._lock:
+            target = (
+                self._diagnostics["unbound_failures"]
+                if index is None
+                else self._diagnostics["providers"][index]["failures"]
+            )
+            target[category] = target.get(category, 0) + 1
+            if category != "article_missing":
+                self._counts["provider_failures"] += 1
+
+    def _has_waiters(self):
+        with self._budget:
+            return bool(self._queue)
+
+    def _acquire_budget(self, index, deadline):
+        ticket = object()
+        with self._budget:
+            self._queue.append((ticket, index))
+            try:
+                while not self._stop.is_set():
+                    eligible = next(
+                        (
+                            row[0]
+                            for row in self._queue
+                            if self._leased_providers[row[1]]
+                            < min(
+                                MAX_CONNECTIONS_PER_PROVIDER,
+                                self.providers[row[1]]["MaxConnections"],
+                            )
+                        ),
+                        None,
+                    )
+                    if (
+                        eligible is ticket
+                        and self._leased_total < MAX_TOTAL_CONNECTIONS
+                    ):
+                        self._leased_total += 1
+                        self._leased_providers[index] += 1
+                        return
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        raise _ProviderFailure("connection_limit", retryable=True)
+                    self._budget.wait(min(0.05, remaining))
+                raise _ProviderFailure("connection_closed")
+            finally:
+                self._queue.remove((ticket, index))
+                self._budget.notify_all()
+
+    def _release_budget(self, index):
+        with self._budget:
+            self._leased_total -= 1
+            self._leased_providers[index] -= 1
+            self._budget.notify_all()
 
     def _track(self, stream):
         with self._lock:
@@ -354,7 +714,7 @@ class NntpBridge:
                     dir_fd=self._directory_fd,
                     follow_symlinks=False,
                 )
-            server.listen(MAX_WORKERS)
+            server.listen(self._virtual_limit)
             server.settimeout(0.2)
             self._server = server
             self._listener = threading.Thread(
@@ -406,6 +766,7 @@ class NntpBridge:
                 client.close()
                 return
             if not self._workers.acquire(blocking=False):
+                self._failure(None, "bridge_capacity")
                 client.close()
                 continue
             client.settimeout(SOCKET_TIMEOUT)
@@ -421,24 +782,39 @@ class NntpBridge:
                 self._threads.add(thread)
                 thread.start()
 
-    def _connect(self, provider):
+    def _connect(self, provider, *, deadline=None):
         # The client cannot name another target: only the captured provider
         # selected by its authenticated ordinal reaches this code.
         key = provider["ProviderId"]
+        deadline = (
+            deadline if deadline is not None else time.monotonic() + SOCKET_TIMEOUT
+        )
         with self._lock:
             addresses = self._resolved.get(key)
         if addresses is None:
-            addresses = _resolve_targets(provider["Host"], provider["Port"])
+            try:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise _ProviderFailure("timeout", retryable=True)
+                addresses = _resolve_targets(
+                    provider["Host"], provider["Port"], timeout=min(8, remaining)
+                )
+            except _ProviderFailure:
+                raise
+            except NntpBridgeError as error:
+                raise _ProviderFailure("dns", retryable=True) from error
             with self._lock:
                 self._resolved[key] = addresses
         stream = None
-        deadline = time.monotonic() + SOCKET_TIMEOUT
         for address in addresses:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
             try:
                 stream = self._track(
                     socket.create_connection(
                         (address, provider["Port"]),
-                        timeout=max(0.1, deadline - time.monotonic()),
+                        timeout=remaining,
                     )
                 )
                 break
@@ -446,16 +822,21 @@ class NntpBridge:
                 if time.monotonic() >= deadline:
                     break
         if stream is None:
-            raise NntpBridgeError("The captured NNTP endpoint could not be reached.")
+            raise _ProviderFailure("connect", retryable=True)
         if provider["UseSsl"]:
-            context = ssl.create_default_context()
-            # Retain hostname/certificate verification and stricter platform
-            # policy while making the TLS 1.2 floor explicit.
-            minimum = context.minimum_version
-            context.minimum_version = (
-                ssl.TLSVersion.TLSv1_2 if minimum < ssl.TLSVersion.TLSv1_2 else minimum
-            )
             try:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise _ProviderFailure("timeout", retryable=True)
+                stream.settimeout(remaining)
+                context = ssl.create_default_context()
+                # Keep hostname verification and stricter platform TLS policy.
+                minimum = context.minimum_version
+                context.minimum_version = (
+                    ssl.TLSVersion.TLSv1_2
+                    if minimum < ssl.TLSVersion.TLSv1_2
+                    else minimum
+                )
                 wrapped = context.wrap_socket(stream, server_hostname=provider["Host"])
             except BaseException:
                 with self._lock:
@@ -468,130 +849,89 @@ class NntpBridge:
         return stream
 
     def _serve(self, client):
-        upstream = None
-        held_provider = None
-        held_total = False
-        counted = False
+        session = None
+        bound_index = None
         try:
-            with client.makefile("rb") as request:
-                handshake = request.readline(1025)
-                if len(handshake) > 1024 or not handshake.endswith(b"\n"):
-                    raise NntpBridgeError("The private NNTP handshake is invalid.")
-                try:
-                    hello = json.loads(handshake)
-                except (ValueError, UnicodeError) as error:
-                    raise NntpBridgeError(
-                        "The private NNTP handshake is invalid."
-                    ) from error
-                index = hello.get("provider") if isinstance(hello, dict) else None
-                if (
-                    type(index) is not int
-                    or not 0 <= index < len(self.providers)
-                    or not isinstance(hello.get("token"), str)
-                    or not hmac.compare_digest(hello["token"], self.token)
-                    or self.providers[index]["Type"] not in {1, 2, 3}
-                ):
-                    raise NntpBridgeError(
-                        "The private NNTP provider binding is invalid."
-                    )
-                provider = self.providers[index]
-                if not self._per_provider[index].acquire(timeout=SOCKET_TIMEOUT):
-                    raise NntpBridgeError("The private NNTP provider budget is busy.")
-                held_provider = self._per_provider[index]
-                if not self._total.acquire(timeout=SOCKET_TIMEOUT):
-                    raise NntpBridgeError("The private NNTP connection budget is busy.")
-                held_total = True
-                if self._stop.is_set():
+            request = _ClientReader(client, self._stop)
+            handshake = request.line(1024, timeout=SOCKET_TIMEOUT)
+            if handshake is None:
+                return
+            try:
+                hello = json.loads(handshake)
+            except (ValueError, UnicodeError) as error:
+                raise NntpBridgeError(
+                    "The private NNTP handshake is invalid."
+                ) from error
+            index = hello.get("provider") if isinstance(hello, dict) else None
+            if (
+                type(index) is not int
+                or not 0 <= index < len(self.providers)
+                or not isinstance(hello.get("token"), str)
+                or not hmac.compare_digest(hello["token"], self.token)
+                or self.providers[index]["Type"] not in {1, 2, 3}
+            ):
+                raise NntpBridgeError("The private NNTP provider binding is invalid.")
+            bound_index = index
+            session = _ProviderSession(self, index)
+            greeting = session.greeting()
+            _send_client(client, greeting)
+            if greeting[:3] not in {b"200", b"201"}:
+                return
+            while not self._stop.is_set():
+                command = request.line(MAX_COMMAND_BYTES, idle=session.idle)
+                if command is None:
                     return
-                upstream = self._connect(provider)
-                with self._lock:
-                    self._counts["active_connections"] += 1
-                    self._counts["peak_connections"] = max(
-                        self._counts["peak_connections"],
-                        self._counts["active_connections"],
+                if not command.endswith(b"\r\n") or not _allowed_command(
+                    command, self.providers[index]
+                ):
+                    self._record("denied_commands")
+                    _send_client(
+                        client,
+                        b"502 Migration bridge permits read-only NNTP commands only\r\n",
                     )
-                counted = True
-                with upstream.makefile("rb") as response:
-                    greeting = _line(response)
-                    _send_client(client, greeting)
-                    self._record("bytes_received", len(greeting), activity=True)
-                    while not self._stop.is_set():
-                        # Reap pooled idle connections before another provider
-                        # exhausts its admission timeout. Active reads keep the
-                        # longer I/O deadline.
-                        client.settimeout(CLIENT_IDLE_TIMEOUT)
-                        try:
-                            command = _line(request, eof=True)
-                        except (socket.timeout, ConnectionResetError):
-                            return
-                        if command is None:
-                            return
-                        client.settimeout(SOCKET_TIMEOUT)
-                        if not _allowed_command(command, provider):
-                            self._record("denied_commands")
-                            _send_client(
-                                client,
-                                b"502 Migration bridge permits read-only NNTP commands only\r\n",
-                            )
-                            return
-                        self._record("commands", activity=True)
-                        upstream.sendall(command)
-                        reply = _line(response)
-                        if not re.match(rb"^[1-5][0-9]{2}(?: |\r)", reply):
-                            raise NntpBridgeError(
-                                "The NNTP provider response is invalid."
-                            )
-                        _send_client(client, reply)
-                        self._record("bytes_received", len(reply), activity=True)
-                        if reply[:3] in {
-                            b"100",
-                            b"101",
-                            b"215",
-                            b"220",
-                            b"221",
-                            b"222",
-                        }:
-                            size = 0
-                            while True:
-                                row = _line(response, MAX_BODY_LINE)
-                                size += len(row)
-                                if size > MAX_RESPONSE_BYTES:
-                                    raise NntpBridgeError(
-                                        "An NNTP read exceeds its byte budget."
-                                    )
-                                _send_client(client, row)
-                                self._record("bytes_received", len(row), activity=True)
-                                if row == b".\r\n":
-                                    break
-                        if command[:-2].upper() == b"QUIT":
-                            return
+                    return
+                self._record("commands", activity=True)
+                self._provider_record(index, "requests")
+                reply = session.command(command, client)
+                if reply[:3] == b"400" or command[:-2].upper() == b"QUIT":
+                    return
         except _ClientDisconnected:
             pass
-        except (OSError, ValueError, ssl.SSLError):
+        except _ProviderFailure:
+            # Closing signals a transport failure to the native retry policy.
+            # A synthetic NNTP400 is a non-retryable Status error there.
+            pass
+        except (OSError, ValueError):
             if not self._stop.is_set():
-                self._record("provider_failures")
-                try:
-                    client.sendall(b"400 Migration provider bridge is unavailable\r\n")
-                except OSError:
-                    pass
+                self._failure(
+                    bound_index, "bridge_handshake" if session is None else "protocol"
+                )
+                if session is None:
+                    try:
+                        client.sendall(b"400 Invalid private migration binding\r\n")
+                    except OSError:
+                        pass
         finally:
-            if counted:
-                self._record("active_connections", -1)
-            for stream in (client, upstream):
-                if stream is not None:
+            try:
+                if session is not None:
+                    session.close()
+            except (OSError, ValueError):
+                if not self._stop.is_set():
+                    self._failure(bound_index, "protocol")
+            finally:
+                with self._lock:
+                    self._sockets.discard(client)
+                try:
+                    client.close()
+                finally:
+                    self._workers.release()
                     with self._lock:
-                        self._sockets.discard(stream)
-                    stream.close()
-            if held_total:
-                self._total.release()
-            if held_provider is not None:
-                held_provider.release()
-            self._workers.release()
-            with self._lock:
-                self._threads.discard(threading.current_thread())
+                        self._threads.discard(threading.current_thread())
 
     def close(self):
         self._stop.set()
+        with self._budget:
+            self._budget.notify_all()
         if self._server is not None:
             self._server.close()
         # Acceptors must finish before the authoritative worker/socket snapshot.
@@ -774,7 +1114,8 @@ class ContainedRelays:
         self._accept_threads = []
         self._clients = set()
         self._lock = threading.Lock()
-        self._workers = threading.BoundedSemaphore(MAX_WORKERS)
+        self._virtual_limit = _virtual_limit(self.payload["providers"])
+        self._workers = threading.BoundedSemaphore(self._virtual_limit)
 
     def start(self):
         providers = copy.deepcopy(self.payload["providers"])
@@ -783,7 +1124,7 @@ class ContainedRelays:
                 continue
             server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             server.bind(("127.0.0.1", 0))
-            server.listen(MAX_WORKERS)
+            server.listen(self._virtual_limit)
             server.settimeout(0.2)
             self._servers.append(server)
             provider.update(

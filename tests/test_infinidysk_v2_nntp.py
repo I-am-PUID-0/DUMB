@@ -217,18 +217,20 @@ class NntpBridgeTests(unittest.TestCase):
                 )
                 self.assertTrue(stream.recv(1024).startswith(b"200 "))
                 held.append(stream)
-            self.assertEqual(bridge.stats["active_connections"], 4)
-            self.assertEqual(bridge.stats["peak_connections"], 4)
+            self.assertLessEqual(bridge.stats["active_connections"], 4)
+            self.assertLessEqual(bridge.stats["peak_connections"], 4)
             extra = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             held.append(extra)
-            extra.settimeout(0.1)
+            extra.settimeout(2)
             extra.connect(str(bridge.path))
             extra.sendall(
                 json.dumps({"provider": 2, "token": bridge.token}).encode() + b"\n"
             )
-            with self.assertRaises(socket.timeout):
-                extra.recv(1024)
-            self.assertEqual(bridge.stats["active_connections"], 4)
+            self.assertTrue(extra.recv(1024).startswith(b"200 "))
+            self.assertLessEqual(bridge.stats["active_connections"], 4)
+            for stream in held:
+                stream.sendall(b"STAT <fixture>\r\n")
+                self.assertTrue(stream.recv(1024).startswith(b"223 "))
         finally:
             for stream in held:
                 stream.close()
@@ -381,13 +383,14 @@ class NntpBridgeTests(unittest.TestCase):
 
     def test_lower_source_connection_limit_is_enforced_by_broker(self):
         bridge = self.bridge([{**self.provider, "MaxConnections": 1}])
-        with client(bridge) as (_, response):
+        with client(bridge) as (first, response):
             self.assertTrue(response.readline().startswith(b"200 "))
             with client(bridge) as (waiting, _):
-                waiting.settimeout(0.1)
-                with self.assertRaises(socket.timeout):
-                    waiting.recv(1024)
-                self.assertEqual(bridge.stats["active_connections"], 1)
+                waiting.settimeout(2)
+                self.assertTrue(waiting.recv(1024).startswith(b"200 "))
+                self.assertLessEqual(bridge.stats["active_connections"], 1)
+                first.sendall(b"STAT <fixture>\r\n")
+                self.assertTrue(response.readline().startswith(b"223 "))
         self.assertLessEqual(bridge.stats["peak_connections"], 1)
 
     def test_occupied_socket_path_is_never_removed_on_start_failure(self):
