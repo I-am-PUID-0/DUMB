@@ -2,7 +2,7 @@
 
 > Channel: dev. Canonical base: https://dumbarr.com/dev/
 
-Documentation artifact: release 1.25.9. Source commit: c2f6eb1a7747958308351b826703584b90bbbdaa. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.9.
+Documentation artifact: release 1.25.10. Source commit: f875b345a1806c551c0834290d30a198d78dbd76. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.10.
 
 DUMB coordinates media services. Match instructions to the installed backend version. Development guides can describe features absent from the latest release.
 
@@ -2158,6 +2158,21 @@ Updated jobs can expose `import_report` with `status` equal to `accepted`,
 `review_required`, `review_digest` and `blocking_reasons`.
 The optional sample counts and truncation flags explain bounded public details;
 the complete native report remains in private job storage.
+
+Supporting jobs also expose optional `provider_diagnostics` with
+`schema_version: 1`, `recorded_at`, `final`, `providers` and `unbound_failures`.
+Each provider has a one-based `provider_ordinal`, `requests`, `bytes_received`,
+`retries` and a `failures` count map. Counts are nonnegative safe integers;
+there are at most 64 provider rows. `final: true` means the bridge stopped and
+the observation was retained, not that migration or recovery finished.
+Failure keys are restricted to `dns`, `connect`, `tls`, `authentication`,
+`connection_limit`, `timeout`, `connection_closed`, `protocol`, `response_limit`,
+`provider_reply`, `article_missing`, `bridge_capacity` and `bridge_handshake`.
+Unbound failures happened before a provider was selected. No addresses,
+credentials, article IDs or raw exception text are included. These are attempt
+counters: a retry or another provider may have succeeded. They do not change
+import-report acceptance or replace its per-file reasons. The last observation
+remains available during recovery and after failure; older jobs may omit it.
 
 Supporting reports also expose a bounded `import_report.history` summary with
 `source_rows`, `completed`, `failed`, `unsupported_status`, `invalid_identity`
@@ -12440,6 +12455,15 @@ history still block migration. Review provider failures separately from known
 source exclusions: the restricted relay can recover missing metadata only when
 the configured provider permits the required reads. An acknowledgement does not
 override unavailable providers or unexplained omissions.
+
+Supporting builds show **Provider activity** while importing and retain those
+observations after the importer stops. Provider numbers follow the captured
+provider order. The counts distinguish requests, retries, article-not-found
+replies, and connection or protocol errors without showing server addresses or
+credentials. Expand **Connection and protocol errors** to see which step failed.
+An attempt can recover through a retry or another provider, so these counters
+alone do not mean a file was lost. Use the native import report to see whether
+any files remain blocked. Older jobs may not contain these observations.
 
 The dashboard bounds its path/reason samples and identifies truncated details;
 DUMB retains the full native report privately with the migration job. The

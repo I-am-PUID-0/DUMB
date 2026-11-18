@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.9">
+    <meta name="dumb-docs-package-version" content="1.25.10">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="c2f6eb1a7747958308351b826703584b90bbbdaa">
-    <meta name="dumb-docs-release-tag" content="1.25.9">
+    <meta name="dumb-docs-build-commit" content="f875b345a1806c551c0834290d30a198d78dbd76">
+    <meta name="dumb-docs-release-tag" content="1.25.10">
   
 
     
@@ -6896,6 +6896,14 @@ history still block migration. Review provider failures separately from known
 source exclusions: the restricted relay can recover missing metadata only when
 the configured provider permits the required reads. An acknowledgement does not
 override unavailable providers or unexplained omissions.</p>
+<p>Supporting builds show <strong>Provider activity</strong> while importing and retain those
+observations after the importer stops. Provider numbers follow the captured
+provider order. The counts distinguish requests, retries, article-not-found
+replies, and connection or protocol errors without showing server addresses or
+credentials. Expand <strong>Connection and protocol errors</strong> to see which step failed.
+An attempt can recover through a retry or another provider, so these counters
+alone do not mean a file was lost. Use the native import report to see whether
+any files remain blocked. Older jobs may not contain these observations.</p>
 <p>The dashboard bounds its path/reason samples and identifies truncated details;
 DUMB retains the full native report privately with the migration job. The
 job's report action retrieves that plain-text report through the authenticated
@@ -7204,11 +7212,11 @@ separate existing workflows.</p>
     
     <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
       
-        <span>Documentation release 1.25.9</span>
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.9">Release notes</a>
+        <span>Documentation release 1.25.10</span>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.10">Release notes</a>
       
       
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;c2f6eb1a7747958308351b826703584b90bbbdaa" title="Documentation source commit c2f6eb1a7747958308351b826703584b90bbbdaa">Source c2f6eb1a</a>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;f875b345a1806c551c0834290d30a198d78dbd76" title="Documentation source commit f875b345a1806c551c0834290d30a198d78dbd76">Source f875b345</a>
       
       
     </div>
