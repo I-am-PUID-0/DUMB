@@ -56,7 +56,15 @@
 .docs-brand:hover { color: #a4ece7; }
 .md-header__title { min-width: 0; margin-right: .4rem; }
 .md-header__title .md-header__ellipsis { display: none; }
-.md-header__source { width: auto; margin-left: .5rem; }
+/* Keep the complete repository facts together. The theme otherwise lets the
+   release tag shrink first, turning a loaded version into an ellipsis. */
+.md-header__source { width: max-content; max-width: none; flex-shrink: 0; margin-left: .5rem; }
+.md-header .md-source { display: flex; align-items: center; gap: .4rem; }
+.md-header .md-source__icon { display: flex; align-items: center; width: 1.2rem; height: auto; }
+.md-header .md-source__icon svg { margin: 0; }
+.md-header .md-source__icon + .md-source__repository { display: block; max-width: none; padding: 0; margin: 0; overflow: visible; text-overflow: clip; }
+.md-header .md-source__facts { width: max-content; gap: .35rem; overflow: visible; }
+.md-header .md-source__fact { flex-shrink: 0; overflow: visible; text-overflow: clip; }
 .md-tabs { background: #142c3f; }
 .md-tabs__link { color: #deebf3; opacity: 1; }
 .md-tabs__link:hover, .md-tabs__item--active .md-tabs__link { color: #fff; }
@@ -261,6 +269,8 @@
 }
 @media (min-width: 76.25em) { .md-content { max-width: 56rem; margin: 0 auto; width: 100%; } }
 @media (max-width: 76em) { .home-hero { gap: 1.8rem; } }
+/* The drawer retains the repository link when shared header controls need room. */
+@media (max-width: 76.1875em) { .md-header__source { display: none; } }
 @media (max-width: 59.9375em) {
   .md-header__title { margin-left: .2rem; }
   .docs-geek { padding: .38rem; }
