@@ -1,9 +1,9 @@
 ﻿<div align="center" style="max-width: 100%; height: auto;">
   <h1>🎬 Distributed Unlimited Media Bridge 🎬</h1>
-  <a href="https://github.com/I-am-PUID-0/DUMB">
+  <a href="https://dumbarr.com/#overview">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://dumbarr.com/assets/images/DUMB.png">
-      <img alt="Distributed Unlimited Media Bridge ecosystem banner" src="https://dumbarr.com/assets/images/DUMB.png" style="max-width: 100%; height: auto;">
+      <source media="(prefers-color-scheme: dark)" srcset="https://dumbarr.com/assets/images/guides/showcase/preview/dark.webp">
+      <img alt="Explore DUMB's dashboard, guided setup and service controls. Open the interface preview." src="https://dumbarr.com/assets/images/guides/showcase/preview/light.webp" width="1280" style="max-width: 100%; height: auto;">
     </picture>
   </a>
 </div>
