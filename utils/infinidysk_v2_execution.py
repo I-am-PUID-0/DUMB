@@ -906,12 +906,22 @@ class InfiniDyskV2Executor:
     def _execute(self, plan, workspace, progress, *, cutover, prepare=False):
         uid, gid = self._execution_ids()
         was_running = self._quiesce(plan, progress)
+        progress(
+            "source_stopped",
+            "The affected managed services are stopped.",
+            stage_steps_completed=["pause_services"],
+        )
         check_queue = workspace.get("check_source_queue")
         if plan["mode"] == "migrate" and callable(check_queue):
             check_queue()
         postgres_snapshot = None
         if plan["source"].get("provider") in {"postgres", "postgresql"}:
             postgres_snapshot = self._postgres_snapshot(plan, workspace, progress)
+            progress(
+                "source_database_ready",
+                "The independent source database snapshot was verified.",
+                stage_steps_completed=["source_database"],
+            )
         snapshot = workspace["capture_source"](postgres_snapshot=postgres_snapshot)
         if (snapshot.get("source_schema") or {}).get("oidc_configured"):
             raise ContainedImportError(
@@ -949,12 +959,17 @@ class InfiniDyskV2Executor:
                 "The pinned native runtime could not be installed safely."
             )
         native_auth(service, create=True, uid=uid, gid=gid, allow_v1_import=True)
+        if plan.get("options", {}).get("omit_queued_downloads"):
+            workspace["verify_queue_input"]()
+        progress(
+            "input_ready",
+            "The retained recovery copy and private import input are ready.",
+            stage_steps_completed=["save_recovery", "prepare_input"],
+        )
         progress(
             "rehearsing",
             "Running the isolated native importer. Only read-only requests to captured NNTP providers are permitted; original library writes and other network access remain denied.",
         )
-        if plan.get("options", {}).get("omit_queued_downloads"):
-            workspace["verify_queue_input"]()
         with NativeCandidate(
             service,
             candidate,
@@ -996,6 +1011,7 @@ class InfiniDyskV2Executor:
         progress(
             "validating",
             "Native import finished. Verifying the complete report, database inventory and retained source before acceptance.",
+            stage_steps_completed=["native_import"],
         )
         record_report = workspace.get("record_import_report", lambda *args: None)
         record_report(report_text)
@@ -1081,6 +1097,11 @@ class InfiniDyskV2Executor:
         if external_blobs is not None:
             receipt["external_blob_staging_verified"] = True
         workspace["accept_import"](receipt)
+        progress(
+            "import_accepted",
+            "The native import and complete acceptance checks passed.",
+            stage_steps_completed=[] if prepare else ["validate_import"],
+        )
         if prepare:
             if getattr(process, "stopped", False) is not True:
                 raise ContainedImportError(
@@ -1094,12 +1115,17 @@ class InfiniDyskV2Executor:
                 )
             restore_source = workspace.get("restore_source")
             if callable(restore_source):
+                progress(
+                    "restoring_source",
+                    "Restoring v1 and its affected managed services after the test.",
+                )
                 restore_source(self._assert_unmounted)
             self._restore_original(plan, was_running)
             receipt["source_restored"] = True
             progress(
                 "source_restored",
                 "The original source and consumers were restored before disposable rehearsal cleanup.",
+                stage_steps_completed=["restore_v1"],
             )
             progress(
                 "discarding_rehearsal",
@@ -1108,6 +1134,11 @@ class InfiniDyskV2Executor:
             if not plan.get("options", {}).get("reclaim_source_space"):
                 self._discard_rehearsal_candidate(plan, workspace, snapshot)
             receipt["candidate_discarded"] = True
+            progress(
+                "rehearsal_cleaned",
+                "Disposable test candidate cleanup finished.",
+                stage_steps_completed=["cleanup_test"],
+            )
             return receipt
         return self.activate(
             plan, {**workspace, "snapshot": snapshot}, progress, receipt
@@ -1118,6 +1149,7 @@ class InfiniDyskV2Executor:
 
     def activate(self, plan, workspace, progress, receipt):
         """Publish an already accepted, stopped candidate without another import."""
+        progress("activating", "Activating the accepted InfiniDysk 2 installation.")
         candidate = Path(workspace["candidate_data"])
         snapshot = workspace.get("snapshot") or {}
         if not snapshot:
@@ -1187,7 +1219,18 @@ class InfiniDyskV2Executor:
                     )
         self._wait_delivery(final)
         workspace["commit_activation"](receipt)
+        progress(
+            "resuming_consumers",
+            "InfiniDysk 2 and its mount are ready; restarting affected apps.",
+            stage_steps_completed=["activate"],
+            stage_step="resume_services",
+        )
         workspace["resume_consumers"](receipt)
+        progress(
+            "consumers_resumed",
+            "The affected managed apps have resumed.",
+            stage_steps_completed=["resume_services"],
+        )
         receipt["generation_2_started"] = True
         return receipt
 

@@ -192,7 +192,21 @@ class DatabaseHealthCollectorTests(unittest.TestCase):
         self.assertEqual(collector._cache, {})
 
     def test_standard_mode_only_reads_file_metadata(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
+        with (
+            tempfile.TemporaryDirectory() as temp_dir,
+            patch(
+                "utils.database_health._storage_for_path",
+                return_value={
+                    "mount_point": "/",
+                    "fs_type": "ext4",
+                    "source": "fixture",
+                    "network": False,
+                    "read_only": False,
+                    "used_percent": 20,
+                    "inode_used_percent": 20,
+                },
+            ),
+        ):
             db_path = Path(temp_dir) / "db.sqlite"
             sqlite3.connect(db_path).close()
             log_path = Path(temp_dir) / "nzbdav.log"
@@ -483,7 +497,21 @@ class DatabaseHealthCollectorTests(unittest.TestCase):
         self.assertEqual(providers["zurg:RealDebrid"], "zurg-state")
 
     def test_zurg_json_state_is_observed_without_sqlite_probe(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
+        with (
+            tempfile.TemporaryDirectory() as temp_dir,
+            patch(
+                "utils.database_health._storage_for_path",
+                return_value={
+                    "mount_point": "/",
+                    "fs_type": "ext4",
+                    "source": "fixture",
+                    "network": False,
+                    "read_only": False,
+                    "used_percent": 20,
+                    "inode_used_percent": 20,
+                },
+            ),
+        ):
             data_dir = Path(temp_dir) / "data"
             data_dir.mkdir()
             state_path = data_dir / "fixers.json"

@@ -25,6 +25,12 @@ from urllib.parse import quote
 from utils.config_loader import CONFIG_MANAGER
 from utils.infinidysk_migration_admission import INFINIDYSK_MIGRATION_ADMISSION_LOCK
 from utils.infinidysk_v2_io_progress import IOProgress, public_io_progress
+from utils.infinidysk_v2_stages import (
+    checkpoint,
+    public_stage_progress,
+    stage_plan,
+    storage_work,
+)
 from utils.infinidysk_v2_input_integrity import public_input_integrity
 from utils.infinidysk_v2_provider_diagnostics import sanitize_provider_diagnostics
 from utils.infinidysk_v2_queue import (
@@ -584,6 +590,10 @@ class InfiniDyskV2MigrationManager:
             **(self._consumer_recovery().public(job) if exposed else {}),
             **cleanup,
         }
+        public["stage_progress"] = public_stage_progress(job, state)
+        public["storage_work"] = storage_work(
+            job.get("plan") or {}, job.get("snapshot")
+        )
         if (
             state in {"completed", "rolled_back", "failed_restored", "cancelled"}
             and (public.get("result") or {}).get("restart_required") is True
@@ -1723,6 +1733,8 @@ class InfiniDyskV2MigrationManager:
                     "external_blob_staging": True,
                     "async_preview": True,
                     "queue_omission": True,
+                    "migration_stage_progress": True,
+                    "migration_storage_work": True,
                 },
                 "preview_task": self._preview_controller().status()["task"],
                 "eligibility": {"ready": not blockers, "blockers": blockers},
@@ -1825,6 +1837,10 @@ class InfiniDyskV2MigrationManager:
                     }
                 ),
                 "source_storage": copy.deepcopy(plan["source_storage"]),
+                "stage_plan": stage_plan(
+                    plan, "prepare" if plan["mode"] == "migrate" else "cutover"
+                ),
+                "storage_work": storage_work(plan),
                 "source_queue": copy.deepcopy(plan["source_queue"]),
                 "capacity": copy.deepcopy(plan["capacity"]),
                 "checks": [
@@ -2073,6 +2089,7 @@ class InfiniDyskV2MigrationManager:
                 "snapshot": None,
                 "activation_exposed": False,
                 "activation_committed": False,
+                "stage_progress": stage_plan(plan, mode),
             }
             self._active_id = job_id
             self._thread = threading.Thread(
@@ -2101,6 +2118,12 @@ class InfiniDyskV2MigrationManager:
     def _progress(self, job, stage, message=None, **detail):
         with self._lock:
             self._check_cancel(job)
+            checkpoint(
+                job,
+                stage,
+                completed=detail.pop("stage_steps_completed", ()),
+                current=detail.pop("stage_step", None),
+            )
             job.setdefault("execution", {}).update(copy.deepcopy(detail))
             if "import_progress" in detail:
                 job["import_progress"] = copy.deepcopy(detail["import_progress"])
@@ -2127,6 +2150,7 @@ class InfiniDyskV2MigrationManager:
     def _recovery_progress(self, job, stage, message=None, **detail):
         # Cancellation must not interrupt the recovery that it requested.
         with self._lock:
+            checkpoint(job, stage, recovery=True)
             job.setdefault("execution", {}).update(copy.deepcopy(detail))
             job.update(
                 status="rolling_back",
@@ -2576,6 +2600,13 @@ class InfiniDyskV2MigrationManager:
                 check=lambda: self._assert_job_owner(job),
             )
         candidate = Path(workspace["candidate_data"])
+        self._progress(
+            job,
+            "preparing_candidate",
+            "Preparing the independent native import input.",
+            stage_steps_completed=["save_recovery"],
+            stage_step="prepare_input",
+        )
         _path(candidate.parent)
         candidate.parent.mkdir(parents=True, exist_ok=True)
         if candidate.exists():
@@ -2855,6 +2886,13 @@ class InfiniDyskV2MigrationManager:
         }
 
         candidate = Path(workspace["candidate_data"])
+        self._progress(
+            job,
+            "preparing_candidate",
+            "Preparing native import input from the verified recovery copy.",
+            stage_steps_completed=["save_recovery"],
+            stage_step="prepare_input",
+        )
         _path(candidate.parent)
         candidate.parent.mkdir(parents=True, exist_ok=True)
         if candidate.exists() or candidate.is_symlink():
@@ -3433,6 +3471,7 @@ class InfiniDyskV2MigrationManager:
                     job,
                     "activating",
                     "Checking the prepared database before activation.",
+                    stage_steps_completed=["review"],
                 )
                 receipt = PreparedMigration(self).verify(job, workspace)
                 operation = lambda plan, space, progress: self.executor.activate(
@@ -3454,7 +3493,10 @@ class InfiniDyskV2MigrationManager:
                 self._revalidate_reviewed_plan(job["plan"], progress=scan_reporter)
                 self._check_cancel(job)
                 self._progress(
-                    job, "running", "Starting the contained native migration."
+                    job,
+                    "running",
+                    "Starting the contained native migration.",
+                    stage_steps_completed=["check_plan"],
                 )
                 operation = {
                     "rehearsal": self.executor.rehearse,
@@ -3487,6 +3529,7 @@ class InfiniDyskV2MigrationManager:
                 from utils.infinidysk_v2_prepared import PreparedMigration
 
                 PreparedMigration(self).record(job, workspace, receipt)
+                checkpoint(job, "prepared", completed=["validate_import"])
                 state = "prepared"
             elif job["mode"] == "rehearsal":
                 if receipt.get("source_restored") is not True:
@@ -3607,6 +3650,8 @@ class InfiniDyskV2MigrationManager:
                         and recovery.get("source_restored") is True
                         and recovery.get("generation_2_stopped") is True
                     )
+                    if restored:
+                        checkpoint(job, "restored", completed=["restore_v1"])
                 except Exception as recovery_failure:
                     cleanup_pending = (
                         self._retain_owned_process_cleanup(job, recovery_failure)
@@ -3778,6 +3823,7 @@ class InfiniDyskV2MigrationManager:
                     "The executor did not verify rollback ownership and v1 restoration."
                 )
             job.pop("owned_process_cleanup", None)
+            checkpoint(job, "restored", completed=["restore_v1"])
             job.update(
                 status="rolled_back",
                 stage="rolled_back",

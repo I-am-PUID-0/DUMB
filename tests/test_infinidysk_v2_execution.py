@@ -276,6 +276,46 @@ class ExecutionTests(unittest.TestCase):
             (Path(self.plan["target"]["data_dir"]) / "infinidysk.sqlite").is_file()
         )
 
+    def test_prepare_stage_checkpoints_use_real_executor_helper_returns(self):
+        from utils.infinidysk_v2_stages import checkpoint, stage_plan
+
+        job = {"stage_progress": stage_plan(self.plan, "prepare")}
+
+        def record(stage, message=None, **details):
+            checkpoint(
+                job,
+                stage,
+                completed=details.get("stage_steps_completed", ()),
+                current=details.get("stage_step"),
+            )
+
+        self.executor.prepare(self.plan, self.workspace, record)
+        states = {row["id"]: row["state"] for row in job["stage_progress"]["steps"]}
+        self.assertEqual(states["pause_services"], "completed")
+        self.assertEqual(states["save_recovery"], "completed")
+        self.assertEqual(states["prepare_input"], "completed")
+        self.assertEqual(states["native_import"], "completed")
+        # The manager still has to bind and retain the prepared candidate.
+        self.assertEqual(states["validate_import"], "running")
+        self.assertEqual(states["activate"], "pending")
+
+    def test_failed_import_never_records_native_or_validation_completion(self):
+        from utils.infinidysk_v2_stages import checkpoint, stage_plan
+
+        job = {"stage_progress": stage_plan(self.plan, "prepare")}
+
+        def record(stage, message=None, **details):
+            checkpoint(job, stage, completed=details.get("stage_steps_completed", ()))
+
+        self.candidate.wait_import.side_effect = ContainedImportError("fixture failure")
+        with self.assertRaises(ContainedImportError):
+            self.executor.prepare(self.plan, self.workspace, record)
+        states = {row["id"]: row["state"] for row in job["stage_progress"]["steps"]}
+        self.assertEqual(states["native_import"], "running")
+        self.assertEqual(states["validate_import"], "pending")
+        self.assertEqual(states["activate"], "pending")
+        self.workspace["accept_import"].assert_not_called()
+
     def test_cutover_starts_delivery_before_any_consumer(self):
         observed = []
 

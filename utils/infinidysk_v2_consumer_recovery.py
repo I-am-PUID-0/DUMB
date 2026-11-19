@@ -33,6 +33,7 @@ from utils.infinidysk_v2_runtime import (
     resolve_v2_data_dir,
     runtime_dir,
 )
+from utils.infinidysk_v2_stages import checkpoint
 from utils.infinidysk_v2_topology import (
     delivery_mount_ready,
     mount_records,
@@ -320,6 +321,12 @@ class InfiniDyskV2ConsumerRecovery:
             record = self._record(job)
             record.update(kind="v2_consumers", ready=True)
             job["activation_committed"] = True
+            checkpoint(
+                job,
+                "resuming_consumers",
+                completed=["activate"],
+                current="resume_services",
+            )
             self._save(job)
 
     def _start_prepared(self, name, code):
@@ -387,6 +394,8 @@ class InfiniDyskV2ConsumerRecovery:
             if name not in record["resumed"]:
                 record["resumed"].append(name)
             self._save(job)
+        checkpoint(job, "consumers_resumed", completed=["resume_services"])
+        self._save(job)
         return copy.deepcopy(record)
 
     def hold(self, job, error):
@@ -596,6 +605,14 @@ class InfiniDyskV2ConsumerRecovery:
                         ],
                         pending_acknowledged=True,
                     )
+                    if record["pending"]:
+                        checkpoint(
+                            job, "consumers_left_stopped", not_run=["resume_services"]
+                        )
+                    else:
+                        checkpoint(
+                            job, "consumers_resumed", completed=["resume_services"]
+                        )
                 else:
                     self._retry_target(job)
                     self.resume(job)

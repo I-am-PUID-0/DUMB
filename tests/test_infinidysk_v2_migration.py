@@ -1092,6 +1092,16 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
         self.assertGreater(capacity["source"]["entries"], 0)
         self.assertEqual(capacity["source"]["root_count"], 1)
         self.assertEqual(preview["protocol"], 1)
+        work = preview["storage_work"]
+        self.assertEqual(
+            work["source_total_bytes"], capacity["source"]["logical_bytes"]
+        )
+        self.assertEqual(
+            work["source_data_bytes"], capacity["source"]["roots"][0]["logical_bytes"]
+        )
+        self.assertGreater(work["source_data_bytes"], 0)
+        self.assertEqual(work["archive_storage_type"], "local")
+        self.assertEqual(work["ranking"], "not_estimated")
         with patch(
             "utils.infinidysk_v2_migration.shutil.disk_usage",
             return_value=SimpleNamespace(free=1),
@@ -1352,6 +1362,10 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
         self.assertEqual(preview["backup_storage"]["mode"], "cold_archive")
         self.assertNotIn("binding_fingerprint", preview["backup_storage"])
         self.assertNotIn("artifact_root", preview["backup_storage"])
+        self.assertEqual(
+            preview["storage_work"]["archive_storage_type"],
+            preview["backup_storage"]["storage_type"],
+        )
         with patch(
             "utils.infinidysk_v2_migration.shutil.copytree", wraps=shutil.copytree
         ) as copying:
@@ -1359,6 +1373,10 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
         self.assertEqual(job["status"], "rehearsed", job)
         private = self.manager._read(self.manager._job_path(job["job_id"]))
         snapshot = private["snapshot"]
+        self.assertEqual(
+            job["storage_work"]["archive_bytes"], snapshot["cold_archive"]["size_bytes"]
+        )
+        self.assertFalse(job["storage_work"]["archive_bytes_is_minimum"])
         workspace = self.manager._workspace(private)
         self.assertEqual(snapshot["backup_format"], "pax_tar_v1")
         self.assertNotIn("data_snapshot", snapshot)
