@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.14">
+    <meta name="dumb-docs-package-version" content="1.25.15">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="a999b9c02d75d56d52c3c234d4903a6ffa71364f">
-    <meta name="dumb-docs-release-tag" content="1.25.14">
+    <meta name="dumb-docs-build-commit" content="76e70155da779608b261d82d4a249c106b6959ae">
+    <meta name="dumb-docs-release-tag" content="1.25.15">
   
 
     
@@ -64,7 +64,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.64e1f9293e64.css">
+      <link rel="stylesheet" href="../../assets/css/main.a780955ca3a3.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -984,6 +984,17 @@
       On this page
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#native-lxc-installation-boundaries" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Native LXC installation boundaries
+      </span>
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#install-the-validation-build" class="md-nav__link">
@@ -6005,6 +6016,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#native-lxc-installation-boundaries" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Native LXC installation boundaries
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#install-the-validation-build" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -6231,6 +6253,16 @@
 <p>Because every consumer is in the same LXC, DUMB-created FUSE mounts only need
 to exist inside that LXC. No mount propagation back to the Proxmox host is
 required.</p>
+<h2 id="native-lxc-installation-boundaries">Native LXC installation boundaries<a class="headerlink" href="#native-lxc-installation-boundaries" title="Permanent link">&para;</a></h2>
+<p>The native helper keeps DUMB and its managed applications in one LXC. Applications in another LXC need an explicit storage-sharing plan.</p>
+<pre class="mermaid"><code>flowchart TD
+    Host["Proxmox host: run the reviewed helper"] --&gt; LXC["Dedicated DUMB LXC"]
+    LXC --&gt; Controller["DUMB controller and dashboard"]
+    Controller --&gt; Apps["Managed workflow apps and media servers"]
+    Controller --&gt; Storage["Persistent config, data and media paths"]
+    Browser["Your browser"] --&gt; Dashboard["LXC address on port 3005"]
+    Dashboard --&gt; Controller
+    External["Apps in another LXC"] -. "Separate sharing plan required" .-&gt; Storage</code></pre>
 <h2 id="install-the-validation-build">Install the validation build<a class="headerlink" href="#install-the-validation-build" title="Permanent link">&para;</a></h2>
 <p>While the helper is awaiting upstream acceptance, run the maintainer-fork build from the <strong>Proxmox VE host shell</strong>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nv">COMMUNITY_SCRIPTS_URL</span><span class="o">=</span><span class="s2">"https://raw.githubusercontent.com/I-am-PUID-0/ProxmoxVED/feat/dumb"</span><span class="w"> </span><span class="se">\</span>
@@ -6660,11 +6692,11 @@ after <code>update</code> has removed the legacy mask:</p>
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.14</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.14">Release notes</a>
+              <span>Documentation release 1.25.15</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.15">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;a999b9c02d75d56d52c3c234d4903a6ffa71364f" title="Documentation source commit a999b9c02d75d56d52c3c234d4903a6ffa71364f">Source a999b9c0</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;76e70155da779608b261d82d4a249c106b6959ae" title="Documentation source commit 76e70155da779608b261d82d4a249c106b6959ae">Source 76e70155</a>
             
             
           </div>

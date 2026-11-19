@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.14">
+    <meta name="dumb-docs-package-version" content="1.25.15">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="a999b9c02d75d56d52c3c234d4903a6ffa71364f">
-    <meta name="dumb-docs-release-tag" content="1.25.14">
+    <meta name="dumb-docs-build-commit" content="76e70155da779608b261d82d4a249c106b6959ae">
+    <meta name="dumb-docs-release-tag" content="1.25.15">
   
 
     
@@ -64,7 +64,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.64e1f9293e64.css">
+      <link rel="stylesheet" href="../../assets/css/main.a780955ca3a3.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6311,7 +6311,7 @@
 <li>Quick action and available-update buttons</li>
 </ul>
 <figure class="docs-visual docs-frontend-figure">
-<p><img alt="Dashboard service cards showing each app's status and available controls." decoding="async" loading="lazy" src="../../assets/images/guides/frontend/v1.91.0/dashboard.webp" /></p>
+<p><img alt="Dashboard service cards showing each app's status and available controls." decoding="async" loading="lazy" src="../../assets/images/guides/frontend/v1.91.0/tour-2/dashboard.webp" /></p>
 <figcaption class="docs-visual-caption">Use the service cards to check an app and open its page. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
 </figure>
 <hr />
@@ -6424,6 +6424,19 @@ branch, commit, and pinned-version choices are never overridden by this shortcut
 <p>Hover over action buttons to see what each will do.</p>
 </div>
 <h2 id="check-and-update-multiple-services">Check and update multiple services<a class="headerlink" href="#check-and-update-multiple-services" title="Permanent link">&para;</a></h2>
+<p>Bulk updates use the dashboard's shared panel. Saved source choices still need an individual review:</p>
+<pre class="mermaid"><code>flowchart TD
+    accTitle: Review and install selected dashboard updates
+    accDescr: Check enabled services, review pinned source choices individually and confirm only the available updates you intend to install.
+    Open["Open dashboard Updates"] --&gt; Check["Check all"]
+    Check --&gt; Rows["Review versions and each service result"]
+    Rows --&gt; Source{"Row says Review source?"}
+    Source --&gt;|Yes| Individual["Open that service's Updates panel"]
+    Source --&gt;|No| Available{"Update available?"}
+    Available --&gt;|No| Keep["Keep the current service version"]
+    Available --&gt;|Yes| Select["Select the intended available updates"]
+    Select --&gt; Confirm["Install selected and confirm restarts"]
+    Confirm --&gt; Verify["Review results, health and logs"]</code></pre>
 <p>Use <strong>Updates</strong> in the dashboard header to review every enabled service that
 supports DUMB-managed updates.</p>
 <p>The button shows a pending count when cached checks report available updates.
@@ -6492,7 +6505,7 @@ of service-page controls (config editors, logs, auto-restart overrides, and embe
 <hr />
 <h2 id="toolbar-and-log-viewer">Toolbar and log viewer<a class="headerlink" href="#toolbar-and-log-viewer" title="Permanent link">&para;</a></h2>
 <p>The toolbar and sidebar provide quick access to service settings and logs.</p>
-<p><img alt="Toolbar" class="shadow" src="../../assets/images/frontend/toolbar.png" /></p>
+<p>The <a href="../service-pages/#status-and-controls">service-page screenshot</a> shows the configuration, log and tool controls for one application.</p>
 <p>From here you can:</p>
 <ul>
 <li>Show disabled services</li>
@@ -6500,7 +6513,7 @@ of service-page controls (config editors, logs, auto-restart overrides, and embe
 <li>Open a selected service's DUMB Config or Service Config editor</li>
 </ul>
 <h3 id="real-time-logs">Real-time logs<a class="headerlink" href="#real-time-logs" title="Permanent link">&para;</a></h3>
-<p><img alt="Real-Time Logs" class="shadow" src="../../assets/images/frontend/real_time_logs.png" /></p>
+<p>For one application's log filters and refresh controls, follow the <a href="../service-pages/#logs">service-logs demonstration</a>.</p>
 <p>The log viewer supports:</p>
 <ul>
 <li>Filtering by text or log level</li>
@@ -6515,7 +6528,10 @@ of service-page controls (config editors, logs, auto-restart overrides, and embe
 <li><strong>DUMB services first</strong> - The API/frontend lead the default list</li>
 <li><strong>Alphabetical order</strong> - Other services follow by name until you save a custom order</li>
 </ul>
-<p><img alt="Disabled services toggle" class="shadow" src="../../assets/images/frontend/disabled_services.png" /></p>
+<figure class="docs-visual docs-frontend-figure">
+<p><img alt="Sidebar search for Tautulli with Show Disabled selected and its disabled entry visible." decoding="async" loading="lazy" src="../../assets/images/guides/frontend/v1.91.0/tour-2/disabled-services.webp" /></p>
+<figcaption class="docs-visual-caption">Use sidebar search with Show Disabled to find a configured service. These controls do not start it. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
+</figure>
 <hr />
 <h2 id="tile-reordering">Tile reordering<a class="headerlink" href="#tile-reordering" title="Permanent link">&para;</a></h2>
 <p>You can reorder dashboard service tiles with drag-and-drop.</p>
@@ -6659,11 +6675,11 @@ of service-page controls (config editors, logs, auto-restart overrides, and embe
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.14</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.14">Release notes</a>
+              <span>Documentation release 1.25.15</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.15">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;a999b9c02d75d56d52c3c234d4903a6ffa71364f" title="Documentation source commit a999b9c02d75d56d52c3c234d4903a6ffa71364f">Source a999b9c0</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;76e70155da779608b261d82d4a249c106b6959ae" title="Documentation source commit 76e70155da779608b261d82d4a249c106b6959ae">Source 76e70155</a>
             
             
           </div>

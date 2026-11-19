@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.14">
+    <meta name="dumb-docs-package-version" content="1.25.15">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="a999b9c02d75d56d52c3c234d4903a6ffa71364f">
-    <meta name="dumb-docs-release-tag" content="1.25.14">
+    <meta name="dumb-docs-build-commit" content="76e70155da779608b261d82d4a249c106b6959ae">
+    <meta name="dumb-docs-release-tag" content="1.25.15">
   
 
     
@@ -64,7 +64,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.64e1f9293e64.css">
+      <link rel="stylesheet" href="../../assets/css/main.a780955ca3a3.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6151,6 +6151,17 @@
 
 <h1 id="postgresql-migration-api">PostgreSQL migration API<a class="headerlink" href="#postgresql-migration-api" title="Permanent link">&para;</a></h1>
 <p>Endpoint paths below are backend-native. Add <code>/api</code> when using the dashboard gateway, for example <code>http://localhost:3005/api/process/capabilities</code>.</p>
+<details class="geek-details">
+<summary>Database migration and recovery</summary>
+<p>The preflight is an inspection. The migration starts only after its requirements are satisfied; retain the reported recovery information until the result is verified.</p>
+<pre class="mermaid"><code>flowchart TD
+    Preflight["GET PostgreSQL migration preflight"] --&gt; Review["Review eligibility, paths and backup requirements"]
+    Review --&gt; Start["POST migration start"]
+    Start --&gt; Poll["GET migration status"]
+    Poll --&gt; Result{"Migration result"}
+    Result --&gt;|Completed| Verify["Verify the application and database"]
+    Result --&gt;|Needs recovery| Rollback["Review the retained state and rollback route"]</code></pre>
+</details>
 <h2 id="sqlite-to-postgresql-migration">SQLite-to-PostgreSQL Migration<a class="headerlink" href="#sqlite-to-postgresql-migration" title="Permanent link">&para;</a></h2>
 <p>These endpoints power the guarded migration workflow for Sonarr, Radarr,
 Lidarr, Prowlarr, Whisparr, Bazarr, Pulsarr, Seerr, AltMount, and InfiniDysk.
@@ -6304,11 +6315,11 @@ is reviewed.</p>
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.14</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.14">Release notes</a>
+              <span>Documentation release 1.25.15</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.15">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;a999b9c02d75d56d52c3c234d4903a6ffa71364f" title="Documentation source commit a999b9c02d75d56d52c3c234d4903a6ffa71364f">Source a999b9c0</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;76e70155da779608b261d82d4a249c106b6959ae" title="Documentation source commit 76e70155da779608b261d82d4a249c106b6959ae">Source 76e70155</a>
             
             
           </div>

@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.14">
+    <meta name="dumb-docs-package-version" content="1.25.15">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="a999b9c02d75d56d52c3c234d4903a6ffa71364f">
-    <meta name="dumb-docs-release-tag" content="1.25.14">
+    <meta name="dumb-docs-build-commit" content="76e70155da779608b261d82d4a249c106b6959ae">
+    <meta name="dumb-docs-release-tag" content="1.25.15">
   
 
     
@@ -64,7 +64,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/css/main.64e1f9293e64.css">
+      <link rel="stylesheet" href="../../../assets/css/main.a780955ca3a3.css">
     
     <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -3258,6 +3258,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        At a glance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#first-start" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -5737,6 +5748,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        At a glance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#first-start" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -5963,6 +5985,15 @@
 
 <h1 id="zurg">Zurg<a class="headerlink" href="#zurg" title="Permanent link">&para;</a></h1>
 <p>Zurg is the debrid content fetcher that powers file discovery and caching for DUMB. It mounts content made available by debrid services like Real-Debrid and exposes them over WebDAV for rclone to access. Zurg is designed to run quietly in the background and can be configured to run multiple instances.</p>
+<!-- visual:service-flow -->
+<h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
+<p>Zurg exposes Debrid content to the matching mount. Keep provider credentials private and test the consumer path.</p>
+<pre class="mermaid"><code>flowchart TD
+    A["Configure the Debrid account"] --&gt; B
+    B["Start Zurg and inspect its logs"] --&gt; C
+    C["Check the matching rclone mount"] --&gt; D
+    D["Verify the library folder is readable"] --&gt; E
+    E["Test playback through the media server"]</code></pre>
 <div class="admonition info">
 <p class="admonition-title">Current Debrid Support</p>
 <p>As of this posting, <strong>Zurg only supports Real-Debrid</strong>. Additional debrid services may be supported in future updates.</p>
@@ -6122,7 +6153,7 @@ Invalid YAML is reported without applying these configuration edits.</p>
 <a id="__codelineno-1-50" name="__codelineno-1-50" href="#__codelineno-1-50"></a><span class="w">            </span><span class="nt">"user"</span><span class="p">:</span><span class="w"> </span><span class="s2">""</span><span class="p">,</span>
 <a id="__codelineno-1-51" name="__codelineno-1-51" href="#__codelineno-1-51"></a><span class="w">            </span><span class="nt">"password"</span><span class="p">:</span><span class="w"> </span><span class="s2">""</span><span class="p">,</span>
 <a id="__codelineno-1-52" name="__codelineno-1-52" href="#__codelineno-1-52"></a><span class="w">            </span><span class="nt">"api_key"</span><span class="p">:</span><span class="w"> </span><span class="s2">""</span>
-<a id="__codelineno-1-53" name="__codelineno-1-53" href="#__codelineno-1-53"></a><span class="w">        </span><span class="p">}</span><span class="w">            </span>
+<a id="__codelineno-1-53" name="__codelineno-1-53" href="#__codelineno-1-53"></a><span class="w">        </span><span class="p">}</span>
 <a id="__codelineno-1-54" name="__codelineno-1-54" href="#__codelineno-1-54"></a><span class="w">    </span><span class="p">}</span>
 <a id="__codelineno-1-55" name="__codelineno-1-55" href="#__codelineno-1-55"></a><span class="p">}</span>
 <a id="__codelineno-1-56" name="__codelineno-1-56" href="#__codelineno-1-56"></a><span class="p">}</span>
@@ -6229,11 +6260,11 @@ Invalid YAML is reported without applying these configuration edits.</p>
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.14</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.14">Release notes</a>
+              <span>Documentation release 1.25.15</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.15">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;a999b9c02d75d56d52c3c234d4903a6ffa71364f" title="Documentation source commit a999b9c02d75d56d52c3c234d4903a6ffa71364f">Source a999b9c0</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;76e70155da779608b261d82d4a249c106b6959ae" title="Documentation source commit 76e70155da779608b261d82d4a249c106b6959ae">Source 76e70155</a>
             
             
           </div>

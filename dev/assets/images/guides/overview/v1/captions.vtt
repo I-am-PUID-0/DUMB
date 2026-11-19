@@ -1,0 +1,51 @@
+WEBVTT
+
+intro
+00:00:00.000 --> 00:00:07.000
+DUMB brings your media tools into one dashboard.
+Choose the applications and workflow you need.
+
+workflow
+00:00:07.000 --> 00:00:19.000
+Start with one workflow and one media server.
+DUMB manages the apps; you choose how your library works.
+
+install
+00:00:19.000 --> 00:00:29.000
+Use the deployment guide for your platform.
+Keep configuration and application data in persistent storage.
+
+dashboard
+00:00:29.000 --> 00:00:39.000
+The dashboard shows the services in your DUMB installation.
+Open a service to review its status and controls.
+
+service
+00:00:39.000 --> 00:00:49.000
+A service page brings its controls, settings and logs together.
+Use the embedded application to finish its own setup.
+
+logs
+00:00:49.000 --> 00:01:05.000
+Logs show what the selected service is doing.
+Filter messages by name or level to focus on the problem.
+
+updates
+00:01:05.000 --> 00:01:25.000
+Open Tools → Updates and check for an available version.
+Review the result before choosing to install; this example only checks.
+
+appearance
+00:01:25.000 --> 00:01:35.000
+Use appearance settings to choose a comfortable dashboard view.
+These preferences change how the frontend is displayed.
+
+metrics
+00:01:35.000 --> 00:01:45.000
+Metrics help you review resource use and spot pressure.
+Use the charts alongside the affected service's logs.
+
+closing
+00:01:45.000 --> 00:01:54.000
+Follow the deployment guide, then complete first-run setup.
+Test one import and playback before expanding your stack.

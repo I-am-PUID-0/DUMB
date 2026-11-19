@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.14">
+    <meta name="dumb-docs-package-version" content="1.25.15">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="a999b9c02d75d56d52c3c234d4903a6ffa71364f">
-    <meta name="dumb-docs-release-tag" content="1.25.14">
+    <meta name="dumb-docs-build-commit" content="76e70155da779608b261d82d4a249c106b6959ae">
+    <meta name="dumb-docs-release-tag" content="1.25.15">
   
 
     
@@ -64,7 +64,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/css/main.64e1f9293e64.css">
+      <link rel="stylesheet" href="../../../assets/css/main.a780955ca3a3.css">
     
     <script>__md_scope=new URL("../../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -3420,6 +3420,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        At a glance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#first-start" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -5726,6 +5737,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        At a glance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#first-start" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -5955,6 +5977,15 @@
 
 <h1 id="riven-frontend">Riven Frontend<a class="headerlink" href="#riven-frontend" title="Permanent link">&para;</a></h1>
 <p>Riven Frontend is an optional interface for Riven Backend. Use it to configure Riven and manage its content; the backend and its database must be running first.</p>
+<!-- visual:service-flow -->
+<h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
+<p>Use the Riven settings and workflow diagram for provider, scraper, content and media-server choices.</p>
+<pre class="mermaid"><code>flowchart TD
+    A["Start Riven and its required dependencies"] --&gt; B
+    B["Open Riven Frontend"] --&gt; C
+    C["Configure providers, content and scrapers"] --&gt; D
+    D["Review paths and the media-server updater"] --&gt; E
+    E["Follow one request through playback"]</code></pre>
 <p>DUMB handles automatic installation and updates of the frontend, including versioning and branch targeting. It is served by a lightweight web server and pre-configured to communicate with the backend at startup.</p>
 <hr />
 <h2 id="first-start">First start<a class="headerlink" href="#first-start" title="Permanent link">&para;</a></h2>
@@ -6144,11 +6175,11 @@ conflicts manually before restarting a single service.</p>
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.14</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.14">Release notes</a>
+              <span>Documentation release 1.25.15</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.15">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;a999b9c02d75d56d52c3c234d4903a6ffa71364f" title="Documentation source commit a999b9c02d75d56d52c3c234d4903a6ffa71364f">Source a999b9c0</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;76e70155da779608b261d82d4a249c106b6959ae" title="Documentation source commit 76e70155da779608b261d82d4a249c106b6959ae">Source 76e70155</a>
             
             
           </div>

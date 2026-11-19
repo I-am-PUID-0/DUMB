@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.14">
+    <meta name="dumb-docs-package-version" content="1.25.15">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="a999b9c02d75d56d52c3c234d4903a6ffa71364f">
-    <meta name="dumb-docs-release-tag" content="1.25.14">
+    <meta name="dumb-docs-build-commit" content="76e70155da779608b261d82d4a249c106b6959ae">
+    <meta name="dumb-docs-release-tag" content="1.25.15">
   
 
     
@@ -64,7 +64,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.64e1f9293e64.css">
+      <link rel="stylesheet" href="../../assets/css/main.a780955ca3a3.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -839,6 +839,17 @@
       On this page
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#from-compose-to-the-dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        From Compose to the dashboard
+      </span>
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#1-check-docker-engine-and-compose" class="md-nav__link">
@@ -5994,6 +6005,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#from-compose-to-the-dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        From Compose to the dashboard
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#1-check-docker-engine-and-compose" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -6198,6 +6220,16 @@
 
 <h1 id="deploy-with-docker">Deploy with Docker<a class="headerlink" href="#deploy-with-docker" title="Permanent link">&para;</a></h1>
 <p>Use Docker Compose to run DUMB on a Linux host. If you already manage containers with <a href="../portainer/">Portainer</a> or <a href="../dockge/">Dockge</a>, use that guide instead. Windows users should prepare <a href="../wsl/">WSL2</a> first.</p>
+<h2 id="from-compose-to-the-dashboard">From Compose to the dashboard<a class="headerlink" href="#from-compose-to-the-dashboard" title="Permanent link">&para;</a></h2>
+<p>Prepare the folders before starting the container. A running container is the start of application setup, rather than the final playback check.</p>
+<pre class="mermaid"><code>flowchart TD
+    Engine["Check Docker Engine and Compose"] --&gt; Storage["Create config, log, data and media folders"]
+    Storage --&gt; Compose["Edit host paths, user IDs and published port"]
+    Compose --&gt; Validate["Validate the Compose file"]
+    Validate --&gt; Start["Start DUMB and follow startup logs"]
+    Start --&gt; Open["Open the dashboard on port 3005"]
+    Open --&gt; Setup["Complete onboarding and app setup"]
+    Setup --&gt; Test["Import and play one test item"]</code></pre>
 <h2 id="1-check-docker-engine-and-compose">1. Check Docker Engine and Compose<a class="headerlink" href="#1-check-docker-engine-and-compose" title="Permanent link">&para;</a></h2>
 <p>You need Docker Engine, the Compose plugin, a supported 64-bit host (<code>amd64</code> or <code>arm64</code>), and a non-root account with permission to use Docker. Commands below use <code>sudo</code> for Docker operations.</p>
 <p>Install Docker using its official package instructions for <a href="https://docs.docker.com/engine/install/ubuntu/">Ubuntu</a>, <a href="https://docs.docker.com/engine/install/debian/">Debian</a>, or your distribution. Use a currently supported OS release. Docker's convenience script is intended for testing and development, so use the package repository for an ongoing installation.</p>
@@ -6422,11 +6454,11 @@
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.14</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.14">Release notes</a>
+              <span>Documentation release 1.25.15</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.15">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;a999b9c02d75d56d52c3c234d4903a6ffa71364f" title="Documentation source commit a999b9c02d75d56d52c3c234d4903a6ffa71364f">Source a999b9c0</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;76e70155da779608b261d82d4a249c106b6959ae" title="Documentation source commit 76e70155da779608b261d82d4a249c106b6959ae">Source 76e70155</a>
             
             
           </div>

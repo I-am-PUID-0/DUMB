@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.14">
+    <meta name="dumb-docs-package-version" content="1.25.15">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="a999b9c02d75d56d52c3c234d4903a6ffa71364f">
-    <meta name="dumb-docs-release-tag" content="1.25.14">
+    <meta name="dumb-docs-build-commit" content="76e70155da779608b261d82d4a249c106b6959ae">
+    <meta name="dumb-docs-release-tag" content="1.25.15">
   
 
     
@@ -64,7 +64,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.64e1f9293e64.css">
+      <link rel="stylesheet" href="../../assets/css/main.a780955ca3a3.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6360,6 +6360,22 @@ backend cannot start a migration. Previously discovered job identities and
 recovery information remain visible. The supported native artifact is currently
 <strong><code>v2.0.0-beta.6</code></strong>; selecting 2.x through a 1.x release or source field is refused.</p>
 <h2 id="choose-your-path">Choose your path<a class="headerlink" href="#choose-your-path" title="Permanent link">&para;</a></h2>
+<p>Keep major installation, recovery and the optional database conversion as separate decisions:</p>
+<pre class="mermaid"><code>flowchart TD
+    accTitle: Choose an InfiniDysk 2 installation or recovery path
+    accDescr: Fresh installs and existing 1.x data use a preview and prepared candidate; failed work needs recovery, while an existing 2.x runtime has a separate optional database conversion.
+    Start{"Current installation"}
+    Start --&gt;|Empty and eligible| Preview["Preview the fresh or migration target"]
+    Start --&gt;|Existing 1.x data| Backup["Keep independent backups"]
+    Backup --&gt; Preview
+    Preview --&gt; Passed{"Preview checks allow preparation?"}
+    Passed --&gt;|No| Blocker["Resolve the blocker without changing source data"]
+    Blocker --&gt; Preview
+    Passed --&gt;|Yes| Prepare["Prepare the generation 2 candidate"]
+    Prepare --&gt; Activate["Review and explicitly activate that candidate"]
+    Activate --&gt; Validate["Check accounts, mounts, imports and playback"]
+    Start --&gt;|Already on 2.x| Current["Keep the current runtime; review database conversion separately"]
+    Start --&gt;|Failed or interrupted| Recovery["Follow retained job recovery first"]</code></pre>
 <table>
 <thead>
 <tr>
@@ -6985,6 +7001,19 @@ not DUMB's generation 1 SQLite-to-PostgreSQL adapter.</p>
    provider state and service health.</li>
 </ol>
 <h3 id="prepare-a-postgresql-destination">Prepare a PostgreSQL destination<a class="headerlink" href="#prepare-a-postgresql-destination" title="Permanent link">&para;</a></h3>
+<p>Copying prepares a destination while SQLite stays current; switching providers is a later confirmation:</p>
+<pre class="mermaid"><code>flowchart TD
+    accTitle: Copy before confirming native PostgreSQL cutover
+    accDescr: Verify the dedicated destination, copy while SQLite remains active and confirm the offered provider cutover separately.
+    SQLite["Validate the running generation 2 SQLite installation"] --&gt; Database["Have an administrator prepare an empty C-collation database"]
+    Database --&gt; Preview["Preview the exact destination"]
+    Preview --&gt; Valid{"Destination checks passed?"}
+    Valid --&gt;|No| Correct["Resolve the reported destination problem"]
+    Correct --&gt; Preview
+    Valid --&gt;|Yes| Copy["Confirm backups and start native copying"]
+    Copy --&gt; Sync["Wait for synchronization and offered cutover"]
+    Sync --&gt; Confirm["Review and confirm cutover separately"]
+    Confirm --&gt; Verify["Verify provider state, service health and playback"]</code></pre>
 <p>The conversion needs a separate, empty PostgreSQL database with DUMB's supported <code>C</code> locale. Selecting managed PostgreSQL fills connection settings; it does not create that destination for you. Ask the person managing PostgreSQL to prepare it, then enter the same database name and role in the conversion form. Keep the existing v1 database and every other application's database intact.</p>
 <details class="geek-details">
 <summary>Technical alternative: create the dedicated PostgreSQL destination with SQL</summary>
@@ -7259,11 +7288,11 @@ separate existing workflows.</p>
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.14</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.14">Release notes</a>
+              <span>Documentation release 1.25.15</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.15">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;a999b9c02d75d56d52c3c234d4903a6ffa71364f" title="Documentation source commit a999b9c02d75d56d52c3c234d4903a6ffa71364f">Source a999b9c0</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;76e70155da779608b261d82d4a249c106b6959ae" title="Documentation source commit 76e70155da779608b261d82d4a249c106b6959ae">Source 76e70155</a>
             
             
           </div>

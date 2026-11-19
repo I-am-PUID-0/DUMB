@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.14">
+    <meta name="dumb-docs-package-version" content="1.25.15">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="a999b9c02d75d56d52c3c234d4903a6ffa71364f">
-    <meta name="dumb-docs-release-tag" content="1.25.14">
+    <meta name="dumb-docs-build-commit" content="76e70155da779608b261d82d4a249c106b6959ae">
+    <meta name="dumb-docs-release-tag" content="1.25.15">
   
 
     
@@ -64,7 +64,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.64e1f9293e64.css">
+      <link rel="stylesheet" href="../../assets/css/main.a780955ca3a3.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6075,6 +6075,17 @@
 <p>Native collectors are allowlisted and read-only. Services without a native collector still receive the generic diagnostics above.</p>
 </details>
 <h2 id="guided-workflow">Guided Workflow<a class="headerlink" href="#guided-workflow" title="Permanent link">&para;</a></h2>
+<p>With a provider configured, keep evidence review separate from the decision to send it:</p>
+<pre class="mermaid"><code>flowchart TD
+    accTitle: Review evidence before AI analysis
+    accDescr: Preview the selected bundle, adjust anything unsuitable, then explicitly analyze it and verify the advice.
+    Focus["Choose the service or stack and question"] --&gt; Preview["Preview bundle"]
+    Preview --&gt; Review{"Is this evidence suitable to share?"}
+    Review --&gt;|No| Adjust["Change the selected context"]
+    Adjust --&gt; Preview
+    Review --&gt;|Yes| Analyze["Enable provider calls and Analyze"]
+    Analyze --&gt; Report["Check the report against logs and measurements"]
+    Report --&gt; Verify["Review any proposed change and verify its result"]</code></pre>
 <p>Both service and stack assistants provide presets for health, performance, recent changes, errors, and dependencies. Choose a time window and baseline, preview the evidence, then analyze it.</p>
 <p>Provider results render as sanitized Markdown, including tables. You can copy or download the report, download the redacted JSON bundle, and ask follow-up questions using a short-lived in-memory diagnostic session. Follow-ups reuse the same evidence instead of rescanning logs or silently changing the comparison window.</p>
 <p>Sessions expire after one hour and are not written to disk. Starting a new backend process also clears them.</p>
@@ -6537,11 +6548,11 @@
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.14</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.14">Release notes</a>
+              <span>Documentation release 1.25.15</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.15">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;a999b9c02d75d56d52c3c234d4903a6ffa71364f" title="Documentation source commit a999b9c02d75d56d52c3c234d4903a6ffa71364f">Source a999b9c0</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;76e70155da779608b261d82d4a249c106b6959ae" title="Documentation source commit 76e70155da779608b261d82d4a249c106b6959ae">Source 76e70155</a>
             
             
           </div>

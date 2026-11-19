@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.14">
+    <meta name="dumb-docs-package-version" content="1.25.15">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="a999b9c02d75d56d52c3c234d4903a6ffa71364f">
-    <meta name="dumb-docs-release-tag" content="1.25.14">
+    <meta name="dumb-docs-build-commit" content="76e70155da779608b261d82d4a249c106b6959ae">
+    <meta name="dumb-docs-release-tag" content="1.25.15">
   
 
     
@@ -64,7 +64,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.64e1f9293e64.css">
+      <link rel="stylesheet" href="../../assets/css/main.a780955ca3a3.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6422,7 +6422,7 @@
 <h2 id="status-and-controls">Status and controls<a class="headerlink" href="#status-and-controls" title="Permanent link">&para;</a></h2>
 <p>The header shows process status, application health, and restart information. Hover a health badge for the backend's probe reason. <strong>Starting</strong> and <strong>Degraded</strong> are distinct from a restart-relevant <strong>Unhealthy</strong> result.</p>
 <figure class="docs-visual docs-frontend-figure">
-<p><img alt="Service page showing its status, command bar, configuration tabs and Tools menu." decoding="async" loading="lazy" src="../../assets/images/guides/frontend/v1.91.0/service-controls.webp" /></p>
+<p><img alt="Service page showing its status, command bar, configuration tabs and Tools menu." decoding="async" loading="lazy" src="../../assets/images/guides/frontend/v1.91.0/tour-2/service-controls.webp" /></p>
 <figcaption class="docs-visual-caption">Choose a tab for configuration, logs or the application's interface; open Tools for additional tasks. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
 </figure>
 <p>Use <strong>Start</strong>, <strong>Stop</strong>, or <strong>Restart</strong> for the current service. The DUMB API page has no start/stop/restart buttons. A storage operation affecting a protected media server prompts for playback and scan handling before it runs. Dashboard bulk updates use safe mode; use the individual service page to review an override.</p>
@@ -6498,6 +6498,14 @@
 </tbody>
 </table>
 <p>Instance links are scoped to the current workflow. An unrelated rclone or Zurg instance is not treated as a valid dependency when the intended mapping is missing. Conditional startup dependencies apply only when the relevant services are enabled. Signals distinguish runtime waits, configured <code>core_service</code> links, and optional integrations.</p>
+<figure class="docs-visual docs-frontend-figure">
+<video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/v1.91.0/tour-2/dependencies.webp" aria-label="Review a service's dependencies" aria-describedby="dependencies-demo-caption">
+  <source src="../../assets/images/guides/frontend/v1.91.0/tour-2/dependencies.webm" type="video/webm">
+  <p><a href="../../assets/images/guides/frontend/v1.91.0/tour-2/dependencies.webm">Download the demonstration</a>, or follow the written steps above.</p>
+</video>
+<figcaption id="dependencies-demo-caption" class="docs-visual-caption">Watch: open Dependencies and compare Details with Flow. Review the named prerequisite before using a Fix now action. DUMB Frontend 1.91.0 · example data. Other versions may look different. <a href="../../assets/images/guides/frontend/v1.91.0/tour-2/dependencies.webp">Open the full-size screenshot</a>.</figcaption>
+</figure>
+
 <p>With <a href="../settings/#geek-mode">Geek Mode</a>, the panel also exposes API latency, <strong>Copy JSON</strong>, and raw Mermaid source. Use Details if the browser cannot render Flow.</p>
 <h2 id="process-metrics-panel">Process Metrics panel<a class="headerlink" href="#process-metrics-panel" title="Permanent link">&para;</a></h2>
 <p>Geek Mode adds a Process Metrics panel with PID, uptime, CPU/RSS, I/O, ports, connection count, configured paths, container resources, and restart history. It fetches on page entry; <strong>Refresh</strong> requests a new sample.</p>
@@ -6508,7 +6516,7 @@
 <h2 id="auto-restart-policy">Auto-restart policy<a class="headerlink" href="#auto-restart-policy" title="Permanent link">&para;</a></h2>
 <p>Use <strong>Tools → Auto-restart</strong> to select the current service and set its policy. Global defaults and per-service overrides control the interval, failure threshold, restart window, explicit backoff delays, and grace period.</p>
 <p>Monitoring pauses during stack startup. A restart is counted as successful only after the service passes its health check. <strong>Starting</strong> and <strong>Degraded</strong> states remain visible without incrementing the unhealthy threshold. See <a href="../../features/auto-restart/">Auto-restart</a> before changing limits.</p>
-<p><img alt="Auto-restart controls" class="shadow" src="../../assets/images/frontend/auto_restart.png" /></p>
+<p>Use the <a href="../../features/auto-restart/#enable-it-for-a-service">auto-restart controls walkthrough</a> to locate the policy before changing and saving it.</p>
 <h2 id="auto-update-settings">Auto-update settings<a class="headerlink" href="#auto-update-settings" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -6560,7 +6568,7 @@
 <li>Reopen the editor to confirm the saved value. Follow the application's restart/setup instructions and verify the result in its own interface.</li>
 </ol>
 <p>Application settings and DUMB-managed settings are separate. Use the <a href="../../services/">service guide</a> to find the correct editor and restart requirements.</p>
-<p><img alt="Edit Service Config" class="shadow" src="../../assets/images/frontend/edit_service_config.png" /></p>
+<p>Compare the two tabs in the <a href="../../features/configuration/#change-a-setting">configuration-editor walkthrough</a> before choosing which setting to change.</p>
 <h2 id="ai-assist">AI Assist<a class="headerlink" href="#ai-assist" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Choose a diagnostic preset and time/comparison window.</li>
@@ -6580,11 +6588,11 @@
 <p>You can also change the line limit. Service-aware parsing retains application timestamps/severity and groups multiline errors where supported. Traefik offers access logs; Plex offers DBRepair logs when enabled.</p>
 <p>DUMB applies its sensitive-data redactor to logs viewed or downloaded here. Review a download before sharing it; arbitrary application output can contain values the redactor does not recognize.</p>
 <figure class="docs-visual docs-frontend-figure">
-<video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/v1.91.0/service-logs.webp" aria-label="Filter service logs demonstration" aria-describedby="service-logs-demo-caption">
-  <source src="../../assets/images/guides/frontend/v1.91.0/service-logs.webm" type="video/webm">
-  <p><a href="../../assets/images/guides/frontend/v1.91.0/service-logs.webm">Download the demonstration</a>, or follow the written steps above.</p>
+<video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/v1.91.0/tour-2/service-logs.webp" aria-label="Filter service logs demonstration" aria-describedby="service-logs-demo-caption">
+  <source src="../../assets/images/guides/frontend/v1.91.0/tour-2/service-logs.webm" type="video/webm">
+  <p><a href="../../assets/images/guides/frontend/v1.91.0/tour-2/service-logs.webm">Download the demonstration</a>, or follow the written steps above.</p>
 </video>
-<figcaption id="service-logs-demo-caption" class="docs-visual-caption">Watch the log filters, refresh interval and Follow tail controls. DUMB Frontend 1.91.0 · example data. Other versions may look different. <a href="../../assets/images/guides/frontend/v1.91.0/service-logs.webp">Open the full-size screenshot</a>.</figcaption>
+<figcaption id="service-logs-demo-caption" class="docs-visual-caption">Watch the log filters, refresh interval and Follow tail controls. DUMB Frontend 1.91.0 · example data. Other versions may look different. <a href="../../assets/images/guides/frontend/v1.91.0/tour-2/service-logs.webp">Open the full-size screenshot</a>.</figcaption>
 </figure>
 
 <h2 id="embedded-ui">Embedded UI<a class="headerlink" href="#embedded-ui" title="Permanent link">&para;</a></h2>
@@ -6685,11 +6693,11 @@
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.14</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.14">Release notes</a>
+              <span>Documentation release 1.25.15</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.15">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;a999b9c02d75d56d52c3c234d4903a6ffa71364f" title="Documentation source commit a999b9c02d75d56d52c3c234d4903a6ffa71364f">Source a999b9c0</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;76e70155da779608b261d82d4a249c106b6959ae" title="Documentation source commit 76e70155da779608b261d82d4a249c106b6959ae">Source 76e70155</a>
             
             
           </div>

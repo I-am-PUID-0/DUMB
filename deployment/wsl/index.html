@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.14">
+    <meta name="dumb-docs-package-version" content="1.25.15">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="a999b9c02d75d56d52c3c234d4903a6ffa71364f">
-    <meta name="dumb-docs-release-tag" content="1.25.14">
+    <meta name="dumb-docs-build-commit" content="76e70155da779608b261d82d4a249c106b6959ae">
+    <meta name="dumb-docs-release-tag" content="1.25.15">
   
 
     
@@ -64,7 +64,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.64e1f9293e64.css">
+      <link rel="stylesheet" href="../../assets/css/main.a780955ca3a3.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -955,6 +955,17 @@
       On this page
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#windows-and-linux-responsibilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Windows and Linux responsibilities
+      </span>
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#1-install-or-update-wsl" class="md-nav__link">
@@ -5682,6 +5693,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#windows-and-linux-responsibilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Windows and Linux responsibilities
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#1-install-or-update-wsl" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -5854,6 +5876,16 @@
 <h1 id="deploy-with-wsl2">Deploy with WSL2<a class="headerlink" href="#deploy-with-wsl2" title="Permanent link">&para;</a></h1>
 <p>Run Docker Engine inside a WSL2 Linux distribution. This gives DUMB the Linux mount behavior needed by FUSE/rclone workflows. Docker Desktop does not support sharing these submounts through bind propagation.</p>
 <p>Avoid running both Docker Desktop integration and a separate Docker Engine against the same distribution without an explicit plan. Check which Docker daemon your CLI targets before deploying.</p>
+<h2 id="windows-and-linux-responsibilities">Windows and Linux responsibilities<a class="headerlink" href="#windows-and-linux-responsibilities" title="Permanent link">&para;</a></h2>
+<p>Run the Docker commands and keep application data inside WSL's Linux filesystem. Windows reaches the published dashboard through the configured WSL network.</p>
+<pre class="mermaid"><code>flowchart TD
+    Windows["Windows: install or update WSL"] --&gt; Linux["WSL2 Linux distribution"]
+    Linux --&gt; Docker["Install Docker Engine inside Linux"]
+    Linux --&gt; Storage["Keep config and databases in Linux storage"]
+    Docker --&gt; DUMB["Deploy DUMB with Compose or Portainer"]
+    Storage --&gt; DUMB
+    DUMB --&gt; Browser["Windows browser: try localhost:3005"]
+    Browser --&gt; LAN["For LAN access: review WSL networking and firewall"]</code></pre>
 <h2 id="1-install-or-update-wsl">1. Install or update WSL<a class="headerlink" href="#1-install-or-update-wsl" title="Permanent link">&para;</a></h2>
 <p>In <strong>PowerShell as administrator</strong>, install WSL if needed:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">wsl</span> <span class="p">-</span><span class="n">-install</span>
@@ -5990,11 +6022,11 @@
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.14</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.14">Release notes</a>
+              <span>Documentation release 1.25.15</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.15">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;a999b9c02d75d56d52c3c234d4903a6ffa71364f" title="Documentation source commit a999b9c02d75d56d52c3c234d4903a6ffa71364f">Source a999b9c0</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;76e70155da779608b261d82d4a249c106b6959ae" title="Documentation source commit 76e70155da779608b261d82d4a249c106b6959ae">Source 76e70155</a>
             
             
           </div>

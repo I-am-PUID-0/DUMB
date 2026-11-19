@@ -1,0 +1,557 @@
+{
+  "schema_version": 1,
+  "complete": true,
+  "frontend": {
+    "version": "1.91.0",
+    "tag": "v1.91.0",
+    "commit": "66c90b93ea35abe546c07cbf643dc00a184bbd7f",
+    "repository": "https://github.com/nicocapalbo/dmbdb"
+  },
+  "series": "tour-2",
+  "source_verification": "The caller verified the immutable release tag and archived its full commit before building. This packager validates that pinned capture identity.",
+  "scope": "Real released frontend rendered with public example HTTP and WebSocket responses. No live backend, provider account, media library or installation was used.",
+  "fixed_time": "2026-11-19T12:00:00.000Z",
+  "viewport": {
+    "width": 1280,
+    "height": 800
+  },
+  "capture_manifest_sha256": "c178d26a0f84a3532a25663bdd97db8d6a13401c3700946d307ea4e7afb3f8a8",
+  "files": [
+    {
+      "file": "dashboard.webp",
+      "kind": "image",
+      "media_type": "image/webp",
+      "sha256": "7ca43831edd41bc8264cf1f77f0497f67d10f52c7e4c13369008d7e881200921",
+      "bytes": 34328,
+      "scenario": "dashboard",
+      "captured_from": "dashboard.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "theme": "dark",
+      "route": "/",
+      "actions": [
+        "Review example service states on the dashboard"
+      ],
+      "quality": 90
+    },
+    {
+      "file": "service-controls.webp",
+      "kind": "image",
+      "media_type": "image/webp",
+      "sha256": "97e3fb0be464b219bf2a230b185cecf658850c9af18a9db7414916c7631a6530",
+      "bytes": 46692,
+      "scenario": "service-controls",
+      "captured_from": "service-controls.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "theme": "dark",
+      "route": "/services/Sonarr",
+      "actions": [
+        "Open Sonarr",
+        "Review status and Start, Stop, Restart controls without changing them"
+      ],
+      "quality": 90
+    },
+    {
+      "file": "service-logs.webp",
+      "kind": "image",
+      "media_type": "image/webp",
+      "sha256": "1cd1c9f5e952d5c366c73bb035b7ec131e4282b7eb8fd266832b5b0df53907b0",
+      "bytes": 57832,
+      "scenario": "service-logs",
+      "captured_from": "service-logs-poster.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "theme": "dark",
+      "route": "/services/Sonarr",
+      "actions": [
+        "Open Service Logs",
+        "Filter by Example Series",
+        "Review Warning and All levels",
+        "Choose Every 5s, then Off",
+        "Disable Follow tail"
+      ],
+      "quality": 90
+    },
+    {
+      "file": "updates.webp",
+      "kind": "image",
+      "media_type": "image/webp",
+      "sha256": "89e5cccc596962ac07bb17ff692fe6758f0412169fd529d5ab8fd25db806388c",
+      "bytes": 34064,
+      "scenario": "updates-review",
+      "captured_from": "updates-check-poster.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "theme": "dark",
+      "route": "/services/Sonarr",
+      "actions": [
+        "Open Service tools",
+        "Choose Updates",
+        "Check for updates",
+        "Review example version 4.0.1 without installing it"
+      ],
+      "quality": 90
+    },
+    {
+      "file": "appearance.webp",
+      "kind": "image",
+      "media_type": "image/webp",
+      "sha256": "76d97a4ea77e527a29e07b4b0a12e9fa45d598f4aafc25329720496dd3d0e0c2",
+      "bytes": 46322,
+      "scenario": "appearance-settings",
+      "captured_from": "appearance-poster.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "theme": "light",
+      "route": "/settings",
+      "actions": [
+        "Open Settings",
+        "Find Appearance",
+        "Select Light",
+        "Review the changed appearance"
+      ],
+      "quality": 90
+    },
+    {
+      "file": "metrics.webp",
+      "kind": "image",
+      "media_type": "image/webp",
+      "sha256": "71293d34d5b62a0395f6b1f579f3d17353f65d9928b3523dafd53e1da9edeac8",
+      "bytes": 65798,
+      "scenario": "metrics",
+      "captured_from": "metrics.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "theme": "dark",
+      "route": "/metrics",
+      "actions": [
+        "Open Metrics",
+        "Review example CPU, memory, disk and history measurements"
+      ],
+      "quality": 90
+    },
+    {
+      "file": "embedded-ui-settings.webp",
+      "kind": "image",
+      "media_type": "image/webp",
+      "sha256": "e80aecb7290046ed146013e98a81210154f5b005d8314ebe40324601fee557cd",
+      "bytes": 36488,
+      "scenario": "embedded-ui-settings",
+      "captured_from": "embedded-ui-settings.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "theme": "dark",
+      "route": "/settings",
+      "actions": [
+        "Open Settings",
+        "Find Embedded UIs",
+        "Review the disabled embedded-service setting without changing it"
+      ],
+      "quality": 90
+    },
+    {
+      "file": "disabled-services.webp",
+      "kind": "image",
+      "media_type": "image/webp",
+      "sha256": "587f3293442e1e5b96c30d08b9eeb8f473f00f51f10e6d1e3960293ad057b229",
+      "bytes": 39588,
+      "scenario": "disabled-services",
+      "captured_from": "disabled-services.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "theme": "dark",
+      "route": "/",
+      "actions": [
+        "Open Sidebar tools",
+        "Enable Show Disabled",
+        "Filter the sidebar to the disabled example Tautulli service; no service state is changed"
+      ],
+      "quality": 90
+    },
+    {
+      "file": "about.webp",
+      "kind": "image",
+      "media_type": "image/webp",
+      "sha256": "eae75dca1058008217a8c715cc0987358aef74f5006324d8bd5fd33037484cf0",
+      "bytes": 46990,
+      "scenario": "about",
+      "captured_from": "about.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "theme": "dark",
+      "route": "/settings",
+      "actions": [
+        "Open Settings",
+        "Find About",
+        "Compare the separate example DUMB and frontend version rows"
+      ],
+      "quality": 90
+    },
+    {
+      "file": "configuration.webp",
+      "kind": "image",
+      "media_type": "image/webp",
+      "sha256": "ce3e6fe2ab15b835abac714917485cf4f8b536f9a79540cfc083e7817f73fb33",
+      "bytes": 46680,
+      "scenario": "configuration",
+      "captured_from": "configuration-poster.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "theme": "dark",
+      "route": "/services/Sonarr",
+      "actions": [
+        "Open Sonarr",
+        "Review DUMB Config",
+        "Switch to Service Config",
+        "Return to DUMB Config",
+        "Locate Save to File without clicking or editing"
+      ],
+      "quality": 90
+    },
+    {
+      "file": "dependencies.webp",
+      "kind": "image",
+      "media_type": "image/webp",
+      "sha256": "f177f3c969401d3f1e3bbdaad5b950f42f1262b4a0407c1271813d23fdc8bffe",
+      "bytes": 25040,
+      "scenario": "dependencies",
+      "captured_from": "dependencies-poster.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "theme": "dark",
+      "route": "/services/Sonarr",
+      "actions": [
+        "Open Service tools",
+        "Choose Dependencies",
+        "Read the example dependency details and startup order",
+        "Switch to Flow to review the same relationships"
+      ],
+      "quality": 90
+    },
+    {
+      "file": "auto-restart.webp",
+      "kind": "image",
+      "media_type": "image/webp",
+      "sha256": "04468d0c2685ce657754e07113028fc8e4b873711b4029db895695a8ac795bef",
+      "bytes": 49794,
+      "scenario": "auto-restart",
+      "captured_from": "auto-restart-poster.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "theme": "dark",
+      "route": "/services/Sonarr",
+      "actions": [
+        "Open Service tools",
+        "Choose Auto-restart",
+        "Review the global switch and healthcheck guardrails",
+        "Review the separate Sonarr switch; do not apply or save"
+      ],
+      "quality": 90
+    },
+    {
+      "file": "service-logs.webm",
+      "kind": "video",
+      "media_type": "video/webm",
+      "sha256": "ed274373f0c441bf1fc8ea42fbe9a6c22f71fe0d515e916df7199bfefdb639d7",
+      "bytes": 2700323,
+      "scenario": "service-logs",
+      "captured_from": "service-logs.webm",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "theme": "dark",
+      "route": "/services/Sonarr",
+      "actions": [
+        "Open Service Logs",
+        "Filter by Example Series",
+        "Review Warning and All levels",
+        "Choose Every 5s, then Off",
+        "Disable Follow tail"
+      ],
+      "poster": "service-logs.webp",
+      "start_route": "/services/Sonarr",
+      "chapters": [
+        {
+          "label": "Open Service Logs",
+          "at_seconds": 3.4
+        },
+        {
+          "label": "Filter the displayed lines",
+          "at_seconds": 7.4
+        },
+        {
+          "label": "Review a log level",
+          "at_seconds": 15.1
+        },
+        {
+          "label": "Pause automatic refresh",
+          "at_seconds": 21.2
+        }
+      ],
+      "pointer_emphasis": true,
+      "pacing": {
+        "tools_menu_ms": 2500,
+        "menu_choice_ms": 1600,
+        "result_ms": 2200
+      }
+    },
+    {
+      "file": "updates.webm",
+      "kind": "video",
+      "media_type": "video/webm",
+      "sha256": "469130acedaf0396095f39fb860eb86080526750945c03acaf05499d6ff84155",
+      "bytes": 1845964,
+      "scenario": "updates-check",
+      "captured_from": "updates-check.webm",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "theme": "dark",
+      "route": "/services/Sonarr",
+      "actions": [
+        "Open Service tools",
+        "Choose Updates",
+        "Check for updates",
+        "Review example version 4.0.1 without installing it"
+      ],
+      "poster": "updates.webp",
+      "start_route": "/services/Sonarr",
+      "chapters": [
+        {
+          "label": "Open Service tools",
+          "at_seconds": 3.4
+        },
+        {
+          "label": "Choose Updates",
+          "at_seconds": 7.7
+        },
+        {
+          "label": "Check the example update status",
+          "at_seconds": 11.9
+        },
+        {
+          "label": "Review the available version; do not install",
+          "at_seconds": 15.9
+        }
+      ],
+      "pointer_emphasis": true,
+      "pacing": {
+        "tools_menu_ms": 2500,
+        "menu_choice_ms": 1600,
+        "result_ms": 2200
+      }
+    },
+    {
+      "file": "appearance.webm",
+      "kind": "video",
+      "media_type": "video/webm",
+      "sha256": "dd1db13979c7c659541f2a3440e642456f9d08c4ea6789295a921668f98abf38",
+      "bytes": 1030283,
+      "scenario": "appearance",
+      "captured_from": "appearance.webm",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "theme": "light",
+      "route": "/settings",
+      "actions": [
+        "Open Settings",
+        "Find Appearance",
+        "Select Light",
+        "Review the changed appearance"
+      ],
+      "poster": "appearance.webp",
+      "start_route": "/settings",
+      "chapters": [
+        {
+          "label": "Find Appearance settings",
+          "at_seconds": 3.3
+        },
+        {
+          "label": "Choose the Light appearance",
+          "at_seconds": 3.4
+        }
+      ],
+      "pointer_emphasis": true,
+      "pacing": {
+        "tools_menu_ms": 2500,
+        "menu_choice_ms": 1600,
+        "result_ms": 2200
+      }
+    },
+    {
+      "file": "configuration.webm",
+      "kind": "video",
+      "media_type": "video/webm",
+      "sha256": "5dd64bfc34a4133fcd350257c8cbb00648cac45610a3099cd7d244f58e6e210f",
+      "bytes": 1397328,
+      "scenario": "configuration",
+      "captured_from": "configuration.webm",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "theme": "dark",
+      "route": "/services/Sonarr",
+      "actions": [
+        "Open Sonarr",
+        "Review DUMB Config",
+        "Switch to Service Config",
+        "Return to DUMB Config",
+        "Locate Save to File without clicking or editing"
+      ],
+      "poster": "configuration.webp",
+      "start_route": "/services/Sonarr",
+      "chapters": [
+        {
+          "label": "Review settings managed by DUMB",
+          "at_seconds": 3.4
+        },
+        {
+          "label": "Find the application configuration",
+          "at_seconds": 6
+        },
+        {
+          "label": "Return to DUMB configuration",
+          "at_seconds": 9.9
+        },
+        {
+          "label": "Locate the save action; leave settings unchanged",
+          "at_seconds": 13.9
+        }
+      ],
+      "pointer_emphasis": true,
+      "pacing": {
+        "tools_menu_ms": 2500,
+        "menu_choice_ms": 1600,
+        "result_ms": 2200
+      }
+    },
+    {
+      "file": "dependencies.webm",
+      "kind": "video",
+      "media_type": "video/webm",
+      "sha256": "5caddf6819416b8d884434d3883e848afed8fa5b8adfeaa5eea6db4f9c5947b7",
+      "bytes": 1725622,
+      "scenario": "dependencies",
+      "captured_from": "dependencies.webm",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "theme": "dark",
+      "route": "/services/Sonarr",
+      "actions": [
+        "Open Service tools",
+        "Choose Dependencies",
+        "Read the example dependency details and startup order",
+        "Switch to Flow to review the same relationships"
+      ],
+      "poster": "dependencies.webp",
+      "start_route": "/services/Sonarr",
+      "chapters": [
+        {
+          "label": "Open Service tools",
+          "at_seconds": 3.4
+        },
+        {
+          "label": "Choose Dependencies",
+          "at_seconds": 7.7
+        },
+        {
+          "label": "Read dependencies before the dependent service",
+          "at_seconds": 11.9
+        },
+        {
+          "label": "Switch to the dependency flow",
+          "at_seconds": 14.4
+        }
+      ],
+      "pointer_emphasis": true,
+      "pacing": {
+        "tools_menu_ms": 2500,
+        "menu_choice_ms": 1600,
+        "result_ms": 2200
+      }
+    },
+    {
+      "file": "auto-restart.webm",
+      "kind": "video",
+      "media_type": "video/webm",
+      "sha256": "2eb88a8febc6a2722b47f0b68793186ed67c03cdd9db3e20a4ca122e92d6d0d2",
+      "bytes": 2088711,
+      "scenario": "auto-restart",
+      "captured_from": "auto-restart.webm",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "theme": "dark",
+      "route": "/services/Sonarr",
+      "actions": [
+        "Open Service tools",
+        "Choose Auto-restart",
+        "Review the global switch and healthcheck guardrails",
+        "Review the separate Sonarr switch; do not apply or save"
+      ],
+      "poster": "auto-restart.webp",
+      "start_route": "/services/Sonarr",
+      "chapters": [
+        {
+          "label": "Open Service tools",
+          "at_seconds": 3.4
+        },
+        {
+          "label": "Choose Auto-restart",
+          "at_seconds": 7.8
+        },
+        {
+          "label": "Review the global recovery switch",
+          "at_seconds": 11.9
+        },
+        {
+          "label": "Review thresholds and the restart window",
+          "at_seconds": 14.5
+        },
+        {
+          "label": "Review the separate service switch without saving",
+          "at_seconds": 19.5
+        }
+      ],
+      "pointer_emphasis": true,
+      "pacing": {
+        "tools_menu_ms": 2500,
+        "menu_choice_ms": 1600,
+        "result_ms": 2200
+      }
+    }
+  ]
+}

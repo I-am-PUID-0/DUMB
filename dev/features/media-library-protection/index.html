@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.14">
+    <meta name="dumb-docs-package-version" content="1.25.15">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="a999b9c02d75d56d52c3c234d4903a6ffa71364f">
-    <meta name="dumb-docs-release-tag" content="1.25.14">
+    <meta name="dumb-docs-build-commit" content="76e70155da779608b261d82d4a249c106b6959ae">
+    <meta name="dumb-docs-release-tag" content="1.25.15">
   
 
     
@@ -64,7 +64,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.64e1f9293e64.css">
+      <link rel="stylesheet" href="../../assets/css/main.a780955ca3a3.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6217,6 +6217,18 @@
 <p>New policies created by arrangement setup stay disabled until you review their mount scope and enable them deliberately. Existing policies retain their settings.</p>
 </div>
 <h2 id="planned-stop-restart-or-update">Planned stop, restart, or update<a class="headerlink" href="#planned-stop-restart-or-update" title="Permanent link">&para;</a></h2>
+<p>The ordinary safe-maintenance path waits for known idle activity and checks recovery afterward:</p>
+<pre class="mermaid"><code>flowchart TD
+    accTitle: Protect a library during planned storage maintenance
+    accDescr: Defer when activity is active or unknown; otherwise use protection, wait for stable storage and verify restored library access.
+    Review["Review playback and scan activity"] --&gt; Idle{"Known idle or stopped?"}
+    Idle --&gt;|No or unknown| Defer["Defer the operation"]
+    Idle --&gt;|Yes| Protect["Protect &amp; continue"]
+    Protect --&gt; Work["DUMB guards scans and performs storage maintenance"]
+    Work --&gt; Healthy{"Storage and mounts stable?"}
+    Healthy --&gt;|No| Recovery["Read protection status and recovery guidance"]
+    Healthy --&gt;|Yes| Restore["Restore only settings and processes DUMB changed"]
+    Restore --&gt; Test["Check the library and sample playback"]</code></pre>
 <p>Before DUMB changes a storage dependency it:</p>
 <ol>
 <li>checks active playback and library-scan activity;</li>
@@ -6425,11 +6437,11 @@
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.14</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.14">Release notes</a>
+              <span>Documentation release 1.25.15</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.15">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;a999b9c02d75d56d52c3c234d4903a6ffa71364f" title="Documentation source commit a999b9c02d75d56d52c3c234d4903a6ffa71364f">Source a999b9c0</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;76e70155da779608b261d82d4a249c106b6959ae" title="Documentation source commit 76e70155da779608b261d82d4a249c106b6959ae">Source 76e70155</a>
             
             
           </div>

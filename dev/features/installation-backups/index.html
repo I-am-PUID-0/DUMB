@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.14">
+    <meta name="dumb-docs-package-version" content="1.25.15">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="a999b9c02d75d56d52c3c234d4903a6ffa71364f">
-    <meta name="dumb-docs-release-tag" content="1.25.14">
+    <meta name="dumb-docs-build-commit" content="76e70155da779608b261d82d4a249c106b6959ae">
+    <meta name="dumb-docs-release-tag" content="1.25.15">
   
 
     
@@ -64,7 +64,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.64e1f9293e64.css">
+      <link rel="stylesheet" href="../../assets/css/main.a780955ca3a3.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6620,6 +6620,21 @@ another active operation, unavailable storage or insufficient space. Retention
 applies only to verified scheduled installation archives owned by that schedule;
 manual archives and other tools' backups are retained separately.</p>
 <h2 id="restore-an-existing-or-fresh-installation">Restore an existing or fresh installation<a class="headerlink" href="#restore-an-existing-or-fresh-installation" title="Permanent link">&para;</a></h2>
+<p>A preview verifies the archive before you confirm downtime and replacement:</p>
+<pre class="mermaid"><code>flowchart TD
+    accTitle: Preview a restore before replacing installation state
+    accDescr: Keep an independent backup, verify a trusted archive and its destination, confirm replacement and follow the retained result or recovery action.
+    Backup["Keep a separate backup of the current installation"] --&gt; Mounts["Prepare the required image and container mounts"]
+    Mounts --&gt; Select["Select a trusted archive or mounted archive file"]
+    Select --&gt; Preview["Request and review restore preview"]
+    Preview --&gt; Compatible{"Archive, paths and compatibility checks passed?"}
+    Compatible --&gt;|No| Resolve["Resolve the blocker; keep existing state intact"]
+    Resolve --&gt; Preview
+    Compatible --&gt;|Yes| Confirm["Confirm downtime, acknowledgements and replacement"]
+    Confirm --&gt; Job["Follow the retained restore job"]
+    Job --&gt; Result{"Restore completed?"}
+    Result --&gt;|No| Recovery["Preserve retained state and follow the offered recovery"]
+    Result --&gt;|Yes| Restart["Restart when instructed and verify login, mounts and apps"]</code></pre>
 <p>A restore replaces managed state and requires downtime. Keep a separate backup
 of the current installation and keep external writers stopped throughout the
 operation, including any other DUMB container using the same mounted state.
@@ -6815,11 +6830,11 @@ has its own job, cancellation and rollback flow.</p>
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.14</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.14">Release notes</a>
+              <span>Documentation release 1.25.15</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.15">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;a999b9c02d75d56d52c3c234d4903a6ffa71364f" title="Documentation source commit a999b9c02d75d56d52c3c234d4903a6ffa71364f">Source a999b9c0</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;76e70155da779608b261d82d4a249c106b6959ae" title="Documentation source commit 76e70155da779608b261d82d4a249c106b6959ae">Source 76e70155</a>
             
             
           </div>

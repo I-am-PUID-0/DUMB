@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.14">
+    <meta name="dumb-docs-package-version" content="1.25.15">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="a999b9c02d75d56d52c3c234d4903a6ffa71364f">
-    <meta name="dumb-docs-release-tag" content="1.25.14">
+    <meta name="dumb-docs-build-commit" content="76e70155da779608b261d82d4a249c106b6959ae">
+    <meta name="dumb-docs-release-tag" content="1.25.15">
   
 
     
@@ -64,7 +64,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.64e1f9293e64.css">
+      <link rel="stylesheet" href="../../assets/css/main.a780955ca3a3.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6122,6 +6122,17 @@
 <h1 id="seerr-sync-api">Seerr Sync API<a class="headerlink" href="#seerr-sync-api" title="Permanent link">&para;</a></h1>
 <p>Seerr Sync provides one-way request replication from a <strong>primary</strong> Seerr instance to one or more <strong>subordinates</strong>.</p>
 <p>It polls the primary at a configurable interval, fingerprints requests using <code>{mediaType}:{tmdbId}:{is4k}</code>, and persists sync state in <code>/config/seerr_sync_state.json</code> to survive restarts.</p>
+<details class="geek-details">
+<summary>One-way request replication</summary>
+<p>Requests flow from the primary to each subordinate. Persisted fingerprints and results let the sync worker remember completed and failed work across restarts.</p>
+<pre class="mermaid"><code>flowchart TD
+    Primary["Primary Seerr requests"] --&gt; Poll["Poll and fingerprint requests"]
+    Poll --&gt; A["Subordinate Seerr A"]
+    Poll --&gt; B["Subordinate Seerr B"]
+    A --&gt; State["Persist synchronization results"]
+    B --&gt; State
+    State --&gt; Inspect["Inspect status, failed requests and retained state"]</code></pre>
+</details>
 <h2 id="endpoints">Endpoints<a class="headerlink" href="#endpoints" title="Permanent link">&para;</a></h2>
 <h3 id="get-seerr-syncstatus">GET <code>/seerr-sync/status</code><a class="headerlink" href="#get-seerr-syncstatus" title="Permanent link">&para;</a></h3>
 <p>Summary status of the sync service.</p>
@@ -6311,11 +6322,11 @@
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.14</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.14">Release notes</a>
+              <span>Documentation release 1.25.15</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.15">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;a999b9c02d75d56d52c3c234d4903a6ffa71364f" title="Documentation source commit a999b9c02d75d56d52c3c234d4903a6ffa71364f">Source a999b9c0</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;76e70155da779608b261d82d4a249c106b6959ae" title="Documentation source commit 76e70155da779608b261d82d4a249c106b6959ae">Source 76e70155</a>
             
             
           </div>

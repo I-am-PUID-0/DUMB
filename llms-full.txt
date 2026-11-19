@@ -2,7 +2,7 @@
 
 > Channel: release. Canonical base: https://dumbarr.com/
 
-Documentation artifact: release 1.25.14. Source commit: a999b9c02d75d56d52c3c234d4903a6ffa71364f. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.14.
+Documentation artifact: release 1.25.15. Source commit: 76e70155da779608b261d82d4a249c106b6959ae. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.15.
 
 DUMB coordinates media services. Match instructions to the installed backend version. Development guides can describe features absent from the latest release.
 
@@ -13,6 +13,15 @@ Source: https://dumbarr.com/about/
 **Distributed Unlimited Media Bridge (DUMB)** installs and manages media applications in one container. It supports Debrid and Usenet workflows, Arr applications, media servers, request tools, and supporting databases and mounts.
 
 The Python backend coordinates installation, configuration, dependencies, and service processes. The [dmbdb dashboard](frontend/index.md) provides onboarding, configuration, logs, metrics, updates, and embedded application UIs.
+
+<figure class="docs-visual" markdown="1">
+
+![A media workflow connects requests, acquisition, a curated library and the media player.](assets/images/guides/library-workflow.svg)
+
+<figcaption class="docs-visual-caption">DUMB manages the applications around your chosen workflow. Provider accounts, library choices and the final playback check are still yours to review.</figcaption>
+</figure>
+
+Watch the [captioned DUMB overview](index.md#overview), or use the [dashboard task guides](frontend/index.md#watch-a-task) for shorter demonstrations.
 
 ## Why put the services together?
 
@@ -47,6 +56,28 @@ Source: https://dumbarr.com/api/ai/
 The AI API manages provider settings and service diagnostics. Authentication follows the same DUMB API authentication behavior as the rest of the backend.
 
 The backend makes provider requests from inside the DUMB container. Use provider URLs that are reachable from that container, not just from your browser.
+
+<details class="geek-details" markdown="1">
+<summary>Review diagnostic context before sending it</summary>
+
+The dry run previews redacted context. A provider response is a diagnosis to review; it does not apply the suggested repairs.
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant DUMB as DUMB AI API
+    participant Provider as Configured AI provider
+    Client->>DUMB: Diagnostic request with dry_run enabled
+    DUMB-->>Client: Redacted context preview
+    Note over Client: Review what would be shared
+    Client->>DUMB: Explicit diagnostic request
+    DUMB->>Provider: Send the configured diagnostic context
+    Provider-->>DUMB: Analysis
+    DUMB-->>Client: Diagnosis and session information
+    Note over Client: Review recommendations before making changes
+```
+
+</details>
 
 ## Choose an endpoint
 
@@ -421,6 +452,27 @@ Source: https://dumbarr.com/api/auth/
 
 The Authentication API provides local login, OIDC Authorization Code with PKCE,
 DUMB token handling, provider configuration, and user management.
+
+<details class="geek-details" markdown="1">
+<summary>Password login and access-token renewal</summary>
+
+This sequence covers local password login. OIDC uses its separate start, callback and exchange routes described below.
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Auth as DUMB authentication API
+    participant Protected as Protected API route
+    Client->>Auth: POST /auth/login with credentials
+    Auth-->>Client: Access token and refresh token
+    Client->>Protected: Request with bearer access token
+    Protected-->>Client: Authorized response
+    Note over Client,Auth: Before the access token expires
+    Client->>Auth: POST /auth/refresh with refresh token
+    Auth-->>Client: Renewed tokens
+```
+
+</details>
 
 ## Endpoint groups
 
@@ -881,6 +933,26 @@ Source: https://dumbarr.com/api/config/
 
 Read and update DUMB's effective configuration, inspect its schema, or work with an application's native configuration file. These are different surfaces: a change to DUMB settings does not necessarily apply every native application change immediately.
 
+<details class="geek-details" markdown="1">
+<summary>Choose the configuration surface</summary>
+
+DUMB configuration and an application's native file are separate surfaces. Persistence is an explicit part of the DUMB configuration update.
+
+```mermaid
+flowchart TD
+    Task["What are you changing?"] --> DUMB["DUMB service or global settings"]
+    Task --> Native["Application-native configuration file"]
+    DUMB --> Schema["Inspect GET /config/schema"]
+    Schema --> Update["POST /config with updates"]
+    Update --> Memory["Update loaded configuration"]
+    Update --> Persist{"Persist requested?"}
+    Persist -->|Yes| Disk["Save configuration to disk"]
+    Native --> File["POST /config/service-config"]
+    File --> Review["Review the application's apply or restart requirements"]
+```
+
+</details>
+
 ## Choose the right surface
 
 | Task | Endpoint |
@@ -1060,6 +1132,8 @@ Source: https://dumbarr.com/api/health/
 curl http://localhost:3005/api/health
 ```
 
+**Visual guide:** [See the backend request and control flow](../architecture/backend.md#request-flow).
+
 ## Responses
 
 | HTTP status | Body | Meaning |
@@ -1084,6 +1158,8 @@ Source: https://dumbarr.com/api/
 # DUMB API
 
 Use the API to inspect configuration, control services, read logs and metrics, and run supported maintenance workflows.
+
+**Visual guide:** [See how the dashboard and API exchange data](../architecture/frontend.md#data-flow).
 
 ## Connect through the dashboard
 
@@ -1158,6 +1234,23 @@ Source: https://dumbarr.com/api/infinidysk-migration/
 # InfiniDysk namespace migration API
 
 Endpoint paths below are backend-native. Add `/api` when using the dashboard gateway, for example `http://localhost:3005/api/process/capabilities`.
+
+<details class="geek-details" markdown="1">
+<summary>Namespace migration request order</summary>
+
+Review preflight findings before applying a namespace change. Cleanup is a later, separately reviewed operation after the migrated installation has been validated.
+
+```mermaid
+flowchart TD
+    Status["Read migration status"] --> Preflight["Request full-namespace preflight"]
+    Preflight --> Review["Review blockers, affected paths and recovery data"]
+    Review --> Apply["Apply the reviewed migration"]
+    Apply --> Poll["Poll the retained job status"]
+    Poll --> Validate["Validate services, paths and playback"]
+    Validate --> Cleanup["Separately preview and approve recovery-data cleanup"]
+```
+
+</details>
 
 ## InfiniDysk migration
 
@@ -1478,6 +1571,8 @@ Source: https://dumbarr.com/api/logs/
 
 The **Logs API** allows clients to retrieve recent logs captured by DUMB and served through the API.
 
+**Visual guide:** [See how live logs and retained history work together](websocket_logs.md).
+
 ## Endpoint
 
 ```
@@ -1537,6 +1632,23 @@ Source: https://dumbarr.com/api/media-library-protection/
 
 Paths below are backend-native; prefix them with `/api` through the frontend gateway. All endpoints use the normal DUMB authentication policy and are capability-gated by `media_library_protection`. Plex preference controls additionally require `plex_library_settings`.
 
+<details class="geek-details" markdown="1">
+<summary>Preflight a protected lifecycle operation</summary>
+
+The default safe operation can be blocked when media protection requires a decision. Inspect that result before explicitly choosing another policy.
+
+```mermaid
+flowchart TD
+    Request["Plan stop, restart or update"] --> Preflight["Read media-protection preflight"]
+    Preflight --> Safe["Submit the lifecycle request with safe policy"]
+    Safe --> Decision{"Protection required?"}
+    Decision -->|No| Proceed["Operation may proceed"]
+    Decision -->|Yes| Blocked["Receive protection_required and current preflight"]
+    Blocked --> Review["Review activity before an explicit policy choice"]
+```
+
+</details>
+
 | Method | Endpoint | Purpose |
 |---|---|---|
 | `GET` | `/process/media-protection/status` | Active/recent incidents and global recovery timing. Optional `process_name`. |
@@ -1558,6 +1670,8 @@ Source: https://dumbarr.com/api/metrics/
 # Metrics API
 
 The Metrics API provides live snapshots, optional Plex cloud status, database-health observations, historical series, storage status, and legacy-history migration. Authentication follows the normal DUMB API configuration.
+
+**Visual guide:** [See live monitoring and historical charts](../features/metrics.md).
 
 ## Current snapshot
 
@@ -1701,6 +1815,24 @@ continues running and retries storage initialization in the background. Endpoint
 that require queue or history access return HTTP `503` until storage recovers;
 configuration and supported-event discovery remain available.
 
+<details class="geek-details" markdown="1">
+<summary>Configure, test and inspect delivery</summary>
+
+Testing a destination verifies a specific delivery attempt. Use history to inspect its result and later event delivery.
+
+```mermaid
+flowchart TD
+    Discover["GET supported events"] --> Config["Save notification settings and destinations"]
+    Config --> Test["POST a destination test"]
+    Test --> History["GET delivery history"]
+    History --> Result{"Delivery succeeded?"}
+    Result -->|No| Fix["Review the failure and destination settings"]
+    Fix --> Test
+    Result -->|Yes| Monitor["Monitor enabled event deliveries"]
+```
+
+</details>
+
 ## Configuration
 
 ### `GET /notifications/config`
@@ -1794,6 +1926,23 @@ Source: https://dumbarr.com/api/postgres-migration/
 # PostgreSQL migration API
 
 Endpoint paths below are backend-native. Add `/api` when using the dashboard gateway, for example `http://localhost:3005/api/process/capabilities`.
+
+<details class="geek-details" markdown="1">
+<summary>Database migration and recovery</summary>
+
+The preflight is an inspection. The migration starts only after its requirements are satisfied; retain the reported recovery information until the result is verified.
+
+```mermaid
+flowchart TD
+    Preflight["GET PostgreSQL migration preflight"] --> Review["Review eligibility, paths and backup requirements"]
+    Review --> Start["POST migration start"]
+    Start --> Poll["GET migration status"]
+    Poll --> Result{"Migration result"}
+    Result -->|Completed| Verify["Verify the application and database"]
+    Result -->|Needs recovery| Rollback["Review the retained state and rollback route"]
+```
+
+</details>
 
 ## SQLite-to-PostgreSQL Migration
 
@@ -1901,6 +2050,8 @@ Source: https://dumbarr.com/api/process/
 Use these endpoints to list services, inspect startup state, and start, stop, or restart a managed process. Process names must match the names returned by `GET /process/processes`; do not infer them from configuration keys.
 
 All paths are backend-native. When calling through port `3005`, prefix REST paths with `/api`. Authentication is enforced by the backend.
+
+**Visual guide:** [See the backend control-plane and request flows](../architecture/backend.md#control-plane-flow).
 
 ## Find the right workflow
 
@@ -2441,6 +2592,22 @@ Source: https://dumbarr.com/api/rclone-optimizer/
 
 Endpoint paths below are backend-native. Add `/api` when using the dashboard gateway, for example `http://localhost:3005/api/process/capabilities`.
 
+<details class="geek-details" markdown="1">
+<summary>Measure before changing settings</summary>
+
+Benchmark and trace results are evidence for a settings decision. A comparison result does not by itself prove that the whole media workflow will perform better.
+
+```mermaid
+flowchart TD
+    Discover["Discover available mounts and benchmark inputs"] --> Start["Start the selected benchmark"]
+    Start --> Poll["Inspect retained job status and trace results"]
+    Poll --> Compare["Compare measured settings and failures"]
+    Compare --> Decide["Choose whether to change the rclone configuration"]
+    Decide --> Playback["Verify the actual playback workload"]
+```
+
+</details>
+
 ## Rclone streaming optimizer
 
 These authenticated process routes are available when capability
@@ -2545,6 +2712,23 @@ Source: https://dumbarr.com/api/seerr-sync/
 Seerr Sync provides one-way request replication from a **primary** Seerr instance to one or more **subordinates**.
 
 It polls the primary at a configurable interval, fingerprints requests using `{mediaType}:{tmdbId}:{is4k}`, and persists sync state in `/config/seerr_sync_state.json` to survive restarts.
+
+<details class="geek-details" markdown="1">
+<summary>One-way request replication</summary>
+
+Requests flow from the primary to each subordinate. Persisted fingerprints and results let the sync worker remember completed and failed work across restarts.
+
+```mermaid
+flowchart TD
+    Primary["Primary Seerr requests"] --> Poll["Poll and fingerprint requests"]
+    Poll --> A["Subordinate Seerr A"]
+    Poll --> B["Subordinate Seerr B"]
+    A --> State["Persist synchronization results"]
+    B --> State
+    State --> Inspect["Inspect status, failed requests and retained state"]
+```
+
+</details>
 
 ## Endpoints
 
@@ -2697,6 +2881,25 @@ Source: https://dumbarr.com/api/symlinks/
 # Symlink operations API
 
 Endpoint paths below are backend-native. Add `/api` when using the dashboard gateway, for example `http://localhost:3005/api/process/capabilities`.
+
+<details class="geek-details" markdown="1">
+<summary>Review changes before applying them</summary>
+
+Use a dry run to inspect the proposed link changes. Asynchronous operations expose a job to poll; keep its final report with the backup used for recovery.
+
+```mermaid
+flowchart TD
+    Request["Choose repair, migration or restore inputs"] --> Dry["Request a dry run"]
+    Dry --> Review["Review paths, conflicts and proposed changes"]
+    Review --> Apply["Submit the intended non-dry-run operation"]
+    Apply --> Async{"Asynchronous route?"}
+    Async -->|Yes| Poll["Poll /process/symlink-job-status"]
+    Async -->|No| Response["Inspect the operation response"]
+    Poll --> Verify["Read the final report and verify representative links"]
+    Response --> Verify
+```
+
+</details>
 
 ### `POST /process/symlink-repair`
 
@@ -2917,6 +3120,28 @@ Source: https://dumbarr.com/api/updates/
 
 Endpoint paths below are backend-native. Add `/api` when using the dashboard gateway, for example `http://localhost:3005/api/process/capabilities`.
 
+<details class="geek-details" markdown="1">
+<summary>Check, install and inspect an update</summary>
+
+A check reports availability. Installation is a separate request that returns its result after the operation; a client can also read retained update status while the operation runs or after reconnecting.
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API as DUMB API
+    Client->>API: POST /process/update-check
+    API-->>Client: Update availability
+    Note over Client: Review the intended service and version
+    Client->>API: POST /process/update-install
+    loop While the installation request is running
+        Client->>API: GET /process/update-status
+        API-->>Client: Recorded progress
+    end
+    API-->>Client: Installation result, failure or blocked response
+```
+
+</details>
+
 ## Updates and scheduling
 
 ### `GET /process/update-status`
@@ -3058,6 +3283,27 @@ Source: https://dumbarr.com/api/websocket/
 # WebSocket API
 
 DUMB provides three WebSocket endpoints for real-time streaming of logs, service status, and system metrics.
+
+<details class="geek-details" markdown="1">
+<summary>A live connection carries one stream</summary>
+
+Choose the status, metrics or logs endpoint for the data needed by the client. After disconnection, reconnect deliberately and handle authentication failure rather than retrying indefinitely with an expired token.
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Gateway as Frontend WebSocket gateway
+    participant DUMB as DUMB WebSocket endpoint
+    Client->>Gateway: Connect to /ws/status, /ws/metrics or /ws/logs
+    Gateway->>DUMB: Forward the connection and token when required
+    DUMB-->>Client: Endpoint-specific live messages
+    DUMB-->>Client: Further live messages
+    Note over Client,DUMB: If the connection closes
+    Client->>Client: Check authentication and reconnect policy
+    Client->>Gateway: Reconnect to the selected endpoint
+```
+
+</details>
 
 ## Overview
 
@@ -3415,6 +3661,28 @@ Connect to `/ws/logs` for DUMB's live log stream. The frontend forwards the path
 
 When DUMB authentication is enabled, provide an access token using the [WebSocket authentication rules](websocket.md#authentication).
 
+<details class="geek-details" markdown="1">
+<summary>Live logs and retained history</summary>
+
+The WebSocket delivers new lines. It does not replay missed lines after reconnection; the REST log endpoint provides the separate retained-history path.
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Stream as /ws/logs
+    participant History as GET /logs
+    Client->>Stream: Connect with token when required
+    Stream-->>Client: New text log lines
+    Client->>Stream: ping
+    Stream-->>Client: pong
+    Note over Client,Stream: Connection lost and later reopened
+    Client->>Stream: Reconnect
+    Client->>History: Recover retained lines using cursor and file identity
+    History-->>Client: Available retained history
+```
+
+</details>
+
 ## Messages and filtering
 
 Log messages arrive as text, for example:
@@ -3745,6 +4013,21 @@ Source: https://dumbarr.com/architecture/traefik/
 # Traefik proxy
 
 Traefik provides optional reverse-proxy routing for service UIs and user-managed external routes. When enabled, it exposes a single entry point and maps requests to services through DUMB-generated dynamic config and, optionally, Traefik Proxy Admin. Cloudflared can then carry Cloudflare Tunnel traffic to that same entrypoint.
+
+## Route owners and request paths
+
+DUMB owns embedded UI routes. Traefik Proxy Admin owns optional user-managed routes; Cloudflared can carry external traffic to the Traefik entrypoint.
+
+```mermaid
+flowchart TD
+    Browser["Browser"] --> Frontend["DUMB frontend"]
+    Frontend --> Embedded["Embedded service UI request"]
+    Embedded --> Traefik["Traefik entrypoint"]
+    Tunnel["Optional Cloudflared tunnel"] --> Traefik
+    Traefik --> App["Selected service UI"]
+    DUMB["DUMB-generated embedded route files"] -. "File provider" .-> Traefik
+    TPA["Optional Traefik Proxy Admin routes"] -. "HTTP provider" .-> Traefik
+```
 
 ## What Traefik does in DUMB
 
@@ -5023,6 +5306,14 @@ Include the DUMB image/version, relevant application version, what you expected,
 
 Use logs exported through DUMB where possible. Review logs, configuration, screenshots, and URLs for credentials and personal information before attaching them. Do not upload a whole configuration directory or database to a public issue.
 
+```mermaid
+flowchart TD
+    A["Find the repository that owns the problem"] --> B["Write the smallest reproduction"]
+    B --> C["Add versions and redacted evidence"]
+    C --> D["Report the issue or propose a focused fix"]
+    D --> E["Check the result and describe remaining limits"]
+```
+
 - [Backend issues](https://github.com/I-am-PUID-0/DUMB/issues)
 - [Dashboard issues](https://github.com/nicocapalbo/dmbdb/issues)
 - [Documentation issues](https://github.com/I-am-PUID-0/DUMB_docs/issues)
@@ -5098,6 +5389,21 @@ Source: https://dumbarr.com/deployment/docker/
 # Deploy with Docker
 
 Use Docker Compose to run DUMB on a Linux host. If you already manage containers with [Portainer](portainer.md) or [Dockge](dockge.md), use that guide instead. Windows users should prepare [WSL2](wsl.md) first.
+
+## From Compose to the dashboard
+
+Prepare the folders before starting the container. A running container is the start of application setup, rather than the final playback check.
+
+```mermaid
+flowchart TD
+    Engine["Check Docker Engine and Compose"] --> Storage["Create config, log, data and media folders"]
+    Storage --> Compose["Edit host paths, user IDs and published port"]
+    Compose --> Validate["Validate the Compose file"]
+    Validate --> Start["Start DUMB and follow startup logs"]
+    Start --> Open["Open the dashboard on port 3005"]
+    Open --> Setup["Complete onboarding and app setup"]
+    Setup --> Test["Import and play one test item"]
+```
 
 ## 1. Check Docker Engine and Compose
 
@@ -5245,6 +5551,19 @@ Source: https://dumbarr.com/deployment/dockge/
 stacks. DUMB does not need a Dockge-specific image: use the maintained DUMB
 Compose file and replace its example host paths.
 
+## Create the Dockge stack
+
+Dockge manages the Compose stack; DUMB's dashboard manages the selected applications after the stack starts.
+
+```mermaid
+flowchart TD
+    Storage["Prepare folders on the Docker host"] --> Stack["Dockge: create a new stack"]
+    Stack --> Paste["Paste the maintained DUMB Compose file"]
+    Paste --> Edit["Set host paths, TZ, PUID and PGID"]
+    Edit --> Deploy["Deploy and read the stack terminal"]
+    Deploy --> Dashboard["Open port 3005 and complete onboarding"]
+```
+
 ## Prerequisites
 
 - Docker Engine and Docker Compose v2
@@ -5352,6 +5671,26 @@ After installation, you will use the [DUMB dashboard](../frontend/index.md) for 
 | TrueNAS SCALE | [Custom App](truenas.md) | A Compose-based app with datasets |
 
 The native Proxmox helper has its own validation status and runtime requirements; read its guide before treating it as equivalent to the Docker image.
+
+## Choose an installation path
+
+Start with the host you already use. The platform links below provide the exact storage and installation steps.
+
+```mermaid
+flowchart TD
+    Host["Where will DUMB run?"] --> Linux["Linux or a Docker host"]
+    Host --> Windows["Windows: prepare WSL2 first"]
+    Host --> NAS["NAS: use its Compose editor"]
+    Host --> Proxmox["Proxmox: review native LXC validation"]
+    Linux --> Terminal["Terminal: Docker Compose"]
+    Linux --> Web["Web management: Portainer or Dockge"]
+    Windows --> Linux
+    NAS --> Editors["Synology, QNAP, TrueNAS or Unraid guide"]
+    Terminal --> Dashboard["Open DUMB and complete onboarding"]
+    Web --> Dashboard
+    Editors --> Dashboard
+    Proxmox --> Dashboard
+```
 
 ## Before starting
 
@@ -5653,6 +5992,21 @@ Proxmox host
 Because every consumer is in the same LXC, DUMB-created FUSE mounts only need
 to exist inside that LXC. No mount propagation back to the Proxmox host is
 required.
+
+## Native LXC installation boundaries
+
+The native helper keeps DUMB and its managed applications in one LXC. Applications in another LXC need an explicit storage-sharing plan.
+
+```mermaid
+flowchart TD
+    Host["Proxmox host: run the reviewed helper"] --> LXC["Dedicated DUMB LXC"]
+    LXC --> Controller["DUMB controller and dashboard"]
+    Controller --> Apps["Managed workflow apps and media servers"]
+    Controller --> Storage["Persistent config, data and media paths"]
+    Browser["Your browser"] --> Dashboard["LXC address on port 3005"]
+    Dashboard --> Controller
+    External["Apps in another LXC"] -. "Separate sharing plan required" .-> Storage
+```
 
 ## Install the validation build
 
@@ -6034,6 +6388,19 @@ QNAP Container Station can create a Docker Compose application from YAML. The
 labels can vary slightly by Container Station/QTS version, but the official flow
 is **Create** → **Create Application** → paste and validate the Compose YAML.
 
+## Create the QNAP application
+
+Container Station creates the application from Compose. Review the host paths and permissions before starting it.
+
+```mermaid
+flowchart TD
+    Share["Prepare persistent shared folders"] --> Create["Container Station: Create Application"]
+    Create --> YAML["Paste the maintained Compose YAML"]
+    YAML --> Settings["Replace share paths and set user IDs"]
+    Settings --> Validate["Validate YAML and create the application"]
+    Validate --> Dashboard["Open the QNAP address on port 3005"]
+```
+
 ## Prerequisites
 
 - A QNAP model/architecture supported by the DUMB image (`amd64` or `arm64`)
@@ -6120,6 +6487,19 @@ Source: https://dumbarr.com/deployment/synology/
 
 DSM 7.2 Container Manager supports Docker Compose through **Projects**. A project
 can upload a Compose file or use the built-in YAML editor.
+
+## Create the Synology project
+
+Use the persistent shared folder in the Compose mappings so a project update keeps DUMB's settings and application data.
+
+```mermaid
+flowchart TD
+    Folders["Create the DUMB folders in a persistent share"] --> Permissions["Grant access to the chosen UID and GID"]
+    Permissions --> Project["Container Manager: Project → Create"]
+    Project --> Compose["Upload or paste Compose and replace host paths"]
+    Compose --> Start["Create and start the project"]
+    Start --> Dashboard["Open the NAS address on port 3005"]
+```
 
 ## Prerequisites
 
@@ -6211,6 +6591,19 @@ TrueNAS SCALE 24.10 and later use Docker for Apps and can deploy a custom
 application from Docker Compose YAML. Older 24.04 and earlier releases use the
 archived Kubernetes app model and are not covered by this Compose procedure.
 
+## From datasets to the DUMB app
+
+The dataset holds persistent state. Installing or updating the custom app should continue using that same dataset.
+
+```mermaid
+flowchart TD
+    Dataset["Create a DUMB dataset and subdirectories"] --> ACL["Set dataset access for the chosen UID and GID"]
+    ACL --> Apps["Apps → Discover Apps → Install via YAML"]
+    Apps --> Compose["Paste Compose and replace dataset paths"]
+    Compose --> Save["Save the custom app and inspect startup"]
+    Save --> Dashboard["Open port 3005 and complete onboarding"]
+```
+
 ## Prerequisites
 
 - TrueNAS SCALE 24.10 or later with an Apps pool selected
@@ -6298,6 +6691,20 @@ Source: https://dumbarr.com/deployment/unraid/
 Deploy DUMB from the Community Applications template when it is available, or
 add it as a Compose stack/container using the maintained settings below. The
 same persistence and path rules apply to both methods.
+
+## Install and check the Unraid container
+
+The application template sets up the container. The first import and playback check happens after DUMB and the selected apps have been configured.
+
+```mermaid
+flowchart TD
+    Apps["Apps: find the DUMB template"] --> Review["Review image, persistent paths and user IDs"]
+    Review --> Apply["Apply the template"]
+    Apply --> Logs["Follow the container log through startup"]
+    Logs --> Dashboard["Open DUMB on port 3005"]
+    Dashboard --> Setup["Complete onboarding and app setup"]
+    Setup --> Test["Test import and playback"]
+```
 
 ## Prerequisites
 
@@ -6441,6 +6848,21 @@ Run Docker Engine inside a WSL2 Linux distribution. This gives DUMB the Linux mo
 
 Avoid running both Docker Desktop integration and a separate Docker Engine against the same distribution without an explicit plan. Check which Docker daemon your CLI targets before deploying.
 
+## Windows and Linux responsibilities
+
+Run the Docker commands and keep application data inside WSL's Linux filesystem. Windows reaches the published dashboard through the configured WSL network.
+
+```mermaid
+flowchart TD
+    Windows["Windows: install or update WSL"] --> Linux["WSL2 Linux distribution"]
+    Linux --> Docker["Install Docker Engine inside Linux"]
+    Linux --> Storage["Keep config and databases in Linux storage"]
+    Docker --> DUMB["Deploy DUMB with Compose or Portainer"]
+    Storage --> DUMB
+    DUMB --> Browser["Windows browser: try localhost:3005"]
+    Browser --> LAN["For LAN access: review WSL networking and firewall"]
+```
+
 ## 1. Install or update WSL
 
 In **PowerShell as administrator**, install WSL if needed:
@@ -6545,6 +6967,21 @@ Source: https://dumbarr.com/faq/authentication/
 
 Common questions and troubleshooting for DUMB's authentication system.
 
+## Choose the right login recovery path
+
+A rejected password, an expired session and a complete lockout have different recovery paths. Use another active account where one is available before considering the manual reset procedure.
+
+```mermaid
+flowchart TD
+    Issue["What happens when you sign in?"] --> Password["Invalid credentials"]
+    Issue --> Disabled["Account is disabled"]
+    Issue --> Session["A previous session expired"]
+    Issue --> Lockout["No usable account remains"]
+    Password --> Check["Check username, password and case"]
+    Disabled --> Active["Ask an active account holder to review the user"]
+    Session --> Login["Sign in again and check system time if expiry repeats"]
+    Lockout --> Recovery["Follow the documented lockout recovery procedure"]
+```
 
 ## Setup and configuration
 
@@ -6731,6 +7168,8 @@ Source: https://dumbarr.com/faq/cli-debrid/
 
 # CLI Debrid FAQ
 
+**Visual guide:** [Follow CLI Debrid's setup and library workflow](../services/core/cli-debrid.md).
+
 ## What does DUMB start with CLI Debrid?
 
 The stable/older CLI Debrid workflow includes standalone CLI Battery and Phalanx
@@ -6800,6 +7239,8 @@ Source: https://dumbarr.com/faq/decypharr/
 
 # Decypharr FAQ
 
+**Visual guide:** [Compare Decypharr's setup and library path](../services/core/decypharr.md).
+
 ## Which mount mode should I choose?
 
 | Mode | Mount owner | DUMB behavior |
@@ -6867,7 +7308,7 @@ Start here for image versions, dashboard access, and service startup problems.
 
 The GitHub repository for **DUMB** uses continuous integration and deployment workflows to build and report image contents.
 
-For example, the [Check for New Release Tags](https://github.com/I-am-PUID-0/DUMB/actions/workflows/fetch-latest-tags.yml) workflow is automated to run every three hours and check for updates to the various services/projects utilized in DUMB. If an update is found, the [Docker Image CI](https://github.com/I-am-PUID-0/DUMB/actions/workflows/docker-image.yml) workflow is called to build a new image with the latest services. 
+For example, the [Check for New Release Tags](https://github.com/I-am-PUID-0/DUMB/actions/workflows/fetch-latest-tags.yml) workflow is automated to run every three hours and check for updates to the various services/projects utilized in DUMB. If an update is found, the [Docker Image CI](https://github.com/I-am-PUID-0/DUMB/actions/workflows/docker-image.yml) workflow is called to build a new image with the latest services.
 
 
 
@@ -6880,6 +7321,7 @@ To check, click on one of the [Docker Image CI](https://github.com/I-am-PUID-0/D
 Example `Build Summary` below:
 ![Build Summary](../assets/images/build_summary.PNG)
 
+**Visual guide:** [Choose the next check for a failed page, app, import or playback](general.md#find-the-next-check).
 
 ## Authentication
 
@@ -6980,6 +7422,21 @@ Answers about storage, service choices, backups, and media paths.
 
 ---
 
+## Find the next check
+
+Start with the part that is failing. Opening the dashboard, starting an app, importing an item and playing it are separate checks.
+
+```mermaid
+flowchart TD
+    Problem["What is not working?"] --> Page["DUMB dashboard will not open"]
+    Problem --> Service["An application will not start"]
+    Problem --> Import["An item does not import"]
+    Problem --> Playback["An imported item will not play"]
+    Page --> Network["Check container status, address and published port"]
+    Service --> Logs["Open the affected service's logs"]
+    Import --> App["Check the workflow app's status and settings"]
+    Playback --> Paths["Check library paths and access from the media server"]
+```
 
 ## Where do I configure services?
 
@@ -7199,6 +7656,17 @@ Source: https://dumbarr.com/faq/neutarr/
 
 Common questions and fixes for NeutArr in DUMB.
 
+## Check the selected Arr connections
+
+Use the intended NeutArr instance and inspect its configured Arr connections. A running page does not prove that it can reach the selected Arr applications.
+
+```mermaid
+flowchart TD
+    Instance["Choose the intended NeutArr instance"] --> UI["Open its application page"]
+    UI --> Arr["Review the Sonarr, Radarr or other Arr connection"]
+    Arr --> Address["Check address, port, API key and enabled instance"]
+    Address --> Logs["Read NeutArr and Arr logs for the failed connection"]
+```
 
 ## Why is the NeutArr UI not loading?
 
@@ -7504,6 +7972,8 @@ Source: https://dumbarr.com/faq/plex/
 
 # Plex FAQ
 
+**Visual guide:** [See the library and symlink storage boundaries](../architecture/index.md#storage-and-mounts).
+
 ## Recommended library settings
 
 Background analysis can read substantial amounts of remote content. For a Debrid/Usenet mount, review these Plex settings before the first scan:
@@ -7553,6 +8023,7 @@ Source: https://dumbarr.com/faq/postgres/
 
 # PostgreSQL FAQ
 
+**Visual guide:** [Follow the SQLite-to-PostgreSQL migration workflow](../features/arr-postgres-migration.md).
 
 ## How PostgreSQL is used in DUMB
 
@@ -7676,6 +8147,22 @@ Source: https://dumbarr.com/faq/rclone/
 
 # rclone FAQ
 
+## Separate provider throttling from mount visibility
+
+An HTTP 423 response and a missing nested mount are different problems. Follow the matching branch before changing mount flags or provider settings.
+
+```mermaid
+flowchart TD
+    Symptom["What does the error show?"] --> Locked["HTTP 423 or provider rate limiting"]
+    Symptom --> Shared["Host path is not a shared mount"]
+    Symptom --> Consumer["Another app cannot see the mounted files"]
+    Locked --> Provider["Review provider limits and the existing rclone guidance"]
+    Shared --> Host["Prepare the intended Linux host mount"]
+    Consumer --> Boundary["Check paths and mount propagation in both containers"]
+    Host --> Verify["Verify the actual mount and reader access"]
+    Boundary --> Verify
+```
+
 ## I think I might be rate limited by the debrid service - seeing `423` errors.
 
 HTTP `423 Locked` means the requested resource is locked or unavailable. It can appear while a provider is preparing content as well as during provider-side limits. Check Zurg or the source service's logs alongside rclone's error before deciding which limit applies.
@@ -7752,6 +8239,8 @@ Source: https://dumbarr.com/faq/riven/
 
 # Riven FAQ
 
+**Visual guide:** [Follow the Riven workflow from setup to playback](../services/core/riven-backend.md).
+
 ## Do I need both Riven Backend and Riven Frontend?
 
 For browser-based setup, select both. **Riven Backend** performs acquisition and library work; **Riven Frontend → Embedded UI → Settings** lets you configure it. Starting the frontend alone does not provide a working Riven stack. The backend can also be managed without this frontend using its API, which is an advanced alternative.
@@ -7800,6 +8289,18 @@ Source: https://dumbarr.com/faq/seerr/
 
 Common questions and fixes for Seerr in DUMB.
 
+## Follow a request to the library
+
+When a request stalls, check the application at the stage where progress stops. A successful Seerr login does not verify the later Arr import or media-server connection.
+
+```mermaid
+flowchart TD
+    Request["Request an item in Seerr"] --> Arr["Seerr sends the request to the chosen Arr app"]
+    Arr --> Workflow["Arr uses the configured download workflow"]
+    Workflow --> Import["Arr imports into its configured root folder"]
+    Import --> Library["The media server scans the library"]
+    Library --> Seerr["Seerr observes media availability"]
+```
 
 ## Why is the Seerr UI not loading?
 
@@ -7835,6 +8336,17 @@ Source: https://dumbarr.com/faq/tautulli/
 
 Common questions and fixes for Tautulli in DUMB.
 
+## Tautulli needs a working Plex connection
+
+Check Plex reachability and its token separately from the Tautulli process. Monitoring history depends on the configured Plex connection.
+
+```mermaid
+flowchart TD
+    Start["Confirm Tautulli is running"] --> UI["Open the Tautulli application"]
+    UI --> Connection["Review its Plex server address and token"]
+    Connection --> Reachable["Verify Plex is reachable from DUMB"]
+    Reachable --> History["Check Tautulli activity, history and logs"]
+```
 
 ## Why is the Tautulli UI not loading?
 
@@ -7896,14 +8408,15 @@ Source: https://dumbarr.com/faq/zilean/
 
 ---
 
+**Visual guide:** [See the service-page log walkthrough](../frontend/service-pages.md).
 
 ## Why does Zilean produce so many import logs? { #why-is-zilean-spamming-my-logs }
 
 An initial hash-list import can be busy. Progress messages are expected; repeated exceptions or failed PostgreSQL connections need investigation.
 
-Zilean parses all the [Debrid Media Manager](https://github.com/debridmediamanager/debrid-media-manager) (DMM) hash lists and saves them into the PostgreSQL database. 
+Zilean parses all the [Debrid Media Manager](https://github.com/debridmediamanager/debrid-media-manager) (DMM) hash lists and saves them into the PostgreSQL database.
 
-Then, it will run a scheduled update to add/remove any new hash content. 
+Then, it will run a scheduled update to add/remove any new hash content.
 
 Import time depends on the source lists, database performance, and host. Check that progress continues rather than treating every long run as healthy.
 
@@ -7929,6 +8442,8 @@ an older cached `dev` image should be pulled again before retesting.
 Source: https://dumbarr.com/faq/zurg/
 
 # Zurg FAQ
+
+**Visual guide:** [Distinguish provider throttling from mount problems](rclone.md#separate-provider-throttling-from-mount-visibility).
 
 ## `ERROR - rclone w/ RealDebrid subprocess: : IO error: File is temporarily unavailable: 423 Locked`
 
@@ -8024,6 +8539,21 @@ Native collectors are allowlisted and read-only. Services without a native colle
 </details>
 
 ## Guided Workflow
+
+With a provider configured, keep evidence review separate from the decision to send it:
+
+```mermaid
+flowchart TD
+    accTitle: Review evidence before AI analysis
+    accDescr: Preview the selected bundle, adjust anything unsuitable, then explicitly analyze it and verify the advice.
+    Focus["Choose the service or stack and question"] --> Preview["Preview bundle"]
+    Preview --> Review{"Is this evidence suitable to share?"}
+    Review -->|No| Adjust["Change the selected context"]
+    Adjust --> Preview
+    Review -->|Yes| Analyze["Enable provider calls and Analyze"]
+    Analyze --> Report["Check the report against logs and measurements"]
+    Report --> Verify["Review any proposed change and verify its result"]
+```
 
 Both service and stack assistants provide presets for health, performance, recent changes, errors, and dependencies. Choose a time window and baseline, preview the evidence, then analyze it.
 
@@ -8482,6 +9012,24 @@ Existing Sonarr/Radarr job history and rollback backups therefore remain visible
     its complete configuration directory before rehearsal or cutover.
 
 ## Recommended flow
+
+A rehearsal and a cutover are separate jobs. Keep the backup until the application has been checked:
+
+```mermaid
+flowchart TD
+    accTitle: Rehearse before database cutover
+    accDescr: Back up, pass preflight and rehearsal, then explicitly cut over and validate the application. Failed jobs require recovery review.
+    Backup["Keep an independent application backup"] --> Preflight["Run preflight"]
+    Preflight --> Checks{"Checks allow migration?"}
+    Checks -->|No| Resolve["Resolve the reported blocker"]
+    Resolve --> Preflight
+    Checks -->|Yes| Rehearse["Run rehearsal and wait for a passed result"]
+    Rehearse --> Confirm["Review downtime and confirm guarded cutover"]
+    Confirm --> Result{"Cutover completed?"}
+    Result -->|No| Recover["Preserve the job and follow its recovery action"]
+    Result -->|Yes| Validate["Check application data, integrations and playback"]
+    Validate --> Retain["Retain SQLite backup and test PostgreSQL backups"]
+```
 
 Plan downtime for cutover and keep a tested independent backup. Rehearsal verifies a staged conversion; it does not switch the application. After cutover, validate real application behavior before accepting PostgreSQL as the working provider.
 
@@ -9050,7 +9598,13 @@ Auto-restart monitors explicitly selected services and retries a restart after r
 
 An empty service list monitors nothing, even when the global switch is enabled. A deliberate manual stop disables monitoring for that service until it is started again.
 
-![Auto-restart indicators](../assets/images/features/auto_restart_indicators.png){ .shadow }
+<figure class="docs-visual docs-frontend-figure">
+<video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/v1.91.0/tour-2/auto-restart.webp" aria-label="Review auto-restart controls" aria-describedby="auto-restart-demo-caption">
+  <source src="../assets/images/guides/frontend/v1.91.0/tour-2/auto-restart.webm" type="video/webm">
+  <p><a href="../assets/images/guides/frontend/v1.91.0/tour-2/auto-restart.webm">Download the demonstration</a>, or follow the written steps above.</p>
+</video>
+<figcaption id="auto-restart-demo-caption" class="docs-visual-caption">Watch: find the service policy, health-check options and grace period before changing them. This tour leaves the saved policy unchanged. DUMB Frontend 1.91.0 · example data. Other versions may look different. <a href="../assets/images/guides/frontend/v1.91.0/tour-2/auto-restart.webp">Open the full-size screenshot</a>.</figcaption>
+</figure>
 
 <details class="geek-details" markdown="1">
 <summary>Technical details: monitoring and restart lifecycle</summary>
@@ -9231,11 +9785,11 @@ Choose how each service checks for new versions and whether it should install th
 4. Keep the panel open while the install runs. When it completes, check the reported result, service health, and **Service Logs**. For a storage service, also test an item in your media player.
 
 <figure class="docs-visual docs-frontend-figure">
-<video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/v1.91.0/updates.webp" aria-label="Check one service for updates demonstration" aria-describedby="updates-demo-caption">
-  <source src="../assets/images/guides/frontend/v1.91.0/updates.webm" type="video/webm">
-  <p><a href="../assets/images/guides/frontend/v1.91.0/updates.webm">Download the demonstration</a>, or follow the written steps above.</p>
+<video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/v1.91.0/tour-2/updates.webp" aria-label="Check one service for updates demonstration" aria-describedby="updates-demo-caption">
+  <source src="../assets/images/guides/frontend/v1.91.0/tour-2/updates.webm" type="video/webm">
+  <p><a href="../assets/images/guides/frontend/v1.91.0/tour-2/updates.webm">Download the demonstration</a>, or follow the written steps above.</p>
 </video>
-<figcaption id="updates-demo-caption" class="docs-visual-caption">Watch: open one service's Updates panel, check for updates and review the available version. The demonstration ends before installation. DUMB Frontend 1.91.0 · example data. Other versions may look different. <a href="../assets/images/guides/frontend/v1.91.0/updates.webp">Open the full-size screenshot</a>.</figcaption>
+<figcaption id="updates-demo-caption" class="docs-visual-caption">Watch: open one service's Updates panel, check for updates and review the available version. The demonstration ends before installation. DUMB Frontend 1.91.0 · example data. Other versions may look different. <a href="../assets/images/guides/frontend/v1.91.0/tour-2/updates.webp">Open the full-size screenshot</a>.</figcaption>
 </figure>
 
 ```mermaid
@@ -9804,6 +10358,14 @@ Use the dashboard to change DUMB settings and the settings of individual applica
 
     Changing user/group IDs, data paths, or ports can prevent an existing service from starting. Follow the service's guide and keep a backup before changing these values. Configuration and backups may contain live credentials; keep them private and redact values before sharing them.
 
+<figure class="docs-visual docs-frontend-figure">
+<video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/v1.91.0/tour-2/configuration.webp" aria-label="Choose the correct configuration editor" aria-describedby="configuration-demo-caption">
+  <source src="../assets/images/guides/frontend/v1.91.0/tour-2/configuration.webm" type="video/webm">
+  <p><a href="../assets/images/guides/frontend/v1.91.0/tour-2/configuration.webm">Download the demonstration</a>, or follow the written steps above.</p>
+</video>
+<figcaption id="configuration-demo-caption" class="docs-visual-caption">Watch: compare DUMB Config with Service Config and locate Save to File. This tour reviews the controls without saving a change. DUMB Frontend 1.91.0 · example data. Other versions may look different. <a href="../assets/images/guides/frontend/v1.91.0/tour-2/configuration.webp">Open the full-size screenshot</a>.</figcaption>
+</figure>
+
 ## Add an integration token
 
 1. Open **Settings → Tokens**.
@@ -9946,14 +10508,19 @@ Open a managed application's own interface inside DUMB without publishing every 
 
 ## Enable and open an application
 
-1. Open **Settings → Embedded UIs** and enable **Service UIs**, or enable them during onboarding.
+1. Open **Settings → Embedded UIs** and select **Enable embedded service iFrames**, or enable embedded UIs during onboarding.
 2. Open a running service's page and select **Embedded UI**.
 3. Sign in to the application if it asks for its own credentials.
 4. Use split/full-window view or the direct-link action as needed.
 
 A matching enabled TPA public HTTPS route can supply an external link. AIOStreams' remote Stremio clients need its separately configured public base URL; the embedded operator route is not a replacement for that origin.
 
-![Embedded UIs](../assets/images/features/embedded_ui.png){ .shadow }
+<figure class="docs-visual docs-frontend-figure" markdown="1">
+
+![Settings page showing the Enable embedded service iFrames checkbox.](../assets/images/guides/frontend/v1.91.0/tour-2/embedded-ui-settings.webp){ loading=lazy decoding=async }
+
+<figcaption class="docs-visual-caption">Enable embedded service iFrames here, then open a supported application from its service page. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
+</figure>
 
 <details class="geek-details" markdown="1">
 <summary>Technical details: frontend proxy and direct Traefik routes</summary>
@@ -10101,6 +10668,22 @@ Source: https://dumbarr.com/features/ffprobe-monitor/
 When a Sonarr or Radarr import is stuck on media analysis, this automatic monitor can help release a stalled read. It is enabled by default and operates only for DUMB-managed Sonarr/Radarr instances. It cannot repair an unavailable mount, missing media, or a provider outage.
 
 ## Check a stalled import
+
+Check the storage path before relying on the monitor to release a stalled analysis:
+
+```mermaid
+flowchart TD
+    accTitle: Investigate a stalled media analysis
+    accDescr: Distinguish unavailable storage from a stalled probe, then inspect the monitor result without repeatedly restarting the application.
+    Logs["Read the affected app's Service Logs"] --> Storage{"Storage healthy and file available?"}
+    Storage -->|No| Fix["Restore storage or provider access first"]
+    Fix --> Logs
+    Storage -->|Yes| Monitor["Read DUMB ffprobe activity in Realtime Logs"]
+    Monitor --> Wait["Allow the bounded check to finish"]
+    Wait --> Progress{"Import progressing?"}
+    Progress -->|Yes| Check["Confirm the item imported correctly"]
+    Progress -->|No| Evidence["Keep the file context and error for diagnosis"]
+```
 
 1. Open the affected Sonarr/Radarr service page and read **Service Logs**. Note the file and error rather than repeatedly restarting the application.
 2. Check that its storage service is healthy and that the file is available in the application's own interface.
@@ -10277,6 +10860,24 @@ merges, while replaceable source and runtime output can still be refreshed.
 </details>
 
 ## Use the cache controls
+
+When **Install cache** is offered by your backend, wait for any active update to finish, then choose the action that matches your goal:
+
+```mermaid
+flowchart TD
+    accTitle: Choose an install-cache action
+    accDescr: Wait for active updates, choose verification, pruning or clearing rebuildable artifacts, and inspect the result.
+    Updates["Dashboard: Updates, then Install cache"] --> Busy{"Update already active?"}
+    Busy -->|Yes| Wait["Wait for the update to finish"]
+    Wait --> Updates
+    Busy -->|No| Goal{"What do you need?"}
+    Goal -->|Check integrity| Verify["Verify downloads"]
+    Goal -->|Reclaim space| Prune["Prune to limit"]
+    Goal -->|Rebuild next install| Clear["Clear build artifacts"]
+    Verify --> Result["Review the result and refresh usage"]
+    Prune --> Result
+    Clear --> Result
+```
 
 Open **Dashboard → Updates → Install cache** when supported by your backend. Check usage and fallback state, then choose an action deliberately:
 
@@ -10536,6 +11137,22 @@ The feature covers DUMB-managed storage dependencies such as rclone, InfiniDysk,
 
 ## Planned stop, restart, or update
 
+The ordinary safe-maintenance path waits for known idle activity and checks recovery afterward:
+
+```mermaid
+flowchart TD
+    accTitle: Protect a library during planned storage maintenance
+    accDescr: Defer when activity is active or unknown; otherwise use protection, wait for stable storage and verify restored library access.
+    Review["Review playback and scan activity"] --> Idle{"Known idle or stopped?"}
+    Idle -->|No or unknown| Defer["Defer the operation"]
+    Idle -->|Yes| Protect["Protect & continue"]
+    Protect --> Work["DUMB guards scans and performs storage maintenance"]
+    Work --> Healthy{"Storage and mounts stable?"}
+    Healthy -->|No| Recovery["Read protection status and recovery guidance"]
+    Healthy -->|Yes| Restore["Restore only settings and processes DUMB changed"]
+    Restore --> Test["Check the library and sample playback"]
+```
+
 Before DUMB changes a storage dependency it:
 
 1. checks active playback and library-scan activity;
@@ -10665,7 +11282,12 @@ The metrics system provides:
 - **Optional database health** - Per-service SQL and persistent-store pressure indicators
 - **Optional Plex cloud status** - Cached public Plex service health, incidents, and maintenance
 
-![Metrics overview](../assets/images/features/metrics.png){ .shadow }
+<figure class="docs-visual docs-frontend-figure" markdown="1">
+
+![Metrics page showing resource gauges, recent history and process information.](../assets/images/guides/frontend/v1.91.0/tour-2/metrics.webp){ loading=lazy decoding=async }
+
+<figcaption class="docs-visual-caption">Compare current resource use with the history before deciding what to investigate. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
+</figure>
 
 ---
 
@@ -11202,6 +11824,24 @@ Use **Settings → Notifications** to configure destinations, send a test or man
 
 ## Configure a destination
 
+A successful destination test is followed by a separate check of normal event delivery:
+
+```mermaid
+flowchart TD
+    accTitle: Test a destination and verify event routing
+    accDescr: The destination test bypasses normal filters. Enable delivery and check a real event to verify severity, event and service routing.
+    Configure["Add the destination and routing choices"] --> Test["Save and test"]
+    Test --> Delivered{"Test delivered?"}
+    Delivered -->|No| History["Review the delivery error"]
+    History --> Configure
+    Delivered -->|Yes| Enable["Enable destination and outbound notifications"]
+    Enable --> Event["Wait for an expected real event"]
+    Event --> Received{"Message received?"}
+    Received -->|No| Filters["Check minimum severity, events and service filters"]
+    Filters --> Enable
+    Received -->|Yes| Done["Confirm normal delivery in history"]
+```
+
 1. Open **Settings → Notifications**.
 2. Select **Add destination**.
 3. Give the destination a recognizable name.
@@ -11469,6 +12109,24 @@ The rclone streaming optimizer measures how an **InfiniDysk-backed DUMB-managed 
 The optimizer is currently limited to InfiniDysk. It appears on the specific **rclone service page**, not as an InfiniDysk configuration tool. When an associated test is active, the InfiniDysk service page shows a link to that rclone job.
 
 ## Run a bounded comparison
+
+Treat the measurements as a review step before deciding whether to change the production mount:
+
+```mermaid
+flowchart TD
+    accTitle: Review an optimizer result before applying it
+    accDescr: Run a bounded comparison while idle, inspect its evidence, then deliberately apply or retain the current profile and verify playback.
+    Idle["Stop media activity and wait for imports"] --> Limits["Choose files, test depth and resource limits"]
+    Limits --> Run["Start background optimization"]
+    Run --> Review["Review samples, failures, provider evidence and cleanup"]
+    Review --> Useful{"Recommendation suitable for this deployment?"}
+    Useful -->|No| Keep["Keep the current profile and investigate the results"]
+    Useful -->|Yes| Apply["Apply deliberately: the production mount is interrupted"]
+    Apply --> Test["Check mount health, startup and seeking"]
+    Test --> Problem{"Result acceptable?"}
+    Problem -->|Yes| Retain["Keep the reviewed profile"]
+    Problem -->|No| Rollback["Use rollback and recheck the mount"]
+```
 
 1. Open the InfiniDysk-backed **rclone** service page and select **Rclone Optimizer**.
 2. Stop media activity and wait for imports and unrelated provider reads to finish.
@@ -11772,12 +12430,12 @@ Configuration is stored in the top-level `seerr_sync` block and each managed See
 
 
 
-![Seerr Sync overview](../assets/images/features/seerr_sync.png){ .shadow }
-
 ## Example: Debrid and Usenet stacks
 
 ```mermaid
 flowchart LR
+    accTitle: One-way Seerr request replication
+    accDescr: The primary Seerr copies requests to a subordinate. Each instance sends requests to its own independent Arr stack.
     Primary[Primary Seerr] --> Debrid[Debrid Sonarr/Radarr]
     Primary --> Sync[Seerr Sync]
     Sync --> Secondary[Subordinate Seerr]
@@ -11832,6 +12490,24 @@ You must type the exact process name before DUMB accepts either operation.
 </details>
 
 ## Choose an operation
+
+Both choices stop and disable the selected service. Removal needs a separate review of the files at risk:
+
+```mermaid
+flowchart TD
+    accTitle: Choose reset or removal after reviewing the preview
+    accDescr: Reset keeps application files; removal deletes only previewed managed paths. Back up and cancel if the target or paths are unexpected.
+    Target["Open Reset / Remove for the exact service"] --> Choice{"Keep the application's files?"}
+    Choice -->|Yes| Reset["Reset DUMB configuration"]
+    Choice -->|No| Backup["Keep an independent application backup"]
+    Backup --> Remove["Remove service files"]
+    Reset --> Preview["Review warnings, retained paths and dependencies"]
+    Remove --> Preview
+    Preview --> Expected{"Preview matches your intention?"}
+    Expected -->|No| Cancel["Cancel and investigate"]
+    Expected -->|Yes| Confirm["Type the exact process name and confirm"]
+    Confirm --> Verify["Check the result before enabling the service again"]
+```
 
 ### Reset DUMB configuration
 
@@ -11928,6 +12604,23 @@ Source: https://dumbarr.com/features/startup-lifecycle/
 # Startup lifecycle
 
 ## Check startup progress
+
+Use the startup result to decide whether to wait, investigate a service, or test the stack:
+
+```mermaid
+flowchart TD
+    accTitle: Read startup progress before retrying a service
+    accDescr: Wait while startup is progressing, test a ready stack, or diagnose degraded services through health, logs and dependencies.
+    Banner["Read the dashboard startup banner"] --> State{"Normal startup state"}
+    State -->|Work still progressing| Wait["Wait and watch progress"]
+    Wait --> Banner
+    State -->|Ready| Test["Open your apps and test import or playback"]
+    State -->|Degraded| Logs["Read the affected service's health reason and logs"]
+    Logs --> Dependencies["Inspect Tools: Dependencies"]
+    Dependencies --> Fix["Correct the reported problem"]
+    Fix --> Retry["Retry Start for the intended service"]
+    Retry --> Banner
+```
 
 1. Open the dashboard and read the startup banner. DUMB can show the dashboard while larger services are still installing or starting.
 2. Wait while work is progressing. If a service needs attention, open its page, read its health reason, and open **Service Logs**.
@@ -12734,6 +13427,8 @@ On a fresh installation, managed applications are disabled until you choose them
 
 Saving a service's configuration and starting it are separate actions. **Save to File** persists the change; **Apply in Memory**, where offered, changes only the controller's current configuration. An application may still need a restart or an explicit setup action to use new settings.
 
+Use the [service-controls screenshot](../frontend/service-pages.md#status-and-controls) to find these controls and the [log-filter walkthrough](../frontend/service-pages.md#logs) to inspect a failure.
+
 ## Review updates
 
 Use **Updates** on the dashboard to check enabled services and install selected available updates. For a saved release, branch, commit, or version pin, open that service's Updates panel and review its configured target.
@@ -12815,7 +13510,7 @@ The dashboard displays service cards for each configured service, showing:
 
 <figure class="docs-visual docs-frontend-figure" markdown="1">
 
-![Dashboard service cards showing each app's status and available controls.](../assets/images/guides/frontend/v1.91.0/dashboard.webp){ loading=lazy decoding=async }
+![Dashboard service cards showing each app's status and available controls.](../assets/images/guides/frontend/v1.91.0/tour-2/dashboard.webp){ loading=lazy decoding=async }
 
 <figcaption class="docs-visual-caption">Use the service cards to check an app and open its page. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
 </figure>
@@ -12891,6 +13586,23 @@ branch, commit, and pinned-version choices are never overridden by this shortcut
     Hover over action buttons to see what each will do.
 
 ## Check and update multiple services
+
+Bulk updates use the dashboard's shared panel. Saved source choices still need an individual review:
+
+```mermaid
+flowchart TD
+    accTitle: Review and install selected dashboard updates
+    accDescr: Check enabled services, review pinned source choices individually and confirm only the available updates you intend to install.
+    Open["Open dashboard Updates"] --> Check["Check all"]
+    Check --> Rows["Review versions and each service result"]
+    Rows --> Source{"Row says Review source?"}
+    Source -->|Yes| Individual["Open that service's Updates panel"]
+    Source -->|No| Available{"Update available?"}
+    Available -->|No| Keep["Keep the current service version"]
+    Available -->|Yes| Select["Select the intended available updates"]
+    Select --> Confirm["Install selected and confirm restarts"]
+    Confirm --> Verify["Review results, health and logs"]
+```
 
 Use **Updates** in the dashboard header to review every enabled service that
 supports DUMB-managed updates.
@@ -12975,7 +13687,7 @@ The connection status is shown in the header area. If disconnected, the frontend
 
 The toolbar and sidebar provide quick access to service settings and logs.
 
-![Toolbar](../assets/images/frontend/toolbar.png){ .shadow }
+The [service-page screenshot](service-pages.md#status-and-controls) shows the configuration, log and tool controls for one application.
 
 From here you can:
 
@@ -12985,7 +13697,7 @@ From here you can:
 
 ### Real-time logs
 
-![Real-Time Logs](../assets/images/frontend/real_time_logs.png){ .shadow }
+For one application's log filters and refresh controls, follow the [service-logs demonstration](service-pages.md#logs).
 
 The log viewer supports:
 
@@ -13003,7 +13715,12 @@ Enabled services are displayed in a grid layout, organized by:
 - **DUMB services first** - The API/frontend lead the default list
 - **Alphabetical order** - Other services follow by name until you save a custom order
 
-![Disabled services toggle](../assets/images/frontend/disabled_services.png){ .shadow }
+<figure class="docs-visual docs-frontend-figure" markdown="1">
+
+![Sidebar search for Tautulli with Show Disabled selected and its disabled entry visible.](../assets/images/guides/frontend/v1.91.0/tour-2/disabled-services.webp){ loading=lazy decoding=async }
+
+<figcaption class="docs-visual-caption">Use sidebar search with Show Disabled to find a configured service. These controls do not start it. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
+</figure>
 
 ---
 
@@ -13102,6 +13819,20 @@ You can follow the tasks below without editing files or running API commands.
 
 Each task guide explains the controls to use, what to save, and how to check the result. Service-specific account and library setup is covered in the [service guides](../services/index.md).
 
+## Watch a task
+
+The guides below include short recordings with time to read the menus and controls. Choose Play when you are ready; the videos do not start automatically. They show DUMB Frontend 1.91.0 with example data. Your installed version and enabled services can change which tools appear.
+
+| See how to… | Open the illustrated guide |
+| --- | --- |
+| Review the right configuration editor | [Configuration](../features/configuration.md) |
+| Filter logs and pause their refresh | [Service logs](service-pages.md#logs) |
+| Open Tools, check an update and review its version | [Check one service for updates](../features/auto-update.md#check-and-install-one-update) |
+| Inspect a service's dependencies | [Dependency graph](service-pages.md#dependency-graph-view) |
+| Review an automatic restart policy | [Auto-restart](../features/auto-restart.md) |
+| Choose a dashboard appearance | [Settings](settings.md) |
+| Find CPU, memory and disk information | [Metrics](metrics.md) |
+
 ## DUMB and application accounts are separate
 
 A DUMB account gives operator access to its dashboard, including service and user management. Opening an app inside DUMB does not sign you into that app: Plex, Jellyfin, pgAdmin, and other services may ask for their own account.
@@ -13169,7 +13900,12 @@ The metrics dashboard shows:
 - **Plex cloud status** - Optional cached status for Plex-operated services
 - **System information** - Container and host details
 
-![Metrics dashboard](../assets/images/frontend/metrics.png)
+<figure class="docs-visual docs-frontend-figure" markdown="1">
+
+![DUMB Metrics page with resource gauges, history controls and process information.](../assets/images/guides/frontend/v1.91.0/tour-2/metrics.webp){ loading=lazy decoding=async }
+
+<figcaption class="docs-visual-caption">Use the gauges for a current sample and the charts to look for a sustained pattern. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
+</figure>
 
 ---
 
@@ -13505,6 +14241,24 @@ Have the intended storage mounted inside DUMB, provider credentials ready, and a
 
 ## Wizard steps
 
+Plan the complete workflow, then check the applications after they start:
+
+```mermaid
+flowchart TD
+    accTitle: From service selection to a working media workflow
+    accDescr: Resolve preflight blockers, review the intended setup, start applications and then verify their accounts, connections, imports and playback.
+    Apps["Choose workflow apps and companions"] --> Check["Run preflight checks"]
+    Check --> Allowed{"Blocking checks resolved?"}
+    Allowed -->|No| Correct["Correct the reported problem"]
+    Correct --> Check
+    Allowed -->|Yes| Inputs["Enter provider details and installation choices"]
+    Inputs --> Review["Review services, paths and requested changes"]
+    Review --> Apply["Apply the setup"]
+    Apply --> Start["Follow startup results and service logs"]
+    Start --> Finish["Finish app accounts and connections"]
+    Finish --> Test["Test an import and playback"]
+```
+
 ### Step 1: Choose services
 
 Select your workflow applications and supporting services, or use **Guided setup**:
@@ -13647,7 +14401,7 @@ The header shows process status, application health, and restart information. Ho
 
 <figure class="docs-visual docs-frontend-figure" markdown="1">
 
-![Service page showing its status, command bar, configuration tabs and Tools menu.](../assets/images/guides/frontend/v1.91.0/service-controls.webp){ loading=lazy decoding=async }
+![Service page showing its status, command bar, configuration tabs and Tools menu.](../assets/images/guides/frontend/v1.91.0/tour-2/service-controls.webp){ loading=lazy decoding=async }
 
 <figcaption class="docs-visual-caption">Choose a tab for configuration, logs or the application's interface; open Tools for additional tasks. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
 </figure>
@@ -13709,6 +14463,14 @@ Open **Tools → Dependencies** to inspect startup order, missing prerequisites,
 
 Instance links are scoped to the current workflow. An unrelated rclone or Zurg instance is not treated as a valid dependency when the intended mapping is missing. Conditional startup dependencies apply only when the relevant services are enabled. Signals distinguish runtime waits, configured `core_service` links, and optional integrations.
 
+<figure class="docs-visual docs-frontend-figure">
+<video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/v1.91.0/tour-2/dependencies.webp" aria-label="Review a service's dependencies" aria-describedby="dependencies-demo-caption">
+  <source src="../assets/images/guides/frontend/v1.91.0/tour-2/dependencies.webm" type="video/webm">
+  <p><a href="../assets/images/guides/frontend/v1.91.0/tour-2/dependencies.webm">Download the demonstration</a>, or follow the written steps above.</p>
+</video>
+<figcaption id="dependencies-demo-caption" class="docs-visual-caption">Watch: open Dependencies and compare Details with Flow. Review the named prerequisite before using a Fix now action. DUMB Frontend 1.91.0 · example data. Other versions may look different. <a href="../assets/images/guides/frontend/v1.91.0/tour-2/dependencies.webp">Open the full-size screenshot</a>.</figcaption>
+</figure>
+
 With [Geek Mode](settings.md#geek-mode), the panel also exposes API latency, **Copy JSON**, and raw Mermaid source. Use Details if the browser cannot render Flow.
 
 ## Process Metrics panel
@@ -13729,7 +14491,7 @@ Use **Tools → Auto-restart** to select the current service and set its policy.
 
 Monitoring pauses during stack startup. A restart is counted as successful only after the service passes its health check. **Starting** and **Degraded** states remain visible without incrementing the unhealthy threshold. See [Auto-restart](../features/auto-restart.md) before changing limits.
 
-![Auto-restart controls](../assets/images/frontend/auto_restart.png){ .shadow }
+Use the [auto-restart controls walkthrough](../features/auto-restart.md#enable-it-for-a-service) to locate the policy before changing and saving it.
 
 ## Auto-update settings
 
@@ -13774,7 +14536,7 @@ On the DUMB API page, **DUMB API Logging** can temporarily enable DEBUG without 
 
 Application settings and DUMB-managed settings are separate. Use the [service guide](../services/index.md) to find the correct editor and restart requirements.
 
-![Edit Service Config](../assets/images/frontend/edit_service_config.png){ .shadow }
+Compare the two tabs in the [configuration-editor walkthrough](../features/configuration.md#change-a-setting) before choosing which setting to change.
 
 ## AI Assist
 
@@ -13799,11 +14561,11 @@ You can also change the line limit. Service-aware parsing retains application ti
 DUMB applies its sensitive-data redactor to logs viewed or downloaded here. Review a download before sharing it; arbitrary application output can contain values the redactor does not recognize.
 
 <figure class="docs-visual docs-frontend-figure">
-<video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/v1.91.0/service-logs.webp" aria-label="Filter service logs demonstration" aria-describedby="service-logs-demo-caption">
-  <source src="../assets/images/guides/frontend/v1.91.0/service-logs.webm" type="video/webm">
-  <p><a href="../assets/images/guides/frontend/v1.91.0/service-logs.webm">Download the demonstration</a>, or follow the written steps above.</p>
+<video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/v1.91.0/tour-2/service-logs.webp" aria-label="Filter service logs demonstration" aria-describedby="service-logs-demo-caption">
+  <source src="../assets/images/guides/frontend/v1.91.0/tour-2/service-logs.webm" type="video/webm">
+  <p><a href="../assets/images/guides/frontend/v1.91.0/tour-2/service-logs.webm">Download the demonstration</a>, or follow the written steps above.</p>
 </video>
-<figcaption id="service-logs-demo-caption" class="docs-visual-caption">Watch the log filters, refresh interval and Follow tail controls. DUMB Frontend 1.91.0 · example data. Other versions may look different. <a href="../assets/images/guides/frontend/v1.91.0/service-logs.webp">Open the full-size screenshot</a>.</figcaption>
+<figcaption id="service-logs-demo-caption" class="docs-visual-caption">Watch the log filters, refresh interval and Follow tail controls. DUMB Frontend 1.91.0 · example data. Other versions may look different. <a href="../assets/images/guides/frontend/v1.91.0/tour-2/service-logs.webp">Open the full-size screenshot</a>.</figcaption>
 </figure>
 
 ## Embedded UI
@@ -13868,11 +14630,12 @@ Sections start expanded and remember their open/closed state in each browser.
 
 Choose **System Default** to follow your operating system, or select a light/dark palette. This preference is stored in the browser and does not change backend configuration.
 
-<figure class="docs-visual docs-frontend-figure" markdown="1">
-
-![Appearance settings with the dashboard theme choices.](../assets/images/guides/frontend/v1.91.0/appearance.webp){ loading=lazy decoding=async }
-
-<figcaption class="docs-visual-caption">Choose the palette you find easiest to read. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
+<figure class="docs-visual docs-frontend-figure">
+<video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/v1.91.0/tour-2/appearance.webp" aria-label="Choose a dashboard color palette" aria-describedby="appearance-demo-caption">
+  <source src="../assets/images/guides/frontend/v1.91.0/tour-2/appearance.webm" type="video/webm">
+  <p><a href="../assets/images/guides/frontend/v1.91.0/tour-2/appearance.webm">Download the demonstration</a>, or follow the written steps above.</p>
+</video>
+<figcaption id="appearance-demo-caption" class="docs-visual-caption">Watch: open Appearance and select the Light palette. This changes a browser preference. DUMB Frontend 1.91.0 · example data. Other versions may look different. <a href="../assets/images/guides/frontend/v1.91.0/tour-2/appearance.webp">Open the full-size screenshot</a>.</figcaption>
 </figure>
 
 ## About section
@@ -13885,7 +14648,12 @@ Dismissing a banner hides it only in that browser. The About section retains the
 
 
 
-![About settings](../assets/images/frontend/about_settings.png){ .shadow }
+<figure class="docs-visual docs-frontend-figure" markdown="1">
+
+![About settings showing the DUMB API and frontend versions.](../assets/images/guides/frontend/v1.91.0/tour-2/about.webp){ loading=lazy decoding=async }
+
+<figcaption class="docs-visual-caption">Check both versions before choosing the matching documentation. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
+</figure>
 
 ### Launch Onboarding
 
@@ -13895,9 +14663,14 @@ Existing application data is retained, but the wizard can apply new settings ove
 
 ## Embedded service UIs
 
-Enable **Service UIs** to add embedded application tabs, direct links, and full-window controls to supported service pages. Disabling it removes dashboard access through those routes; native-port access still depends on your deployment's port mappings.
+Select **Enable embedded service iFrames** to add embedded application tabs, direct links, and full-window controls to supported service pages. Disabling it removes dashboard access through those routes; native-port access still depends on your deployment's port mappings.
 
-![Embedded UI settings](../assets/images/frontend/embedded_ui_settings.png){ .shadow }
+<figure class="docs-visual docs-frontend-figure" markdown="1">
+
+![Embedded UIs settings with the Enable embedded service iFrames checkbox.](../assets/images/guides/frontend/v1.91.0/tour-2/embedded-ui-settings.webp){ loading=lazy decoding=async }
+
+<figcaption class="docs-visual-caption">Use Enable embedded service iFrames to control DUMB's application tabs and links. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
+</figure>
 
 See [Embedded service UIs](../features/embedded-ui.md) for routing, application logins, and Authelia/TPA SSO exceptions.
 
@@ -13925,13 +14698,11 @@ Saved destination URLs and headers stay on the server. A blank secret field pres
 
 A GitHub token should grant only the read access required by the selected source. Public release checks normally need no token. Enter the required token here, select **Save**, and wait for **Saved**. Retry the connection or update check that needed it. Technical deployments can also use a supported [configuration override](../features/configuration.md#configuration-precedence).
 
-![Token settings](../assets/images/frontend/tokens_settings.png){ .shadow }
 
 ## UI preferences
 
 **Log Timestamp Format** controls MDY/DMY date order, 12/24-hour time, and leading zeros. It changes log presentation, not the backend's timezone or original log timestamps.
 
-![Log timestamp settings](../assets/images/frontend/log_timestamp_settings.png){ .shadow }
 
 ## Advanced
 
@@ -13953,7 +14724,7 @@ Open **Settings → Advanced → Geek Mode** and enable it for extra diagnostic 
 
 Database Health stays opt-in per service. Geek Mode does not run repair, integrity checks, or migrations.
 
-![Auto-restart controls](../assets/images/frontend/auto_restart.png){ .shadow }
+The [dependency-panel example](service-pages.md#dependency-graph-view) shows its ordinary views. Geek Mode adds the diagnostic controls listed above.
 
 ## Authentication settings
 
@@ -13981,7 +14752,7 @@ Enable authentication before allowing untrusted network access. Disabling it exp
 
 Add, disable, enable, or delete local users under Authentication. DUMB protects the last active user from disable/delete. All enabled users have the same operator privileges; groups do not create viewer or administrator roles.
 
-![Authentication settings](../assets/images/frontend/auth_settings.png){ .shadow }
+Follow the [sign-in and access-check diagram](../features/authentication.md#sign-in-and-check-access) when testing an authentication change.
 
 
 
@@ -14079,6 +14850,26 @@ Source: https://dumbarr.com/getting-started/installation/
 
 Have a host, persistent storage, and credentials for the services you plan to use. DUMB creates its initial configuration at startup; you do not need to write a complete `dumb_config.json` first.
 
+## Plan the library boundary
+
+Choose the layout before configuring host mounts. Seeing the same folder name in two applications does not prove that they can read the same files.
+
+```mermaid
+flowchart TD
+    Consumers["Where will the library be read?"] --> Inside["Only apps inside DUMB"]
+    Consumers --> Container["Another container on this host"]
+    Consumers --> Remote["Another machine"]
+    Inside --> Normal["Use the normal media bind"]
+    Container --> Paths["Match library and symlink target paths"]
+    Paths --> FUSE{"Must it see DUMB-created FUSE submounts?"}
+    FUSE -->|Yes| Shared["Prepare a shared host mount and propagation"]
+    FUSE -->|No| Files["Verify ordinary file and link access"]
+    Remote --> Export["Plan an explicit sharing method"]
+    Shared --> Test["Verify access from the actual reader"]
+    Files --> Test
+    Export --> Test
+```
+
 ## Choose your platform first
 
 These guides explain the installation steps for each platform. Use this page to prepare, then follow your selected guide.
@@ -14158,7 +14949,7 @@ Source: https://dumbarr.com/
 
 # Your media stack.<br>One place to manage it.
 
-DUMB brings your media services together in one Docker container. Choose the
+DUMB brings your media services together in one installation. Choose the
 apps you need, follow the setup, and manage them from a shared dashboard.
 
 These guides help you get running, connect your services, and work out what to
@@ -14168,6 +14959,7 @@ do when something needs attention.
 
 [Install DUMB :lucide-arrow-right:](deployment/index.md){ .md-button .md-button--primary }
 [Use the dashboard](frontend/index.md){ .md-button }
+[Watch the tour](#overview){ .md-button }
 
 </div>
 
@@ -14220,6 +15012,61 @@ Debrid · Usenet · Requests · Indexers
 </div>
 
 </section>
+
+## Meet DUMB in two minutes { #overview }
+
+See how the pieces fit together, then follow a few everyday dashboard tasks. This tour has on-screen captions and no narration; you can also read the transcript below.
+
+<figure class="docs-visual docs-overview-figure">
+<video id="dumb-overview" class="docs-frontend-video" controls playsinline preload="none" poster="assets/images/guides/overview/v1/poster.webp" aria-label="Captioned DUMB overview" aria-describedby="overview-caption">
+  <source src="assets/images/guides/overview/v1/dumb-overview.mp4" type="video/mp4">
+  <track kind="captions" src="assets/images/guides/overview/v1/captions.vtt" srclang="en" label="English">
+  <track kind="chapters" src="assets/images/guides/overview/v1/chapters.vtt" srclang="en" label="Tour chapters">
+  <p><a href="assets/images/guides/overview/v1/dumb-overview.mp4">Open the overview video</a>, or read the transcript below.</p>
+</video>
+<figcaption id="overview-caption" class="docs-visual-caption">DUMB Frontend 1.91.0 · example data. The tour reviews controls; it does not install an update or change a live system. Other versions and enabled services may look different.</figcaption>
+</figure>
+
+<details markdown="1">
+<summary>Read the overview transcript and chapter times</summary>
+
+**0:00 — Meet DUMB.** DUMB brings your media tools into one dashboard. Choose the applications and workflow you need.
+
+Set up and manage the applications that find, organize and play your media.
+
+**0:07 — How the pieces work together.** Start with one workflow and one media server. DUMB manages the apps; you choose how your library works.
+
+- **Find or request:** Search directly or use an optional request app.
+- **Prepare the library:** Your selected workflow handles the item and its library path.
+- **Watch or listen:** A media server reads the configured library.
+
+You provide the accounts, provider access and library choices.
+
+**0:19 — Install on the host you use.** Use the deployment guide for your platform. Keep configuration and application data in persistent storage.
+
+- **Pick your host:** Docker, a NAS, Windows with WSL2, or native Proxmox LXC.
+- **Keep your data:** Prepare persistent folders and the required access.
+- **Open DUMB:** Follow first-run setup in the dashboard.
+
+**0:29 — See your selected services.** The dashboard shows the services in your DUMB installation. Open a service to review its status and controls.
+
+**0:39 — Work with one application.** A service page brings its controls, settings and logs together. Use the embedded application to finish its own setup.
+
+**0:49 — Read and filter service logs.** Logs show what the selected service is doing. Filter messages by name or level to focus on the problem.
+
+**1:05 — Check an update before installing.** Open Tools → Updates and check for an available version. Review the result before choosing to install; this example only checks.
+
+**1:25 — Make the dashboard comfortable.** Use appearance settings to choose a comfortable dashboard view. These preferences change how the frontend is displayed.
+
+**1:35 — Check resource use.** Metrics help you review resource use and spot pressure. Use the charts alongside the affected service's logs.
+
+**1:45 — Try one complete workflow.** Follow the deployment guide, then complete first-run setup. Test one import and playback before expanding your stack.
+
+- **Install DUMB:** Follow the guide for your host.
+- **Set up your apps:** Add the accounts, providers and library paths they need.
+- **Test one item:** Check an import and playback before adding more services.
+
+</details>
 
 ## Deployment guides
 
@@ -14310,6 +15157,8 @@ Source: https://dumbarr.com/reference/config-schema/
 # Configuration schema
 
 DUMB uses a JSON schema to validate `/config/dumb_config.json` and keep service definitions consistent.
+
+**Visual guide:** [See how settings are read, applied and saved](../features/configuration.md).
 
 ## Schema location
 
@@ -14532,6 +15381,23 @@ one cannot add a missing backend feature to an older DUMB image. Check both
 versions in **About**. Individually pinned service versions may also differ from
 the examples.
 
+## Choose the version, then the level of detail
+
+The release selector chooses which DUMB behavior the guide describes. Geek mode changes how much of that guide is expanded.
+
+```mermaid
+flowchart TD
+    Installed["Check DUMB and dashboard versions in Settings → About"] --> Match{"Which DUMB channel do you run?"}
+    Match -->|Stable| Released["Header: Latest release"]
+    Match -->|Development| Dev["Header: Development"]
+    Released --> Read["Follow the ordinary frontend steps"]
+    Dev --> Read
+    Read --> More{"Want internals or another method?"}
+    More -->|Yes| Geek["Enable Geek mode or open one technical section"]
+    More -->|No| Task["Complete the task with Geek mode off"]
+    Read -. "Reporting a docs issue?" .-> Footer["Include the documentation release from the footer"]
+```
+
 ## Use Geek mode when you want more detail
 
 The main guide is for people using the DUMB frontend. It explains where to go,
@@ -14610,6 +15476,24 @@ Source: https://dumbarr.com/reference/environment-variables/
 # Environment variables
 
 DUMB reads startup overrides for supported configuration leaf values from environment variables or Docker secrets. Override names follow the existing configuration tree; they do not create new service instances or arbitrary keys. Service subprocess variables are separately defined under each service's `env` block.
+
+<details class="geek-details" markdown="1">
+<summary>How an override is selected</summary>
+
+For each supported leaf key, DUMB uses the highest-priority supplied override. Blank environment values do not replace an existing setting.
+
+```mermaid
+flowchart TD
+    Key["Supported configuration leaf"] --> Secret{"Docker secret supplied?"}
+    Secret -->|Yes| Use["Use the override value"]
+    Secret -->|No| Environment{"Nonblank process environment value?"}
+    Environment -->|Yes| Use
+    Environment -->|No| Dotenv{"Value in /config/.env?"}
+    Dotenv -->|Yes| Use
+    Dotenv -->|No| Config["Use the saved configuration value"]
+```
+
+</details>
 
 ## Container variables
 
@@ -14697,6 +15581,8 @@ Use the [frontend guides](../frontend/index.md) for everyday tasks. This referen
 is for understanding the internals or using a different method: configuration
 files, environment variables, APIs, networking, and process dependencies.
 
+**Visual guide:** [See DUMB's components and storage boundaries](../architecture/index.md).
+
 The frontend workflow remains the main path. These references explain the
 settings and behavior behind it; they do not add extra required setup steps.
 
@@ -14720,6 +15606,23 @@ Source: https://dumbarr.com/reference/instances/
 # Multi-instance configuration
 
 Several DUMB services support multiple instances (for example Sonarr, Radarr, Lidarr, Whisparr, and rclone). This guide shows how to configure instances safely.
+
+<details class="geek-details" markdown="1">
+<summary>Keep each instance separate</summary>
+
+The instance name identifies a separate configuration. Ports, native configuration paths and log files must remain distinct.
+
+```mermaid
+flowchart TD
+    Sonarr["Sonarr instances map"] --> Default["Default instance"]
+    Sonarr --> Anime["Anime instance"]
+    Default --> First["Its own port, config directory and log"]
+    Anime --> Second["A different port, config directory and log"]
+    First --> Workflow["Select the intended workflow with core_service"]
+    Second --> Workflow
+```
+
+</details>
 
 ## Instance pattern
 
@@ -14788,6 +15691,8 @@ Source: https://dumbarr.com/reference/ports/
 These are **fresh-configuration defaults**, not a report of your running stack. Check the port saved in the dashboard or `/config/dumb_config.json` before adding a Docker mapping or configuring another application.
 
 The maintained Compose file publishes **3005 only**. It serves the dashboard, REST gateway (`/api/*`), and WebSockets (`/ws/*`). Embedded UIs use this address too; individual service ports are needed for direct clients and external integrations.
+
+**Visual guide:** [See dashboard access and published-port boundaries](../deployment/networking.md#option-1-publish-selected-ports-recommended).
 
 ## DUMB listeners
 
@@ -16453,6 +17358,21 @@ Source: https://dumbarr.com/services/core/emby/
 
 **Emby** is a media server for organizing and streaming your media library. It is a commercial alternative to Plex and Jellyfin.
 
+<!-- visual:service-flow -->
+## At a glance
+
+Use the same curated library folder in your collector and media server. A running server is only the first check.
+
+```mermaid
+flowchart TD
+    A["Open Emby and finish sign-in"] --> B
+    B["Choose the curated library folder"] --> C
+    C["Check the mount before scanning"] --> D
+    D["Scan a small library"] --> E
+    E["Play and seek through one item"]
+```
+
+
 ---
 
 ## First start
@@ -16589,6 +17509,20 @@ Source: https://dumbarr.com/services/core/
 
 Choose core services around the library workflow you want. A media server can use files you already own; a download workflow usually also needs provider accounts, library paths, and one or more dependencies.
 
+<!-- visual:service-flow -->
+## At a glance
+
+A complete media workflow connects acquisition, a curated library folder and playback. Use only the parts you need.
+
+```mermaid
+flowchart TD
+    A["Request or search"] --> B["Chosen acquisition workflow"]
+    B --> C["Curated library folder"]
+    C --> D["Plex, Jellyfin or Emby"]
+    D --> E["Play and verify"]
+```
+
+
 Several core services can run together. Check shared paths, provider connection limits, and assigned ports before adding a second workflow.
 
 ## Core Service Index
@@ -16646,6 +17580,22 @@ Source: https://dumbarr.com/services/core/infinidysk-installation/
 # InfiniDysk installation and updates
 
 [Back to InfiniDysk setup](infinidysk.md).
+
+<!-- visual:service-flow -->
+## At a glance
+
+Review the saved source target before checking for an update. A service update can interrupt active readers.
+
+```mermaid
+flowchart TD
+    A["Review release, branch or commit target"] --> B{"Use saved target or check availability?"}
+    B -->|Check| C["Check for updates and review the result"]
+    B -->|Saved target| D["Choose the intended install action"]
+    C --> D
+    D --> E["Wait for the result and recheck health"]
+    E --> F["Verify sample playback"]
+```
+
 
 ## Tracking a moving InfiniDysk release tag
 
@@ -16808,6 +17758,22 @@ Source: https://dumbarr.com/services/core/infinidysk-migration/
 # NzbDAV to InfiniDysk migration
 
 [Back to InfiniDysk setup](infinidysk.md).
+
+<!-- visual:service-flow -->
+## At a glance
+
+Only eligible legacy installations need this migration. Keep the backup and review the full procedure before authorizing downtime.
+
+```mermaid
+flowchart TD
+    A{"Legacy installation?"} -->|No| B["Keep the canonical installation"]
+    A -->|Yes| C["Back up and run preflight"]
+    C --> D["Review targets and downtime"]
+    D --> E["Authorize the namespace migration"]
+    E --> F["Verify paths, scans and playback"]
+    F --> G["Keep recovery data until verified"]
+```
+
 
 ## Migration from NzbDAV
 
@@ -17231,6 +18197,21 @@ Source: https://dumbarr.com/services/core/infinidysk-postgres/
 
 [Back to InfiniDysk setup](infinidysk.md).
 
+<!-- visual:service-flow -->
+## At a glance
+
+Keep the independent backup and original SQLite recovery data until the new database and playback have been verified.
+
+```mermaid
+flowchart TD
+    A["Back up the full data directory"] --> B
+    B["Resolve preflight blockers"] --> C
+    C["Run and pass the rehearsal"] --> D
+    D["Review and authorize cutover"] --> E
+    E["Verify the database and playback"]
+```
+
+
 This guide covers the InfiniDysk **1.x main database**. SQLite remains the default. A migration changes the main store; it does not move the separate local helper databases or application files.
 
 ## Before you start
@@ -17374,6 +18355,21 @@ Source: https://dumbarr.com/services/core/infinidysk-troubleshooting/
 # InfiniDysk troubleshooting
 
 [Back to InfiniDysk setup](infinidysk.md).
+
+<!-- visual:service-flow -->
+## At a glance
+
+Check the reported state before restarting. A legitimate database migration can accept connections while the application is still starting.
+
+```mermaid
+flowchart TD
+    A["Open status and logs"] --> B{"Migration advancing?"}
+    B -->|Yes| C["Let it finish and watch progress"]
+    B -->|No| D["Check storage and the reported error"]
+    D --> E["Follow targeted recovery guidance"]
+    C --> F["Recheck health, import and playback"]
+```
+
 
 ## InfiniDysk starts but its port is already open
 
@@ -18020,6 +19016,21 @@ Source: https://dumbarr.com/services/core/jellyfin/
 
 **Jellyfin** is an open-source media server for organizing and streaming your media library. It can be used as an alternative to Plex or Emby.
 
+<!-- visual:service-flow -->
+## At a glance
+
+Use the same curated library folder in your collector and media server. A running server is only the first check.
+
+```mermaid
+flowchart TD
+    A["Open Jellyfin and finish sign-in"] --> B
+    B["Choose the curated library folder"] --> C
+    C["Check the mount before scanning"] --> D
+    D["Scan a small library"] --> E
+    E["Play and seek through one item"]
+```
+
+
 ---
 
 ## First start
@@ -18150,6 +19161,21 @@ Source: https://dumbarr.com/services/core/lidarr/
 # Lidarr (Core Service)
 
 **Lidarr** is a music manager that automates searching, grabbing, and organizing albums through indexers and download clients.
+
+<!-- visual:service-flow -->
+## At a glance
+
+Test the connections before adding more requests. The saved root folder must also be visible to your media server.
+
+```mermaid
+flowchart TD
+    A["Open the app from its service page"] --> B
+    B["Test indexers and download client"] --> C
+    C["Choose the music root folder and profile"] --> D
+    D["Add one intended item and follow import"] --> E
+    E["Scan and play it in the media server"]
+```
+
 
 
 
@@ -18305,6 +19331,21 @@ Source: https://dumbarr.com/services/core/neutarr/
 # NeutArr
 
 NeutArr schedules missing-content and upgrade searches in selected Radarr, Sonarr, Lidarr, and Whisparr instances. It is disabled by default. Review targets, schedules, and limits before enabling searches against your indexers.
+
+<!-- visual:service-flow -->
+## At a glance
+
+NeutArr acts on connected libraries according to your chosen rules. Check exact instances and limits before scheduling work.
+
+```mermaid
+flowchart TD
+    A["Open NeutArr"] --> B
+    B["Connect the intended Arr instances"] --> C
+    C["Review searches and limits"] --> D
+    D["Enable the intended automation"] --> E
+    E["Inspect its activity and Arr queues"]
+```
+
 
 ---
 
@@ -18558,6 +19599,21 @@ Source: https://dumbarr.com/services/core/plex-media-server/
 # Plex Media Server (Core Service)
 
 Plex organizes and streams media from local folders or mounted remote content. DUMB manages its process and persistent data; you choose the Plex account, library paths, sharing policy, and transcoding settings.
+
+<!-- visual:service-flow -->
+## At a glance
+
+Use the same curated library folder in your collector and media server. A running server is only the first check.
+
+```mermaid
+flowchart TD
+    A["Open Plex and finish sign-in"] --> B
+    B["Choose the curated library folder"] --> C
+    C["Check the mount before scanning"] --> D
+    D["Scan a small library"] --> E
+    E["Play and seek through one item"]
+```
+
 
 ---
 
@@ -19054,6 +20110,21 @@ Source: https://dumbarr.com/services/core/profilarr/
 
 Profilarr is a profile and custom format manager for **Sonarr** and **Radarr**. DUMB supports both the legacy v1 application and the redesigned v2 application, and can auto-link either generation to matching Arr instances.
 
+<!-- visual:service-flow -->
+## At a glance
+
+Connecting an Arr app and applying profiles are separate actions. Review the selected repository and proposed changes first.
+
+```mermaid
+flowchart TD
+    A["Open Profilarr"] --> B
+    B["Review profile repository"] --> C
+    C["Check the intended Sonarr or Radarr connection"] --> D
+    D["Select and apply the intended profiles"] --> E
+    E["Review the result in the Arr app"]
+```
+
+
 ---
 
 
@@ -19275,6 +20346,21 @@ Source: https://dumbarr.com/services/core/prowlarr/
 # Prowlarr (Core Service)
 
 **Prowlarr** is an indexer manager for the Arr ecosystem. It centralizes indexer configuration and syncs them to Sonarr, Radarr, Lidarr, and Whisparr.
+
+<!-- visual:service-flow -->
+## At a glance
+
+Prowlarr supplies indexer settings to the Arr apps you connect; the download workflow is configured separately.
+
+```mermaid
+flowchart TD
+    A["Add an indexer in Prowlarr"] --> B
+    B["Test its connection"] --> C
+    C["Connect the intended Arr apps"] --> D
+    D["Review the sync result in each Arr"] --> E
+    E["Test a search from the Arr app"]
+```
+
 
 ---
 
@@ -19520,6 +20606,21 @@ Source: https://dumbarr.com/services/core/radarr/
 # Radarr (Core Service)
 
 **Radarr** is a movie manager that automates searching, grabbing, and organizing movies through indexers and download clients.
+
+<!-- visual:service-flow -->
+## At a glance
+
+Test the connections before adding more requests. The saved root folder must also be visible to your media server.
+
+```mermaid
+flowchart TD
+    A["Open the app from its service page"] --> B
+    B["Test indexers and download client"] --> C
+    C["Choose the movie root folder and profile"] --> D
+    D["Add one intended item and follow import"] --> E
+    E["Scan and play it in the media server"]
+```
+
 
 ---
 
@@ -20272,6 +21373,21 @@ Source: https://dumbarr.com/services/core/sonarr/
 
 **Sonarr** is a TV series manager that automates monitoring, searching, and organizing episodes through configured indexers and download clients.
 
+<!-- visual:service-flow -->
+## At a glance
+
+Test the connections before adding more requests. The saved root folder must also be visible to your media server.
+
+```mermaid
+flowchart TD
+    A["Open the app from its service page"] --> B
+    B["Test indexers and download client"] --> C
+    C["Choose the TV root folder and profile"] --> D
+    D["Add one intended item and follow import"] --> E
+    E["Scan and play it in the media server"]
+```
+
+
 ---
 
 ## First start
@@ -20436,6 +21552,21 @@ Source: https://dumbarr.com/services/core/whisparr/
 # Whisparr (Core Service)
 
 **Whisparr** is an automation tool for managing adult content libraries, similar to Radarr/Sonarr workflows.
+
+<!-- visual:service-flow -->
+## At a glance
+
+Test the connections before adding more requests. The saved root folder must also be visible to your media server.
+
+```mermaid
+flowchart TD
+    A["Open the app from its service page"] --> B
+    B["Test indexers and download client"] --> C
+    C["Choose the media root folder and profile"] --> D
+    D["Add one intended item and follow import"] --> E
+    E["Scan and play it in the media server"]
+```
+
 
 ---
 
@@ -20656,6 +21787,21 @@ Flask application. Newer layouts include it inside the CLI Debrid process.
 This service's separate process, port, and web interface apply to the older
 standalone layout.
 
+<!-- visual:service-flow -->
+## At a glance
+
+This flow is for the standalone Battery layout. Check the CLI Debrid version guidance before enabling a separate process.
+
+```mermaid
+flowchart TD
+    A["Confirm the installed standalone layout"] --> B
+    B["Start the required supporting services"] --> C
+    C["Start CLI Battery"] --> D
+    D["Complete the intended authorization"] --> E
+    E["Verify CLI Debrid metadata access"]
+```
+
+
 
 
 For an upstream CLI Debrid layout with embedded Battery, DUMB 2.23.0 does not detect the replacement automatically. Review the [CLI Debrid FAQ](../../faq/cli-debrid.md#does-cli-debrid-v0729-still-need-a-separate-cli-battery-process) before enabling that layout.
@@ -20801,6 +21947,20 @@ Source: https://dumbarr.com/services/dependent/
 
 These services provide databases, mounted files, or metadata to another application. The dependencies you need depend on that application's configuration and installed layout.
 
+<!-- visual:service-flow -->
+## At a glance
+
+Supporting services need to match the workflow that uses them. A running unrelated instance is not a substitute for the intended dependency.
+
+```mermaid
+flowchart TD
+    A["Choose a core workflow"] --> B["Check its required dependencies"]
+    B --> C["Start the matching database or provider"]
+    C --> D["Start the matching mount if required"]
+    D --> E["Verify the core application connection"]
+```
+
+
 ## Dependent Service Index
 
 | Service                                    | Description                                         | Required By                               |
@@ -20837,6 +21997,21 @@ Source: https://dumbarr.com/services/dependent/phalanx-db/
 # Phalanx DB Configuration
 
 **Phalanx DB** is an optional decentralized metadata service that can enhance CLI Debrid by providing distributed data capabilities through Hyperswarm. It runs independently and is not required for CLI Debrid to function.
+
+<!-- visual:service-flow -->
+## At a glance
+
+Phalanx DB supports CLI Debrid metadata. Check the consumer as well as the database process.
+
+```mermaid
+flowchart TD
+    A["Enable the matching CLI Debrid workflow"] --> B
+    B["Start Phalanx DB"] --> C
+    C["Inspect startup logs"] --> D
+    D["Verify the CLI Debrid connection"] --> E
+    E["Check metadata from the consumer"]
+```
+
 
 ---
 
@@ -20975,6 +22150,23 @@ Source: https://dumbarr.com/services/dependent/postgres/
 # PostgreSQL
 
 PostgreSQL provides separate application databases for services such as Riven, Zilean, and pgAdmin. DUMB's main configuration remains in `/config/dumb_config.json`; it is not stored in this cluster.
+
+<!-- visual:service-flow -->
+## At a glance
+
+DUMB can prepare supported application databases. Existing data needs its documented migration path; enabling PostgreSQL does not migrate a database.
+
+```mermaid
+flowchart TD
+    A{"Existing application data?"} -->|No| B["Review the supported database setting"]
+    B --> C["Let DUMB start the required database"]
+    A -->|Yes| D["Back up the application and current database"]
+    D --> E["Keep the current provider; follow the documented migration"]
+    E --> F["Pass checks and any required rehearsal before cutover"]
+    C --> G["Verify the application and test backups"]
+    F --> G
+```
+
 
 The image includes PostgreSQL, but the service is disabled by default until selected directly or required by an enabled consumer. DUMB initializes the configured cluster and databases when setting it up.
 
@@ -21235,6 +22427,21 @@ Source: https://dumbarr.com/services/dependent/rclone/
 
 rclone exposes a remote source as files inside DUMB. Depending on the selected workflow, that source can be Zurg, a direct Debrid endpoint, InfiniDysk, or Decypharr WebDAV. DUMB prepares the managed mount; the source service must be ready before it can serve files.
 
+<!-- visual:service-flow -->
+## At a glance
+
+A healthy mount process is not proof that files can be read. Verify the actual library path before scanning it.
+
+```mermaid
+flowchart TD
+    A["Start and test the provider service"] --> B
+    B["Review the selected rclone remote"] --> C
+    C["Start the matching mount"] --> D
+    D["Browse the mounted library folder"] --> E
+    E["Test a read and sample playback"]
+```
+
+
 ---
 
 ## First start
@@ -21334,13 +22541,13 @@ Example:
   "instances": {
     "RealDebrid": {
       "enabled": true,
-      "core_service": "",      
+      "core_service": "",
       "process_name": "rclone w/ RealDebrid",
       "suppress_logging": false,
       "log_level": "INFO",
       "key_type": "RealDebrid",
       "zurg_enabled": true,
-      "decypharr_enabled": false,      
+      "decypharr_enabled": false,
       "mount_dir": "/mnt/debrid",
       "mount_name": "rclone_RD",
       "cache_dir": "/cache",
@@ -21353,16 +22560,16 @@ Example:
       "username": "",
       "password": "",
       "customer_id": ""
-    },    
+    },
     "AllDebrid": {
       "enabled": false,
-      "core_service": "",      
+      "core_service": "",
       "process_name": "rclone w/ AllDebrid",
       "suppress_logging": false,
       "log_level": "INFO",
       "key_type": "AllDebrid",
       "zurg_enabled": false,
-      "decypharr_enabled": false,      
+      "decypharr_enabled": false,
       "mount_dir": "/mnt/debrid",
       "mount_name": "rclone_AD",
       "cache_dir": "/cache",
@@ -21515,7 +22722,7 @@ You can apply these flags in three ways:
 
     Modify the `command` list in the `dumb_config.json` rclone instance:
 
-    !!! note 
+    !!! note
         The `command` field is empty by default (`"command": []`) because DUMB generates the rclone command dynamically during setup and applies it in memory.
 
         Saved tunable arguments in the `command` list are preserved. DUMB still
@@ -21607,7 +22814,7 @@ Adjust `--buffer-size` based on the system RAM:
 | 8–16 GB        | `128M–256M`                 |
 | > 16 GB        | `256M–512M+`                |
 
---- 
+---
 
 ## Default Mount Structure
 
@@ -21733,6 +22940,21 @@ Source: https://dumbarr.com/services/dependent/zurg/
 # Zurg
 
 Zurg is the debrid content fetcher that powers file discovery and caching for DUMB. It mounts content made available by debrid services like Real-Debrid and exposes them over WebDAV for rclone to access. Zurg is designed to run quietly in the background and can be configured to run multiple instances.
+
+<!-- visual:service-flow -->
+## At a glance
+
+Zurg exposes Debrid content to the matching mount. Keep provider credentials private and test the consumer path.
+
+```mermaid
+flowchart TD
+    A["Configure the Debrid account"] --> B
+    B["Start Zurg and inspect its logs"] --> C
+    C["Check the matching rclone mount"] --> D
+    D["Verify the library folder is readable"] --> E
+    E["Test playback through the media server"]
+```
+
 
 !!! info "Current Debrid Support"
     As of this posting, **Zurg only supports Real-Debrid**. Additional debrid services may be supported in future updates.
@@ -21909,7 +23131,7 @@ Example:
             "user": "",
             "password": "",
             "api_key": ""
-        }            
+        }
     }
 }
 }
@@ -21945,6 +23167,21 @@ Source: https://dumbarr.com/services/dumb/api/
 
 # DUMB API
 The **DUMB API** is the central communication layer between the DUMB Frontend and the backend service. It handles requests for logs, service management (start/stop), configuration updates, and health checks.
+
+<!-- visual:service-flow -->
+## At a glance
+
+The dashboard and API clients share the frontend proxy. Direct native listener access is an advanced deployment choice.
+
+```mermaid
+flowchart TD
+    A["Dashboard or API client"] --> B["Frontend proxy on port 3005"]
+    B --> C["DUMB API authentication and capabilities"]
+    C --> D["Managed services, configuration and logs"]
+    D --> C
+    C --> B
+```
+
 
 ## Access model
 
@@ -22053,6 +23290,21 @@ The **DUMB Frontend** is the web UI for managing and monitoring the DUMB ecosyst
 It provides service controls, real-time logs, embedded UIs, onboarding, settings,
 and metrics in a single interface.
 
+<!-- visual:service-flow -->
+## At a glance
+
+The dashboard is the starting point for everyday tasks. Each application still has its own setup inside its service interface.
+
+```mermaid
+flowchart TD
+    A["Open the DUMB dashboard"] --> B
+    B["Choose a service card"] --> C
+    C["Use its configuration, logs or embedded UI"] --> D
+    D["Review health and task results"] --> E
+    E["Open the relevant guide if a check fails"]
+```
+
+
 ## Open the dashboard
 
 Open `http://<host>:3005` using your DUMB host address and published frontend port. Finish the initial account/onboarding prompts, then use the dashboard to open service pages, logs, and settings. If the page does not load, check the container's frontend log and [networking guide](../../deployment/networking.md).
@@ -22108,13 +23360,13 @@ This block is nested at `dumb.frontend` in `/config/dumb_config.json`:
     "branch_enabled": false,
     "branch": "main",
     "suppress_logging": false,
-    "log_level": "INFO",            
+    "log_level": "INFO",
     "log_file": "/log/dumb_frontend.log",
     "origins": [
         "http://0.0.0.0:3005"
     ],
     "host": "0.0.0.0",
-    "port": 3005,            
+    "port": 3005,
     "auto_update": false,
     "auto_update_interval": 24,
     "auto_update_start_time": "04:00",
@@ -22123,7 +23375,7 @@ This block is nested at `dumb.frontend` in `/config/dumb_config.json`:
     "platforms": ["pnpm"],
     "command": ["node",".output/server/index.mjs"],
     "config_dir": "/dumb/frontend",
-    "env": {}            
+    "env": {}
 }
 }
 ```
@@ -22239,6 +23491,21 @@ Source: https://dumbarr.com/services/dumb/
 
 The backend API and dashboard provide the management interface for the stack. They start with the container when enabled; the default configuration enables both.
 
+<!-- visual:service-flow -->
+## At a glance
+
+The frontend is where you work; the API coordinates the managed applications behind it.
+
+```mermaid
+flowchart TD
+    A["Your browser"] --> B["DUMB Frontend"]
+    B --> C["DUMB API"]
+    C --> D["Managed services"]
+    D --> E["Health, logs and task results"]
+    E --> B
+```
+
+
 ## DUMB service index
 
 | Service | Default port | Purpose |
@@ -22268,6 +23535,22 @@ Source: https://dumbarr.com/services/
 # Choose your services
 
 Start with the workflow you want, then enable its services in onboarding. You do not need every service in this catalog. DUMB runs managed applications as processes inside its container; they share the container's network and mounted paths.
+
+<!-- visual:service-flow -->
+## At a glance
+
+Choose the result you want first, then add only the services and dependencies that workflow needs.
+
+```mermaid
+flowchart TD
+    A["Choose a goal"] --> B["Play an existing library"]
+    A --> C["Build an acquisition workflow"]
+    A --> D["Add a supporting tool"]
+    B --> E["Media server and library paths"]
+    C --> F["Provider, collector, Arr apps and media server"]
+    D --> G["Monitoring, subtitles, requests or access"]
+```
+
 
 ## How the services work together
 
@@ -22333,6 +23616,21 @@ Source: https://dumbarr.com/services/optional/aiostreams/
 # AIOStreams
 
 AIOStreams combines Stremio addons, search sources, Debrid services, and Usenet playback services into one configurable Stremio addon. DUMB manages the AIOStreams runtime and lifecycle; you choose the addons, indexers, and playback services from the AIOStreams dashboard.
+
+<!-- visual:service-flow -->
+## At a glance
+
+DUMB hosts AIOStreams; Stremio uses the addon configuration you install. Keep the generated configuration link private when it contains account information.
+
+```mermaid
+flowchart TD
+    A["Open AIOStreams and sign in"] --> B
+    B["Configure the intended addons or sources"] --> C
+    C["Test the chosen provider connections"] --> D
+    D["Install your addon configuration in Stremio"] --> E
+    E["Test an intended stream"]
+```
+
 
 ---
 
@@ -22654,6 +23952,21 @@ Source: https://dumbarr.com/services/optional/authelia/
 portal. DUMB can install and manage one Authelia instance, use it as an OpenID
 Connect (OIDC) provider for DUMB and Traefik Proxy Admin (TPA), and publish a
 reusable Traefik ForwardAuth middleware for selected application routes.
+
+<!-- visual:service-flow -->
+## At a glance
+
+Keep a working administrator access path while testing sign-in. OIDC sign-in and ForwardAuth route protection are separate choices.
+
+```mermaid
+flowchart TD
+    A["Plan DNS and HTTPS addresses"] --> B
+    B["Bootstrap Authelia and verify its notifier"] --> C
+    C["Enroll and test the first user"] --> D
+    D["Configure the intended sign-in or route protection"] --> E
+    E["Test the final protected application"]
+```
+
 
 Authelia is optional. You can instead connect DUMB authentication to an
 external Authelia deployment or another standards-compatible OIDC provider.
@@ -23038,6 +24351,21 @@ Source: https://dumbarr.com/services/optional/bazarr/
 # Bazarr
 
 [Bazarr](https://www.bazarr.media/) is an optional subtitle manager for movies and TV shows. It reads library information from Sonarr and Radarr, searches configured subtitle providers, and writes downloaded subtitles beside the media files.
+
+<!-- visual:service-flow -->
+## At a glance
+
+Bazarr needs working Sonarr or Radarr connections, subtitle providers and access to the same media files.
+
+```mermaid
+flowchart TD
+    A["Open Bazarr"] --> B
+    B["Connect and test Sonarr or Radarr"] --> C
+    C["Choose languages and subtitle profiles"] --> D
+    D["Configure and test subtitle providers"] --> E
+    E["Check subtitles beside one media item"]
+```
+
 
 ## First-time Bazarr setup
 
@@ -23432,6 +24760,23 @@ Source: https://dumbarr.com/services/optional/
 
 Add these tools when you need their specific function. They are not required by every DUMB installation, but other applications or users may depend on them once configured.
 
+<!-- visual:service-flow -->
+## At a glance
+
+Add an optional tool for a specific job and verify its connections before relying on its automation.
+
+```mermaid
+flowchart TD
+    A["Choose a job"] --> B["Requests or watchlists"]
+    A --> C["Subtitles or monitoring"]
+    A --> D["Remote access or sign-in"]
+    B --> E["Connect only the intended applications"]
+    C --> E
+    D --> E
+    E --> F["Test the complete task"]
+```
+
+
 ## Optional Service Index
 
 | Service                           | Description                                                 | Used By                        |
@@ -23485,6 +24830,21 @@ Source: https://dumbarr.com/services/optional/maintainerr/
 # Maintainerr
 
 Maintainerr helps keep a media library lean by finding content that matches your rules, presenting it in a media-server collection, and optionally removing or unmonitoring it after a delay. It supports Plex, Jellyfin, or Emby as the media server and can use Sonarr, Radarr, Seerr, and Tautulli data when evaluating rules.
+
+<!-- visual:service-flow -->
+## At a glance
+
+Begin with a collection-only rule. Deletion and unmonitoring require a separate, deliberate choice after reviewing the results.
+
+```mermaid
+flowchart TD
+    A["Connect the intended media server"] --> B
+    B["Add the integrations used by your rule"] --> C
+    C["Create a collection-only rule"] --> D
+    D["Review matching items and the collection"] --> E
+    E["Choose any later removal action deliberately"]
+```
+
 
 ---
 
@@ -23621,6 +24981,21 @@ Source: https://dumbarr.com/services/optional/mediastorm/
 # mediastorm
 
 mediastorm is a self-hosted streaming server and client ecosystem for Debrid, torrent, and Usenet sources. DUMB installs its server, browser client, subtitle helpers, Deno runtime, and Iroh companion from mediastorm's official OCI image, then runs it as an optional PostgreSQL-backed service.
+
+<!-- visual:service-flow -->
+## At a glance
+
+Keep the administrator credential private. Provider settings, library access and actual playback each need their own check.
+
+```mermaid
+flowchart TD
+    A["Open mediastorm and replace bootstrap password"] --> B
+    B["Configure the intended sources and providers"] --> C
+    C["Test the selected connections"] --> D
+    D["Review library and playback settings"] --> E
+    E["Play one intended item"]
+```
+
 
 ---
 
@@ -23900,6 +25275,21 @@ Source: https://dumbarr.com/services/optional/pulsarr/
 
 Pulsarr monitors Plex watchlists and routes requested movies and shows to Sonarr and Radarr. It is useful when Plex is the front door for requests and you want watchlist-driven automation, approvals, quotas, and notifications without running a separate request portal.
 
+<!-- visual:service-flow -->
+## At a glance
+
+A successful connection does not activate watchlist processing. Review approvals and quotas before turning on the workflow.
+
+```mermaid
+flowchart TD
+    A["Open Pulsarr and create its account"] --> B
+    B["Connect Plex and the intended Arr apps"] --> C
+    C["Review watchlists, approvals and quotas"] --> D
+    D["Start the intended workflow"] --> E
+    E["Follow one request through import"]
+```
+
+
 ---
 
 ## Initial setup
@@ -24057,6 +25447,21 @@ Source: https://dumbarr.com/services/optional/riven-frontend/
 
 Riven Frontend is an optional interface for Riven Backend. Use it to configure Riven and manage its content; the backend and its database must be running first.
 
+<!-- visual:service-flow -->
+## At a glance
+
+Use the Riven settings and workflow diagram for provider, scraper, content and media-server choices.
+
+```mermaid
+flowchart TD
+    A["Start Riven and its required dependencies"] --> B
+    B["Open Riven Frontend"] --> C
+    C["Configure providers, content and scrapers"] --> D
+    D["Review paths and the media-server updater"] --> E
+    E["Follow one request through playback"]
+```
+
+
 DUMB handles automatic installation and updates of the frontend, including versioning and branch targeting. It is served by a lightweight web server and pre-configured to communicate with the backend at startup.
 
 ---
@@ -24185,6 +25590,21 @@ Source: https://dumbarr.com/services/optional/tautulli/
 # Tautulli
 
 Tautulli is a monitoring and statistics application for Plex Media Server. It tracks what has been watched, who watched it, when and where they watched it, and how it was watched, providing detailed analytics and notifications.
+
+<!-- visual:service-flow -->
+## At a glance
+
+Connect Tautulli to the intended Plex server before configuring notifications or retention.
+
+```mermaid
+flowchart TD
+    A["Open Tautulli"] --> B
+    B["Authorize the intended Plex server"] --> C
+    C["Check server connection and activity"] --> D
+    D["Play one item in Plex"] --> E
+    E["Verify the activity appears in Tautulli"]
+```
+
 
 ---
 
@@ -24881,6 +26301,21 @@ Source: https://dumbarr.com/services/optional/zilean/
 # Zilean
 
 Zilean indexes shared [Debrid Media Manager](https://github.com/debridmediamanager/debrid-media-manager) hash lists and exposes search and Torznab interfaces. It can also ingest supported Zurg and Zilean sources. DUMB manages its runtime and PostgreSQL database; configure consumers such as CLI Debrid, Riven, or AIOStreams to use its search endpoint.
+
+<!-- visual:service-flow -->
+## At a glance
+
+Zilean provides search data to other applications. Check a search from the consumer before relying on automated acquisition.
+
+```mermaid
+flowchart TD
+    A["Start PostgreSQL and Zilean"] --> B
+    B["Review the startup and import log"] --> C
+    C["Configure the intended search consumer"] --> D
+    D["Test a search from that consumer"] --> E
+    E["Review its returned results"]
+```
+
 
 ---
 

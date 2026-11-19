@@ -1,0 +1,41 @@
+WEBVTT
+
+intro
+00:00:00.000 --> 00:00:07.000
+Meet DUMB
+
+workflow
+00:00:07.000 --> 00:00:19.000
+How the pieces work together
+
+install
+00:00:19.000 --> 00:00:29.000
+Install on the host you use
+
+dashboard
+00:00:29.000 --> 00:00:39.000
+See your selected services
+
+service
+00:00:39.000 --> 00:00:49.000
+Work with one application
+
+logs
+00:00:49.000 --> 00:01:05.000
+Read and filter service logs
+
+updates
+00:01:05.000 --> 00:01:25.000
+Check an update before installing
+
+appearance
+00:01:25.000 --> 00:01:35.000
+Make the dashboard comfortable
+
+metrics
+00:01:35.000 --> 00:01:45.000
+Check resource use
+
+closing
+00:01:45.000 --> 00:01:54.000
+Try one complete workflow

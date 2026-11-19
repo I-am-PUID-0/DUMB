@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.14">
+    <meta name="dumb-docs-package-version" content="1.25.15">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="a999b9c02d75d56d52c3c234d4903a6ffa71364f">
-    <meta name="dumb-docs-release-tag" content="1.25.14">
+    <meta name="dumb-docs-build-commit" content="76e70155da779608b261d82d4a249c106b6959ae">
+    <meta name="dumb-docs-release-tag" content="1.25.15">
   
 
     
@@ -64,7 +64,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.64e1f9293e64.css">
+      <link rel="stylesheet" href="../../assets/css/main.a780955ca3a3.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6119,6 +6119,20 @@ backup stored outside the managed migration paths. For InfiniDysk, back up
 its complete configuration directory before rehearsal or cutover.</p>
 </div>
 <h2 id="recommended-flow">Recommended flow<a class="headerlink" href="#recommended-flow" title="Permanent link">&para;</a></h2>
+<p>A rehearsal and a cutover are separate jobs. Keep the backup until the application has been checked:</p>
+<pre class="mermaid"><code>flowchart TD
+    accTitle: Rehearse before database cutover
+    accDescr: Back up, pass preflight and rehearsal, then explicitly cut over and validate the application. Failed jobs require recovery review.
+    Backup["Keep an independent application backup"] --&gt; Preflight["Run preflight"]
+    Preflight --&gt; Checks{"Checks allow migration?"}
+    Checks --&gt;|No| Resolve["Resolve the reported blocker"]
+    Resolve --&gt; Preflight
+    Checks --&gt;|Yes| Rehearse["Run rehearsal and wait for a passed result"]
+    Rehearse --&gt; Confirm["Review downtime and confirm guarded cutover"]
+    Confirm --&gt; Result{"Cutover completed?"}
+    Result --&gt;|No| Recover["Preserve the job and follow its recovery action"]
+    Result --&gt;|Yes| Validate["Check application data, integrations and playback"]
+    Validate --&gt; Retain["Retain SQLite backup and test PostgreSQL backups"]</code></pre>
 <p>Plan downtime for cutover and keep a tested independent backup. Rehearsal verifies a staged conversion; it does not switch the application. After cutover, validate real application behavior before accepting PostgreSQL as the working provider.</p>
 <h3 id="1-run-preflight">1. Run preflight<a class="headerlink" href="#1-run-preflight" title="Permanent link">&para;</a></h3>
 <p>Open <strong>Database Migration</strong> on the service page and review every check. A failure blocks the job. A warning requires review but may be expected, such as a version that cannot be detected or a target database that already contains data.</p>
@@ -6297,11 +6311,11 @@ and other local state are protected alongside the PostgreSQL logical backup.</p>
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.14</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.14">Release notes</a>
+              <span>Documentation release 1.25.15</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.15">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;a999b9c02d75d56d52c3c234d4903a6ffa71364f" title="Documentation source commit a999b9c02d75d56d52c3c234d4903a6ffa71364f">Source a999b9c0</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;76e70155da779608b261d82d4a249c106b6959ae" title="Documentation source commit 76e70155da779608b261d82d4a249c106b6959ae">Source 76e70155</a>
             
             
           </div>

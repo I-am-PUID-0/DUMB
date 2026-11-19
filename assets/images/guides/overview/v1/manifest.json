@@ -1,0 +1,383 @@
+{
+  "schema_version": 1,
+  "complete": true,
+  "frontend": {
+    "version": "1.91.0",
+    "tag": "v1.91.0",
+    "commit": "66c90b93ea35abe546c07cbf643dc00a184bbd7f",
+    "repository": "https://github.com/nicocapalbo/dmbdb"
+  },
+  "scope": "Captioned conceptual introduction and actual released frontend stills/clips rendered with reserved example data. No narration, live backend, provider account, media library or installation.",
+  "source_verification": "The renderer checks the pinned packaged source identity and every used input hash. Immutable release-tag verification belongs to the capture procedure.",
+  "viewport": {
+    "width": 1920,
+    "height": 1080
+  },
+  "duration_seconds": 114,
+  "planned_duration_seconds": 114,
+  "input_package_manifest_sha256": "68cc795267172eea30d85a2df85fa94b1b49245efe52bdc8d26db423f4e16aba",
+  "scene_document_sha256": "5151382f16c6faba9971f57839252b8ff26a76db658df6d3679f6511f0be5e62",
+  "renderer_sha256": "2fbd1f029edad0269f1f3f42f398fbc8047e374538f8434e3aaec12fa2224a6a",
+  "logo_sha256": "ef276b200f37668ab48459131123cb9067b468d67a8a5ea5d5941cde6f45fea3",
+  "inputs": [
+    {
+      "file": "dashboard.webp",
+      "kind": "image",
+      "bytes": 34328,
+      "sha256": "7ca43831edd41bc8264cf1f77f0497f67d10f52c7e4c13369008d7e881200921",
+      "scenario": "dashboard",
+      "actions": [
+        "Review example service states on the dashboard"
+      ]
+    },
+    {
+      "file": "service-controls.webp",
+      "kind": "image",
+      "bytes": 46692,
+      "sha256": "97e3fb0be464b219bf2a230b185cecf658850c9af18a9db7414916c7631a6530",
+      "scenario": "service-controls",
+      "actions": [
+        "Open Sonarr",
+        "Review status and Start, Stop, Restart controls without changing them"
+      ]
+    },
+    {
+      "file": "service-logs.webm",
+      "kind": "video",
+      "bytes": 2700323,
+      "sha256": "ed274373f0c441bf1fc8ea42fbe9a6c22f71fe0d515e916df7199bfefdb639d7",
+      "scenario": "service-logs",
+      "actions": [
+        "Open Service Logs",
+        "Filter by Example Series",
+        "Review Warning and All levels",
+        "Choose Every 5s, then Off",
+        "Disable Follow tail"
+      ],
+      "duration_seconds": 33.44
+    },
+    {
+      "file": "updates.webm",
+      "kind": "video",
+      "bytes": 1845964,
+      "sha256": "469130acedaf0396095f39fb860eb86080526750945c03acaf05499d6ff84155",
+      "scenario": "updates-check",
+      "actions": [
+        "Open Service tools",
+        "Choose Updates",
+        "Check for updates",
+        "Review example version 4.0.1 without installing it"
+      ],
+      "duration_seconds": 20.6
+    },
+    {
+      "file": "appearance.webp",
+      "kind": "image",
+      "bytes": 46322,
+      "sha256": "76d97a4ea77e527a29e07b4b0a12e9fa45d598f4aafc25329720496dd3d0e0c2",
+      "scenario": "appearance-settings",
+      "actions": [
+        "Open Settings",
+        "Find Appearance",
+        "Select Light",
+        "Review the changed appearance"
+      ]
+    },
+    {
+      "file": "metrics.webp",
+      "kind": "image",
+      "bytes": 65798,
+      "sha256": "71293d34d5b62a0395f6b1f579f3d17353f65d9928b3523dafd53e1da9edeac8",
+      "scenario": "metrics",
+      "actions": [
+        "Open Metrics",
+        "Review example CPU, memory, disk and history measurements"
+      ]
+    }
+  ],
+  "scenes": [
+    {
+      "id": "intro",
+      "kind": "card",
+      "layout": "intro",
+      "title": "Meet DUMB",
+      "duration_seconds": 7,
+      "headline": "Your media tools, together",
+      "description": "Set up and manage the applications that find, organize and play your media.",
+      "caption": [
+        "DUMB brings your media tools into one dashboard.",
+        "Choose the applications and workflow you need."
+      ],
+      "start_seconds": 0,
+      "end_seconds": 7
+    },
+    {
+      "id": "workflow",
+      "kind": "card",
+      "layout": "workflow",
+      "title": "How the pieces work together",
+      "duration_seconds": 12,
+      "headline": "From a request to playback",
+      "steps": [
+        {
+          "title": "Find or request",
+          "detail": "Search directly or use an optional request app."
+        },
+        {
+          "title": "Prepare the library",
+          "detail": "Your selected workflow handles the item and its library path."
+        },
+        {
+          "title": "Watch or listen",
+          "detail": "A media server reads the configured library."
+        }
+      ],
+      "note": "You provide the accounts, provider access and library choices.",
+      "caption": [
+        "Start with one workflow and one media server.",
+        "DUMB manages the apps; you choose how your library works."
+      ],
+      "start_seconds": 7,
+      "end_seconds": 19
+    },
+    {
+      "id": "install",
+      "kind": "card",
+      "layout": "steps",
+      "title": "Install on the host you use",
+      "duration_seconds": 10,
+      "headline": "Choose your deployment guide",
+      "steps": [
+        {
+          "title": "Pick your host",
+          "detail": "Docker, a NAS, Windows with WSL2, or native Proxmox LXC."
+        },
+        {
+          "title": "Keep your data",
+          "detail": "Prepare persistent folders and the required access."
+        },
+        {
+          "title": "Open DUMB",
+          "detail": "Follow first-run setup in the dashboard."
+        }
+      ],
+      "caption": [
+        "Use the deployment guide for your platform.",
+        "Keep configuration and application data in persistent storage."
+      ],
+      "start_seconds": 19,
+      "end_seconds": 29
+    },
+    {
+      "id": "dashboard",
+      "kind": "image",
+      "media": "dashboard.webp",
+      "fit": "cover-top",
+      "title": "See your selected services",
+      "duration_seconds": 10,
+      "caption": [
+        "The dashboard shows the services in your DUMB installation.",
+        "Open a service to review its status and controls."
+      ],
+      "start_seconds": 29,
+      "end_seconds": 39
+    },
+    {
+      "id": "service",
+      "kind": "image",
+      "media": "service-controls.webp",
+      "fit": "cover-top",
+      "title": "Work with one application",
+      "duration_seconds": 10,
+      "caption": [
+        "A service page brings its controls, settings and logs together.",
+        "Use the embedded application to finish its own setup."
+      ],
+      "start_seconds": 39,
+      "end_seconds": 49
+    },
+    {
+      "id": "logs",
+      "kind": "video",
+      "media": "service-logs.webm",
+      "fit": "cover-top",
+      "media_start_seconds": 0,
+      "title": "Read and filter service logs",
+      "duration_seconds": 16,
+      "caption": [
+        "Logs show what the selected service is doing.",
+        "Filter messages by name or level to focus on the problem."
+      ],
+      "start_seconds": 49,
+      "end_seconds": 65,
+      "source_end_seconds": 16,
+      "end_frame_hold_seconds": 0,
+      "playback_rate": 1
+    },
+    {
+      "id": "updates",
+      "kind": "video",
+      "media": "updates.webm",
+      "fit": "contain",
+      "media_start_seconds": 0,
+      "title": "Check an update before installing",
+      "duration_seconds": 20,
+      "caption": [
+        "Open Tools → Updates and check for an available version.",
+        "Review the result before choosing to install; this example only checks."
+      ],
+      "start_seconds": 65,
+      "end_seconds": 85,
+      "source_end_seconds": 20,
+      "end_frame_hold_seconds": 0,
+      "playback_rate": 1
+    },
+    {
+      "id": "appearance",
+      "kind": "image",
+      "media": "appearance.webp",
+      "fit": "cover-top",
+      "title": "Make the dashboard comfortable",
+      "duration_seconds": 10,
+      "caption": [
+        "Use appearance settings to choose a comfortable dashboard view.",
+        "These preferences change how the frontend is displayed."
+      ],
+      "start_seconds": 85,
+      "end_seconds": 95
+    },
+    {
+      "id": "metrics",
+      "kind": "image",
+      "media": "metrics.webp",
+      "fit": "contain",
+      "title": "Check resource use",
+      "duration_seconds": 10,
+      "caption": [
+        "Metrics help you review resource use and spot pressure.",
+        "Use the charts alongside the affected service's logs."
+      ],
+      "start_seconds": 95,
+      "end_seconds": 105
+    },
+    {
+      "id": "closing",
+      "kind": "card",
+      "layout": "steps",
+      "title": "Try one complete workflow",
+      "duration_seconds": 9,
+      "headline": "Make the first test a small one",
+      "steps": [
+        {
+          "title": "Install DUMB",
+          "detail": "Follow the guide for your host."
+        },
+        {
+          "title": "Set up your apps",
+          "detail": "Add the accounts, providers and library paths they need."
+        },
+        {
+          "title": "Test one item",
+          "detail": "Check an import and playback before adding more services."
+        }
+      ],
+      "caption": [
+        "Follow the deployment guide, then complete first-run setup.",
+        "Test one import and playback before expanding your stack."
+      ],
+      "start_seconds": 105,
+      "end_seconds": 114
+    }
+  ],
+  "files": [
+    {
+      "file": "dumb-overview.mp4",
+      "bytes": 2898719,
+      "sha256": "7ff4e9dfaf4593e90a21db574700d00bdc949aeb80d585ff619de69fd301e007",
+      "media_type": "video/mp4"
+    },
+    {
+      "file": "poster.webp",
+      "bytes": 50096,
+      "sha256": "4f9e5429c5e706230909ae70ad4ae86bbd9c46a3a51a96adcc54fd0116b4e3dc",
+      "media_type": "image/webp"
+    },
+    {
+      "file": "captions.vtt",
+      "bytes": 1516,
+      "sha256": "2449dba3797cc3e7bf0e155653dcb5de17c2f547ac1768fa91ca753c96aaf323",
+      "media_type": "text/vtt"
+    },
+    {
+      "file": "chapters.vtt",
+      "bytes": 657,
+      "sha256": "dc81aa6ce38dfcc5d5cd343600d1ecf10370bdae0f02f44dcfdc667eaf2f330f",
+      "media_type": "text/vtt"
+    }
+  ],
+  "recording": {
+    "raw_duration_seconds": 115.92,
+    "leading_trim_seconds": 1.9200000000000017,
+    "scene_timing": [
+      {
+        "id": "intro",
+        "start_seconds": 0.04704738800000018,
+        "planned_duration_seconds": 7
+      },
+      {
+        "id": "workflow",
+        "start_seconds": 7.079159347,
+        "planned_duration_seconds": 12
+      },
+      {
+        "id": "install",
+        "start_seconds": 19.078199938,
+        "planned_duration_seconds": 10
+      },
+      {
+        "id": "dashboard",
+        "start_seconds": 29.077446258,
+        "planned_duration_seconds": 10
+      },
+      {
+        "id": "service",
+        "start_seconds": 39.078766065,
+        "planned_duration_seconds": 10
+      },
+      {
+        "id": "logs",
+        "start_seconds": 49.109693016,
+        "planned_duration_seconds": 16
+      },
+      {
+        "id": "updates",
+        "start_seconds": 65.111397571,
+        "planned_duration_seconds": 20
+      },
+      {
+        "id": "appearance",
+        "start_seconds": 85.07553366199998,
+        "planned_duration_seconds": 10
+      },
+      {
+        "id": "metrics",
+        "start_seconds": 95.07677927499999,
+        "planned_duration_seconds": 10
+      },
+      {
+        "id": "closing",
+        "start_seconds": 105.077902016,
+        "planned_duration_seconds": 9
+      }
+    ]
+  },
+  "encoding": {
+    "codec": "h264",
+    "pixel_format": "yuv420p",
+    "fps": 30,
+    "audio": false,
+    "faststart": true,
+    "maxrate_kbps": 1600
+  },
+  "errors": []
+}

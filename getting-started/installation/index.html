@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.14">
+    <meta name="dumb-docs-package-version" content="1.25.15">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="a999b9c02d75d56d52c3c234d4903a6ffa71364f">
-    <meta name="dumb-docs-release-tag" content="1.25.14">
+    <meta name="dumb-docs-build-commit" content="76e70155da779608b261d82d4a249c106b6959ae">
+    <meta name="dumb-docs-release-tag" content="1.25.15">
   
 
     
@@ -64,7 +64,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.64e1f9293e64.css">
+      <link rel="stylesheet" href="../../assets/css/main.a780955ca3a3.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -781,6 +781,17 @@
       On this page
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#plan-the-library-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Plan the library boundary
+      </span>
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#choose-your-platform-first" class="md-nav__link">
@@ -5693,6 +5704,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#plan-the-library-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Plan the library boundary
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#choose-your-platform-first" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -5875,6 +5897,21 @@
 
 <h1 id="before-you-install">Before you install<a class="headerlink" href="#before-you-install" title="Permanent link">&para;</a></h1>
 <p>Have a host, persistent storage, and credentials for the services you plan to use. DUMB creates its initial configuration at startup; you do not need to write a complete <code>dumb_config.json</code> first.</p>
+<h2 id="plan-the-library-boundary">Plan the library boundary<a class="headerlink" href="#plan-the-library-boundary" title="Permanent link">&para;</a></h2>
+<p>Choose the layout before configuring host mounts. Seeing the same folder name in two applications does not prove that they can read the same files.</p>
+<pre class="mermaid"><code>flowchart TD
+    Consumers["Where will the library be read?"] --&gt; Inside["Only apps inside DUMB"]
+    Consumers --&gt; Container["Another container on this host"]
+    Consumers --&gt; Remote["Another machine"]
+    Inside --&gt; Normal["Use the normal media bind"]
+    Container --&gt; Paths["Match library and symlink target paths"]
+    Paths --&gt; FUSE{"Must it see DUMB-created FUSE submounts?"}
+    FUSE --&gt;|Yes| Shared["Prepare a shared host mount and propagation"]
+    FUSE --&gt;|No| Files["Verify ordinary file and link access"]
+    Remote --&gt; Export["Plan an explicit sharing method"]
+    Shared --&gt; Test["Verify access from the actual reader"]
+    Files --&gt; Test
+    Export --&gt; Test</code></pre>
 <h2 id="choose-your-platform-first">Choose your platform first<a class="headerlink" href="#choose-your-platform-first" title="Permanent link">&para;</a></h2>
 <p>These guides explain the installation steps for each platform. Use this page to prepare, then follow your selected guide.</p>
 <ul>
@@ -6073,11 +6110,11 @@
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.14</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.14">Release notes</a>
+              <span>Documentation release 1.25.15</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.15">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;a999b9c02d75d56d52c3c234d4903a6ffa71364f" title="Documentation source commit a999b9c02d75d56d52c3c234d4903a6ffa71364f">Source a999b9c0</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;76e70155da779608b261d82d4a249c106b6959ae" title="Documentation source commit 76e70155da779608b261d82d4a249c106b6959ae">Source 76e70155</a>
             
             
           </div>

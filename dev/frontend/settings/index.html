@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.14">
+    <meta name="dumb-docs-package-version" content="1.25.15">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="a999b9c02d75d56d52c3c234d4903a6ffa71364f">
-    <meta name="dumb-docs-release-tag" content="1.25.14">
+    <meta name="dumb-docs-build-commit" content="76e70155da779608b261d82d4a249c106b6959ae">
+    <meta name="dumb-docs-release-tag" content="1.25.15">
   
 
     
@@ -64,7 +64,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.64e1f9293e64.css">
+      <link rel="stylesheet" href="../../assets/css/main.a780955ca3a3.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6319,9 +6319,13 @@
 <h2 id="appearance">Appearance<a class="headerlink" href="#appearance" title="Permanent link">&para;</a></h2>
 <p>Choose <strong>System Default</strong> to follow your operating system, or select a light/dark palette. This preference is stored in the browser and does not change backend configuration.</p>
 <figure class="docs-visual docs-frontend-figure">
-<p><img alt="Appearance settings with the dashboard theme choices." decoding="async" loading="lazy" src="../../assets/images/guides/frontend/v1.91.0/appearance.webp" /></p>
-<figcaption class="docs-visual-caption">Choose the palette you find easiest to read. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
+<video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/v1.91.0/tour-2/appearance.webp" aria-label="Choose a dashboard color palette" aria-describedby="appearance-demo-caption">
+  <source src="../../assets/images/guides/frontend/v1.91.0/tour-2/appearance.webm" type="video/webm">
+  <p><a href="../../assets/images/guides/frontend/v1.91.0/tour-2/appearance.webm">Download the demonstration</a>, or follow the written steps above.</p>
+</video>
+<figcaption id="appearance-demo-caption" class="docs-visual-caption">Watch: open Appearance and select the Light palette. This changes a browser preference. DUMB Frontend 1.91.0 · example data. Other versions may look different. <a href="../../assets/images/guides/frontend/v1.91.0/tour-2/appearance.webp">Open the full-size screenshot</a>.</figcaption>
 </figure>
+
 <h2 id="about-section">About section<a class="headerlink" href="#about-section" title="Permanent link">&para;</a></h2>
 <h3 id="version-information">Version information<a class="headerlink" href="#version-information" title="Permanent link">&para;</a></h3>
 <p>The About section shows the installed API, frontend, and service versions. Select an <strong>Update available</strong> badge to open the <strong>DUMB Updates</strong> dialog. Where GitHub history includes the installed release, it also shows how many releases the component is behind. Moving development builds show <strong>Dev build</strong> instead of an invented release count.</p>
@@ -6330,13 +6334,19 @@
 <p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>Ordinary stable notices are suppressed when the installed version is equal to or newer than that release. Explicit branch, commit, and release selections remain available for review.</p>
 </div>
-<p><img alt="About settings" class="shadow" src="../../assets/images/frontend/about_settings.png" /></p>
+<figure class="docs-visual docs-frontend-figure">
+<p><img alt="About settings showing the DUMB API and frontend versions." decoding="async" loading="lazy" src="../../assets/images/guides/frontend/v1.91.0/tour-2/about.webp" /></p>
+<figcaption class="docs-visual-caption">Check both versions before choosing the matching documentation. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
+</figure>
 <h3 id="launch-onboarding">Launch Onboarding<a class="headerlink" href="#launch-onboarding" title="Permanent link">&para;</a></h3>
 <p>Choose <strong>Launch Onboarding</strong> and confirm to review services again. If onboarding has already completed, you can go directly to optional services.</p>
 <p>Existing application data is retained, but the wizard can apply new settings over the current configuration. Already enabled non-instance services are not offered as new selections; use their service pages for ordinary configuration changes.</p>
 <h2 id="embedded-service-uis">Embedded service UIs<a class="headerlink" href="#embedded-service-uis" title="Permanent link">&para;</a></h2>
-<p>Enable <strong>Service UIs</strong> to add embedded application tabs, direct links, and full-window controls to supported service pages. Disabling it removes dashboard access through those routes; native-port access still depends on your deployment's port mappings.</p>
-<p><img alt="Embedded UI settings" class="shadow" src="../../assets/images/frontend/embedded_ui_settings.png" /></p>
+<p>Select <strong>Enable embedded service iFrames</strong> to add embedded application tabs, direct links, and full-window controls to supported service pages. Disabling it removes dashboard access through those routes; native-port access still depends on your deployment's port mappings.</p>
+<figure class="docs-visual docs-frontend-figure">
+<p><img alt="Embedded UIs settings with the Enable embedded service iFrames checkbox." decoding="async" loading="lazy" src="../../assets/images/guides/frontend/v1.91.0/tour-2/embedded-ui-settings.webp" /></p>
+<figcaption class="docs-visual-caption">Use Enable embedded service iFrames to control DUMB's application tabs and links. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
+</figure>
 <p>See <a href="../../features/embedded-ui/">Embedded service UIs</a> for routing, application logins, and Authelia/TPA SSO exceptions.</p>
 <h2 id="notifications">Notifications<a class="headerlink" href="#notifications" title="Permanent link">&para;</a></h2>
 <p>This section requires the backend's <code>notifications</code> capability. It configures outbound delivery that continues without an open browser.</p>
@@ -6369,10 +6379,8 @@
 </tbody>
 </table>
 <p>A GitHub token should grant only the read access required by the selected source. Public release checks normally need no token. Enter the required token here, select <strong>Save</strong>, and wait for <strong>Saved</strong>. Retry the connection or update check that needed it. Technical deployments can also use a supported <a href="../../features/configuration/#configuration-precedence">configuration override</a>.</p>
-<p><img alt="Token settings" class="shadow" src="../../assets/images/frontend/tokens_settings.png" /></p>
 <h2 id="ui-preferences">UI preferences<a class="headerlink" href="#ui-preferences" title="Permanent link">&para;</a></h2>
 <p><strong>Log Timestamp Format</strong> controls MDY/DMY date order, 12/24-hour time, and leading zeros. It changes log presentation, not the backend's timezone or original log timestamps.</p>
-<p><img alt="Log timestamp settings" class="shadow" src="../../assets/images/frontend/log_timestamp_settings.png" /></p>
 <h2 id="advanced">Advanced<a class="headerlink" href="#advanced" title="Permanent link">&para;</a></h2>
 <div class="docs-dev-section">
 <p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
@@ -6414,7 +6422,7 @@
 </tbody>
 </table>
 <p>Database Health stays opt-in per service. Geek Mode does not run repair, integrity checks, or migrations.</p>
-<p><img alt="Auto-restart controls" class="shadow" src="../../assets/images/frontend/auto_restart.png" /></p>
+<p>The <a href="../service-pages/#dependency-graph-view">dependency-panel example</a> shows its ordinary views. Geek Mode adds the diagnostic controls listed above.</p>
 <h2 id="authentication-settings">Authentication settings<a class="headerlink" href="#authentication-settings" title="Permanent link">&para;</a></h2>
 <h3 id="authentication-provider">Authentication provider<a class="headerlink" href="#authentication-provider" title="Permanent link">&para;</a></h3>
 <p>Choose <strong>Local</strong>, <strong>Hybrid</strong>, or <strong>OIDC only</strong> when supported by the connected API. Hybrid retains local login for recovery. OIDC-only requires an explicit lockout-risk confirmation.</p>
@@ -6428,7 +6436,7 @@
 <p>Enable authentication before allowing untrusted network access. Disabling it exposes DUMB controls to anyone who can reach the API.</p>
 <h3 id="user-management">User management<a class="headerlink" href="#user-management" title="Permanent link">&para;</a></h3>
 <p>Add, disable, enable, or delete local users under Authentication. DUMB protects the last active user from disable/delete. All enabled users have the same operator privileges; groups do not create viewer or administrator roles.</p>
-<p><img alt="Authentication settings" class="shadow" src="../../assets/images/frontend/auth_settings.png" /></p>
+<p>Follow the <a href="../../features/authentication/#sign-in-and-check-access">sign-in and access-check diagram</a> when testing an authentication change.</p>
 <div class="docs-dev-section">
 <p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <h2 id="backups-and-restore">Backups and restore<a class="headerlink" href="#backups-and-restore" title="Permanent link">&para;</a></h2>
@@ -6529,11 +6537,11 @@
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.14</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.14">Release notes</a>
+              <span>Documentation release 1.25.15</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.15">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;a999b9c02d75d56d52c3c234d4903a6ffa71364f" title="Documentation source commit a999b9c02d75d56d52c3c234d4903a6ffa71364f">Source a999b9c0</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;76e70155da779608b261d82d4a249c106b6959ae" title="Documentation source commit 76e70155da779608b261d82d4a249c106b6959ae">Source 76e70155</a>
             
             
           </div>

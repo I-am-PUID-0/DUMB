@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.14">
+    <meta name="dumb-docs-package-version" content="1.25.15">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="a999b9c02d75d56d52c3c234d4903a6ffa71364f">
-    <meta name="dumb-docs-release-tag" content="1.25.14">
+    <meta name="dumb-docs-build-commit" content="76e70155da779608b261d82d4a249c106b6959ae">
+    <meta name="dumb-docs-release-tag" content="1.25.15">
   
 
     
@@ -64,7 +64,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.64e1f9293e64.css">
+      <link rel="stylesheet" href="../../assets/css/main.a780955ca3a3.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6382,6 +6382,23 @@ checks, the detailed checklist and the masked configuration payload are collapse
 until you choose to inspect them. The review keeps you in onboarding rather than
 sending you to an app that has not started yet.</p>
 <h2 id="connect-the-running-apps">Connect the running apps<a class="headerlink" href="#connect-the-running-apps" title="Permanent link">&para;</a></h2>
+<p>The guide retains incomplete work when a prerequisite or account still needs attention:</p>
+<pre class="mermaid"><code>flowchart TD
+    accTitle: Finish connections without losing unfinished tasks
+    accDescr: Refresh prerequisites, apply or check an exact connection, and retain incomplete work when it must be finished later.
+    Open["Open Walk me through setup"] --&gt; Task["Review the current task and its result"]
+    Task --&gt; Ready{"Required app choices available?"}
+    Ready --&gt;|No| Prepare["Finish the app's account or prerequisite setup"]
+    Prepare --&gt; Refresh["Refresh app choices and status"]
+    Refresh --&gt; Task
+    Ready --&gt;|Yes| Choices["Choose the exact instances, paths and options"]
+    Choices --&gt; Action["Apply or check this step deliberately"]
+    Action --&gt; Result{"Task still needs attention?"}
+    Result --&gt;|No| Next["Continue to another task"]
+    Result --&gt;|Yes| Now{"Can you finish it now?"}
+    Now --&gt;|Yes| Choices
+    Now --&gt;|No| Later["Do this later: keep the unfinished task"]
+    Later --&gt; Next</code></pre>
 <p>Choose <strong>Walk me through setup</strong> on the saved setup panel to work through one
 task at a time. From onboarding, it opens the separate <strong>Connect your apps</strong> page
 without discarding the saved run or unfinished work. The dashboard and service
@@ -6791,11 +6808,11 @@ credential drafts.</p>
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.14</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.14">Release notes</a>
+              <span>Documentation release 1.25.15</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.15">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;a999b9c02d75d56d52c3c234d4903a6ffa71364f" title="Documentation source commit a999b9c02d75d56d52c3c234d4903a6ffa71364f">Source a999b9c0</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;76e70155da779608b261d82d4a249c106b6959ae" title="Documentation source commit 76e70155da779608b261d82d4a249c106b6959ae">Source 76e70155</a>
             
             
           </div>

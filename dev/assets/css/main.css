@@ -147,6 +147,7 @@
 .docs-visual img, .docs-visual svg { display: block; width: 100%; max-width: 100%; height: auto; margin: 0 auto; }
 .docs-visual .docs-image-button { width: 100%; max-width: 100%; }
 .docs-visual figcaption, .docs-visual-caption { margin: .65rem 0 0; font-size: .69rem; line-height: 1.6; color: var(--md-default-fg-color--light); }
+.md-typeset .mermaid { display: flex; justify-content: center; margin: 1.25rem 0; }
 .docs-home { margin-top: .25rem; }
 .home-hero { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); width: 100%; min-width: 0; gap: 3.4rem; align-items: center; padding: 2.4rem 0 3rem; }
 .home-intro { min-width: 0; }
@@ -190,6 +191,8 @@
 .docs-footer-meta .md-social { flex-shrink: 0; margin: 0; }
 .docs-footer-info .md-copyright:empty { display: none; }
 .md-typeset .docs-frontend-figure { box-sizing: border-box; width: 100%; max-width: 100%; margin: 1.5rem 0; }
+.md-typeset .docs-overview-figure { box-sizing: border-box; width: 100%; max-width: 100%; margin: 1.5rem 0; }
+.md-typeset .docs-overview-figure figcaption { max-width: 84ch; margin: .6rem auto 0; font-size: .72rem; }
 .docs-frontend-figure img { display: block; width: 100%; height: auto; border: 1px solid var(--docs-border); border-radius: .5rem; }
 .docs-frontend-figure .docs-image-button { width: 100%; }
 .md-typeset .docs-frontend-figure figcaption { max-width: 78ch; margin: .6rem auto 0; font-size: .72rem; color: var(--md-default-fg-color--light); }
