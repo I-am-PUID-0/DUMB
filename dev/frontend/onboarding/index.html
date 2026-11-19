@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.12">
+    <meta name="dumb-docs-package-version" content="1.25.13">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="ea75d5db1478c64055187eb21f0cd19c8da289e1">
-    <meta name="dumb-docs-release-tag" content="1.25.12">
+    <meta name="dumb-docs-build-commit" content="ed107f0273f0c39554c7e13908dce4b100e2592e">
+    <meta name="dumb-docs-release-tag" content="1.25.13">
   
 
     
@@ -6278,9 +6278,18 @@
 <p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>For InfiniDysk 2, review the separate runtime and mount choices. Generation 1 retains historical rclone; generation 2 can use rclone-over-WebDAV or native FUSE. FUSE needs a visible device, permissions, and the same mount in every consumer namespace.</p>
 <p>Choosing generation 2 opens its guarded installation/migration tool without accepting its acknowledgements or starting a job. Finish the tool, then refresh the setup plan. Existing 1.x data needs major migration; selecting an option does not convert it. Native FUSE omits the associated rclone dependency. See <a href="../../features/infinidysk-v2-migration/">InfiniDysk 2 installation and upgrade</a>.</p>
-<h3 id="connections-and-choices">Connections and choices<a class="headerlink" href="#connections-and-choices" title="Permanent link">&para;</a></h3>
-<p>Choose exact application instances, authorized external services, provider-account allocations, library paths, quality profiles, languages, and default/4K request routes. <strong>External server</strong> and <strong>No media server</strong> are separate choices.</p>
-<p>Some profiles, roots, and generated keys are available only after first start. Leave those tasks unfinished and return to them later. Existing unowned settings require a reviewed adoption before DUMB changes them.</p>
+<h3 id="installation-choices">Installation choices<a class="headerlink" href="#installation-choices" title="Permanent link">&para;</a></h3>
+<p>Review the choices needed to install the selected apps, such as the InfiniDysk
+runtime and mount mode. App connections, quality profiles and libraries can be
+finished after the apps start, when their actual settings are available.</p>
+<p>Experienced users can open <strong>Show connection settings before startup</strong>. The full
+form keeps each app's section collapsed until opened. Unavailable menus explain
+what is missing; leaving a choice for later retains its setup task. It does not
+bypass confirmed installation blockers or complete an untested connection.</p>
+<p>Preparing a setup preview can send entered credentials to DUMB's protected setup
+inputs before you choose <strong>Start services</strong>. Browser storage remembers the setup
+run identifier and walkthrough position/preferences, not passwords or unfinished
+credential drafts.</p>
 </div>
 <h3 id="embedded-service-access">Embedded service access<a class="headerlink" href="#embedded-service-access" title="Permanent link">&para;</a></h3>
 <p>Enable embedded UIs when offered to use proxied service tabs, split view, and direct links. This does not publish public DNS or configure an external HTTPS origin.</p>
@@ -6288,10 +6297,49 @@
 <p>Review selected services, dependencies, credentials, instance paths, and custom options before applying. Confirmation can install, configure, and start services.</p>
 <div class="docs-dev-section">
 <p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
-<p>The plan groups work into <strong>DUMB will configure</strong>, <strong>Information you must provide</strong>, and <strong>Finish manually</strong>. Choose <strong>Start services</strong> to apply the reviewed plan.</p>
+<p><strong>Review your setup</strong> summarizes the selected apps and their purposes.
+Supporting services are listed separately in a collapsed section. <strong>What happens
+when you start</strong> explains installation, configuration and the retained checklist;
+<strong>Finish after the apps start</strong> separates required connection tasks from optional
+checks.</p>
+<p>Review the visible blocking problems before continuing. Detailed checks, saved
+connection choices and the masked configuration payload are available in
+collapsed sections. You can return to the earlier choices without losing
+entries. Choose <strong>Start services</strong> to apply the reviewed plan. Starting the apps
+does not mark deferred tasks or untested connections complete.</p>
 <h3 id="setup-progress-and-retained-tasks">Setup progress and retained tasks<a class="headerlink" href="#setup-progress-and-retained-tasks" title="Permanent link">&para;</a></h3>
-<p>Follow the checklist and live logs. Correct the relevant input, then apply, retry, or recheck that action. <strong>Continue to dashboard</strong> leaves the wizard without discarding unfinished work; the same checklist appears on the dashboard and matching service pages.</p>
+<p>Follow installation progress. Expand <strong>Installation logs</strong> when you need the
+detailed output, or choose <strong>Show full checklist</strong> to inspect the saved tasks.
+Correct the relevant input, then apply, retry, or recheck that action.
+<strong>Continue to dashboard</strong> leaves the wizard without discarding unfinished work;
+the same checklist appears on the dashboard and matching service pages.</p>
 <p>Manual completion records your confirmation separately from an independently passed check. Closing the browser does not complete remaining tasks. External provider/account setup and unsupported connections remain visible as manual work.</p>
+<h3 id="connect-your-apps-after-startup">Connect your apps after startup<a class="headerlink" href="#connect-your-apps-after-startup" title="Permanent link">&para;</a></h3>
+<p>Once the apps are ready, choose <strong>Walk me through setup</strong>. From onboarding, this
+opens the separate <strong>Connect your apps</strong> page while retaining the saved setup and
+unfinished tasks. The dashboard and service pages also offer the guide.
+<strong>Finish connecting your apps</strong> presents one task at a time, with its current
+result, explanation and earlier steps it depends on.</p>
+<ol>
+<li>Review the task marked <strong>Needed for this connection</strong> or <strong>Optional</strong>.</li>
+<li>Enter the requested choices, then deliberately apply or check that task.
+   <strong>Refresh app choices and status</strong> retrieves newly available app settings.</li>
+<li>Use <strong>Do this later</strong> when an app still needs an account or other preparation.
+   Moving to another task does not mark it complete.</li>
+<li>Choose <strong>Pause walkthrough</strong> to leave the guide. <strong>Resume guided setup</strong> returns
+   to the saved task from the dashboard or the matching service page.</li>
+</ol>
+<p>A new app may need initial account setup before it advertises profiles,
+languages or library folders. If the list of compatible library apps itself is
+empty, select or register the intended Arr application, or leave that connection
+off; starting unrelated apps will not create that choice.</p>
+<p><strong>I completed this in the app</strong> records your confirmation, not a passed automatic
+connection check. A failed check still needs attention even after that
+confirmation. Optional workflow tests require their own scope and consent;
+opening the guide does not authorize downloads, imports or scans.</p>
+<p>Use <strong>Show full checklist</strong> to inspect all tasks directly. Pausing the walkthrough
+does not cancel work already accepted by DUMB. Skipping the optional guide also
+leaves required connection tasks on the checklist.</p>
 </div>
 <h2 id="skipping-onboarding">Skipping onboarding<a class="headerlink" href="#skipping-onboarding" title="Permanent link">&para;</a></h2>
 <p>Use onboarding for the guided setup. If you leave before finishing, open <strong>Settings → Onboarding → Launch Onboarding</strong> to return. Keep track of unfinished provider, account, library, and connection steps; a running service may still need them.</p>
@@ -6344,6 +6392,13 @@
 <div class="docs-dev-section">
 <p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
 <p>Refreshing loses unsaved credential drafts, but the backend's retained setup run remains. Resume its checklist rather than reinstalling successful services.</p>
+<p>An unavailable profile or library-folder menu can be expected before an app's
+first start or account setup. Finish that preparation, then refresh its choices
+from the saved task. If the list of compatible library apps is empty, select or
+register the intended app instead. A confirmed storage or permission blocker is
+different: correct the reported mount or access problem and refresh the preview.
+You do not need to change a service's user ID merely because DUMB owns its
+installed program files.</p>
 </div>
 
 
@@ -6390,11 +6445,11 @@
     
     <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
       
-        <span>Documentation release 1.25.12</span>
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.12">Release notes</a>
+        <span>Documentation release 1.25.13</span>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.13">Release notes</a>
       
       
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;ea75d5db1478c64055187eb21f0cd19c8da289e1" title="Documentation source commit ea75d5db1478c64055187eb21f0cd19c8da289e1">Source ea75d5db</a>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;ed107f0273f0c39554c7e13908dce4b100e2592e" title="Documentation source commit ed107f0273f0c39554c7e13908dce4b100e2592e">Source ed107f02</a>
       
       
     </div>

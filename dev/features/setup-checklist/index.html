@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.12">
+    <meta name="dumb-docs-package-version" content="1.25.13">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="ea75d5db1478c64055187eb21f0cd19c8da289e1">
-    <meta name="dumb-docs-release-tag" content="1.25.12">
+    <meta name="dumb-docs-build-commit" content="ed107f0273f0c39554c7e13908dce4b100e2592e">
+    <meta name="dumb-docs-release-tag" content="1.25.13">
   
 
     
@@ -1737,6 +1737,17 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         Before starting
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#connect-the-running-apps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Connect the running apps
       </span>
     </span>
   </a>
@@ -6061,6 +6072,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#connect-the-running-apps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Connect the running apps
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#share-provider-accounts-without-entering-credentials-twice" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -6345,7 +6367,26 @@
 <p>The review distinguishes <strong>Chosen by you</strong>, <strong>Required dependency</strong>, and <strong>Optional companion</strong>. A media server is a choice; a database or mount helper can become required by another selection. The existing Core, Optional and Dependent documentation sections are catalogs, not a statement that every core service is mandatory.</p>
 <p>Choose the complete arrangement you want. DUMB prepares the selected instance configuration before reconciling connections, so a provider-first selection does not depend on an Arr already existing when its provider starts.</p>
 <h2 id="before-starting">Before starting<a class="headerlink" href="#before-starting" title="Permanent link">&para;</a></h2>
-<p><strong>Connections and choices</strong> collects decisions DUMB cannot safely infer:</p>
+<p>Onboarding first collects the apps and essential installation choices. Confirm
+runtime, mount and storage requirements, review the plan, then choose <strong>Start
+services</strong>. The optional <strong>Walk me through setup</strong> guide becomes useful after
+startup, when the apps can advertise their real choices. Experienced users can
+instead open <strong>Show connection settings before startup</strong>; app sections start
+collapsed and unfinished choices remain on the saved checklist.</p>
+<p><strong>Review your setup</strong> shows the apps you chose, their purposes and a collapsed
+list of supporting services. It explains what DUMB will do when you start and
+counts required connection tasks separately from optional work that can wait.
+Confirmed blocking checks remain visible. Saved connection choices, technical
+checks, the detailed checklist and the masked configuration payload are collapsed
+until you choose to inspect them. The review keeps you in onboarding rather than
+sending you to an app that has not started yet.</p>
+<h2 id="connect-the-running-apps">Connect the running apps<a class="headerlink" href="#connect-the-running-apps" title="Permanent link">&para;</a></h2>
+<p>Choose <strong>Walk me through setup</strong> on the saved setup panel to work through one
+task at a time. From onboarding, it opens the separate <strong>Connect your apps</strong> page
+without discarding the saved run or unfinished work. The dashboard and service
+pages also offer the guide. <strong>Finish connecting your apps</strong> shows what the current
+task does, its result and any earlier steps it needs. It collects decisions DUMB
+cannot safely infer:</p>
 <ul>
 <li>Exact Arr and media-server instances to connect.</li>
 <li>Authorized application credentials or an explicitly selected external server.</li>
@@ -6354,11 +6395,34 @@
 <li>Provider accounts and connection allocations.</li>
 <li>Whether an existing connection may be adopted into DUMB management.</li>
 </ul>
+<p>For example, select the Arr instance before choosing its quality profile and
+library folder. A download location is where the downloader presents completed
+files; a library folder is where the Arr application organizes the collection.
+Both paths must be meaningful to the application that uses them. Provider
+credentials retrieve content; indexer credentials find it. One does not replace
+the other.</p>
+<p><strong>Needed for this connection</strong> means the task is required before that connection
+can be finished. <strong>Optional</strong> work can be omitted; enable <strong>Include optional
+workflow checks</strong> when you want to inspect the separately authorized tests.
+Neither label proves that a connection has been tested. <strong>Show full checklist</strong>
+lets experienced users work directly with all the saved tasks.</p>
 <p>Existing external Radarr, Sonarr, Lidarr and Whisparr servers can be registered under <strong>Existing external services</strong>. Give each a stable ID, its direct API base URL and an authorized API key. Select those exact references in supported connection assignments. Discovery is read-only; permission to change an external server's configuration is a separate choice. Supported tasks can configure native download clients, root folders and explicit remote-path mappings after preview and approval. You must create and authorize the actual mounts and enter paths in the correct server's namespace. DUMB does not install or restart an external server.</p>
 <p>Lists such as external servers and indexers have individual entries with guided fields. Choosing an installed indexer definition refreshes its advertised settings, including masked credential inputs. Entries omitted from a later draft do not authorize deleting native settings.</p>
-<p>Choices refresh as you select targets. Some profiles, roots or generated keys are discoverable only after first start. Leave those choices unfinished, start the services, then return to the retained task. DUMB reports missing decisions rather than treating an instance named <code>1080p</code> as a configured quality profile.</p>
+<p>Choices refresh as you select targets. Some profiles, roots or generated keys are
+discoverable only after first start or initial account setup. An unavailable menu
+explains what must be ready first. Use <strong>Do this later</strong> to retain the unfinished
+task. After the app is ready, <strong>Recheck this step</strong> or <strong>Refresh app choices and
+status</strong> retrieves its current choices and result. DUMB does not offer invented
+profiles or treat an instance named <code>1080p</code> as a configured quality profile.</p>
+<p>An empty list of compatible Arr applications requires selecting or registering
+the intended library app. If you do not want that connection, leave it off.
+Starting unrelated services does not add a missing application to this list.</p>
+<p><strong>See another task</strong> lets you move through the guide without claiming the current
+task succeeded. <strong>Pause walkthrough</strong> closes the guide; it does not cancel work
+already accepted by DUMB. Choose <strong>Resume guided setup</strong> from the dashboard or a
+matching service page to continue the saved run. Skipping this optional guide
+does not complete required connection tasks.</p>
 <p>Supported Jellyfin and Emby library forms offer <strong>Scan this new library after creation</strong>, off by default. Review the paths before enabling it. The choice authorizes the initial scan only when DUMB creates that library; it does not rescan an existing library. An empty newly created library may need this initialization before native file-change notifications can discover its first item.</p>
-<p><strong>Review Configuration</strong> shows meaningful choices with credentials masked, followed by <strong>DUMB will configure</strong>, <strong>Information you must provide</strong>, and <strong>Finish manually</strong>. <strong>Start services</strong> appears on this review step.</p>
 <p><strong>No media server</strong> and <strong>External server</strong> are different guided decisions. DUMB carries the chosen default into the advertised connection fields for selected request and maintenance services; you can review or change each connection. External URLs must be reachable from DUMB; a hostname or path that works in your browser or on the Docker host may not work inside the container. Keep TLS certificate verification enabled unless you have reviewed the specific connection. An external private network address also requires explicit endpoint authorization.</p>
 <h2 id="share-provider-accounts-without-entering-credentials-twice">Share provider accounts without entering credentials twice<a class="headerlink" href="#share-provider-accounts-without-entering-credentials-twice" title="Permanent link">&para;</a></h2>
 <p>When several selected clients use the same Usenet account, enter it once and choose <strong>Reuse accounts from</strong> that client on the others. The backend resolves the reference to protected account information; the browser does not receive the stored password.</p>
@@ -6366,7 +6430,7 @@
 <p>Provider accounts provide Usenet access. They do not create or authenticate indexer accounts.</p>
 <h2 id="follow-progress-and-finish-later">Follow progress and finish later<a class="headerlink" href="#follow-progress-and-finish-later" title="Permanent link">&para;</a></h2>
 <p>The checklist is available during setup, on the dashboard, and on matching service pages. Service pages scope tasks to the service or instance; the saved run remains the arrangement record.</p>
-<p>Each action reports automation, configuration, verification, missing input and an explanation, with service and documentation links. Last-checked and scheduled-retry times include a timezone, and attempt counts appear after work has been attempted. The open checklist refreshes results during active work and around an automatic retry's scheduled time.</p>
+<p>Each action reports automation, configuration, verification, missing input and an explanation. After startup, app links open in a new tab so the checklist stays available. Last-checked and scheduled-retry times include a timezone, and attempt counts appear after work has been attempted. The open checklist refreshes results during active work and around an automatic retry's scheduled time.</p>
 <table>
 <thead>
 <tr>
@@ -6375,6 +6439,22 @@
 </tr>
 </thead>
 <tbody>
+<tr>
+<td><strong>Walk me through setup</strong> / <strong>Resume guided setup</strong></td>
+<td>Opens the optional walkthrough for the saved run.</td>
+</tr>
+<tr>
+<td><strong>Pause walkthrough</strong></td>
+<td>Saves the walkthrough position and closes it without cancelling accepted work.</td>
+</tr>
+<tr>
+<td><strong>Do this later</strong></td>
+<td>Retains the walkthrough task as unfinished.</td>
+</tr>
+<tr>
+<td><strong>Show full checklist</strong></td>
+<td>Shows all retained tasks directly.</td>
+</tr>
 <tr>
 <td><strong>Configure this step</strong></td>
 <td>Opens the advertised guided inputs.</td>
@@ -6404,7 +6484,7 @@
 <td>Retries incomplete supported automatic work.</td>
 </tr>
 <tr>
-<td><strong>I completed this manually</strong></td>
+<td><strong>I completed this manually</strong> / <strong>I completed this in the app</strong></td>
 <td>Records your confirmation; it does not mark a connection test passed.</td>
 </tr>
 <tr>
@@ -6422,6 +6502,9 @@
 </tbody>
 </table>
 <p>There is no success timer or forced redirect. Leaving onboarding changes a navigation preference, not verification. A backend restart or browser change does not turn interrupted work into success. Correct rejected credentials in the relevant task and retry it rather than restarting unrelated applications.</p>
+<p>Manual confirmation can let you continue through the walkthrough, but it stays
+separate from verified checks. A failed connection check remains unfinished even
+after you confirm that you performed the app's setup.</p>
 <h3 id="during-an-installation-backup-or-recovery">During an installation backup or recovery<a class="headerlink" href="#during-an-installation-backup-or-recovery" title="Permanent link">&para;</a></h3>
 <p>Setup checks and configuration pause while an installation backup, restore or
 recovery controls application data. This is an expected hold, not a failed
@@ -6613,7 +6696,12 @@ choice alone does not rewrite them or prove external playback. See the
 <p>Existing applications are not fresh merely because you selected them. Accounts, libraries and unowned connections must be reused, preserved or explicitly adopted. Library creation does not authorize deletion or replacement of existing paths.</p>
 <p>For supported existing connections, choose <strong>Preview changes</strong> to inspect current and proposed field values. The table identifies DUMB-managed fields and settings needing your approval; credentials are hidden. Approve the specific proposal before applying an adoption. Changing a choice invalidates that approval. If the native configuration changes after inspection, refresh the preview and review the new proposal. Approval does not authorize unrelated fields, target instances or policy changes.</p>
 <p>Setup is not a database migration. Use separate <a href="../arr-postgres-migration/">SQLite-to-PostgreSQL migration</a>, namespace migration or <a href="../service-reset/">reset/removal</a> tools where required.</p>
-<p>Setup records and protected inputs live under <code>/config/.dumb-setup</code>. Include them in private configuration backups and protect them as credential-bearing data. Browser persistence retains only the run identifier, not passwords or unfinished credential drafts.</p>
+<p>Setup previews can send entered credentials to protected backend inputs before
+you choose <strong>Start services</strong>. Setup records and protected inputs live under
+<code>/config/.dumb-setup</code>; include them in private configuration backups and protect
+them as credential-bearing data. Browser persistence retains only the run
+identifier and walkthrough position/preferences, not passwords or unfinished
+credential drafts.</p>
 <h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../../frontend/onboarding/">Onboarding wizard</a></li>
@@ -6666,11 +6754,11 @@ choice alone does not rewrite them or prove external playback. See the
     
     <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
       
-        <span>Documentation release 1.25.12</span>
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.12">Release notes</a>
+        <span>Documentation release 1.25.13</span>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.13">Release notes</a>
       
       
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;ea75d5db1478c64055187eb21f0cd19c8da289e1" title="Documentation source commit ea75d5db1478c64055187eb21f0cd19c8da289e1">Source ea75d5db</a>
+        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;ed107f0273f0c39554c7e13908dce4b100e2592e" title="Documentation source commit ed107f0273f0c39554c7e13908dce4b100e2592e">Source ed107f02</a>
       
       
     </div>
