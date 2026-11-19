@@ -106,14 +106,22 @@ def _uuid(value):
     )
 
 
-def verify_import_inventory(source, destination, report, *, source_blob_root=None):
+def verify_import_inventory(
+    source, destination, report, *, source_blob_root=None, source_blob_census=None
+):
     from utils.infinidysk_v2_import_report import (
         ImportReportError,
         verify_import_inventory as verify,
     )
 
     try:
-        return verify(source, destination, report, source_blob_root=source_blob_root)
+        return verify(
+            source,
+            destination,
+            report,
+            source_blob_root=source_blob_root,
+            source_blob_census=source_blob_census,
+        )
     except ImportReportError as error:
         refused = ContainedImportError(str(error))
         refused.import_report = error.import_report

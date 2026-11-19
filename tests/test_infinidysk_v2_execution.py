@@ -1,4 +1,6 @@
 import copy
+from contextlib import contextmanager
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -176,7 +178,11 @@ class ExecutionTests(unittest.TestCase):
                 {"files": 0, "history": 0, "skipped_files": 0, "failed_files": 0},
             ),
         ):
-            patcher = patch("utils.infinidysk_v2_execution." + name, return_value=value)
+            patcher = patch(
+                "utils.infinidysk_v2_execution." + name,
+                return_value=value,
+                autospec=name == "verify_import_inventory",
+            )
             self.patches.append(patcher)
             patcher.start()
         self.candidate = Mock()
@@ -352,6 +358,7 @@ class ExecutionTests(unittest.TestCase):
         self.workspace["capture_source"] = aliased
         with patch(
             "utils.infinidysk_v2_execution.verify_import_inventory",
+            autospec=verify_import_inventory,
             return_value={
                 "files": 0,
                 "history": 0,
@@ -363,6 +370,98 @@ class ExecutionTests(unittest.TestCase):
         self.assertEqual(
             verify.call_args.kwargs["source_blob_root"],
             Path(self.workspace["candidate_data"]) / "payloads",
+        )
+
+    def test_external_census_reaches_real_inventory_inside_its_live_scope(self):
+        identifier = "00000000-0000-0000-0000-0000000000ab"
+        blob_identifier = "00000000-0000-0000-0000-0000000000cd"
+        payload = b"retained external metadata"
+        external = self.root / "external-blobs"
+        key = blob_identifier.replace("-", "")
+        blob = external / key[:2] / key[2:4] / blob_identifier
+        blob.parent.mkdir(parents=True)
+        blob.write_bytes(payload)
+        with sqlite3.connect(self.root / "source.sqlite") as database:
+            database.execute(
+                "CREATE TABLE DavItems(Id TEXT,Name TEXT,Type INTEGER,Path TEXT,FileBlobId TEXT)"
+            )
+            database.execute(
+                "INSERT INTO DavItems VALUES(?,?,2,'/content/movie',?)",
+                (identifier, "movie.mkv", blob_identifier),
+            )
+            database.execute(
+                "CREATE TABLE HistoryItems(Id TEXT,DownloadStatus INTEGER)"
+            )
+            database.execute("INSERT INTO HistoryItems VALUES(?,1)", (identifier,))
+        imported = self.candidate.wait_import.side_effect
+        self.candidate.wait_import.return_value = (
+            "Imported 0 directories, 1 files, 0 NZBs, 1 history rows, 0 queued jobs"
+        )
+
+        def import_native(*args, **kwargs):
+            report = imported(*args, **kwargs)
+            native = Path(self.workspace["candidate_data"]) / "infinidysk.sqlite"
+            with sqlite3.connect(native) as database:
+                database.execute("CREATE TABLE items(id BLOB,name TEXT,kind INTEGER)")
+                database.execute("CREATE TABLE history(id BLOB)")
+                value = bytes.fromhex(identifier.replace("-", ""))
+                database.execute(
+                    "INSERT INTO items VALUES(?,?,2)", (value, "movie.mkv")
+                )
+                database.execute("INSERT INTO history VALUES(?)", (value,))
+            return report
+
+        self.candidate.wait_import.side_effect = import_native
+        self.plan["options"] = {"offload_legacy_blobs": True}
+        self.workspace["external_blob_source"] = Mock(return_value=external)
+        active = False
+        calls = []
+
+        def lookup(root, requested):
+            self.assertTrue(active)
+            self.assertTrue(self.candidate.stopped)
+            self.assertEqual(external, root)
+            self.assertEqual(blob_identifier, str(requested))
+            calls.append(requested)
+            return {
+                "state": "present",
+                "bytes": len(payload),
+                "sha256": hashlib.sha256(payload).hexdigest(),
+            }
+
+        @contextmanager
+        def census():
+            nonlocal active
+            self.assertFalse(active)
+            active = True
+            try:
+                yield external, lookup
+            finally:
+                active = False
+
+        self.workspace["source_blob_census"] = census
+        self.workspace["record_import_report"] = Mock()
+        self.workspace["accept_import"].side_effect = lambda receipt: self.assertFalse(
+            active
+        )
+        with patch(
+            "utils.infinidysk_v2_execution.verify_import_inventory",
+            autospec=verify_import_inventory,
+            side_effect=verify_import_inventory,
+        ) as verify:
+            receipt = self.executor.prepare(self.plan, self.workspace, self.progress)
+        self.assertFalse(active)
+        self.assertEqual(1, len(calls))
+        self.assertIs(lookup, verify.call_args.kwargs["source_blob_census"])
+        self.assertEqual(external, verify.call_args.kwargs["source_blob_root"])
+        self.assertEqual("accepted", receipt["report"]["import_report"]["status"])
+        self.assertTrue(receipt["external_blob_staging_verified"])
+        self.assertTrue(receipt["candidate_prepared"])
+        accepted = dict(receipt)
+        accepted.pop("candidate_prepared")
+        self.workspace["accept_import"].assert_called_once_with(accepted)
+        self.workspace["record_import_report"].assert_any_call(
+            None, receipt["report"]["import_report"]
         )
 
     def test_escaping_staged_blob_alias_blocks_before_activation(self):

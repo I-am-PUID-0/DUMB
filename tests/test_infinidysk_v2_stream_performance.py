@@ -17,8 +17,12 @@ from tests import test_infinidysk_v2_import_report as report_tests
 from utils import backup_storage as storage_module
 from utils.backup_storage import BackupStorageError
 from utils.infinidysk_v2_archive import verify_retained_archive
+from utils.infinidysk_v2_execution import (
+    ContainedImportError,
+    verify_import_inventory as verify_execution_import_inventory,
+)
 from utils.infinidysk_v2_io_progress import IOProgress
-from utils.infinidysk_v2_import_report import verify_import_inventory, ImportReportError
+from utils.infinidysk_v2_import_report import verify_import_inventory
 
 
 class ArtifactStreamTests(unittest.TestCase):
@@ -297,11 +301,6 @@ class VerifiedCensusTests(unittest.TestCase):
         fixture = report_tests.ImportReportTests("runTest")
         fixture.setUp()
         self.addCleanup(fixture.doCleanups)
-        root = fixture.root / "blobs"
-        key = self.identifier.hex
-        path = root / key[:2] / key[2:4] / str(self.identifier)
-        path.parent.mkdir(parents=True)
-        path.write_bytes(self.payload)
         with sqlite3.connect(fixture.source) as database:
             database.execute("ALTER TABLE DavItems ADD COLUMN FileBlobId TEXT")
             database.execute(
@@ -310,36 +309,59 @@ class VerifiedCensusTests(unittest.TestCase):
         report = report_tests.native_report(
             1, skipped=[("/content/second.mkv", "no metadata blob")]
         )
-        baseline = verify_import_inventory(fixture.source, fixture.target, report)
-        expected = {
-            "state": "present",
-            "bytes": len(self.payload),
-            "sha256": hashlib.sha256(self.payload).hexdigest(),
-        }
-        calls = []
-
-        def lookup(blob_root, identifier):
-            self.assertEqual(root, blob_root)
-            self.assertEqual(self.identifier, identifier)
-            calls.append(identifier)
-            return expected
-
-        with patch.object(
-            os, "read", side_effect=AssertionError("second content read")
-        ):
-            actual = verify_import_inventory(
+        with integrity_tests.fixture(additional=self.additional) as staged:
+            root = staged.prepare()
+            baseline = verify_import_inventory(
                 fixture.source,
                 fixture.target,
                 report,
                 source_blob_root=root,
-                source_blob_census=lookup,
             )
+            with staged.staging.verified_census(staged.job) as (root, lookup):
+                with patch.object(
+                    os, "read", side_effect=AssertionError("second content read")
+                ):
+                    actual = verify_execution_import_inventory(
+                        fixture.source,
+                        fixture.target,
+                        report,
+                        source_blob_root=root,
+                        source_blob_census=lookup,
+                    )
         self.assertEqual(baseline, actual)
-        self.assertEqual([self.identifier], calls)
-        with self.assertRaisesRegex(ImportReportError, "census is invalid"):
-            verify_import_inventory(
+        self.assertEqual("review_required", actual["import_report"]["status"])
+        self.assertRegex(actual["import_report"]["review_digest"], r"^[a-f0-9]{64}$")
+
+    def test_execution_wrapper_retains_blocked_report_for_invalid_census(self):
+        fixture = report_tests.ImportReportTests("runTest")
+        fixture.setUp()
+        self.addCleanup(fixture.doCleanups)
+        with sqlite3.connect(fixture.source) as database:
+            database.execute("ALTER TABLE DavItems ADD COLUMN FileBlobId TEXT")
+            database.execute(
+                "UPDATE DavItems SET FileBlobId=?", (str(self.identifier),)
+            )
+        report = report_tests.native_report(
+            1, skipped=[("/content/second.mkv", "no metadata blob")]
+        )
+        with self.assertRaisesRegex(
+            ContainedImportError, "census is invalid"
+        ) as caught:
+            verify_execution_import_inventory(
                 fixture.source,
                 fixture.target,
                 report,
-                source_blob_census=lambda *args: dict(expected, raw_path="private"),
+                source_blob_census=lambda *args: {
+                    "state": "present",
+                    "bytes": len(self.payload),
+                    "sha256": hashlib.sha256(self.payload).hexdigest(),
+                    "raw_path": "private",
+                },
             )
+        retained = caught.exception.import_report
+        self.assertEqual("blocked", retained["status"])
+        self.assertEqual(1, retained["imported_files"])
+        self.assertEqual(1, retained["skipped_files"])
+        self.assertFalse(retained["review_required"])
+        self.assertIn("census is invalid", retained["blocking_reasons"][0])
+        self.assertEqual(retained, caught.exception.__cause__.import_report)
