@@ -2,7 +2,7 @@
 
 > Channel: dev. Canonical base: https://dumbarr.com/dev/
 
-Documentation artifact: release 1.25.13. Source commit: ed107f0273f0c39554c7e13908dce4b100e2592e. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.13.
+Documentation artifact: release 1.25.14. Source commit: a999b9c02d75d56d52c3c234d4903a6ffa71364f. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.14.
 
 DUMB coordinates media services. Match instructions to the installed backend version. Development guides can describe features absent from the latest release.
 
@@ -10646,6 +10646,14 @@ Choose how each service checks for new versions and whether it should install th
 3. Select **Install update** when you are ready for that service to restart. Review any playback or library-protection prompt before confirming.
 4. Keep the panel open while the install runs. When it completes, check the reported result, service health, and **Service Logs**. For a storage service, also test an item in your media player.
 
+<figure class="docs-visual docs-frontend-figure">
+<video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/v1.91.0/updates.webp" aria-label="Check one service for updates demonstration" aria-describedby="updates-demo-caption">
+  <source src="../assets/images/guides/frontend/v1.91.0/updates.webm" type="video/webm">
+  <p><a href="../assets/images/guides/frontend/v1.91.0/updates.webm">Download the demonstration</a>, or follow the written steps above.</p>
+</video>
+<figcaption id="updates-demo-caption" class="docs-visual-caption">Watch: open one service's Updates panel, check for updates and review the available version. The demonstration ends before installation. DUMB Frontend 1.91.0 · example data. Other versions may look different. <a href="../assets/images/guides/frontend/v1.91.0/updates.webp">Open the full-size screenshot</a>.</figcaption>
+</figure>
+
 ```mermaid
 flowchart LR
     Open[Open service Updates] --> Check[Check for updates]
@@ -16163,7 +16171,12 @@ The dashboard displays service cards for each configured service, showing:
 - Auto-restart badge
 - Quick action and available-update buttons
 
-![Service dashboard](../assets/images/frontend/service_dashboard.png){ .shadow }
+<figure class="docs-visual docs-frontend-figure" markdown="1">
+
+![Dashboard service cards showing each app's status and available controls.](../assets/images/guides/frontend/v1.91.0/dashboard.webp){ loading=lazy decoding=async }
+
+<figcaption class="docs-visual-caption">Use the service cards to check an app and open its page. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
+</figure>
 
 ---
 
@@ -16434,11 +16447,11 @@ The dashboard is where you set up and manage DUMB. Open `http://<host>:3005` in 
 
 You can follow the tasks below without editing files or running API commands.
 
-<figure class="docs-visual" markdown="1">
+<figure class="docs-visual docs-frontend-figure" markdown="1">
 
-![Dashboard navigation: service cards open one app's controls; Metrics and Settings contain installation-wide tools.](../assets/images/guides/dashboard-map.svg)
+![DUMB dashboard showing service cards, status badges and the sidebar.](../assets/images/guides/frontend/v1.91.0/dashboard.webp){ loading=lazy decoding=async }
 
-<figcaption class="docs-visual-caption">Start on the dashboard, select a service card, then choose the task you need. This is a navigation guide rather than a screenshot.</figcaption>
+<figcaption class="docs-visual-caption">Select a service card to open that app's controls. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
 </figure>
 
 ## Choose a task
@@ -17161,6 +17174,13 @@ Retained setup tasks are scoped to the current service and instance. Expand **Co
 
 The header shows process status, application health, and restart information. Hover a health badge for the backend's probe reason. **Starting** and **Degraded** are distinct from a restart-relevant **Unhealthy** result.
 
+<figure class="docs-visual docs-frontend-figure" markdown="1">
+
+![Service page showing its status, command bar, configuration tabs and Tools menu.](../assets/images/guides/frontend/v1.91.0/service-controls.webp){ loading=lazy decoding=async }
+
+<figcaption class="docs-visual-caption">Choose a tab for configuration, logs or the application's interface; open Tools for additional tasks. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
+</figure>
+
 Use **Start**, **Stop**, or **Restart** for the current service. The DUMB API page has no start/stop/restart buttons. A storage operation affecting a protected media server prompts for playback and scan handling before it runs. Dashboard bulk updates use safe mode; use the individual service page to review an override.
 
 **Save to File** persists a configuration. Its DUMB Config split-button also offers **Apply in Memory** for a temporary controller change. Saving configuration does not necessarily restart or reconfigure the application.
@@ -17308,11 +17328,22 @@ The [AI Assistant guide](../features/ai-assistant.md) covers supported models, p
 
 ## Logs
 
-Filter by text or level, choose a line limit, follow the tail, refresh, or download a snapshot. Service-aware parsing retains application timestamps/severity and groups multiline errors where supported. Traefik offers access logs; Plex offers DBRepair logs when enabled.
+1. Open **Service Logs** for the app you want to check.
+2. Choose a log level or enter search text to focus on the relevant lines.
+3. Select **Refresh now** for a new sample, or choose an interval such as **Every 5s** for repeated checks. Choose **Off** to pause those checks.
+4. Keep **Follow tail** checked to scroll to the newest lines. Download a snapshot when you need to keep it.
+
+You can also change the line limit. Service-aware parsing retains application timestamps/severity and groups multiline errors where supported. Traefik offers access logs; Plex offers DBRepair logs when enabled.
 
 DUMB applies its sensitive-data redactor to logs viewed or downloaded here. Review a download before sharing it; arbitrary application output can contain values the redactor does not recognize.
 
-![View service logs](../assets/images/frontend/view_service_logs.png){ .shadow }
+<figure class="docs-visual docs-frontend-figure">
+<video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/v1.91.0/service-logs.webp" aria-label="Filter service logs demonstration" aria-describedby="service-logs-demo-caption">
+  <source src="../assets/images/guides/frontend/v1.91.0/service-logs.webm" type="video/webm">
+  <p><a href="../assets/images/guides/frontend/v1.91.0/service-logs.webm">Download the demonstration</a>, or follow the written steps above.</p>
+</video>
+<figcaption id="service-logs-demo-caption" class="docs-visual-caption">Watch the log filters, refresh interval and Follow tail controls. DUMB Frontend 1.91.0 · example data. Other versions may look different. <a href="../assets/images/guides/frontend/v1.91.0/service-logs.webp">Open the full-size screenshot</a>.</figcaption>
+</figure>
 
 ## Embedded UI
 
@@ -17403,6 +17434,13 @@ The **Advanced** section also includes service utilities. **Backups and restore*
 ## Appearance
 
 Choose **System Default** to follow your operating system, or select a light/dark palette. This preference is stored in the browser and does not change backend configuration.
+
+<figure class="docs-visual docs-frontend-figure" markdown="1">
+
+![Appearance settings with the dashboard theme choices.](../assets/images/guides/frontend/v1.91.0/appearance.webp){ loading=lazy decoding=async }
+
+<figcaption class="docs-visual-caption">Choose the palette you find easiest to read. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
+</figure>
 
 ## About section
 

@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.13">
+    <meta name="dumb-docs-package-version" content="1.25.14">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="ed107f0273f0c39554c7e13908dce4b100e2592e">
-    <meta name="dumb-docs-release-tag" content="1.25.13">
+    <meta name="dumb-docs-build-commit" content="a999b9c02d75d56d52c3c234d4903a6ffa71364f">
+    <meta name="dumb-docs-release-tag" content="1.25.14">
   
 
     
@@ -64,7 +64,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.4f389d60d79a.css">
+      <link rel="stylesheet" href="../../assets/css/main.64e1f9293e64.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -170,7 +170,8 @@
       <span class="md-visually-hidden">Navigation</span>
     </label>
     <a href="../.." class="docs-brand" data-docs-home aria-label="DUMB home" title="DUMB home">DUMB</a>
-    <div class="md-header__title" data-md-component="header-title">
+    
+    <div class="md-header__title" data-md-component="header-title" aria-hidden="true">
       <div class="md-header__ellipsis">
         <div class="md-header__topic docs-header-spacer" aria-hidden="true"></div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -6114,6 +6115,10 @@
 </table>
 <h2 id="status-and-controls">Status and controls<a class="headerlink" href="#status-and-controls" title="Permanent link">&para;</a></h2>
 <p>The header shows process status, application health, and restart information. Hover a health badge for the backend's probe reason. <strong>Starting</strong> and <strong>Degraded</strong> are distinct from a restart-relevant <strong>Unhealthy</strong> result.</p>
+<figure class="docs-visual docs-frontend-figure">
+<p><img alt="Service page showing its status, command bar, configuration tabs and Tools menu." decoding="async" loading="lazy" src="../../assets/images/guides/frontend/v1.91.0/service-controls.webp" /></p>
+<figcaption class="docs-visual-caption">Choose a tab for configuration, logs or the application's interface; open Tools for additional tasks. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
+</figure>
 <p>Use <strong>Start</strong>, <strong>Stop</strong>, or <strong>Restart</strong> for the current service. The DUMB API page has no start/stop/restart buttons. A storage operation affecting a protected media server prompts for playback and scan handling before it runs. Dashboard bulk updates use safe mode; use the individual service page to review an override.</p>
 <p><strong>Save to File</strong> persists a configuration. Its DUMB Config split-button also offers <strong>Apply in Memory</strong> for a temporary controller change. Saving configuration does not necessarily restart or reconfigure the application.</p>
 <h3 id="infinidysk-namespace-migration">InfiniDysk namespace migration<a class="headerlink" href="#infinidysk-namespace-migration" title="Permanent link">&para;</a></h3>
@@ -6256,9 +6261,22 @@
 <p>Saved provider profiles are shared with Stack AI Assist. Keys stay server-side. Editing a profile's details marks it unsaved; selecting a different provider does not silently overwrite the saved profile. Deep scans inspect retained backend logs within the configured MiB budget, rather than only the visible log rows.</p>
 <p>The <a href="../../features/ai-assistant/">AI Assistant guide</a> covers supported models, provider setup, redaction, and evidence limitations.</p>
 <h2 id="logs">Logs<a class="headerlink" href="#logs" title="Permanent link">&para;</a></h2>
-<p>Filter by text or level, choose a line limit, follow the tail, refresh, or download a snapshot. Service-aware parsing retains application timestamps/severity and groups multiline errors where supported. Traefik offers access logs; Plex offers DBRepair logs when enabled.</p>
+<ol>
+<li>Open <strong>Service Logs</strong> for the app you want to check.</li>
+<li>Choose a log level or enter search text to focus on the relevant lines.</li>
+<li>Select <strong>Refresh now</strong> for a new sample, or choose an interval such as <strong>Every 5s</strong> for repeated checks. Choose <strong>Off</strong> to pause those checks.</li>
+<li>Keep <strong>Follow tail</strong> checked to scroll to the newest lines. Download a snapshot when you need to keep it.</li>
+</ol>
+<p>You can also change the line limit. Service-aware parsing retains application timestamps/severity and groups multiline errors where supported. Traefik offers access logs; Plex offers DBRepair logs when enabled.</p>
 <p>DUMB applies its sensitive-data redactor to logs viewed or downloaded here. Review a download before sharing it; arbitrary application output can contain values the redactor does not recognize.</p>
-<p><img alt="View service logs" class="shadow" src="../../assets/images/frontend/view_service_logs.png" /></p>
+<figure class="docs-visual docs-frontend-figure">
+<video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/v1.91.0/service-logs.webp" aria-label="Filter service logs demonstration" aria-describedby="service-logs-demo-caption">
+  <source src="../../assets/images/guides/frontend/v1.91.0/service-logs.webm" type="video/webm">
+  <p><a href="../../assets/images/guides/frontend/v1.91.0/service-logs.webm">Download the demonstration</a>, or follow the written steps above.</p>
+</video>
+<figcaption id="service-logs-demo-caption" class="docs-visual-caption">Watch the log filters, refresh interval and Follow tail controls. DUMB Frontend 1.91.0 · example data. Other versions may look different. <a href="../../assets/images/guides/frontend/v1.91.0/service-logs.webp">Open the full-size screenshot</a>.</figcaption>
+</figure>
+
 <h2 id="embedded-ui">Embedded UI<a class="headerlink" href="#embedded-ui" title="Permanent link">&para;</a></h2>
 <p>Enable service UIs in Settings, then open the service's <strong>Embedded UI</strong> tab. Choose its supported base path, use split/full-window view, or open the direct link. A matching enabled TPA HTTPS route can supply a public link; otherwise use the local/private link.</p>
 <p>DUMB login does not replace the application's own login. Root-relative APIs, assets, and WebSockets use the frontend's service context. Authelia login and TPA admin SSO open at their public HTTPS origins in a top-level tab.</p>
@@ -6306,28 +6324,8 @@
         
       </main>
       
-  <aside class="docs-community-strip">
-    <nav class="md-grid" aria-label="Community and maintainer support">
-      <a href="https://github.com/sponsors/I-am-PUID-0">Support the DUMB maintainer</a>
-      <a href="https://discord.gg/8dqKUBtbp5">Get help from the community</a>
-      <a href="../../contributing/">Help improve DUMB</a>
-    </nav>
-  </aside>
-  
-    
-    <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
-      
-        <span>Documentation release 1.25.13</span>
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.13">Release notes</a>
-      
-      
-        <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;ed107f0273f0c39554c7e13908dce4b100e2592e" title="Documentation source commit ed107f0273f0c39554c7e13908dce4b100e2592e">Source ed107f02</a>
-      
-      
-    </div>
-  
-  
-        <footer class="md-footer">
+        
+<footer class="md-footer">
   
     
       
@@ -6340,12 +6338,8 @@
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
             </div>
             <div class="md-footer__title">
-              <span class="md-footer__direction">
-                Previous
-              </span>
-              <div class="md-ellipsis">
-                Dashboard
-              </div>
+              <span class="md-footer__direction">Previous</span>
+              <div class="md-ellipsis">Dashboard</div>
             </div>
           </a>
         
@@ -6353,12 +6347,8 @@
           
           <a href="../settings/" class="md-footer__link md-footer__link--next" aria-label="Next: Settings">
             <div class="md-footer__title">
-              <span class="md-footer__direction">
-                Next
-              </span>
-              <div class="md-ellipsis">
-                Settings
-              </div>
+              <span class="md-footer__direction">Next</span>
+              <div class="md-ellipsis">Settings</div>
             </div>
             <div class="md-footer__button md-icon">
               
@@ -6370,11 +6360,28 @@
     
   
   <div class="md-footer-meta md-typeset">
-    <div class="md-footer-meta__inner md-grid">
-      <div class="md-copyright">
-  
-  
-</div>
+    <div class="md-footer-meta__inner md-grid docs-footer-meta">
+      <div class="docs-footer-info">
+        <nav class="docs-community-strip" aria-label="Community and maintainer support">
+          <a href="https://github.com/sponsors/I-am-PUID-0">Support the DUMB maintainer</a>
+          <a href="https://discord.gg/8dqKUBtbp5">Get help from the community</a>
+          <a href="../../contributing/">Help improve DUMB</a>
+        </nav>
+        
+          
+          <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
+            
+              <span>Documentation release 1.25.14</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.14">Release notes</a>
+            
+            
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;a999b9c02d75d56d52c3c234d4903a6ffa71364f" title="Documentation source commit a999b9c02d75d56d52c3c234d4903a6ffa71364f">Source a999b9c0</a>
+            
+            
+          </div>
+        
+        
+      </div>
       
         
 <div class="md-social">
@@ -6418,7 +6425,6 @@
   </div>
 </footer>
       
-
     </div>
     <div class="md-dialog" data-md-component="dialog" role="status" aria-atomic="true">
       <div class="md-dialog__inner md-typeset"></div>

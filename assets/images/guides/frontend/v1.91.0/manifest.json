@@ -1,0 +1,174 @@
+{
+  "schema_version": 1,
+  "complete": true,
+  "frontend": {
+    "version": "1.91.0",
+    "tag": "v1.91.0",
+    "commit": "66c90b93ea35abe546c07cbf643dc00a184bbd7f",
+    "repository": "https://github.com/nicocapalbo/dmbdb"
+  },
+  "source_verification": "The caller verified the immutable release tag and archived its full commit before building. This packager validates that pinned capture identity.",
+  "scope": "Real released frontend rendered with public example HTTP and WebSocket responses. No live backend, provider account, media library or installation was used.",
+  "fixed_time": "2026-11-19T12:00:00.000Z",
+  "viewport": {
+    "width": 1280,
+    "height": 800
+  },
+  "capture_manifest_sha256": "d332c6fa985f81f638be7bc525ffaafd6a41ab9bf4ec5590949d4b70e95e3227",
+  "files": [
+    {
+      "file": "dashboard.webp",
+      "kind": "image",
+      "media_type": "image/webp",
+      "sha256": "7ca43831edd41bc8264cf1f77f0497f67d10f52c7e4c13369008d7e881200921",
+      "bytes": 34328,
+      "scenario": "dashboard",
+      "captured_from": "dashboard.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "theme": "dark",
+      "route": "/",
+      "actions": [
+        "Review example service states on the dashboard"
+      ],
+      "quality": 90
+    },
+    {
+      "file": "service-controls.webp",
+      "kind": "image",
+      "media_type": "image/webp",
+      "sha256": "836237968c546c06a9dc24dd5a5858e8b88c35621cbc8ef619cd016b32a5d642",
+      "bytes": 43416,
+      "scenario": "service-controls",
+      "captured_from": "service-controls.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "theme": "dark",
+      "route": "/services/Sonarr",
+      "actions": [
+        "Open Sonarr",
+        "Review status and Start, Stop, Restart controls without changing them"
+      ],
+      "quality": 90
+    },
+    {
+      "file": "service-logs.webp",
+      "kind": "image",
+      "media_type": "image/webp",
+      "sha256": "d8be1a7f170bd15fecd3bc62fe3cb322d2e13fb9dc4975a699c1b6f0edb1b2b9",
+      "bytes": 57838,
+      "scenario": "service-logs",
+      "captured_from": "service-logs-poster.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "theme": "dark",
+      "route": "/services/Sonarr",
+      "actions": [
+        "Open Service Logs",
+        "Filter Example Series",
+        "Choose Warning level",
+        "Clear level",
+        "Enable Every 5s refresh",
+        "Pause refresh with Off",
+        "Stop following the tail"
+      ],
+      "quality": 90
+    },
+    {
+      "file": "updates.webp",
+      "kind": "image",
+      "media_type": "image/webp",
+      "sha256": "fb768af99047f229009234f1b4c77fa2b456ce1f9a85e620d82612067e9bc416",
+      "bytes": 34418,
+      "scenario": "updates-review",
+      "captured_from": "updates-check-poster.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "theme": "dark",
+      "route": "/services/Sonarr",
+      "actions": [
+        "Open Service tools",
+        "Open Updates",
+        "Check for updates",
+        "Review available version; do not install"
+      ],
+      "quality": 90
+    },
+    {
+      "file": "appearance.webp",
+      "kind": "image",
+      "media_type": "image/webp",
+      "sha256": "76d97a4ea77e527a29e07b4b0a12e9fa45d598f4aafc25329720496dd3d0e0c2",
+      "bytes": 46322,
+      "scenario": "appearance-settings",
+      "captured_from": "appearance-settings.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "theme": "light",
+      "route": "/settings",
+      "actions": [
+        "Open Settings",
+        "Expand Appearance",
+        "Select Light"
+      ],
+      "quality": 90
+    },
+    {
+      "file": "service-logs.webm",
+      "kind": "video",
+      "media_type": "video/webm",
+      "sha256": "6fcb8f9af5b7d51abacd865a78c90dc4af711823af68708e51e9a301d9ceade2",
+      "bytes": 1127957,
+      "scenario": "service-logs",
+      "captured_from": "service-logs.webm",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "theme": "dark",
+      "route": "/services/Sonarr",
+      "actions": [
+        "Open Service Logs",
+        "Filter Example Series",
+        "Choose Warning level",
+        "Clear level",
+        "Enable Every 5s refresh",
+        "Pause refresh with Off",
+        "Stop following the tail"
+      ],
+      "poster": "service-logs.webp"
+    },
+    {
+      "file": "updates.webm",
+      "kind": "video",
+      "media_type": "video/webm",
+      "sha256": "621acfd45fc4ac2de78c7ea2bf1d06d2a5dd9ba01ab49da8916510b7ee2981d8",
+      "bytes": 878900,
+      "scenario": "updates-check",
+      "captured_from": "updates-check.webm",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "theme": "dark",
+      "route": "/services/Sonarr",
+      "actions": [
+        "Open Service tools",
+        "Open Updates",
+        "Check for updates",
+        "Review available version; do not install"
+      ],
+      "poster": "updates.webp"
+    }
+  ]
+}
