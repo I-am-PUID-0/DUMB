@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.15">
+    <meta name="dumb-docs-package-version" content="1.25.16">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="76e70155da779608b261d82d4a249c106b6959ae">
-    <meta name="dumb-docs-release-tag" content="1.25.15">
+    <meta name="dumb-docs-build-commit" content="67530cd8ed7bdfaa0aa10927bfd155431a5fa27e">
+    <meta name="dumb-docs-release-tag" content="1.25.16">
   
 
     
@@ -64,7 +64,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.a780955ca3a3.css">
+      <link rel="stylesheet" href="../../assets/css/main.1a81672cf30f.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6428,6 +6428,44 @@ remains retained. A missing, changed or otherwise unremovable staging copy can
 leave <code>job.staging_cleanup_required: true</code> without invalidating an accepted
 import or blocking restoration from the valid archive. Preserve the warning
 and retained evidence; it does not authorize deleting a replacement directory.</p>
+<h4 id="storage-work-comparison">Storage work comparison<a class="headerlink" href="#storage-work-comparison" title="Permanent link">&para;</a></h4>
+<p>Supporting previews and public jobs can expose optional <code>storage_work</code> with
+<code>protocol: 1</code>. It describes the file I/O that differs between storage choices;
+it is not an elapsed-time forecast, an eligibility result or permission to
+select a different layout. The status response can advertise
+<code>capabilities.migration_storage_work: true</code>.
+<code>comparison_basis: "logical_io_same_storage"</code> identifies this work model;
+<code>ranking: "not_estimated"</code> and null per-path <code>preparation_order</code> values explicitly
+avoid an unsupported fastest-to-slowest ordering.</p>
+<p>Source quantities <code>source_data_bytes</code>, <code>source_total_bytes</code> and
+<code>legacy_blob_bytes</code> can be null when unavailable. <code>archive_bytes</code> uses the
+retained archive's measured size when available; before that, source logical
+size is only a lower bound, identified by <code>archive_bytes_is_minimum</code>.
+Archive headers, runtime files and database snapshot artifacts can make the
+actual archive larger. <code>archive_storage_type</code> identifies <code>local</code>, <code>network</code> or
+<code>unknown</code>; it is not a speed measurement.</p>
+<p><code>selected_path</code> identifies the selected layout. <code>paths</code> describes <code>keep_local</code>,
+<code>reuse_local</code> and <code>external_blobs</code>, with their selection and separate
+<code>preparation</code>, <code>activation</code> and <code>restoration</code> I/O legs. A leg contains an authored
+<code>id</code>, nullable <code>read_bytes</code> and <code>write_bytes</code>, <code>storage</code> of <code>local</code> or <code>archive</code>,
+an integer <code>passes</code>, and a boolean <code>minimum</code>. Read/write quantities already total
+all of that leg's passes; do not multiply them by <code>passes</code> again. A minimum is a
+lower work bound, not a promise that no further I/O occurs.</p>
+<p>Keep-local preparation copies the candidate and checks the retained local
+source. Reuse avoids that copy but adds archive verification before reuse and
+at acceptance. External blob staging adds archive checks, the blob copy and
+repeated input readback. Activation checks the retained source or archive again
+without repeating native conversion. Reuse/offload restoration needs archive
+verification, extraction and restored-source readback; the older rehearsal flow
+includes that restoration even when its test passes.</p>
+<p>Common recovery-archive creation/readback, initial source and candidate fingerprints,
+runtime verification, database snapshot/restore/export and native provider work
+are outside these comparison legs. File metadata latency, shared-disk contention
+and importer reads also prevent a byte count from establishing a fastest path.
+In particular, reuse can be slower than keeping v1 local when its archive reads
+cross a slow network. No universal preparation or finish-time ranking is
+provided. Reporting uses existing inventory and retained records; it does not
+run a speed benchmark or add a new scan.</p>
 <h4 id="background-preview">Background preview<a class="headerlink" href="#background-preview" title="Permanent link">&para;</a></h4>
 <p>Use the background routes only when the strict boolean
 <code>infinidysk_v2_async_preview: true</code> is advertised. The existing synchronous
@@ -6612,6 +6650,53 @@ can expose <code>import_progress</code> with a native <code>stage</code>, <code>
 native conversion rather than the entire validation/cutover/recovery pipeline.</p>
 <h4 id="job-progress-and-evidence">Job progress and evidence<a class="headerlink" href="#job-progress-and-evidence" title="Permanent link">&para;</a></h4>
 <p>The outer <code>stage</code> and <code>message</code> describe the current DUMB phase.</p>
+<p>Supporting builds also expose optional <code>stage_progress</code> to describe the ordered
+workflow independently of the current phase's counters. It contains:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>protocol</code></td>
+<td><code>1</code> for this workflow-stage contract</td>
+</tr>
+<tr>
+<td><code>tracking</code></td>
+<td><code>recorded</code> for jobs with recorded transitions; <code>legacy</code> when historical transitions are unavailable</td>
+</tr>
+<tr>
+<td><code>steps</code></td>
+<td>Ordered objects containing an authored <code>id</code>, a <code>state</code>, and optional <code>started_at</code> / <code>completed_at</code> timestamps</td>
+</tr>
+<tr>
+<td><code>current_step_id</code></td>
+<td>Current step identity, when available</td>
+</tr>
+</tbody>
+</table>
+<p>Step states are <code>pending</code>, <code>running</code>, <code>completed</code>, <code>failed</code>, <code>interrupted</code>,
+<code>not_run</code> and <code>waiting</code>. The applicable forward-path IDs are <code>check_plan</code>,
+<code>pause_services</code>, <code>source_database</code> (PostgreSQL sources), <code>save_recovery</code>,
+<code>prepare_input</code>, <code>native_import</code>, <code>validate_import</code>, <code>review</code> (prepared
+activation), <code>activate</code> and <code>resume_services</code>. Legacy rehearsals instead include
+<code>restore_v1</code> and <code>cleanup_test</code>. A failure can add a separate <code>restore_v1</code>
+recovery step without completing the unexecuted forward path.</p>
+<p>Completion comes from recorded work milestones. Clients must not infer it from
+the step's position, native <code>done</code>, byte totals or a terminal success/failure
+label. Legacy tracking cannot prove earlier steps completed. A waiting review
+is an explicit user decision point while the affected applications remain
+paused; it is not a stalled worker. These states do not authorize activation,
+restoration or any other mutation, and step counts do not represent a weighted
+overall percentage or time estimate. Older backends and jobs can omit this
+object.</p>
+<p>The status response can advertise <code>capabilities.migration_stage_progress: true</code>.
+A preview can include <code>stage_plan</code> with the same shape and pending steps; this
+is the applicable plan, not recorded execution. Displaying either object does
+not change the existing mutation capabilities or confirmation requirements.</p>
 <p>A terminal job can expose <code>result.source_untouched: true</code> when it stopped before
 migration execution began. DUMB did not pause applications or change the source
 for that attempt, so no restore is needed. A pre-execution cancellation is
@@ -7064,11 +7149,11 @@ cannot be confirmed, and disable actions until a valid current response returns.
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.15</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.15">Release notes</a>
+              <span>Documentation release 1.25.16</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.16">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;76e70155da779608b261d82d4a249c106b6959ae" title="Documentation source commit 76e70155da779608b261d82d4a249c106b6959ae">Source 76e70155</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;67530cd8ed7bdfaa0aa10927bfd155431a5fa27e" title="Documentation source commit 67530cd8ed7bdfaa0aa10927bfd155431a5fa27e">Source 67530cd8</a>
             
             
           </div>
@@ -7142,6 +7227,8 @@ cannot be confirmed, and disable actions until a valid current response returns.
         <script src="../../assets/js/zoom.aa9f2a8eef1d.js"></script>
       
         <script src="../../assets/js/docs.5b838e9f6ae0.js"></script>
+      
+        <script src="../../assets/js/showcase.772a17319ff8.js"></script>
       
     
   </body>

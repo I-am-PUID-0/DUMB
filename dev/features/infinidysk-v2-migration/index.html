@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.15">
+    <meta name="dumb-docs-package-version" content="1.25.16">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="76e70155da779608b261d82d4a249c106b6959ae">
-    <meta name="dumb-docs-release-tag" content="1.25.15">
+    <meta name="dumb-docs-build-commit" content="67530cd8ed7bdfaa0aa10927bfd155431a5fa27e">
+    <meta name="dumb-docs-release-tag" content="1.25.16">
   
 
     
@@ -64,7 +64,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.a780955ca3a3.css">
+      <link rel="stylesheet" href="../../assets/css/main.1a81672cf30f.css">
     
     <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
@@ -6566,6 +6566,70 @@ Selecting a migration backup location alone keeps v1 local. Both require a
 registered destination on a different filesystem and a supported local
 source/candidate layout. Mounted source roots or incompatible layouts block the
 preview. Generate a new preview after changing the storage choice.</p>
+<h3 id="which-storage-choice-is-fastest">Which storage choice is fastest?<a class="headerlink" href="#which-storage-choice-is-fastest" title="Permanent link">&para;</a></h3>
+<p>The quickest choice depends on the disks, the share and the source data. Saving
+local space can add transfer and verification work. The preview's <strong>How storage
+affects migration time</strong> comparison explains the work for the selected layout;
+it is not a benchmark or a promised finish time.</p>
+<p>There is no storage mode that is always fastest. Compare the work each one adds
+and where that work happens:</p>
+<table>
+<thead>
+<tr>
+<th>Choice</th>
+<th>Work that differs</th>
+<th>When it can help</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Reuse v1 directory</td>
+<td>Avoids a second complete local candidate copy, but relies on additional reads of the verified recovery archive before reuse and at later acceptance boundaries.</td>
+<td>Local copying is expensive and the separate recovery destination is fast and reliable.</td>
+</tr>
+<tr>
+<td>Keep v1 local</td>
+<td>Reads and writes an additional complete candidate copy while keeping the original tree locally.</td>
+<td>There is enough local capacity; the original local tree remains available for recovery.</td>
+</tr>
+<tr>
+<td>Move legacy blobs externally</td>
+<td>Adds a separate blob transfer, readback and file checks; the importer then reads those blobs from the selected storage.</td>
+<td>Local space is too limited for the other choices. It trades additional external work for released local space.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Keep v1 local can be fastest when local storage is fast and the recovery
+archive is on a slow share.</strong> <strong>Reuse v1 directory can be faster when avoiding
+the local copy saves more time than its additional archive reads.</strong> Reuse can
+therefore take longer even during preparation. External blob staging is primarily
+a way to make the migration fit on local storage; it also makes importer reads
+and individual file checks depend on the external storage.</p>
+<p>A fast separate disk can beat a busy local disk. An archive stored on a slow NAS
+can dominate any choice: writing it, reading it back and later rechecking it are
+separate passes. Thousands of small files can take longer than their byte count
+suggests. Reusing the source still needs room for the new local v2 database and
+does not bypass integrity checks. The comparison accounts for the selected
+workflow; source-derived byte budgets describe work, not measured disk or network
+performance.</p>
+<p>Restoring v1 changes the comparison. Reuse and external-blob modes need to read
+the recovery archive, write v1 back locally and verify the restored files. Keep
+v1 local retains that original tree. A failed attempt, a requested restore or
+the older <strong>Test migration</strong> flow can therefore make reuse slower overall,
+even though its preparation copies less. The comparison shows preparation and
+restoration work separately so that this tradeoff stays visible.</p>
+<p>For scale, reading <strong>60 GiB once at a sustained 100 MiB/s takes about 10 minutes
+14 seconds</strong>. At <strong>12 MiB/s it takes about 1 hour 25 minutes</strong>. Two complete
+passes take roughly twice that transfer time before file-opening, hashing,
+database and other overhead. These are arithmetic examples, not measured speeds
+for your installation. Use the job's current measured pace for its current pass.</p>
+<p>Other work is independent of the storage choice. A v1 PostgreSQL source needs
+its snapshot, independent restore and SQLite export checks. The native importer
+may need provider article reads to reconstruct older metadata; provider latency,
+missing articles and retries can dominate the conversion. None of the storage
+choices removes that work. Preparation runs the native conversion once and
+retains its result for activation; the older separate test/start workflow
+repeats conversion when the actual migration starts.</p>
 <h3 id="reuse-local-v1-storage">Reuse local v1 storage<a class="headerlink" href="#reuse-local-v1-storage" title="Permanent link">&para;</a></h3>
 <p><strong>Reuse v1 directory</strong> avoids a duplicate source tree; it does not make the
 old blobs disappear or increase reported free space. DUMB stops v1 and its
@@ -6719,6 +6783,35 @@ request. Use <strong>Refresh status</strong> if a connection is interrupted. Sup
 also refresh the affected services from their actual process status; if that
 read fails, their indicators become unknown until status can be confirmed.</p>
 <h3 id="progress-cancellation-and-recovery">Progress, cancellation and recovery<a class="headerlink" href="#progress-cancellation-and-recovery" title="Permanent link">&para;</a></h3>
+<p>On supporting builds, <strong>Migration stages</strong> shows the required steps for this
+job in order and updates with its automatic status checks. A typical existing
+v1 preparation follows this path:</p>
+<ol>
+<li>Check the plan and available storage.</li>
+<li>Pause the affected managed applications.</li>
+<li>Capture and verify the source database, when the source uses PostgreSQL.</li>
+<li>Save and verify the v1 recovery state.</li>
+<li>Prepare the import input for the selected storage choice.</li>
+<li>Run InfiniDysk's native conversion.</li>
+<li>Validate the import and reconcile the retained evidence.</li>
+<li>Wait for your activation or restore decision.</li>
+<li>Activate the prepared candidate and verify live delivery.</li>
+<li>Resume the previously running managed applications.</li>
+</ol>
+<p>Fresh installations omit steps that do not apply. Optional conversion of an
+already running v2 SQLite database to PostgreSQL is a separate workflow; it is
+not the source-database step above. Older separate tests show their v1 restore
+and candidate-cleanup steps instead of an activation decision. Failure recovery
+appears as its own restore branch; restoring v1 does not complete the remaining
+v2 activation stages.</p>
+<p>Each step has a status such as queued, in progress, completed, waiting for your
+decision, failed or not run. DUMB marks a step complete only when the relevant
+work records its completion. An older retained job may have no historical step
+records; the view identifies that missing evidence instead of marking all
+earlier stages complete. A completed preview shows a plan of the stages, not
+evidence that any migration work has run. The number of completed stages is not
+a percentage of elapsed time: one import or archive check can take longer than
+several other steps combined.</p>
 <p>The displayed phase distinguishes native import, DUMB validation and source
 recovery. Progress is shown while work is running; a finished job shows its
 result and next step. Native counts and any time estimate describe that phase
@@ -7288,11 +7381,11 @@ separate existing workflows.</p>
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.15</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.15">Release notes</a>
+              <span>Documentation release 1.25.16</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.16">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;76e70155da779608b261d82d4a249c106b6959ae" title="Documentation source commit 76e70155da779608b261d82d4a249c106b6959ae">Source 76e70155</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;67530cd8ed7bdfaa0aa10927bfd155431a5fa27e" title="Documentation source commit 67530cd8ed7bdfaa0aa10927bfd155431a5fa27e">Source 67530cd8</a>
             
             
           </div>
@@ -7366,6 +7459,8 @@ separate existing workflows.</p>
         <script src="../../assets/js/zoom.aa9f2a8eef1d.js"></script>
       
         <script src="../../assets/js/docs.5b838e9f6ae0.js"></script>
+      
+        <script src="../../assets/js/showcase.772a17319ff8.js"></script>
       
     
   </body>

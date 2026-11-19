@@ -1,0 +1,32 @@
+# Inside DUMB
+
+Real DUMB frontend screens with reserved example data. Feature labels only; no narration.
+
+## 00:00 — Your media apps. One place.
+
+Review your selected services and their status.
+
+## 00:03 — Choose what you run.
+
+Select the applications for your own workflow.
+
+## 00:07 — Everything for one app.
+
+Open its controls, settings and application interface.
+
+## 00:11 — See what connects.
+
+Inspect the dependencies behind a selected service.
+
+## 00:17 — Find the useful line.
+
+Read and filter the selected service's logs.
+
+## 00:23 — Keep the right alerts.
+
+Review notification destinations and event settings.
+
+## 00:26 — Know how it's running.
+
+Review resource use alongside your service checks.
+

@@ -1,0 +1,3916 @@
+{
+  "schema_version": 2,
+  "channel": "dev",
+  "frontend": {
+    "commit": "836c92e776b0b9c12aa2c8423aad51520d9f5b5a",
+    "ref": "dev",
+    "repository": "https://github.com/nicocapalbo/dmbdb",
+    "tag": null,
+    "version": "1.92.0"
+  },
+  "backend": {
+    "commit": "90778cb260ae2d08c4aba7a064944a753607b67c",
+    "ref": "dev",
+    "repository": "https://github.com/I-am-PUID-0/DUMB",
+    "tag": null,
+    "version": "2.24.0"
+  },
+  "plan_sha256": "dfc05c7c0e09a7b4a80bfe8080c740af1f6f469aab9d909acd94491b2568f29d",
+  "catalog_sha256": "4172c81beac82b5d42d38b9e89da9e215751a18d804928bcf65b20cc863d35b8",
+  "dataset_sha256": "7f52c30bd48e7c312401013a1c3d4a6388da3272df454f971c013aed7265010c",
+  "tooling_sha256": "50f844af3bebb8f913b770b615a4430fb7e5810be83b8c9727f730b6b4922028",
+  "capability_source_sha256": "76092f56e48d340ba868cadc2710ef4c1a765c00b0e5ffe6a65149f830801065",
+  "complete": true,
+  "coverage_complete": true,
+  "scope": "Actual packaged Nuxt application. Example service configuration is isolated; no production DUMB installation or provider account is contacted.",
+  "captured_at": "2026-11-19T17:39:31.152Z",
+  "dataset": "Public example API/WebSocket responses; system CPU/memory and task-owned process counters are sampled from the capture container.",
+  "fixed_time": "2026-11-19T12:00:00.000Z",
+  "viewport": {
+    "width": 1280,
+    "height": 800
+  },
+  "themes": [
+    "dark",
+    "light"
+  ],
+  "native_apps": {
+    "sonarr": {
+      "application": "Sonarr",
+      "image": "lscr.io/linuxserver/sonarr@sha256:c7d1df25e428da6c9ace05daea0d34e59522978a3843ea1944812f855af4086c",
+      "version": "4.0.20.3014"
+    }
+  },
+  "native_app_observations": {
+    "sonarr": {
+      "application": "Sonarr",
+      "version": "4.0.20.3014",
+      "image": "lscr.io/linuxserver/sonarr@sha256:c7d1df25e428da6c9ace05daea0d34e59522978a3843ea1944812f855af4086c",
+      "verified": true,
+      "version_verification": "Observed from the isolated application API.",
+      "image_verification": "Pinned image attested by the demo-service launcher and capture plan."
+    }
+  },
+  "measurements": {
+    "source": "Linux cgroup v2 numeric CPU and memory counters",
+    "observed_at": "2026-11-19T17:39:31.186Z",
+    "interval_ms": 500,
+    "samples": 720,
+    "fields": [
+      "cpu_percent",
+      "memory_working_set_percent",
+      "task_owned_process_cpu_percent",
+      "task_owned_process_rss"
+    ],
+    "scope": "Sampled capture container counters; example service identities and other API data remain simulated."
+  },
+  "capture_manifest_sha256": "8f61b55eda2dcccb5b556520da43aaca5fdabac4156c4ffe02bdd532111a7128",
+  "simulated_operations": [
+    {
+      "method": "POST",
+      "path": "/api/process/setup/runs/example-run/actions/review-provider",
+      "profile": "setup-connections",
+      "operation": "in_memory_example_recheck"
+    },
+    {
+      "method": "POST",
+      "path": "/api/process/setup/runs",
+      "profile": "onboarding-progress",
+      "operation": "in_memory_simulated_setup_run"
+    },
+    {
+      "method": "POST",
+      "path": "/api/process/setup/runs",
+      "profile": "onboarding-result",
+      "operation": "in_memory_simulated_setup_run"
+    },
+    {
+      "method": "POST",
+      "path": "/api/process/setup/runs",
+      "profile": "onboarding-error",
+      "operation": "in_memory_simulated_setup_run"
+    },
+    {
+      "method": "POST",
+      "path": "/api/process/setup/runs/example-run/actions/review-provider",
+      "profile": "setup-connections",
+      "operation": "in_memory_example_recheck"
+    },
+    {
+      "method": "POST",
+      "path": "/api/process/setup/runs",
+      "profile": "onboarding-progress",
+      "operation": "in_memory_simulated_setup_run"
+    },
+    {
+      "method": "POST",
+      "path": "/api/process/setup/runs",
+      "profile": "onboarding-result",
+      "operation": "in_memory_simulated_setup_run"
+    },
+    {
+      "method": "POST",
+      "path": "/api/process/setup/runs",
+      "profile": "onboarding-error",
+      "operation": "in_memory_simulated_setup_run"
+    }
+  ],
+  "coverage": [
+    {
+      "id": "dashboard",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/dashboard"
+      ],
+      "artifacts": [
+        "dark/dashboard.webp"
+      ]
+    },
+    {
+      "id": "service-controls",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/service-pages"
+      ],
+      "artifacts": [
+        "dark/service-controls.webp"
+      ]
+    },
+    {
+      "id": "service-logs",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/service-pages"
+      ],
+      "artifacts": [
+        "dark/service-logs.webp",
+        "dark/service-logs.webm"
+      ]
+    },
+    {
+      "id": "realtime-logs",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/index",
+        "frontend/service-pages"
+      ],
+      "artifacts": [
+        "dark/realtime-logs.webp"
+      ]
+    },
+    {
+      "id": "updates",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/auto-update"
+      ],
+      "artifacts": [
+        "dark/updates.webp",
+        "dark/updates.webm"
+      ]
+    },
+    {
+      "id": "dependencies",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/service-pages"
+      ],
+      "artifacts": [
+        "dark/dependencies.webp",
+        "dark/dependencies.webm"
+      ]
+    },
+    {
+      "id": "auto-restart",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/auto-restart"
+      ],
+      "artifacts": [
+        "dark/auto-restart.webp",
+        "dark/auto-restart.webm"
+      ]
+    },
+    {
+      "id": "configuration",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/configuration"
+      ],
+      "artifacts": [
+        "dark/configuration.webp",
+        "dark/configuration.webm"
+      ]
+    },
+    {
+      "id": "disabled-services",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/dashboard"
+      ],
+      "artifacts": [
+        "dark/disabled-services.webp"
+      ]
+    },
+    {
+      "id": "metrics",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/metrics"
+      ],
+      "artifacts": [
+        "dark/metrics.webp"
+      ]
+    },
+    {
+      "id": "settings-overview",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/settings"
+      ],
+      "artifacts": [
+        "dark/settings-overview.webp"
+      ]
+    },
+    {
+      "id": "settings-appearance",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/settings"
+      ],
+      "artifacts": [
+        "dark/settings-appearance.webp",
+        "dark/settings-appearance.webm"
+      ]
+    },
+    {
+      "id": "settings-about",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/settings"
+      ],
+      "artifacts": [
+        "dark/settings-about.webp"
+      ]
+    },
+    {
+      "id": "settings-tokens",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/configuration"
+      ],
+      "artifacts": [
+        "dark/settings-tokens.webp"
+      ]
+    },
+    {
+      "id": "settings-log-timestamps",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/settings",
+        "frontend/service-pages"
+      ],
+      "artifacts": [
+        "dark/settings-log-timestamps.webp"
+      ]
+    },
+    {
+      "id": "settings-embedded-uis",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/embedded-ui"
+      ],
+      "artifacts": [
+        "dark/settings-embedded-uis.webp"
+      ]
+    },
+    {
+      "id": "settings-authentication",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/authentication"
+      ],
+      "artifacts": [
+        "dark/settings-authentication.webp"
+      ]
+    },
+    {
+      "id": "settings-auth-provider",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/authentication"
+      ],
+      "artifacts": [
+        "dark/settings-auth-provider.webp"
+      ]
+    },
+    {
+      "id": "settings-notifications",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/notifications"
+      ],
+      "artifacts": [
+        "dark/settings-notifications.webp"
+      ]
+    },
+    {
+      "id": "settings-backups",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/installation-backups"
+      ],
+      "artifacts": [
+        "dark/settings-backups.webp"
+      ]
+    },
+    {
+      "id": "settings-advanced",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/settings"
+      ],
+      "artifacts": [
+        "dark/settings-advanced.webp"
+      ]
+    },
+    {
+      "id": "settings-support",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/settings",
+        "contributing"
+      ],
+      "artifacts": [
+        "dark/settings-support.webp"
+      ]
+    },
+    {
+      "id": "login",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/authentication"
+      ],
+      "artifacts": [
+        "dark/login.webp"
+      ]
+    },
+    {
+      "id": "account-setup",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/authentication"
+      ],
+      "artifacts": [
+        "dark/account-setup.webp"
+      ]
+    },
+    {
+      "id": "ai-overview",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/ai-assistant"
+      ],
+      "artifacts": [
+        "dark/ai-overview.webp"
+      ]
+    },
+    {
+      "id": "ai-provider",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/ai-assistant"
+      ],
+      "artifacts": [
+        "dark/ai-provider.webp"
+      ]
+    },
+    {
+      "id": "onboarding-services",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/onboarding"
+      ],
+      "artifacts": [
+        "dark/onboarding-services.webp"
+      ]
+    },
+    {
+      "id": "onboarding-preflight",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/onboarding"
+      ],
+      "artifacts": [
+        "dark/onboarding-preflight.webp"
+      ]
+    },
+    {
+      "id": "onboarding-provider",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/onboarding"
+      ],
+      "artifacts": [
+        "dark/onboarding-provider.webp"
+      ]
+    },
+    {
+      "id": "onboarding-companions",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/onboarding"
+      ],
+      "artifacts": [
+        "dark/onboarding-companions.webp"
+      ]
+    },
+    {
+      "id": "onboarding-options",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/onboarding"
+      ],
+      "artifacts": [
+        "dark/onboarding-options.webp"
+      ]
+    },
+    {
+      "id": "onboarding-embedded-uis",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/onboarding",
+        "features/embedded-ui"
+      ],
+      "artifacts": [
+        "dark/onboarding-embedded-uis.webp"
+      ]
+    },
+    {
+      "id": "onboarding-installation",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/onboarding"
+      ],
+      "artifacts": [
+        "dark/onboarding-installation.webp"
+      ]
+    },
+    {
+      "id": "onboarding-review",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/onboarding",
+        "features/setup-checklist"
+      ],
+      "artifacts": [
+        "dark/onboarding-review.webp",
+        "dark/onboarding-review.webm"
+      ]
+    },
+    {
+      "id": "setup-connections",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/setup-checklist"
+      ],
+      "artifacts": [
+        "dark/setup-connections.webp"
+      ]
+    },
+    {
+      "id": "settings-onboarding",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/settings",
+        "frontend/onboarding"
+      ],
+      "artifacts": [
+        "dark/settings-onboarding.webp"
+      ]
+    },
+    {
+      "id": "settings-contributors",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/settings",
+        "contributing"
+      ],
+      "artifacts": [
+        "dark/settings-contributors.webp"
+      ]
+    },
+    {
+      "id": "api-configuration",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/configuration",
+        "api/index"
+      ],
+      "artifacts": [
+        "dark/api-configuration.webp"
+      ]
+    },
+    {
+      "id": "onboarding-progress",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/onboarding",
+        "features/setup-checklist"
+      ],
+      "artifacts": [
+        "dark/onboarding-progress.webp"
+      ]
+    },
+    {
+      "id": "onboarding-result",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/onboarding",
+        "features/setup-checklist"
+      ],
+      "artifacts": [
+        "dark/onboarding-result.webp"
+      ]
+    },
+    {
+      "id": "onboarding-error",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/onboarding",
+        "features/setup-checklist"
+      ],
+      "artifacts": [
+        "dark/onboarding-error.webp"
+      ]
+    },
+    {
+      "id": "ai-provider-openai",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/ai-assistant"
+      ],
+      "artifacts": [
+        "dark/ai-provider-openai.webp"
+      ]
+    },
+    {
+      "id": "ai-provider-gemini",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/ai-assistant"
+      ],
+      "artifacts": [
+        "dark/ai-provider-gemini.webp"
+      ]
+    },
+    {
+      "id": "embedded-sonarr",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/embedded-ui"
+      ],
+      "artifacts": [
+        "dark/embedded-sonarr.webp",
+        "dark/embedded-sonarr.webm"
+      ]
+    },
+    {
+      "id": "database-health",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/metrics",
+        "frontend/metrics"
+      ],
+      "artifacts": [
+        "dark/database-health.webp"
+      ]
+    },
+    {
+      "id": "library-protection",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/media-library-protection"
+      ],
+      "artifacts": [
+        "dark/library-protection.webp"
+      ]
+    },
+    {
+      "id": "symlink-tools",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/symlinks"
+      ],
+      "artifacts": [
+        "dark/symlink-tools.webp"
+      ]
+    },
+    {
+      "id": "rclone-optimizer",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/rclone-optimizer"
+      ],
+      "artifacts": [
+        "dark/rclone-optimizer.webp"
+      ]
+    },
+    {
+      "id": "infinidysk-v2-install",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "services/core/infinidysk-installation",
+        "features/infinidysk-v2-migration"
+      ],
+      "artifacts": [
+        "dark/infinidysk-v2-install.webp"
+      ]
+    },
+    {
+      "id": "infinidysk-namespace-migration",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "services/core/infinidysk-migration"
+      ],
+      "artifacts": [
+        "dark/infinidysk-namespace-migration.webp"
+      ]
+    },
+    {
+      "id": "postgres-migration",
+      "theme": "dark",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/arr-postgres-migration",
+        "services/dependent/postgres"
+      ],
+      "artifacts": [
+        "dark/postgres-migration.webp"
+      ]
+    },
+    {
+      "id": "dashboard",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/dashboard"
+      ],
+      "artifacts": [
+        "light/dashboard.webp"
+      ]
+    },
+    {
+      "id": "service-controls",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/service-pages"
+      ],
+      "artifacts": [
+        "light/service-controls.webp"
+      ]
+    },
+    {
+      "id": "service-logs",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/service-pages"
+      ],
+      "artifacts": [
+        "light/service-logs.webp",
+        "light/service-logs.webm"
+      ]
+    },
+    {
+      "id": "realtime-logs",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/index",
+        "frontend/service-pages"
+      ],
+      "artifacts": [
+        "light/realtime-logs.webp"
+      ]
+    },
+    {
+      "id": "updates",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/auto-update"
+      ],
+      "artifacts": [
+        "light/updates.webp",
+        "light/updates.webm"
+      ]
+    },
+    {
+      "id": "dependencies",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/service-pages"
+      ],
+      "artifacts": [
+        "light/dependencies.webp",
+        "light/dependencies.webm"
+      ]
+    },
+    {
+      "id": "auto-restart",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/auto-restart"
+      ],
+      "artifacts": [
+        "light/auto-restart.webp",
+        "light/auto-restart.webm"
+      ]
+    },
+    {
+      "id": "configuration",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/configuration"
+      ],
+      "artifacts": [
+        "light/configuration.webp",
+        "light/configuration.webm"
+      ]
+    },
+    {
+      "id": "disabled-services",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/dashboard"
+      ],
+      "artifacts": [
+        "light/disabled-services.webp"
+      ]
+    },
+    {
+      "id": "metrics",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/metrics"
+      ],
+      "artifacts": [
+        "light/metrics.webp"
+      ]
+    },
+    {
+      "id": "settings-overview",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/settings"
+      ],
+      "artifacts": [
+        "light/settings-overview.webp"
+      ]
+    },
+    {
+      "id": "settings-appearance",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/settings"
+      ],
+      "artifacts": [
+        "light/settings-appearance.webp",
+        "light/settings-appearance.webm"
+      ]
+    },
+    {
+      "id": "settings-about",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/settings"
+      ],
+      "artifacts": [
+        "light/settings-about.webp"
+      ]
+    },
+    {
+      "id": "settings-tokens",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/configuration"
+      ],
+      "artifacts": [
+        "light/settings-tokens.webp"
+      ]
+    },
+    {
+      "id": "settings-log-timestamps",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/settings",
+        "frontend/service-pages"
+      ],
+      "artifacts": [
+        "light/settings-log-timestamps.webp"
+      ]
+    },
+    {
+      "id": "settings-embedded-uis",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/embedded-ui"
+      ],
+      "artifacts": [
+        "light/settings-embedded-uis.webp"
+      ]
+    },
+    {
+      "id": "settings-authentication",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/authentication"
+      ],
+      "artifacts": [
+        "light/settings-authentication.webp"
+      ]
+    },
+    {
+      "id": "settings-auth-provider",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/authentication"
+      ],
+      "artifacts": [
+        "light/settings-auth-provider.webp"
+      ]
+    },
+    {
+      "id": "settings-notifications",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/notifications"
+      ],
+      "artifacts": [
+        "light/settings-notifications.webp"
+      ]
+    },
+    {
+      "id": "settings-backups",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/installation-backups"
+      ],
+      "artifacts": [
+        "light/settings-backups.webp"
+      ]
+    },
+    {
+      "id": "settings-advanced",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/settings"
+      ],
+      "artifacts": [
+        "light/settings-advanced.webp"
+      ]
+    },
+    {
+      "id": "settings-support",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/settings",
+        "contributing"
+      ],
+      "artifacts": [
+        "light/settings-support.webp"
+      ]
+    },
+    {
+      "id": "login",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/authentication"
+      ],
+      "artifacts": [
+        "light/login.webp"
+      ]
+    },
+    {
+      "id": "account-setup",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/authentication"
+      ],
+      "artifacts": [
+        "light/account-setup.webp"
+      ]
+    },
+    {
+      "id": "ai-overview",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/ai-assistant"
+      ],
+      "artifacts": [
+        "light/ai-overview.webp"
+      ]
+    },
+    {
+      "id": "ai-provider",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/ai-assistant"
+      ],
+      "artifacts": [
+        "light/ai-provider.webp"
+      ]
+    },
+    {
+      "id": "onboarding-services",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/onboarding"
+      ],
+      "artifacts": [
+        "light/onboarding-services.webp"
+      ]
+    },
+    {
+      "id": "onboarding-preflight",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/onboarding"
+      ],
+      "artifacts": [
+        "light/onboarding-preflight.webp"
+      ]
+    },
+    {
+      "id": "onboarding-provider",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/onboarding"
+      ],
+      "artifacts": [
+        "light/onboarding-provider.webp"
+      ]
+    },
+    {
+      "id": "onboarding-companions",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/onboarding"
+      ],
+      "artifacts": [
+        "light/onboarding-companions.webp"
+      ]
+    },
+    {
+      "id": "onboarding-options",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/onboarding"
+      ],
+      "artifacts": [
+        "light/onboarding-options.webp"
+      ]
+    },
+    {
+      "id": "onboarding-embedded-uis",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/onboarding",
+        "features/embedded-ui"
+      ],
+      "artifacts": [
+        "light/onboarding-embedded-uis.webp"
+      ]
+    },
+    {
+      "id": "onboarding-installation",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/onboarding"
+      ],
+      "artifacts": [
+        "light/onboarding-installation.webp"
+      ]
+    },
+    {
+      "id": "onboarding-review",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/onboarding",
+        "features/setup-checklist"
+      ],
+      "artifacts": [
+        "light/onboarding-review.webp",
+        "light/onboarding-review.webm"
+      ]
+    },
+    {
+      "id": "setup-connections",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/setup-checklist"
+      ],
+      "artifacts": [
+        "light/setup-connections.webp"
+      ]
+    },
+    {
+      "id": "settings-onboarding",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/settings",
+        "frontend/onboarding"
+      ],
+      "artifacts": [
+        "light/settings-onboarding.webp"
+      ]
+    },
+    {
+      "id": "settings-contributors",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/settings",
+        "contributing"
+      ],
+      "artifacts": [
+        "light/settings-contributors.webp"
+      ]
+    },
+    {
+      "id": "api-configuration",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/configuration",
+        "api/index"
+      ],
+      "artifacts": [
+        "light/api-configuration.webp"
+      ]
+    },
+    {
+      "id": "onboarding-progress",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/onboarding",
+        "features/setup-checklist"
+      ],
+      "artifacts": [
+        "light/onboarding-progress.webp"
+      ]
+    },
+    {
+      "id": "onboarding-result",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/onboarding",
+        "features/setup-checklist"
+      ],
+      "artifacts": [
+        "light/onboarding-result.webp"
+      ]
+    },
+    {
+      "id": "onboarding-error",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "frontend/onboarding",
+        "features/setup-checklist"
+      ],
+      "artifacts": [
+        "light/onboarding-error.webp"
+      ]
+    },
+    {
+      "id": "ai-provider-openai",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/ai-assistant"
+      ],
+      "artifacts": [
+        "light/ai-provider-openai.webp"
+      ]
+    },
+    {
+      "id": "ai-provider-gemini",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/ai-assistant"
+      ],
+      "artifacts": [
+        "light/ai-provider-gemini.webp"
+      ]
+    },
+    {
+      "id": "embedded-sonarr",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/embedded-ui"
+      ],
+      "artifacts": [
+        "light/embedded-sonarr.webp",
+        "light/embedded-sonarr.webm"
+      ]
+    },
+    {
+      "id": "database-health",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/metrics",
+        "frontend/metrics"
+      ],
+      "artifacts": [
+        "light/database-health.webp"
+      ]
+    },
+    {
+      "id": "library-protection",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/media-library-protection"
+      ],
+      "artifacts": [
+        "light/library-protection.webp"
+      ]
+    },
+    {
+      "id": "symlink-tools",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/symlinks"
+      ],
+      "artifacts": [
+        "light/symlink-tools.webp"
+      ]
+    },
+    {
+      "id": "rclone-optimizer",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/rclone-optimizer"
+      ],
+      "artifacts": [
+        "light/rclone-optimizer.webp"
+      ]
+    },
+    {
+      "id": "infinidysk-v2-install",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "services/core/infinidysk-installation",
+        "features/infinidysk-v2-migration"
+      ],
+      "artifacts": [
+        "light/infinidysk-v2-install.webp"
+      ]
+    },
+    {
+      "id": "infinidysk-namespace-migration",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "services/core/infinidysk-migration"
+      ],
+      "artifacts": [
+        "light/infinidysk-namespace-migration.webp"
+      ]
+    },
+    {
+      "id": "postgres-migration",
+      "theme": "light",
+      "status": "captured",
+      "required": true,
+      "features": [
+        "features/arr-postgres-migration",
+        "services/dependent/postgres"
+      ],
+      "artifacts": [
+        "light/postgres-migration.webp"
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "dark/dashboard.webp",
+      "sha256": "17fd68a6736292a9dbc7be02f9deb73845e8df7bd71ca84fe7d3b1a72c995369",
+      "bytes": 44692,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "dashboard",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/",
+      "actions": [
+        "Review service health and dashboard controls."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/service-controls.webp",
+      "sha256": "68a36498beb39cecc589a5b7d50f88c63afbcce82719bc121d44b1c6c609c1b4",
+      "bytes": 50888,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "service-controls",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Review a service's health and lifecycle controls without operating it."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/service-logs.webp",
+      "sha256": "9a36cfa7bf6b5dc5b47428fb987f44a3f24105fcd095fe03b321c193fa8ec04f",
+      "bytes": 61972,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "service-logs",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Open native logs, filter lines and pause refresh.",
+        "Open Service Logs",
+        "Pause automatic refresh"
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/service-logs.webm",
+      "sha256": "102bcb5e6bd88a4bd2384a313b3e93ceb27be9a7129275ace3c4e159ca8cc9ec",
+      "bytes": 2153883,
+      "kind": "video",
+      "media_type": "video/webm",
+      "scenario": "service-logs",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Open native logs, filter lines and pause refresh.",
+        "Open Service Logs",
+        "Pause automatic refresh"
+      ],
+      "poster": "dark/service-logs.webp",
+      "chapters": [
+        {
+          "label": "Open Service Logs",
+          "at_seconds": 2
+        },
+        {
+          "label": "Pause automatic refresh",
+          "at_seconds": 14
+        }
+      ],
+      "pointer_emphasis": true,
+      "pacing": {
+        "tools_menu_ms": 2500,
+        "menu_choice_ms": 1600,
+        "result_ms": 2200
+      }
+    },
+    {
+      "path": "dark/realtime-logs.webp",
+      "sha256": "0879cb74ecf87a2b4d1c9308ef73034b16c682ed3028a42d46c54686db8250b3",
+      "bytes": 24362,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "realtime-logs",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/rtl",
+      "actions": [
+        "Read the actual global Real-Time Logs page with explicitly labeled public example log messages."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/updates.webp",
+      "sha256": "5c6ba13a5ab7118b0ab9376fb800e1e9a17182a1d8093f014d5e86cb81c5bad0",
+      "bytes": 37228,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "updates",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Check an example available update without installing it.",
+        "Open Service tools",
+        "Choose Updates",
+        "Check for updates without installing"
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/updates.webm",
+      "sha256": "dcce1c4f8e6929ab97a19ed7798b071ec9f14c458e31fbbdda2a8ef7197196f4",
+      "bytes": 2022953,
+      "kind": "video",
+      "media_type": "video/webm",
+      "scenario": "updates",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Check an example available update without installing it.",
+        "Open Service tools",
+        "Choose Updates",
+        "Check for updates without installing"
+      ],
+      "poster": "dark/updates.webp",
+      "chapters": [
+        {
+          "label": "Open Service tools",
+          "at_seconds": 2
+        },
+        {
+          "label": "Choose Updates",
+          "at_seconds": 6.3
+        },
+        {
+          "label": "Check for updates without installing",
+          "at_seconds": 10.5
+        }
+      ],
+      "pointer_emphasis": true,
+      "pacing": {
+        "tools_menu_ms": 2500,
+        "menu_choice_ms": 1600,
+        "result_ms": 2200
+      }
+    },
+    {
+      "path": "dark/dependencies.webp",
+      "sha256": "aa1162ad7aa08bbaad57af980155f9133a6d8a61a8aeb51b330bf2c37a743909",
+      "bytes": 25876,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "dependencies",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Read startup dependencies and switch to Flow.",
+        "Open Service tools",
+        "Choose Dependencies"
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/dependencies.webm",
+      "sha256": "384255574837b3626461f5558cbc806a0b8ef2455b560e96f411243c24b11ffd",
+      "bytes": 1849163,
+      "kind": "video",
+      "media_type": "video/webm",
+      "scenario": "dependencies",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Read startup dependencies and switch to Flow.",
+        "Open Service tools",
+        "Choose Dependencies"
+      ],
+      "poster": "dark/dependencies.webp",
+      "chapters": [
+        {
+          "label": "Open Service tools",
+          "at_seconds": 2
+        },
+        {
+          "label": "Choose Dependencies",
+          "at_seconds": 6.3
+        }
+      ],
+      "pointer_emphasis": true,
+      "pacing": {
+        "tools_menu_ms": 2500,
+        "menu_choice_ms": 1600,
+        "result_ms": 2200
+      }
+    },
+    {
+      "path": "dark/auto-restart.webp",
+      "sha256": "931318fa4b5957598923a39c24ee98a516b97b7b7bd392261aa60a21e29de678",
+      "bytes": 50218,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "auto-restart",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Review global and service recovery guardrails without applying them.",
+        "Open Service tools",
+        "Choose Auto-restart"
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/auto-restart.webm",
+      "sha256": "7d76d83a3205f43483cf1c11cedf20d43193c60d230a6ad9fa88f2b96cab1c1d",
+      "bytes": 2175935,
+      "kind": "video",
+      "media_type": "video/webm",
+      "scenario": "auto-restart",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Review global and service recovery guardrails without applying them.",
+        "Open Service tools",
+        "Choose Auto-restart"
+      ],
+      "poster": "dark/auto-restart.webp",
+      "chapters": [
+        {
+          "label": "Open Service tools",
+          "at_seconds": 2
+        },
+        {
+          "label": "Choose Auto-restart",
+          "at_seconds": 6.3
+        }
+      ],
+      "pointer_emphasis": true,
+      "pacing": {
+        "tools_menu_ms": 2500,
+        "menu_choice_ms": 1600,
+        "result_ms": 2200
+      }
+    },
+    {
+      "path": "dark/configuration.webp",
+      "sha256": "68a36498beb39cecc589a5b7d50f88c63afbcce82719bc121d44b1c6c609c1b4",
+      "bytes": 50888,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "configuration",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Compare DUMB Config and Service Config without editing.",
+        "Review settings managed by DUMB",
+        "Return to DUMB configuration"
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/configuration.webm",
+      "sha256": "36a8a0fd6e5bdc4b682ffd2dfc2ae53369bdca6488910fda3b12025812204e4c",
+      "bytes": 1598947,
+      "kind": "video",
+      "media_type": "video/webm",
+      "scenario": "configuration",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Compare DUMB Config and Service Config without editing.",
+        "Review settings managed by DUMB",
+        "Return to DUMB configuration"
+      ],
+      "poster": "dark/configuration.webp",
+      "chapters": [
+        {
+          "label": "Review settings managed by DUMB",
+          "at_seconds": 2
+        },
+        {
+          "label": "Return to DUMB configuration",
+          "at_seconds": 7.8
+        }
+      ],
+      "pointer_emphasis": true,
+      "pacing": {
+        "tools_menu_ms": 2500,
+        "menu_choice_ms": 1600,
+        "result_ms": 2200
+      }
+    },
+    {
+      "path": "dark/disabled-services.webp",
+      "sha256": "a5a48f568aa4cdf92ae3646985ce870c590d5ffd177ebbd8d0edbe4c035e0cd5",
+      "bytes": 47002,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "disabled-services",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/",
+      "actions": [
+        "Find an example disabled service using the sidebar filters."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/metrics.webp",
+      "sha256": "c6602367df4e2d88a586ea9f5dde32100b214418f61e70117211ce91d049bea5",
+      "bytes": 60018,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "metrics",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/metrics",
+      "actions": [
+        "Inspect actual sampled container CPU and memory in the real Metrics UI."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/settings-overview.webp",
+      "sha256": "32d4534c939495d41debe45712a10fd2d7615236d4b362b7a9c3207e0ff25880",
+      "bytes": 38520,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "settings-overview",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Review the Settings page and its section navigation."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/settings-appearance.webp",
+      "sha256": "ada889228aa7c3a4064d2b89d007f1a04596ca1f06dd74094c849715448a2abb",
+      "bytes": 55184,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "settings-appearance",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Review theme choices in the selected light or dark appearance.",
+        "Review Appearance"
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/settings-appearance.webm",
+      "sha256": "d80c8c45569604b6f456d118ad837a34c9ade59a1cab98f89e62dc0eb11c8411",
+      "bytes": 1320614,
+      "kind": "video",
+      "media_type": "video/webm",
+      "scenario": "settings-appearance",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Review theme choices in the selected light or dark appearance.",
+        "Review Appearance"
+      ],
+      "poster": "dark/settings-appearance.webp",
+      "chapters": [
+        {
+          "label": "Review Appearance",
+          "at_seconds": 1.9
+        }
+      ],
+      "pointer_emphasis": true,
+      "pacing": {
+        "tools_menu_ms": 2500,
+        "menu_choice_ms": 1600,
+        "result_ms": 2200
+      }
+    },
+    {
+      "path": "dark/settings-about.webp",
+      "sha256": "70dc1d8b8f7c78f813da039aed6e4304249d6e4d68104875830eed71922d0779",
+      "bytes": 36228,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "settings-about",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Compare independent backend and frontend versions."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/settings-tokens.webp",
+      "sha256": "fe17e5dff9ad00c60c7b601eb057289ed3d7c82963cb517b591419702c189c77",
+      "bytes": 45788,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "settings-tokens",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Locate token fields; keep credentials blank."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/settings-log-timestamps.webp",
+      "sha256": "bef14ad47f8321b3b3c04bf293ee3fd3e97662016c24100db31c23c1a64880cc",
+      "bytes": 43436,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "settings-log-timestamps",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Review date and time formatting controls."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/settings-embedded-uis.webp",
+      "sha256": "e6426085eb47adcfb9e199322bc87893584d575e5d9cc09697985610f91cbb69",
+      "bytes": 44370,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "settings-embedded-uis",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Review the real embedded-service enablement controls."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/settings-authentication.webp",
+      "sha256": "e2e691521a3799fd5bbd2d6a3b0740806c16172d743e82d5f4c7159e8fd4f463",
+      "bytes": 65294,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "settings-authentication",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Review authentication and local-account management."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/settings-auth-provider.webp",
+      "sha256": "544066536058a8911676c5dba77a01638853c0212a2f903315dc86c41e8b6283",
+      "bytes": 87846,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "settings-auth-provider",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Review OIDC provider settings without discovery or saving."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/settings-notifications.webp",
+      "sha256": "ee3948b656483ba1fa7b5f0c95e22cb915594a2ad53d177280e5cb7312cb7a7c",
+      "bytes": 97686,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "settings-notifications",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Review notification destinations, event routing and delivery history."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/settings-backups.webp",
+      "sha256": "7c5ac8b9c21a8bba9a95bfcc96d3d1f12e89f6736c2dc0ce19462b8fd12a34ac",
+      "bytes": 76896,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "settings-backups",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Review the real backup/restore panel without preparing or starting a backup."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/settings-advanced.webp",
+      "sha256": "779fffd7e2e60f718dcf0b9965b28d6ac171387614e5713e9c5c0e5d83fd6d8d",
+      "bytes": 69474,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "settings-advanced",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Review available service utilities and optional diagnostics."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/settings-support.webp",
+      "sha256": "11e3f74bd8b4859abda674a189bf909d0fff2fbbaa640c67fcc7f975379263b9",
+      "bytes": 50518,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "settings-support",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Locate project support and contribution links."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/login.webp",
+      "sha256": "ca5c991c57e06665a7a4728586be3f8f995159d738e3a088521c4f53b6bb2f34",
+      "bytes": 16110,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "login",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/login",
+      "actions": [
+        "Show the real sign-in form with blank credentials."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/account-setup.webp",
+      "sha256": "c80562868d037c10d334499436d15a1eacb39a79af277bfd677621170fcfcc84",
+      "bytes": 31778,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "account-setup",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/setup",
+      "actions": [
+        "Show the real initial account form without submitting it."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/ai-overview.webp",
+      "sha256": "8c33f42dc33772c1f0c428965963685f26582f8a29f7c6f8383e30bdcdb79cda",
+      "bytes": 38850,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "ai-overview",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/ai",
+      "actions": [
+        "Review diagnostic scope and evidence controls without provider calls."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/ai-provider.webp",
+      "sha256": "d6f2312d481fdcb02f6caaa0e9c95ca740200ce24665621fcfde5f61741d4f7e",
+      "bytes": 52398,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "ai-provider",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/ai",
+      "actions": [
+        "Review the provider form with no credential or live model call."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/onboarding-services.webp",
+      "sha256": "d34ac0ee706836d7e97c1e61944114ffb1ba9504206d672bc84fa189f8a43f6d",
+      "bytes": 33786,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "onboarding-services",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/onboarding",
+      "actions": [
+        "Choose example services in the actual packaged onboarding wizard."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/onboarding-preflight.webp",
+      "sha256": "62c5ac259660f7dab999bb7146e15c713087e3595ab6ef8b3ae40e9601a88a3f",
+      "bytes": 33058,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "onboarding-preflight",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/onboarding",
+      "actions": [
+        "Review example readiness checks and explicit unknown storage readiness."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/onboarding-provider.webp",
+      "sha256": "d83debd561c09b8209e3e8c9cc7ea8967903cf105a5e1a9344fcb94aad8aab19",
+      "bytes": 25990,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "onboarding-provider",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/onboarding",
+      "actions": [
+        "Review a provider credential step using a visibly example value."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/onboarding-companions.webp",
+      "sha256": "ba5788a6d13c344bf28b990874729fca15b100e10bbe3d12d9bc87b774b19d2a",
+      "bytes": 38720,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "onboarding-companions",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/onboarding",
+      "actions": [
+        "Review optional companion service selection."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/onboarding-options.webp",
+      "sha256": "02d468268d5ef0f0bf94ae556ed8d0c8091ec7b8cb3f020ea563a4e0b47b1c5d",
+      "bytes": 27176,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "onboarding-options",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/onboarding",
+      "actions": [
+        "Review selected service options."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/onboarding-embedded-uis.webp",
+      "sha256": "738dd2271c7349361ebe1da00b2e4f0ff6b68575ef95f0ac414bcd693affd560",
+      "bytes": 39176,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "onboarding-embedded-uis",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/onboarding",
+      "actions": [
+        "Review embedded-service access in onboarding."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/onboarding-installation.webp",
+      "sha256": "1660697974748747f441ce897d654f05fa87f51f57ae6babf0da5bd15d7e4715",
+      "bytes": 47188,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "onboarding-installation",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/onboarding",
+      "actions": [
+        "Review installation choices before startup."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/onboarding-review.webp",
+      "sha256": "331ad0a4939b8b270ea2a887db1e5d0b9a6690130aff5382e04794528ff05490",
+      "bytes": 50316,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "onboarding-review",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/onboarding",
+      "actions": [
+        "Walk through the real wizard to its review; never click Start services.",
+        "Onboarding: services",
+        "Onboarding: preflight",
+        "Onboarding: provider",
+        "Onboarding: companions",
+        "Onboarding: options",
+        "Onboarding: options",
+        "Onboarding: options",
+        "Onboarding: options",
+        "Onboarding: installation",
+        "Onboarding: embedded-uis",
+        "Onboarding: review"
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/onboarding-review.webm",
+      "sha256": "ca6d490496a9ea8ec2b852c607fabb1b939b6eb0c8a9829395b3107d533f3f31",
+      "bytes": 3853942,
+      "kind": "video",
+      "media_type": "video/webm",
+      "scenario": "onboarding-review",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/onboarding",
+      "actions": [
+        "Walk through the real wizard to its review; never click Start services.",
+        "Onboarding: services",
+        "Onboarding: preflight",
+        "Onboarding: provider",
+        "Onboarding: companions",
+        "Onboarding: options",
+        "Onboarding: options",
+        "Onboarding: options",
+        "Onboarding: options",
+        "Onboarding: installation",
+        "Onboarding: embedded-uis",
+        "Onboarding: review"
+      ],
+      "poster": "dark/onboarding-review.webp",
+      "chapters": [
+        {
+          "label": "Onboarding: services",
+          "at_seconds": 1.5
+        },
+        {
+          "label": "Onboarding: preflight",
+          "at_seconds": 7.4
+        },
+        {
+          "label": "Onboarding: provider",
+          "at_seconds": 11.3
+        },
+        {
+          "label": "Onboarding: companions",
+          "at_seconds": 15.4
+        },
+        {
+          "label": "Onboarding: options",
+          "at_seconds": 19.4
+        },
+        {
+          "label": "Onboarding: options",
+          "at_seconds": 23.4
+        },
+        {
+          "label": "Onboarding: options",
+          "at_seconds": 27.4
+        },
+        {
+          "label": "Onboarding: options",
+          "at_seconds": 31.4
+        },
+        {
+          "label": "Onboarding: installation",
+          "at_seconds": 35.4
+        },
+        {
+          "label": "Onboarding: embedded-uis",
+          "at_seconds": 39.4
+        },
+        {
+          "label": "Onboarding: review",
+          "at_seconds": 43.4
+        }
+      ],
+      "pointer_emphasis": true,
+      "pacing": {
+        "tools_menu_ms": 2500,
+        "menu_choice_ms": 1600,
+        "result_ms": 2200
+      }
+    },
+    {
+      "path": "dark/setup-connections.webp",
+      "sha256": "dba6769d74abfd5b3c5d5b98c2db1b020af86816f2132ee12b595cfc4de87981",
+      "bytes": 70186,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "setup-connections",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/setup-connections",
+      "actions": [
+        "Review retained example connection tasks; no operation is claimed successful."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/settings-onboarding.webp",
+      "sha256": "7cb8925b43e280cc77a43ffec33b0b883b488f2a2d6c3b95daa080df925ad7bb",
+      "bytes": 47474,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "settings-onboarding",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Locate the real guided-setup launch control without resetting the installation."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/settings-contributors.webp",
+      "sha256": "5b04368386cb784be7a59d3dae7b4a8d753d94ed2277272ac8f30316aac49221",
+      "bytes": 40286,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "settings-contributors",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Review the real contributor section; external contributor requests use an explicit empty example response."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/api-configuration.webp",
+      "sha256": "6b11dc22df605238aacc3f31a56f799fbad0abd68d8317db1e592c0f2ef5159c",
+      "bytes": 68640,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "api-configuration",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/DUMB%20API",
+      "actions": [
+        "Review DUMB API configuration in the actual frontend editor without saving."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/onboarding-progress.webp",
+      "sha256": "76cc4e64aea422ef4eb3ade4348b6d33d840b745d59f84c4c8cb849c5c9fc03b",
+      "bytes": 35328,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "onboarding-progress",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/onboarding",
+      "actions": [
+        "Simulated setup progress example in the real packaged wizard; in-memory responses only, no application was installed or started."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/onboarding-result.webp",
+      "sha256": "1d27eb8f129dcf78e1ac5a8cf30a8edf77c492dd5be669952c303f1355fe9fb3",
+      "bytes": 36222,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "onboarding-result",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/onboarding",
+      "actions": [
+        "Simulated setup result example in the real packaged wizard; in-memory responses only, no application was installed or started."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/onboarding-error.webp",
+      "sha256": "b94fdfe7491c5b541a7b2513bbf67779f42677a92d6096458e51d11c6e120422",
+      "bytes": 35946,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "onboarding-error",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/onboarding",
+      "actions": [
+        "Simulated setup error example in the real packaged wizard; in-memory responses only, no application was installed or started."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/ai-provider-openai.webp",
+      "sha256": "74c3e9198cf32abc34e47d0ac12c9ad88a1047c9fb52fdd62e37953e9e272f53",
+      "bytes": 62116,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "ai-provider-openai",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/ai",
+      "actions": [
+        "Review the openai provider form using unsaved example values; no provider request is sent."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/ai-provider-gemini.webp",
+      "sha256": "c159c0b154d63a34c879e8672b5c762b079ef3decf47ce6f43fbc1391c007932",
+      "bytes": 66422,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "ai-provider-gemini",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/ai",
+      "actions": [
+        "Review the gemini provider form using unsaved example values; no provider request is sent."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/embedded-sonarr.webp",
+      "sha256": "154be3c68cb745004020d0f6540f6d29771593d3e9073f2d24119a14ef1bd612",
+      "bytes": 47826,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "embedded-sonarr",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Open an actual isolated Sonarr application through the frontend, never a substitute HTML screen."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/embedded-sonarr.webm",
+      "sha256": "5fc545278add95d3aad9b1700c62fa7565f75e9174ce5e2e80b1407ef669ba26",
+      "bytes": 940267,
+      "kind": "video",
+      "media_type": "video/webm",
+      "scenario": "embedded-sonarr",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Open an actual isolated Sonarr application through the frontend, never a substitute HTML screen."
+      ],
+      "poster": "dark/embedded-sonarr.webp",
+      "chapters": [],
+      "pointer_emphasis": true,
+      "pacing": {
+        "tools_menu_ms": 2500,
+        "menu_choice_ms": 1600,
+        "result_ms": 2200
+      }
+    },
+    {
+      "path": "dark/database-health.webp",
+      "sha256": "1618ed58968c2f7a65bcf8b5b48be9d6488ea1b7e926dedb859076a1eb502fdc",
+      "bytes": 37842,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "database-health",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Review passive database monitoring controls with example disabled-state evidence; do not enable monitoring or request a fresh probe."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/library-protection.webp",
+      "sha256": "e3e988b6a8f65eeef42bb4c183069cd5d1c010f118c959c44ed08f0febe71866",
+      "bytes": 74120,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "library-protection",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Plex%20Media%20Server",
+      "actions": [
+        "Review example library protection and Plex settings without changing policy, scanning, or contacting Plex."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/symlink-tools.webp",
+      "sha256": "9c2c909c4055fc379c0c3cc3fd554c19d80eda55cbcf5eb46a2eeb5ff7e80710",
+      "bytes": 53110,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "symlink-tools",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/InfiniDysk",
+      "actions": [
+        "Open the real Symlinks panel and inspect repair, snapshot and schedule controls without running an operation."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/rclone-optimizer.webp",
+      "sha256": "d769196af21a7beef63aa591e777458f8fa720fb5b70a9a027dcb2d5c393761a",
+      "bytes": 83680,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "rclone-optimizer",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Rclone",
+      "actions": [
+        "Review real optimizer safety limits and example content discovery; no benchmark, provider read, apply or rollback is requested."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/infinidysk-v2-install.webp",
+      "sha256": "4d808fb5168f25f876e911fdea2eac408bc50431d689c3506a4fa16d5b62cf2c",
+      "bytes": 68090,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "infinidysk-v2-install",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/InfiniDysk",
+      "actions": [
+        "Review fresh-install mount and backup choices in the guarded InfiniDysk 2 panel; no preview, preparation or installation starts."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/infinidysk-namespace-migration.webp",
+      "sha256": "19196476987401dcc0c55030c6797fa77922f6d35db56c28ab0cbca5696da4d0",
+      "bytes": 81986,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "infinidysk-namespace-migration",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/InfiniDysk",
+      "actions": [
+        "Review legacy identity and full-namespace choices using example eligibility; do not run preflight, migration, playback control or cleanup."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "dark/postgres-migration.webp",
+      "sha256": "7ba2a643bc0d73988026488d629eb9cc2afa0112aec6950ada4d50e2af592700",
+      "bytes": 66808,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "postgres-migration",
+      "theme": "dark",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Inspect the source-shaped read-only preflight and backup requirements; no rehearsal, cutover or rollback is performed."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/dashboard.webp",
+      "sha256": "137f2b71db5a67516313f0adb70654dc2605395df33a75abf5c95fb3faae65b6",
+      "bytes": 44046,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "dashboard",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/",
+      "actions": [
+        "Review service health and dashboard controls."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/service-controls.webp",
+      "sha256": "f34faf38743d3962ead35ff00d0a3716b91f10f7e95a4e77dd72fc9ed0ed8eca",
+      "bytes": 51448,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "service-controls",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Review a service's health and lifecycle controls without operating it."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/service-logs.webp",
+      "sha256": "60d4041dc7780cae2fd05f656399f291864ca6cfcf6b50597b4a0620d3a749d5",
+      "bytes": 58464,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "service-logs",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Open native logs, filter lines and pause refresh.",
+        "Open Service Logs",
+        "Pause automatic refresh"
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/service-logs.webm",
+      "sha256": "fd7d8fac25c255dbb7d4057123bd4e5ddbc3bb530fd380fa693e14016ebb602d",
+      "bytes": 2370900,
+      "kind": "video",
+      "media_type": "video/webm",
+      "scenario": "service-logs",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Open native logs, filter lines and pause refresh.",
+        "Open Service Logs",
+        "Pause automatic refresh"
+      ],
+      "poster": "light/service-logs.webp",
+      "chapters": [
+        {
+          "label": "Open Service Logs",
+          "at_seconds": 2
+        },
+        {
+          "label": "Pause automatic refresh",
+          "at_seconds": 14
+        }
+      ],
+      "pointer_emphasis": true,
+      "pacing": {
+        "tools_menu_ms": 2500,
+        "menu_choice_ms": 1600,
+        "result_ms": 2200
+      }
+    },
+    {
+      "path": "light/realtime-logs.webp",
+      "sha256": "01d1d2637406a1e61434fba21630289354c73559e36300a25b78b6c7bd8a43f9",
+      "bytes": 23348,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "realtime-logs",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/rtl",
+      "actions": [
+        "Read the actual global Real-Time Logs page with explicitly labeled public example log messages."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/updates.webp",
+      "sha256": "a8a5f87699d4f6032f1694cd2efdc772a69d15d9d978e9bddcfac89bd61e83a1",
+      "bytes": 37586,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "updates",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Check an example available update without installing it.",
+        "Open Service tools",
+        "Choose Updates",
+        "Check for updates without installing"
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/updates.webm",
+      "sha256": "702bd7b093343ab0c3c985732df5b4a21da96b21acc66925d280f8162baa32ab",
+      "bytes": 2258897,
+      "kind": "video",
+      "media_type": "video/webm",
+      "scenario": "updates",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Check an example available update without installing it.",
+        "Open Service tools",
+        "Choose Updates",
+        "Check for updates without installing"
+      ],
+      "poster": "light/updates.webp",
+      "chapters": [
+        {
+          "label": "Open Service tools",
+          "at_seconds": 2
+        },
+        {
+          "label": "Choose Updates",
+          "at_seconds": 6.3
+        },
+        {
+          "label": "Check for updates without installing",
+          "at_seconds": 10.5
+        }
+      ],
+      "pointer_emphasis": true,
+      "pacing": {
+        "tools_menu_ms": 2500,
+        "menu_choice_ms": 1600,
+        "result_ms": 2200
+      }
+    },
+    {
+      "path": "light/dependencies.webp",
+      "sha256": "365ec1cee53c5d88596ad98b212710f678be3f75569ca3aa2890c624402bc36a",
+      "bytes": 26036,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "dependencies",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Read startup dependencies and switch to Flow.",
+        "Open Service tools",
+        "Choose Dependencies"
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/dependencies.webm",
+      "sha256": "9a1e7fc7ff544b315e8f60269f2ec20b69a9841b0cc11c52b6e964b68fefc7ba",
+      "bytes": 1942375,
+      "kind": "video",
+      "media_type": "video/webm",
+      "scenario": "dependencies",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Read startup dependencies and switch to Flow.",
+        "Open Service tools",
+        "Choose Dependencies"
+      ],
+      "poster": "light/dependencies.webp",
+      "chapters": [
+        {
+          "label": "Open Service tools",
+          "at_seconds": 1.9
+        },
+        {
+          "label": "Choose Dependencies",
+          "at_seconds": 6.3
+        }
+      ],
+      "pointer_emphasis": true,
+      "pacing": {
+        "tools_menu_ms": 2500,
+        "menu_choice_ms": 1600,
+        "result_ms": 2200
+      }
+    },
+    {
+      "path": "light/auto-restart.webp",
+      "sha256": "02b31834adc91642d4fcc31ee7fe14258be6d5a7cd403dfbfd508a35ac4448dd",
+      "bytes": 51286,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "auto-restart",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Review global and service recovery guardrails without applying them.",
+        "Open Service tools",
+        "Choose Auto-restart"
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/auto-restart.webm",
+      "sha256": "812cfa90e044c81a533ff2f016164d86768f326a237ab0ffd26cde43aa8c0425",
+      "bytes": 2419767,
+      "kind": "video",
+      "media_type": "video/webm",
+      "scenario": "auto-restart",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Review global and service recovery guardrails without applying them.",
+        "Open Service tools",
+        "Choose Auto-restart"
+      ],
+      "poster": "light/auto-restart.webp",
+      "chapters": [
+        {
+          "label": "Open Service tools",
+          "at_seconds": 2
+        },
+        {
+          "label": "Choose Auto-restart",
+          "at_seconds": 6.3
+        }
+      ],
+      "pointer_emphasis": true,
+      "pacing": {
+        "tools_menu_ms": 2500,
+        "menu_choice_ms": 1600,
+        "result_ms": 2200
+      }
+    },
+    {
+      "path": "light/configuration.webp",
+      "sha256": "865524a2fae083d794e3031848a6db17da0e846d3b01ee97d7e297c9950ca0be",
+      "bytes": 51432,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "configuration",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Compare DUMB Config and Service Config without editing.",
+        "Review settings managed by DUMB",
+        "Return to DUMB configuration"
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/configuration.webm",
+      "sha256": "70b00aaa6fe9afd2d1bb987ee3ede5dea5e4c04c62d7a6d8dc7a31c6b0c9ccc1",
+      "bytes": 1565798,
+      "kind": "video",
+      "media_type": "video/webm",
+      "scenario": "configuration",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Compare DUMB Config and Service Config without editing.",
+        "Review settings managed by DUMB",
+        "Return to DUMB configuration"
+      ],
+      "poster": "light/configuration.webp",
+      "chapters": [
+        {
+          "label": "Review settings managed by DUMB",
+          "at_seconds": 1.9
+        },
+        {
+          "label": "Return to DUMB configuration",
+          "at_seconds": 7.7
+        }
+      ],
+      "pointer_emphasis": true,
+      "pacing": {
+        "tools_menu_ms": 2500,
+        "menu_choice_ms": 1600,
+        "result_ms": 2200
+      }
+    },
+    {
+      "path": "light/disabled-services.webp",
+      "sha256": "d1602dd04c97202f823518bd53cf2a89770d4749602635fabfbd80fe9d82fd83",
+      "bytes": 47468,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "disabled-services",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/",
+      "actions": [
+        "Find an example disabled service using the sidebar filters."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/metrics.webp",
+      "sha256": "dc49e7fdc325c87595bb218f598a870601189187fe4b5af5364b6303b06bccf4",
+      "bytes": 52926,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "metrics",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/metrics",
+      "actions": [
+        "Inspect actual sampled container CPU and memory in the real Metrics UI."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/settings-overview.webp",
+      "sha256": "fee7541ffd830128c5e78e99514e53c338b90dbbea81ca3f3cf947995fccb166",
+      "bytes": 40892,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "settings-overview",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Review the Settings page and its section navigation."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/settings-appearance.webp",
+      "sha256": "db2256263518faa413e83c6a5d570bd3c29b767f5e075781825df8fc88926b05",
+      "bytes": 55780,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "settings-appearance",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Review theme choices in the selected light or dark appearance.",
+        "Review Appearance"
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/settings-appearance.webm",
+      "sha256": "0006e9acdaad08b0048bba84ec907d7d04305c8064490e7cfa3311afac067867",
+      "bytes": 1436272,
+      "kind": "video",
+      "media_type": "video/webm",
+      "scenario": "settings-appearance",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Review theme choices in the selected light or dark appearance.",
+        "Review Appearance"
+      ],
+      "poster": "light/settings-appearance.webp",
+      "chapters": [
+        {
+          "label": "Review Appearance",
+          "at_seconds": 2
+        }
+      ],
+      "pointer_emphasis": true,
+      "pacing": {
+        "tools_menu_ms": 2500,
+        "menu_choice_ms": 1600,
+        "result_ms": 2200
+      }
+    },
+    {
+      "path": "light/settings-about.webp",
+      "sha256": "1ed3296e923e6a736d1d46774561dbc3617a8fea1d47232c09d9c9d40e2eb94c",
+      "bytes": 36464,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "settings-about",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Compare independent backend and frontend versions."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/settings-tokens.webp",
+      "sha256": "8f682252f3a801e6c4ca8abdd9b1d83c4cab9ad13ec28e6bce451455d86029f7",
+      "bytes": 46856,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "settings-tokens",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Locate token fields; keep credentials blank."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/settings-log-timestamps.webp",
+      "sha256": "7f1ea7137da4939b9a06b4ca83badfa1290278f59247452af49779d9b406704f",
+      "bytes": 43830,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "settings-log-timestamps",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Review date and time formatting controls."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/settings-embedded-uis.webp",
+      "sha256": "053a172a7e3bcdbb660dce1194a3b5f63daaa9fafbd182e75d29f4473b42dcf0",
+      "bytes": 45730,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "settings-embedded-uis",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Review the real embedded-service enablement controls."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/settings-authentication.webp",
+      "sha256": "a62af455a607994d06f9b1f6d63f8230423128ee14c14d98319f041db492ec05",
+      "bytes": 71570,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "settings-authentication",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Review authentication and local-account management."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/settings-auth-provider.webp",
+      "sha256": "cef5ffeaa9be96d0de02c77f42b4919cf45a9d5ddd457202f1121e056ff90dec",
+      "bytes": 97190,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "settings-auth-provider",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Review OIDC provider settings without discovery or saving."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/settings-notifications.webp",
+      "sha256": "0cc765064f41fcc0ba5a19097aff950c669e48f9446b6a7b7678aefc04880d60",
+      "bytes": 95166,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "settings-notifications",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Review notification destinations, event routing and delivery history."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/settings-backups.webp",
+      "sha256": "69e803d2111f6989020b7a400cca7b83b21a905f0c63c644817e84f336cb6890",
+      "bytes": 81836,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "settings-backups",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Review the real backup/restore panel without preparing or starting a backup."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/settings-advanced.webp",
+      "sha256": "6a4ec179815d853d95fd151dca3802941b600199207bff0c8600512784b0d18d",
+      "bytes": 71342,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "settings-advanced",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Review available service utilities and optional diagnostics."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/settings-support.webp",
+      "sha256": "94d51e45f92a59eb33f3f2cf73a746f1e83ecdac1104895048cd90f425b2b309",
+      "bytes": 52256,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "settings-support",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Locate project support and contribution links."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/login.webp",
+      "sha256": "cd6b011159042cfe0f33c353009c90276cc49530e3364cd67cefadf344dda986",
+      "bytes": 17416,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "login",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/login",
+      "actions": [
+        "Show the real sign-in form with blank credentials."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/account-setup.webp",
+      "sha256": "6f8cb26954821d6b593bb7276130bf2d8a80455f70e4b9dc0334d5904b820ff0",
+      "bytes": 32074,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "account-setup",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/setup",
+      "actions": [
+        "Show the real initial account form without submitting it."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/ai-overview.webp",
+      "sha256": "2c02978985088268f8b6f64c247d362db6a3531969e599f69b6f093e538befc6",
+      "bytes": 39104,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "ai-overview",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/ai",
+      "actions": [
+        "Review diagnostic scope and evidence controls without provider calls."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/ai-provider.webp",
+      "sha256": "ddbacfc7cbd0df68441165c6799c005743f334374f66964ca253003f3f0bb3e4",
+      "bytes": 52024,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "ai-provider",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/ai",
+      "actions": [
+        "Review the provider form with no credential or live model call."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/onboarding-services.webp",
+      "sha256": "02e8feacd188bcde9b599eaef4c6e23693b23536c8b5c8b9e9ec96d7f54c4267",
+      "bytes": 34296,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "onboarding-services",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/onboarding",
+      "actions": [
+        "Choose example services in the actual packaged onboarding wizard."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/onboarding-preflight.webp",
+      "sha256": "ea7b25aa58d8f2c13d0119be438ddeac47b44f6ce16aafa6c91ba40652bcbc5e",
+      "bytes": 29654,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "onboarding-preflight",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/onboarding",
+      "actions": [
+        "Review example readiness checks and explicit unknown storage readiness."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/onboarding-provider.webp",
+      "sha256": "f31970bec72cb462eb8e519cb59035e45f4ace54a1a33852bd0a3a3700001e6f",
+      "bytes": 24120,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "onboarding-provider",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/onboarding",
+      "actions": [
+        "Review a provider credential step using a visibly example value."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/onboarding-companions.webp",
+      "sha256": "15f05c8875179ed9248bf32983edd598e858658289b9bee24d1d698e4567c3e4",
+      "bytes": 35264,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "onboarding-companions",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/onboarding",
+      "actions": [
+        "Review optional companion service selection."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/onboarding-options.webp",
+      "sha256": "7285260edc600c1f458c9c6961067037f4b62c008973b3eecb094c71ef198761",
+      "bytes": 23570,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "onboarding-options",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/onboarding",
+      "actions": [
+        "Review selected service options."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/onboarding-embedded-uis.webp",
+      "sha256": "4e67184e087f81763b59c0ad9177a9c4228ed39aeddb84ea850b896265cbb6de",
+      "bytes": 37636,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "onboarding-embedded-uis",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/onboarding",
+      "actions": [
+        "Review embedded-service access in onboarding."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/onboarding-installation.webp",
+      "sha256": "be388e91154371a0ea4badcf2d665ccc173a93b87ddb81977206e1f7f516823d",
+      "bytes": 47726,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "onboarding-installation",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/onboarding",
+      "actions": [
+        "Review installation choices before startup."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/onboarding-review.webp",
+      "sha256": "52f9f82350e2982aa83456542ddede7e4d2cea962c768265ca865b77072cba6f",
+      "bytes": 51478,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "onboarding-review",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/onboarding",
+      "actions": [
+        "Walk through the real wizard to its review; never click Start services.",
+        "Onboarding: services",
+        "Onboarding: preflight",
+        "Onboarding: provider",
+        "Onboarding: companions",
+        "Onboarding: options",
+        "Onboarding: options",
+        "Onboarding: options",
+        "Onboarding: options",
+        "Onboarding: installation",
+        "Onboarding: embedded-uis",
+        "Onboarding: review"
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/onboarding-review.webm",
+      "sha256": "d5953e1e2503a7c9a1cdefaa0d69377dddbc691f469a86e7c99b7990c03719d7",
+      "bytes": 3853831,
+      "kind": "video",
+      "media_type": "video/webm",
+      "scenario": "onboarding-review",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/onboarding",
+      "actions": [
+        "Walk through the real wizard to its review; never click Start services.",
+        "Onboarding: services",
+        "Onboarding: preflight",
+        "Onboarding: provider",
+        "Onboarding: companions",
+        "Onboarding: options",
+        "Onboarding: options",
+        "Onboarding: options",
+        "Onboarding: options",
+        "Onboarding: installation",
+        "Onboarding: embedded-uis",
+        "Onboarding: review"
+      ],
+      "poster": "light/onboarding-review.webp",
+      "chapters": [
+        {
+          "label": "Onboarding: services",
+          "at_seconds": 1.5
+        },
+        {
+          "label": "Onboarding: preflight",
+          "at_seconds": 7.4
+        },
+        {
+          "label": "Onboarding: provider",
+          "at_seconds": 11.4
+        },
+        {
+          "label": "Onboarding: companions",
+          "at_seconds": 15.5
+        },
+        {
+          "label": "Onboarding: options",
+          "at_seconds": 19.5
+        },
+        {
+          "label": "Onboarding: options",
+          "at_seconds": 23.5
+        },
+        {
+          "label": "Onboarding: options",
+          "at_seconds": 27.5
+        },
+        {
+          "label": "Onboarding: options",
+          "at_seconds": 31.5
+        },
+        {
+          "label": "Onboarding: installation",
+          "at_seconds": 35.5
+        },
+        {
+          "label": "Onboarding: embedded-uis",
+          "at_seconds": 39.5
+        },
+        {
+          "label": "Onboarding: review",
+          "at_seconds": 43.5
+        }
+      ],
+      "pointer_emphasis": true,
+      "pacing": {
+        "tools_menu_ms": 2500,
+        "menu_choice_ms": 1600,
+        "result_ms": 2200
+      }
+    },
+    {
+      "path": "light/setup-connections.webp",
+      "sha256": "084ec1efba0524bb4c3ad362099c74459ae941216f47c097526d53b4537a354d",
+      "bytes": 71142,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "setup-connections",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/setup-connections",
+      "actions": [
+        "Review retained example connection tasks; no operation is claimed successful."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/settings-onboarding.webp",
+      "sha256": "e704f05cb840e5bc04bee592d53a87a4da31b3b0892889f7b8b0df8ef8401775",
+      "bytes": 49358,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "settings-onboarding",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Locate the real guided-setup launch control without resetting the installation."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/settings-contributors.webp",
+      "sha256": "4d67949a77e7309e3a4a891cbb3965aee7dc581e468e3fed6b0993459d361b99",
+      "bytes": 41768,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "settings-contributors",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/settings",
+      "actions": [
+        "Review the real contributor section; external contributor requests use an explicit empty example response."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/api-configuration.webp",
+      "sha256": "73b3d19f2698cc13b6e9b9f155de99b1b167fc03bde6c31374b35aa18a0e9f80",
+      "bytes": 65378,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "api-configuration",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/DUMB%20API",
+      "actions": [
+        "Review DUMB API configuration in the actual frontend editor without saving."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/onboarding-progress.webp",
+      "sha256": "c3b4cbbdf1a47b26d523073caf9a63d4478704f7149425ba23ee9667eb768095",
+      "bytes": 34472,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "onboarding-progress",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/onboarding",
+      "actions": [
+        "Simulated setup progress example in the real packaged wizard; in-memory responses only, no application was installed or started."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/onboarding-result.webp",
+      "sha256": "3a8449b6684a7c2a5706f5882ac2067fb7c103e381102faf3962efce5c4deda2",
+      "bytes": 35376,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "onboarding-result",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/onboarding",
+      "actions": [
+        "Simulated setup result example in the real packaged wizard; in-memory responses only, no application was installed or started."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/onboarding-error.webp",
+      "sha256": "ff875aba5b784736f95ff5d8160cbe544ec2f3d296b06f3378a2d0d4832367b1",
+      "bytes": 35838,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "onboarding-error",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/onboarding",
+      "actions": [
+        "Simulated setup error example in the real packaged wizard; in-memory responses only, no application was installed or started."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/ai-provider-openai.webp",
+      "sha256": "abd9a3ae622d4f19be7d6b47ea22090e90c9859072462d7eb842c2807a18c6ed",
+      "bytes": 61484,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "ai-provider-openai",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/ai",
+      "actions": [
+        "Review the openai provider form using unsaved example values; no provider request is sent."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/ai-provider-gemini.webp",
+      "sha256": "6515750ac033c964952842210753c9d06e78cc7006f687e573b3519ad9769378",
+      "bytes": 63632,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "ai-provider-gemini",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/ai",
+      "actions": [
+        "Review the gemini provider form using unsaved example values; no provider request is sent."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/embedded-sonarr.webp",
+      "sha256": "6b0fe3f294eecfe58c020fecac2d279c2996e946730c9704d86ff719ede8c845",
+      "bytes": 48318,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "embedded-sonarr",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Open an actual isolated Sonarr application through the frontend, never a substitute HTML screen."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/embedded-sonarr.webm",
+      "sha256": "0f09e027d7a1cad37f4b6fc21506cee9f9c47b58786a9f933c57c8cb63c00f4e",
+      "bytes": 1087871,
+      "kind": "video",
+      "media_type": "video/webm",
+      "scenario": "embedded-sonarr",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Open an actual isolated Sonarr application through the frontend, never a substitute HTML screen."
+      ],
+      "poster": "light/embedded-sonarr.webp",
+      "chapters": [],
+      "pointer_emphasis": true,
+      "pacing": {
+        "tools_menu_ms": 2500,
+        "menu_choice_ms": 1600,
+        "result_ms": 2200
+      }
+    },
+    {
+      "path": "light/database-health.webp",
+      "sha256": "c4bec5ef2a7bcf58f5dc0a1554b176c9beb0454786a68277fe4b7c0e2087e6b7",
+      "bytes": 38006,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "database-health",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Review passive database monitoring controls with example disabled-state evidence; do not enable monitoring or request a fresh probe."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/library-protection.webp",
+      "sha256": "55a4ace9722619b55f8b4bf5be02ef928958010c36bf7a6a1d502aab2ccf9cd5",
+      "bytes": 69530,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "library-protection",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Plex%20Media%20Server",
+      "actions": [
+        "Review example library protection and Plex settings without changing policy, scanning, or contacting Plex."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/symlink-tools.webp",
+      "sha256": "9539e5ade0bbcbd9b8ca454ea7f51efccf0aa0af6e5361e61105cf6a2771cfea",
+      "bytes": 52286,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "symlink-tools",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/InfiniDysk",
+      "actions": [
+        "Open the real Symlinks panel and inspect repair, snapshot and schedule controls without running an operation."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/rclone-optimizer.webp",
+      "sha256": "b2a81f8af8ceffbf32978699b0c23c287fc8b5e30f225ffcefc94967411a5f48",
+      "bytes": 78860,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "rclone-optimizer",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Rclone",
+      "actions": [
+        "Review real optimizer safety limits and example content discovery; no benchmark, provider read, apply or rollback is requested."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/infinidysk-v2-install.webp",
+      "sha256": "342ce58177ae0ab725f5f6936cba4c6aca5c34de4b8fe9492b59e0686e91b295",
+      "bytes": 70830,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "infinidysk-v2-install",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/InfiniDysk",
+      "actions": [
+        "Review fresh-install mount and backup choices in the guarded InfiniDysk 2 panel; no preview, preparation or installation starts."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/infinidysk-namespace-migration.webp",
+      "sha256": "f051552024bfb54e8ea0b29cde1df2f7326036680dc7778557529c53170fb958",
+      "bytes": 45902,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "infinidysk-namespace-migration",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/InfiniDysk",
+      "actions": [
+        "Review legacy identity and full-namespace choices using example eligibility; do not run preflight, migration, playback control or cleanup."
+      ],
+      "quality": 90
+    },
+    {
+      "path": "light/postgres-migration.webp",
+      "sha256": "07fd0bfa9d7fbd64f4dbfe1104bb2bb907a03105801ef667fb0740521f166a5c",
+      "bytes": 66072,
+      "kind": "image",
+      "media_type": "image/webp",
+      "scenario": "postgres-migration",
+      "theme": "light",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "route": "/services/Sonarr",
+      "actions": [
+        "Inspect the source-shaped read-only preflight and backup requirements; no rehearsal, cutover or rollback is performed."
+      ],
+      "quality": 90
+    }
+  ]
+}

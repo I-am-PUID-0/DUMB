@@ -2,7 +2,7 @@
 
 > Channel: release. Canonical base: https://dumbarr.com/
 
-Documentation artifact: release 1.25.15. Source commit: 76e70155da779608b261d82d4a249c106b6959ae. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.15.
+Documentation artifact: release 1.25.16. Source commit: 67530cd8ed7bdfaa0aa10927bfd155431a5fa27e. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.16.
 
 DUMB coordinates media services. Match instructions to the installed backend version. Development guides can describe features absent from the latest release.
 
@@ -8489,6 +8489,22 @@ The assistant is disabled by default. You can still use **Preview bundle** witho
 !!! tip "Keep an initial test local"
     A local endpoint can keep diagnostic content on your machine or LAN. Confirm where that endpoint actually sends requests; a local gateway can still forward them to a cloud provider.
 
+<section class="ui-example-panel" id="ui-ai-overview">
+  <div class="ui-example-heading">
+    <h3>Stack AI Assist</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review diagnostic scope and evidence controls without provider calls.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/ai-overview.webp" aria-label="Open full-size image: Stack AI Assist">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/ai-overview.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/ai-overview.webp" alt="Stack AI Assist in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
+
 ## What It Can Use
 
 | Evidence | Service AI Assist | Stack AI Assist |
@@ -8582,6 +8598,22 @@ If no local docs are available, DUMB fetches the matching public page from `http
 </details>
 
 ## Providers
+
+<section class="ui-example-panel" id="ui-ai-provider">
+  <div class="ui-example-heading">
+    <h3>Local AI provider settings</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review the provider form with no credential or live model call.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/ai-provider.webp" aria-label="Open full-size image: Local AI provider settings">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/ai-provider.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/ai-provider.webp" alt="Local AI provider settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
 
 Supported provider modes:
 
@@ -9041,6 +9073,22 @@ The panel shows the latest persisted job for the current service, including its 
 
 Preflight does not change the service configuration.
 
+<section class="ui-example-panel" id="ui-postgres-migration">
+  <div class="ui-example-heading">
+    <h3>SQLite to PostgreSQL migration review</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Inspect the source-shaped read-only preflight and backup requirements; no rehearsal, cutover or rollback is performed.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/postgres-migration.webp" aria-label="Open full-size image: SQLite to PostgreSQL migration review">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/postgres-migration.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/postgres-migration.webp" alt="SQLite to PostgreSQL migration review in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
+
 If preflight reports a recovered or incompatible source database, stop here. Preserve the original, recovered copy, and independent backup; removing a reported table does not prove the application data is sound. Resolve the reported issue before rehearsal.
 
 <details class="geek-details" markdown="1">
@@ -9225,6 +9273,22 @@ flowchart LR
 
 ## First-time setup
 
+<section class="ui-example-panel" id="ui-account-setup">
+  <div class="ui-example-heading">
+    <h3>Create your first account</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Show the real initial account form without submitting it.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/account-setup.webp" aria-label="Open full-size image: Create your first account">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/account-setup.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/account-setup.webp" alt="Create your first account in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
+
 When DUMB starts for the first time, the frontend detects that no users exist and redirects to the setup page.
 
 ### Setup options
@@ -9259,6 +9323,22 @@ When authentication is enabled, users must log in to access the dashboard and AP
 
 
 ### Local login
+
+<section class="ui-example-panel" id="ui-login">
+  <div class="ui-example-heading">
+    <h3>Sign in to DUMB</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Show the real sign-in form with blank credentials.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/login.webp" aria-label="Open full-size image: Sign in to DUMB">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/login.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/login.webp" alt="Sign in to DUMB in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
 
 1. Navigate to the DUMB frontend
 2. Enter your username and password
@@ -9598,13 +9678,7 @@ Auto-restart monitors explicitly selected services and retries a restart after r
 
 An empty service list monitors nothing, even when the global switch is enabled. A deliberate manual stop disables monitoring for that service until it is started again.
 
-<figure class="docs-visual docs-frontend-figure">
-<video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/v1.91.0/tour-2/auto-restart.webp" aria-label="Review auto-restart controls" aria-describedby="auto-restart-demo-caption">
-  <source src="../assets/images/guides/frontend/v1.91.0/tour-2/auto-restart.webm" type="video/webm">
-  <p><a href="../assets/images/guides/frontend/v1.91.0/tour-2/auto-restart.webm">Download the demonstration</a>, or follow the written steps above.</p>
-</video>
-<figcaption id="auto-restart-demo-caption" class="docs-visual-caption">Watch: find the service policy, health-check options and grace period before changing them. This tour leaves the saved policy unchanged. DUMB Frontend 1.91.0 · example data. Other versions may look different. <a href="../assets/images/guides/frontend/v1.91.0/tour-2/auto-restart.webp">Open the full-size screenshot</a>.</figcaption>
-</figure>
+<figure class="docs-frontend-demo"><video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/auto-restart.webp" data-ui-video data-light-video="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/auto-restart.webm" data-dark-video="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/auto-restart.webm" data-light-poster="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/auto-restart.webp" data-dark-poster="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/auto-restart.webp" aria-label="Review global and service recovery guardrails without applying them."><source src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/auto-restart.webm" type="video/webm"><p><a href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/auto-restart.webm">Open the demonstration</a>.</p></video><figcaption class="docs-visual-caption">Review global and service recovery guardrails without applying them. DUMB 2.23.0 · Frontend 1.91.0 · isolated example data. Follow the written steps for your own installation.</figcaption></figure>
 
 <details class="geek-details" markdown="1">
 <summary>Technical details: monitoring and restart lifecycle</summary>
@@ -9784,13 +9858,7 @@ Choose how each service checks for new versions and whether it should install th
 3. Select **Install update** when you are ready for that service to restart. Review any playback or library-protection prompt before confirming.
 4. Keep the panel open while the install runs. When it completes, check the reported result, service health, and **Service Logs**. For a storage service, also test an item in your media player.
 
-<figure class="docs-visual docs-frontend-figure">
-<video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/v1.91.0/tour-2/updates.webp" aria-label="Check one service for updates demonstration" aria-describedby="updates-demo-caption">
-  <source src="../assets/images/guides/frontend/v1.91.0/tour-2/updates.webm" type="video/webm">
-  <p><a href="../assets/images/guides/frontend/v1.91.0/tour-2/updates.webm">Download the demonstration</a>, or follow the written steps above.</p>
-</video>
-<figcaption id="updates-demo-caption" class="docs-visual-caption">Watch: open one service's Updates panel, check for updates and review the available version. The demonstration ends before installation. DUMB Frontend 1.91.0 · example data. Other versions may look different. <a href="../assets/images/guides/frontend/v1.91.0/tour-2/updates.webp">Open the full-size screenshot</a>.</figcaption>
-</figure>
+<figure class="docs-frontend-demo"><video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/updates.webp" data-ui-video data-light-video="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/updates.webm" data-dark-video="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/updates.webm" data-light-poster="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/updates.webp" data-dark-poster="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/updates.webp" aria-label="Check an example available update without installing it."><source src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/updates.webm" type="video/webm"><p><a href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/updates.webm">Open the demonstration</a>.</p></video><figcaption class="docs-visual-caption">Check an example available update without installing it. DUMB 2.23.0 · Frontend 1.91.0 · isolated example data. Follow the written steps for your own installation.</figcaption></figure>
 
 ```mermaid
 flowchart LR
@@ -10358,13 +10426,7 @@ Use the dashboard to change DUMB settings and the settings of individual applica
 
     Changing user/group IDs, data paths, or ports can prevent an existing service from starting. Follow the service's guide and keep a backup before changing these values. Configuration and backups may contain live credentials; keep them private and redact values before sharing them.
 
-<figure class="docs-visual docs-frontend-figure">
-<video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/v1.91.0/tour-2/configuration.webp" aria-label="Choose the correct configuration editor" aria-describedby="configuration-demo-caption">
-  <source src="../assets/images/guides/frontend/v1.91.0/tour-2/configuration.webm" type="video/webm">
-  <p><a href="../assets/images/guides/frontend/v1.91.0/tour-2/configuration.webm">Download the demonstration</a>, or follow the written steps above.</p>
-</video>
-<figcaption id="configuration-demo-caption" class="docs-visual-caption">Watch: compare DUMB Config with Service Config and locate Save to File. This tour reviews the controls without saving a change. DUMB Frontend 1.91.0 · example data. Other versions may look different. <a href="../assets/images/guides/frontend/v1.91.0/tour-2/configuration.webp">Open the full-size screenshot</a>.</figcaption>
-</figure>
+<figure class="docs-frontend-demo"><video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/configuration.webp" data-ui-video data-light-video="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/configuration.webm" data-dark-video="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/configuration.webm" data-light-poster="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/configuration.webp" data-dark-poster="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/configuration.webp" aria-label="Compare DUMB Config and Service Config without editing."><source src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/configuration.webm" type="video/webm"><p><a href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/configuration.webm">Open the demonstration</a>.</p></video><figcaption class="docs-visual-caption">Compare DUMB Config and Service Config without editing. DUMB 2.23.0 · Frontend 1.91.0 · isolated example data. Follow the written steps for your own installation.</figcaption></figure>
 
 ## Add an integration token
 
@@ -10515,12 +10577,37 @@ Open a managed application's own interface inside DUMB without publishing every 
 
 A matching enabled TPA public HTTPS route can supply an external link. AIOStreams' remote Stremio clients need its separately configured public base URL; the embedded operator route is not a replacement for that origin.
 
-<figure class="docs-visual docs-frontend-figure" markdown="1">
+<section class="ui-example-panel" id="ui-settings-embedded-uis">
+  <div class="ui-example-heading">
+    <h3>Embedded UI settings</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review the real embedded-service enablement controls.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-embedded-uis.webp" aria-label="Open full-size image: Embedded UI settings">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-embedded-uis.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-embedded-uis.webp" alt="Embedded UI settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
 
-![Settings page showing the Enable embedded service iFrames checkbox.](../assets/images/guides/frontend/v1.91.0/tour-2/embedded-ui-settings.webp){ loading=lazy decoding=async }
-
-<figcaption class="docs-visual-caption">Enable embedded service iFrames here, then open a supported application from its service page. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
-</figure>
+<section class="ui-example-panel" id="ui-embedded-sonarr">
+  <div class="ui-example-heading">
+    <h3>Sonarr inside DUMB</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Open an actual isolated Sonarr application through the frontend, never a substitute HTML screen.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/embedded-sonarr.webp" aria-label="Open full-size image: Sonarr inside DUMB">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/embedded-sonarr.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/embedded-sonarr.webp" alt="Sonarr inside DUMB in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
 
 <details class="geek-details" markdown="1">
 <summary>Technical details: frontend proxy and direct Traefik routes</summary>
@@ -11186,6 +11273,22 @@ After the dependency restarts and remains healthy, the recovery journal restores
 3. Select **Save protection** and wait for **Saved**.
 4. Reopen the panel and check its current protection/activity status. Resolve **Setup required** before relying on unattended maintenance.
 
+<section class="ui-example-panel" id="ui-library-protection">
+  <div class="ui-example-heading">
+    <h3>Media library protection</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review example library protection and Plex settings without changing policy, scanning, or contacting Plex.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/library-protection.webp" aria-label="Open full-size image: Media library protection">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/library-protection.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/library-protection.webp" alt="Media library protection in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
+
 ### Plex
 
 DUMB uses the Plex token it already manages for Plex integration. No second key is required.
@@ -11282,12 +11385,21 @@ The metrics system provides:
 - **Optional database health** - Per-service SQL and persistent-store pressure indicators
 - **Optional Plex cloud status** - Cached public Plex service health, incidents, and maintenance
 
-<figure class="docs-visual docs-frontend-figure" markdown="1">
-
-![Metrics page showing resource gauges, recent history and process information.](../assets/images/guides/frontend/v1.91.0/tour-2/metrics.webp){ loading=lazy decoding=async }
-
-<figcaption class="docs-visual-caption">Compare current resource use with the history before deciding what to investigate. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
-</figure>
+<section class="ui-example-panel" id="ui-metrics">
+  <div class="ui-example-heading">
+    <h3>Container metrics</h3>
+    <a href="../../frontend/metrics/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Inspect actual sampled container CPU and memory in the real Metrics UI.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/metrics.webp" aria-label="Open full-size image: Container metrics">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/metrics.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/metrics.webp" alt="Container metrics in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
 
 ---
 
@@ -11822,6 +11934,22 @@ Notifications send health and operation events from the backend, including when 
 
 Use **Settings → Notifications** to configure destinations, send a test or manual message, and review history.
 
+<section class="ui-example-panel" id="ui-settings-notifications">
+  <div class="ui-example-heading">
+    <h3>Notifications</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review notification destinations, event routing and delivery history.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-notifications.webp" aria-label="Open full-size image: Notifications">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-notifications.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-notifications.webp" alt="Notifications in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
+
 ## Configure a destination
 
 A successful destination test is followed by a separate check of normal event delivery:
@@ -12134,6 +12262,22 @@ flowchart TD
 4. Set traffic, connection, cache, memory, free-space, and duration limits for your deployment.
 5. Select **Start background optimization**. Wait for the final result, then review failed samples, startup/seek measurements, provider evidence, and cleanup results.
 6. Apply a recommendation only after review; apply and rollback both interrupt the production rclone mount.
+
+<section class="ui-example-panel" id="ui-rclone-optimizer">
+  <div class="ui-example-heading">
+    <h3>Rclone streaming optimizer</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review real optimizer safety limits and example content discovery; no benchmark, provider read, apply or rollback is requested.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/rclone-optimizer.webp" aria-label="Open full-size image: Rclone streaming optimizer">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/rclone-optimizer.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/rclone-optimizer.webp" alt="Rclone streaming optimizer in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
 
 The limits and evidence below explain what this comparison can establish.
 
@@ -12792,6 +12936,22 @@ Start with a dry run, inspect its scope, and keep a snapshot before applying cha
 4. Select **Dry run**. Review the proposed changes, skipped links, conflicts, and errors before applying anything.
 5. Keep automatic backup enabled. Accept the acknowledgement and select **Apply repair** only for the reviewed change. Wait for the job's final result.
 6. Check a few repaired files in the relevant application's library and test playback. If results are wrong, stop and use the recorded backup manifest to restore before making another change.
+
+<section class="ui-example-panel" id="ui-symlink-tools">
+  <div class="ui-example-heading">
+    <h3>Symlink repair and snapshots</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Open the real Symlinks panel and inspect repair, snapshot and schedule controls without running an operation.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/symlink-tools.webp" aria-label="Open full-size image: Symlink repair and snapshots">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/symlink-tools.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/symlink-tools.webp" alt="Symlink repair and snapshots in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
 
 ```mermaid
 flowchart LR
@@ -13508,12 +13668,21 @@ The dashboard displays service cards for each configured service, showing:
 - Auto-restart badge
 - Quick action and available-update buttons
 
-<figure class="docs-visual docs-frontend-figure" markdown="1">
-
-![Dashboard service cards showing each app's status and available controls.](../assets/images/guides/frontend/v1.91.0/tour-2/dashboard.webp){ loading=lazy decoding=async }
-
-<figcaption class="docs-visual-caption">Use the service cards to check an app and open its page. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
-</figure>
+<section class="ui-example-panel" id="ui-dashboard">
+  <div class="ui-example-heading">
+    <h3>Service Dashboard</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review service health and dashboard controls.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/dashboard.webp" aria-label="Open full-size image: Service Dashboard">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/dashboard.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/dashboard.webp" alt="Service Dashboard in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
 
 ---
 
@@ -13715,12 +13884,21 @@ Enabled services are displayed in a grid layout, organized by:
 - **DUMB services first** - The API/frontend lead the default list
 - **Alphabetical order** - Other services follow by name until you save a custom order
 
-<figure class="docs-visual docs-frontend-figure" markdown="1">
-
-![Sidebar search for Tautulli with Show Disabled selected and its disabled entry visible.](../assets/images/guides/frontend/v1.91.0/tour-2/disabled-services.webp){ loading=lazy decoding=async }
-
-<figcaption class="docs-visual-caption">Use sidebar search with Show Disabled to find a configured service. These controls do not start it. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
-</figure>
+<section class="ui-example-panel" id="ui-disabled-services">
+  <div class="ui-example-heading">
+    <h3>Find disabled services</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Find an example disabled service using the sidebar filters.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/disabled-services.webp" aria-label="Open full-size image: Find disabled services">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/disabled-services.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/disabled-services.webp" alt="Find disabled services in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
 
 ---
 
@@ -13794,12 +13972,8 @@ The dashboard is where you set up and manage DUMB. Open `http://<host>:3005` in 
 
 You can follow the tasks below without editing files or running API commands.
 
-<figure class="docs-visual docs-frontend-figure" markdown="1">
+[Browse the actual interface](#ui-examples) or choose a task below.
 
-![DUMB dashboard showing service cards, status badges and the sidebar.](../assets/images/guides/frontend/v1.91.0/dashboard.webp){ loading=lazy decoding=async }
-
-<figcaption class="docs-visual-caption">Select a service card to open that app's controls. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
-</figure>
 
 ## Choose a task
 
@@ -13821,7 +13995,7 @@ Each task guide explains the controls to use, what to save, and how to check the
 
 ## Watch a task
 
-The guides below include short recordings with time to read the menus and controls. Choose Play when you are ready; the videos do not start automatically. They show DUMB Frontend 1.91.0 with example data. Your installed version and enabled services can change which tools appear.
+The guides below include short recordings with time to read the menus and controls. Choose Play when you are ready; these task videos do not start automatically. Each caption identifies the reviewed frontend version and example data. Your installed version and enabled services can change which tools appear.
 
 | See how to… | Open the illustrated guide |
 | --- | --- |
@@ -13832,6 +14006,790 @@ The guides below include short recordings with time to read the menus and contro
 | Review an automatic restart policy | [Auto-restart](../features/auto-restart.md) |
 | Choose a dashboard appearance | [Settings](settings.md) |
 | Find CPU, memory and disk information | [Metrics](metrics.md) |
+
+
+
+<div class="docs-ui-examples" data-ui-gallery>
+  <div class="ui-gallery-intro">
+    <p class="ui-gallery-eyebrow">Inside DUMB</p>
+    <h2 id="ui-examples">Explore the interface</h2>
+    <p>Actual frontend screens, organized by the task in front of you. Images follow this site's light or dark appearance. Open any image to inspect it full size.</p>
+    <p class="ui-gallery-provenance">Frontend 1.91.0 · DUMB 2.23.0 · Example data. Features and controls depend on the installed versions.</p>
+    
+  </div>
+  <nav class="ui-example-nav" aria-label="Interface examples">
+    
+      
+      
+      <a href="#ui-group-dashboard">The dashboard</a>
+    
+      
+      
+      <a href="#ui-group-applications">Inside a service</a>
+    
+      
+      
+      <a href="#ui-group-maintenance">Logs and updates</a>
+    
+      
+      
+      <a href="#ui-group-library-tools">Library and database tools</a>
+    
+      
+      
+      <a href="#ui-group-preferences">Your dashboard view</a>
+    
+      
+      
+      <a href="#ui-group-accounts">Accounts, integrations and alerts</a>
+    
+      
+      
+      <a href="#ui-group-first-run">First-run setup</a>
+    
+  </nav>
+  
+    
+    
+    
+    
+      <section class="ui-example-group" id="ui-group-dashboard">
+        <div class="ui-example-group-heading"><h2>The dashboard</h2><p>Find your services and inspect the installation at a glance.</p></div>
+        <section class="ui-example-panel" id="ui-dashboard">
+  <div class="ui-example-heading">
+    <h3>Service Dashboard</h3>
+    <a href="dashboard/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review service health and dashboard controls.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/dashboard.webp" aria-label="Open full-size image: Service Dashboard">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/dashboard.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/dashboard.webp" alt="Service Dashboard in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-disabled-services">
+  <div class="ui-example-heading">
+    <h3>Find disabled services</h3>
+    <a href="dashboard/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Find an example disabled service using the sidebar filters.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/disabled-services.webp" aria-label="Open full-size image: Find disabled services">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/disabled-services.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/disabled-services.webp" alt="Find disabled services in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-metrics">
+  <div class="ui-example-heading">
+    <h3>Container metrics</h3>
+    <a href="metrics/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Inspect actual sampled container CPU and memory in the real Metrics UI.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/metrics.webp" aria-label="Open full-size image: Container metrics">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/metrics.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/metrics.webp" alt="Container metrics in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
+      </section>
+    
+  
+    
+    
+    
+    
+      <section class="ui-example-group" id="ui-group-applications">
+        <div class="ui-example-group-heading"><h2>Inside a service</h2><p>Work with the selected app&#39;s controls, settings and connections.</p></div>
+        <section class="ui-example-panel" id="ui-service-controls">
+  <div class="ui-example-heading">
+    <h3>Service controls</h3>
+    <a href="service-pages/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review a service&#39;s health and lifecycle controls without operating it.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/service-controls.webp" aria-label="Open full-size image: Service controls">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/service-controls.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/service-controls.webp" alt="Service controls in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-configuration">
+  <div class="ui-example-heading">
+    <h3>DUMB and application configuration</h3>
+    <a href="../features/configuration/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Compare DUMB Config and Service Config without editing.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/configuration.webp" aria-label="Open full-size image: DUMB and application configuration">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/configuration.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/configuration.webp" alt="DUMB and application configuration in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-api-configuration">
+  <div class="ui-example-heading">
+    <h3>DUMB API configuration</h3>
+    <a href="../features/configuration/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review DUMB API configuration in the actual frontend editor without saving.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/api-configuration.webp" aria-label="Open full-size image: DUMB API configuration">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/api-configuration.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/api-configuration.webp" alt="DUMB API configuration in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-embedded-sonarr">
+  <div class="ui-example-heading">
+    <h3>Sonarr inside DUMB</h3>
+    <a href="../features/embedded-ui/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Open an actual isolated Sonarr application through the frontend, never a substitute HTML screen.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/embedded-sonarr.webp" aria-label="Open full-size image: Sonarr inside DUMB">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/embedded-sonarr.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/embedded-sonarr.webp" alt="Sonarr inside DUMB in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-dependencies">
+  <div class="ui-example-heading">
+    <h3>Review service dependencies</h3>
+    <a href="service-pages/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Read startup dependencies and switch to Flow.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/dependencies.webp" aria-label="Open full-size image: Review service dependencies">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/dependencies.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/dependencies.webp" alt="Review service dependencies in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-auto-restart">
+  <div class="ui-example-heading">
+    <h3>Automatic recovery settings</h3>
+    <a href="../features/auto-restart/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review global and service recovery guardrails without applying them.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/auto-restart.webp" aria-label="Open full-size image: Automatic recovery settings">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/auto-restart.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/auto-restart.webp" alt="Automatic recovery settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
+      </section>
+    
+  
+    
+    
+    
+    
+      <section class="ui-example-group" id="ui-group-maintenance">
+        <div class="ui-example-group-heading"><h2>Logs and updates</h2><p>Find the relevant messages and review a version before making a change.</p></div>
+        <section class="ui-example-panel" id="ui-service-logs">
+  <div class="ui-example-heading">
+    <h3>Filter and pause service logs</h3>
+    <a href="service-pages/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Open native logs, filter lines and pause refresh.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/service-logs.webp" aria-label="Open full-size image: Filter and pause service logs">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/service-logs.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/service-logs.webp" alt="Filter and pause service logs in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-realtime-logs">
+  <div class="ui-example-heading">
+    <h3>Real-Time Logs</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Read the actual global Real-Time Logs page with explicitly labeled public example log messages.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/realtime-logs.webp" aria-label="Open full-size image: Real-Time Logs">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/realtime-logs.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/realtime-logs.webp" alt="Real-Time Logs in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-updates">
+  <div class="ui-example-heading">
+    <h3>Check for updates</h3>
+    <a href="../features/auto-update/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Check an example available update without installing it.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/updates.webp" aria-label="Open full-size image: Check for updates">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/updates.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/updates.webp" alt="Check for updates in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
+      </section>
+    
+  
+    
+    
+    
+    
+      <section class="ui-example-group" id="ui-group-library-tools">
+        <div class="ui-example-group-heading"><h2>Library and database tools</h2><p>Inspect the available controls, then follow the guide for the change you intend to make.</p></div>
+        <section class="ui-example-panel" id="ui-database-health">
+  <div class="ui-example-heading">
+    <h3>Database health</h3>
+    <a href="../features/metrics/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review passive database monitoring controls with example disabled-state evidence; do not enable monitoring or request a fresh probe.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/database-health.webp" aria-label="Open full-size image: Database health">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/database-health.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/database-health.webp" alt="Database health in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-library-protection">
+  <div class="ui-example-heading">
+    <h3>Media library protection</h3>
+    <a href="../features/media-library-protection/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review example library protection and Plex settings without changing policy, scanning, or contacting Plex.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/library-protection.webp" aria-label="Open full-size image: Media library protection">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/library-protection.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/library-protection.webp" alt="Media library protection in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-symlink-tools">
+  <div class="ui-example-heading">
+    <h3>Symlink repair and snapshots</h3>
+    <a href="../features/symlinks/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Open the real Symlinks panel and inspect repair, snapshot and schedule controls without running an operation.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/symlink-tools.webp" aria-label="Open full-size image: Symlink repair and snapshots">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/symlink-tools.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/symlink-tools.webp" alt="Symlink repair and snapshots in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-rclone-optimizer">
+  <div class="ui-example-heading">
+    <h3>Rclone streaming optimizer</h3>
+    <a href="../features/rclone-optimizer/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review real optimizer safety limits and example content discovery; no benchmark, provider read, apply or rollback is requested.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/rclone-optimizer.webp" aria-label="Open full-size image: Rclone streaming optimizer">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/rclone-optimizer.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/rclone-optimizer.webp" alt="Rclone streaming optimizer in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-infinidysk-namespace-migration">
+  <div class="ui-example-heading">
+    <h3>Legacy namespace migration review</h3>
+    <a href="../services/core/infinidysk-migration/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review legacy identity and full-namespace choices using example eligibility; do not run preflight, migration, playback control or cleanup.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/infinidysk-namespace-migration.webp" aria-label="Open full-size image: Legacy namespace migration review">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/infinidysk-namespace-migration.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/infinidysk-namespace-migration.webp" alt="Legacy namespace migration review in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-postgres-migration">
+  <div class="ui-example-heading">
+    <h3>SQLite to PostgreSQL migration review</h3>
+    <a href="../features/arr-postgres-migration/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Inspect the source-shaped read-only preflight and backup requirements; no rehearsal, cutover or rollback is performed.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/postgres-migration.webp" aria-label="Open full-size image: SQLite to PostgreSQL migration review">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/postgres-migration.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/postgres-migration.webp" alt="SQLite to PostgreSQL migration review in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
+      </section>
+    
+  
+    
+    
+    
+    
+      <section class="ui-example-group" id="ui-group-preferences">
+        <div class="ui-example-group-heading"><h2>Your dashboard view</h2><p>Choose how information and application pages are displayed.</p></div>
+        <section class="ui-example-panel" id="ui-settings-overview">
+  <div class="ui-example-heading">
+    <h3>Settings</h3>
+    <a href="settings/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review the Settings page and its section navigation.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-overview.webp" aria-label="Open full-size image: Settings">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-overview.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-overview.webp" alt="Settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-settings-appearance">
+  <div class="ui-example-heading">
+    <h3>Appearance</h3>
+    <a href="settings/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review theme choices in the selected light or dark appearance.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-appearance.webp" aria-label="Open full-size image: Appearance">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-appearance.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-appearance.webp" alt="Appearance in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-settings-log-timestamps">
+  <div class="ui-example-heading">
+    <h3>Log timestamp format</h3>
+    <a href="settings/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review date and time formatting controls.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-log-timestamps.webp" aria-label="Open full-size image: Log timestamp format">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-log-timestamps.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-log-timestamps.webp" alt="Log timestamp format in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-settings-embedded-uis">
+  <div class="ui-example-heading">
+    <h3>Embedded UI settings</h3>
+    <a href="../features/embedded-ui/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review the real embedded-service enablement controls.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-embedded-uis.webp" aria-label="Open full-size image: Embedded UI settings">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-embedded-uis.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-embedded-uis.webp" alt="Embedded UI settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-settings-onboarding">
+  <div class="ui-example-heading">
+    <h3>Run guided setup again</h3>
+    <a href="settings/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Locate the real guided-setup launch control without resetting the installation.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-onboarding.webp" aria-label="Open full-size image: Run guided setup again">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-onboarding.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-onboarding.webp" alt="Run guided setup again in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-settings-advanced">
+  <div class="ui-example-heading">
+    <h3>Service utilities</h3>
+    <a href="settings/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review available service utilities and optional diagnostics.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-advanced.webp" aria-label="Open full-size image: Service utilities">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-advanced.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-advanced.webp" alt="Service utilities in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-settings-about">
+  <div class="ui-example-heading">
+    <h3>Application versions</h3>
+    <a href="settings/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Compare independent backend and frontend versions.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-about.webp" aria-label="Open full-size image: Application versions">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-about.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-about.webp" alt="Application versions in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-settings-support">
+  <div class="ui-example-heading">
+    <h3>Support the projects</h3>
+    <a href="settings/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Locate project support and contribution links.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-support.webp" aria-label="Open full-size image: Support the projects">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-support.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-support.webp" alt="Support the projects in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-settings-contributors">
+  <div class="ui-example-heading">
+    <h3>Project contributors</h3>
+    <a href="settings/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review the real contributor section; external contributor requests use an explicit empty example response.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-contributors.webp" aria-label="Open full-size image: Project contributors">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-contributors.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-contributors.webp" alt="Project contributors in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
+      </section>
+    
+  
+    
+    
+    
+    
+      <section class="ui-example-group" id="ui-group-accounts">
+        <div class="ui-example-group-heading"><h2>Accounts, integrations and alerts</h2><p>Review the connections and access used by your installation.</p></div>
+        <section class="ui-example-panel" id="ui-login">
+  <div class="ui-example-heading">
+    <h3>Sign in to DUMB</h3>
+    <a href="../features/authentication/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Show the real sign-in form with blank credentials.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/login.webp" aria-label="Open full-size image: Sign in to DUMB">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/login.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/login.webp" alt="Sign in to DUMB in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-account-setup">
+  <div class="ui-example-heading">
+    <h3>Create your first account</h3>
+    <a href="../features/authentication/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Show the real initial account form without submitting it.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/account-setup.webp" aria-label="Open full-size image: Create your first account">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/account-setup.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/account-setup.webp" alt="Create your first account in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-settings-tokens">
+  <div class="ui-example-heading">
+    <h3>Integration tokens</h3>
+    <a href="../features/configuration/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Locate token fields; keep credentials blank.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-tokens.webp" aria-label="Open full-size image: Integration tokens">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-tokens.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-tokens.webp" alt="Integration tokens in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-settings-authentication">
+  <div class="ui-example-heading">
+    <h3>Authentication and local accounts</h3>
+    <a href="../features/authentication/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review authentication and local-account management.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-authentication.webp" aria-label="Open full-size image: Authentication and local accounts">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-authentication.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-authentication.webp" alt="Authentication and local accounts in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-settings-auth-provider">
+  <div class="ui-example-heading">
+    <h3>Sign-in provider</h3>
+    <a href="../features/authentication/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review OIDC provider settings without discovery or saving.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-auth-provider.webp" aria-label="Open full-size image: Sign-in provider">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-auth-provider.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-auth-provider.webp" alt="Sign-in provider in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-settings-notifications">
+  <div class="ui-example-heading">
+    <h3>Notifications</h3>
+    <a href="../features/notifications/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review notification destinations, event routing and delivery history.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-notifications.webp" aria-label="Open full-size image: Notifications">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-notifications.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-notifications.webp" alt="Notifications in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-ai-overview">
+  <div class="ui-example-heading">
+    <h3>Stack AI Assist</h3>
+    <a href="../features/ai-assistant/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review diagnostic scope and evidence controls without provider calls.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/ai-overview.webp" aria-label="Open full-size image: Stack AI Assist">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/ai-overview.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/ai-overview.webp" alt="Stack AI Assist in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-ai-provider">
+  <div class="ui-example-heading">
+    <h3>Local AI provider settings</h3>
+    <a href="../features/ai-assistant/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review the provider form with no credential or live model call.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/ai-provider.webp" aria-label="Open full-size image: Local AI provider settings">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/ai-provider.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/ai-provider.webp" alt="Local AI provider settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-ai-provider-openai">
+  <div class="ui-example-heading">
+    <h3>OpenAI provider settings</h3>
+    <a href="../features/ai-assistant/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review the openai provider form using unsaved example values; no provider request is sent.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/ai-provider-openai.webp" aria-label="Open full-size image: OpenAI provider settings">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/ai-provider-openai.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/ai-provider-openai.webp" alt="OpenAI provider settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-ai-provider-gemini">
+  <div class="ui-example-heading">
+    <h3>Gemini provider settings</h3>
+    <a href="../features/ai-assistant/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review the gemini provider form using unsaved example values; no provider request is sent.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/ai-provider-gemini.webp" aria-label="Open full-size image: Gemini provider settings">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/ai-provider-gemini.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/ai-provider-gemini.webp" alt="Gemini provider settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
+      </section>
+    
+  
+    
+    
+    
+    
+      <section class="ui-example-group" id="ui-group-first-run">
+        <div class="ui-example-group-heading"><h2>First-run setup</h2><p>Choose services and review their options before completing the initial setup.</p></div>
+        <section class="ui-example-panel" id="ui-onboarding-services">
+  <div class="ui-example-heading">
+    <h3>Choose services</h3>
+    <a href="onboarding/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Choose example services in the actual packaged onboarding wizard.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-services.webp" aria-label="Open full-size image: Choose services">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/onboarding-services.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-services.webp" alt="Choose services in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-onboarding-preflight">
+  <div class="ui-example-heading">
+    <h3>Readiness checks</h3>
+    <a href="onboarding/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review example readiness checks and explicit unknown storage readiness.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-preflight.webp" aria-label="Open full-size image: Readiness checks">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/onboarding-preflight.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-preflight.webp" alt="Readiness checks in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-onboarding-provider">
+  <div class="ui-example-heading">
+    <h3>Provider credentials (example)</h3>
+    <a href="onboarding/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review a provider credential step using a visibly example value.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-provider.webp" aria-label="Open full-size image: Provider credentials (example)">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/onboarding-provider.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-provider.webp" alt="Provider credentials (example) in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-onboarding-companions">
+  <div class="ui-example-heading">
+    <h3>Companion services</h3>
+    <a href="onboarding/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review optional companion service selection.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-companions.webp" aria-label="Open full-size image: Companion services">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/onboarding-companions.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-companions.webp" alt="Companion services in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-onboarding-options">
+  <div class="ui-example-heading">
+    <h3>Service options</h3>
+    <a href="onboarding/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review selected service options.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-options.webp" aria-label="Open full-size image: Service options">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/onboarding-options.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-options.webp" alt="Service options in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-onboarding-embedded-uis">
+  <div class="ui-example-heading">
+    <h3>Embedded service access</h3>
+    <a href="onboarding/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review embedded-service access in onboarding.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-embedded-uis.webp" aria-label="Open full-size image: Embedded service access">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/onboarding-embedded-uis.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-embedded-uis.webp" alt="Embedded service access in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-onboarding-review">
+  <div class="ui-example-heading">
+    <h3>Review your setup</h3>
+    <a href="onboarding/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Walk through the real wizard to its review; never click Start services.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-review.webp" aria-label="Open full-size image: Review your setup">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/onboarding-review.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-review.webp" alt="Review your setup in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section><section class="ui-example-panel" id="ui-onboarding-progress">
+  <div class="ui-example-heading">
+    <h3>Setup progress (simulated example)</h3>
+    <a href="onboarding/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Simulated setup progress example in the real packaged wizard; in-memory responses only, no application was installed or started.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-progress.webp" aria-label="Open full-size image: Setup progress (simulated example)">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/onboarding-progress.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-progress.webp" alt="Setup progress (simulated example) in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data. Installation status is illustrative; no application was installed or started.</p>
+</section><section class="ui-example-panel" id="ui-onboarding-result">
+  <div class="ui-example-heading">
+    <h3>Setup result (simulated example)</h3>
+    <a href="onboarding/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Simulated setup result example in the real packaged wizard; in-memory responses only, no application was installed or started.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-result.webp" aria-label="Open full-size image: Setup result (simulated example)">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/onboarding-result.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-result.webp" alt="Setup result (simulated example) in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data. Installation status is illustrative; no application was installed or started.</p>
+</section><section class="ui-example-panel" id="ui-onboarding-error">
+  <div class="ui-example-heading">
+    <h3>Setup needs attention (simulated example)</h3>
+    <a href="onboarding/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Simulated setup error example in the real packaged wizard; in-memory responses only, no application was installed or started.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-error.webp" aria-label="Open full-size image: Setup needs attention (simulated example)">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/onboarding-error.webp">
+      <img src="../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-error.webp" alt="Setup needs attention (simulated example) in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data. Installation status is illustrative; no application was installed or started.</p>
+</section>
+      </section>
+    
+  
+  
+  
+  
+  
+  
+  
+    <section class="ui-example-availability" aria-label="Version availability">
+      <h2>Availability in these versions</h2>
+      <p>These views are unavailable in this version combination. Open the guide to check which version you need.</p>
+      <ul><li><strong>Backups and restore.</strong> Not supported by the selected frontend and DUMB versions. <a href="../features/installation-backups/">Read the guide</a>.<details class="geek-details"><summary>Technical availability details</summary><p>Verified backend source does not advertise: installation_backup, installation_backup_protocol=1</p></details></li><li><strong>Installation choices.</strong> Not supported by the selected frontend and DUMB versions. <a href="onboarding/">Read the guide</a>.<details class="geek-details"><summary>Technical availability details</summary><p>Verified backend source does not advertise: setup_arrangements</p></details></li><li><strong>Finish setup connections.</strong> Not supported by the selected frontend and DUMB versions. <a href="../features/setup-checklist/">Read the guide</a>.<details class="geek-details"><summary>Technical availability details</summary><p>Verified backend source does not advertise: setup_arrangements</p></details></li><li><strong>InfiniDysk 2 installation review.</strong> Not supported by the selected frontend and DUMB versions. <a href="../services/core/infinidysk-installation/">Read the guide</a>.<details class="geek-details"><summary>Technical availability details</summary><p>Verified backend source does not advertise: infinidysk_v2, infinidysk_v2_migration, infinidysk_v2_migration_protocol=1</p></details></li></ul>
+    </section>
+  
+</div>
 
 ## DUMB and application accounts are separate
 
@@ -13900,12 +14858,21 @@ The metrics dashboard shows:
 - **Plex cloud status** - Optional cached status for Plex-operated services
 - **System information** - Container and host details
 
-<figure class="docs-visual docs-frontend-figure" markdown="1">
-
-![DUMB Metrics page with resource gauges, history controls and process information.](../assets/images/guides/frontend/v1.91.0/tour-2/metrics.webp){ loading=lazy decoding=async }
-
-<figcaption class="docs-visual-caption">Use the gauges for a current sample and the charts to look for a sustained pattern. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
-</figure>
+<section class="ui-example-panel" id="ui-metrics">
+  <div class="ui-example-heading">
+    <h3>Container metrics</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Inspect actual sampled container CPU and memory in the real Metrics UI.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/metrics.webp" aria-label="Open full-size image: Container metrics">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/metrics.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/metrics.webp" alt="Container metrics in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
 
 ---
 
@@ -14037,6 +15004,22 @@ An operational cloud status does not prove that local playback, remote access, D
 ## Database health
 
 Only services explicitly opted into Database Health monitoring appear in the **Database Health** table on the Metrics page. Supported services with monitoring disabled remain available in **Metrics → Settings** and the service page's **Database Health** panel so they can be enabled, but they are omitted from the results table. When no services are monitored, the section shows a concise empty state with a **Configure** action instead of disabled service rows.
+
+<section class="ui-example-panel" id="ui-database-health">
+  <div class="ui-example-heading">
+    <h3>Database health</h3>
+    <a href="../../features/metrics/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review passive database monitoring controls with example disabled-state evidence; do not enable monitoring or request a fresh probe.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/database-health.webp" aria-label="Open full-size image: Database health">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/database-health.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/database-health.webp" alt="Database health in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
 
 The Database Health section appears near the bottom of the live Metrics content. When Plex Cloud Status is enabled, its card follows Database Health; **System** remains last. Select any column header to sort ascending or descending; size, WAL, signal, pressure, and probe columns sort by their underlying numeric values rather than the formatted text, and unavailable values remain last. The selected sort is retained in that browser. Click or keyboard-activate any service row to expand or collapse its full details. Expanded details match the service-page panel and include the recommendation, score reasons, database paths/names, provider metadata, filesystem capacity, inode pressure, read-only/network state, probe results, and observed log signals. Column headers, settings, status badges, and detail fields include tooltips, and the section links directly to the Database Health documentation.
 
@@ -14280,6 +15263,22 @@ A tier name such as `1080p` is an instance label, not proof that the application
 
 
 
+<section class="ui-example-panel" id="ui-onboarding-services">
+  <div class="ui-example-heading">
+    <h3>Choose services</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Choose example services in the actual packaged onboarding wizard.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-services.webp" aria-label="Open full-size image: Choose services">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/onboarding-services.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-services.webp" alt="Choose services in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
+
 ### Step 2: Preflight checks
 
 The wizard checks whether DUMB can continue setup and shows any problems it finds. Read each result, correct blocking errors, then run the check again before continuing.
@@ -14289,11 +15288,43 @@ Resolve blocking failures before continuing. A passed API response does not inde
 
 
 
+<section class="ui-example-panel" id="ui-onboarding-preflight">
+  <div class="ui-example-heading">
+    <h3>Readiness checks</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review example readiness checks and explicit unknown storage readiness.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-preflight.webp" aria-label="Open full-size image: Readiness checks">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/onboarding-preflight.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-preflight.webp" alt="Readiness checks in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
+
 ### Step 3: Configure provider credentials
 
 Enter the credentials requested by the selected workflow. Debrid API keys are available from the provider's account page. DUMB maps supported inputs into the selected services' configuration.
 
 An NNTP provider account and an NZB indexer account serve different purposes; supplying one does not configure the other.
+
+<section class="ui-example-panel" id="ui-onboarding-provider">
+  <div class="ui-example-heading">
+    <h3>Provider credentials (example)</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review a provider credential step using a visibly example value.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-provider.webp" aria-label="Open full-size image: Provider credentials (example)">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/onboarding-provider.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-provider.webp" alt="Provider credentials (example) in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
 
 ### Step 4: Choose companion services
 
@@ -14307,6 +15338,22 @@ Authelia appears only when the backend supports its managed integration. A newer
 | AIOStreams | Set a stable public HTTPS base URL for remote clients and create its dashboard login |
 | Authelia / TPA / Cloudflared | Review public origins, DNS, and authentication routes separately from embedded UI access |
 
+<section class="ui-example-panel" id="ui-onboarding-companions">
+  <div class="ui-example-heading">
+    <h3>Companion services</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review optional companion service selection.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-companions.webp" aria-label="Open full-size image: Companion services">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/onboarding-companions.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-companions.webp" alt="Companion services in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
+
 ### Step 5: Service-specific options
 
 Review paths, ports, mount mode, media-server settings, and requested provider/database options. Defaults are starting values, not a validation of your deployment.
@@ -14317,17 +15364,81 @@ InfiniDysk 1's `postgres_enabled` and `postgres_database` options are for a fres
 
 
 
+<section class="ui-example-panel" id="ui-onboarding-options">
+  <div class="ui-example-heading">
+    <h3>Service options</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review selected service options.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-options.webp" aria-label="Open full-size image: Service options">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/onboarding-options.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-options.webp" alt="Service options in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
+
 ### Embedded service access
 
 Enable embedded UIs when offered to use proxied service tabs, split view, and direct links. This does not publish public DNS or configure an external HTTPS origin.
+
+<section class="ui-example-panel" id="ui-onboarding-embedded-uis">
+  <div class="ui-example-heading">
+    <h3>Embedded service access</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review embedded-service access in onboarding.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-embedded-uis.webp" aria-label="Open full-size image: Embedded service access">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/onboarding-embedded-uis.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-embedded-uis.webp" alt="Embedded service access in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
 
 ### Review configuration
 
 Review selected services, dependencies, credentials, instance paths, and custom options before applying. Confirmation can install, configure, and start services.
 
+<section class="ui-example-panel" id="ui-onboarding-review">
+  <div class="ui-example-heading">
+    <h3>Review your setup</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Walk through the real wizard to its review; never click Start services.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-review.webp" aria-label="Open full-size image: Review your setup">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/onboarding-review.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-review.webp" alt="Review your setup in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
+
 
 
 ### Setup progress
+
+<section class="ui-example-panel" id="ui-onboarding-progress">
+  <div class="ui-example-heading">
+    <h3>Setup progress (simulated example)</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Simulated setup progress example in the real packaged wizard; in-memory responses only, no application was installed or started.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-progress.webp" aria-label="Open full-size image: Setup progress (simulated example)">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/onboarding-progress.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-progress.webp" alt="Setup progress (simulated example) in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data. Installation status is illustrative; no application was installed or started.</p>
+</section>
 
 Follow live setup logs and the reported startup result. If a service fails, inspect its error and dependency state before retrying. After the stack starts, check each application's accounts, provider/indexer settings, routes, and a representative import/playback path; process startup alone does not verify them.
 
@@ -14362,6 +15473,22 @@ Instances need distinct names, process identities, ports, and appropriate data p
 
 Check service status, actual application configuration, and one intended end-to-end workflow. Configure [media-library protection](../features/media-library-protection.md) before unattended storage maintenance, and keep application data backed up.
 
+<section class="ui-example-panel" id="ui-onboarding-result">
+  <div class="ui-example-heading">
+    <h3>Setup result (simulated example)</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Simulated setup result example in the real packaged wizard; in-memory responses only, no application was installed or started.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-result.webp" aria-label="Open full-size image: Setup result (simulated example)">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/onboarding-result.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-result.webp" alt="Setup result (simulated example) in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data. Installation status is illustrative; no application was installed or started.</p>
+</section>
+
 ## Troubleshooting
 
 | Problem | Next step |
@@ -14370,6 +15497,24 @@ Check service status, actual application configuration, and one intended end-to-
 | Service fails to start | Inspect its logs, dependencies, configured ports, and mount access |
 | Existing service is not offered again | Use its service page; the wizard filters already-enabled selections |
 | Need a different topology | Review the change in onboarding; use dedicated migration tools for existing data |
+
+
+
+<section class="ui-example-panel" id="ui-onboarding-error">
+  <div class="ui-example-heading">
+    <h3>Setup needs attention (simulated example)</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Simulated setup error example in the real packaged wizard; in-memory responses only, no application was installed or started.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-error.webp" aria-label="Open full-size image: Setup needs attention (simulated example)">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/onboarding-error.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/onboarding-error.webp" alt="Setup needs attention (simulated example) in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data. Installation status is illustrative; no application was installed or started.</p>
+</section>
 
 ---
 
@@ -14399,12 +15544,21 @@ Select a service card to open its status, configuration, logs, and application i
 
 The header shows process status, application health, and restart information. Hover a health badge for the backend's probe reason. **Starting** and **Degraded** are distinct from a restart-relevant **Unhealthy** result.
 
-<figure class="docs-visual docs-frontend-figure" markdown="1">
-
-![Service page showing its status, command bar, configuration tabs and Tools menu.](../assets/images/guides/frontend/v1.91.0/tour-2/service-controls.webp){ loading=lazy decoding=async }
-
-<figcaption class="docs-visual-caption">Choose a tab for configuration, logs or the application's interface; open Tools for additional tasks. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
-</figure>
+<section class="ui-example-panel" id="ui-service-controls">
+  <div class="ui-example-heading">
+    <h3>Service controls</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review a service&#39;s health and lifecycle controls without operating it.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/service-controls.webp" aria-label="Open full-size image: Service controls">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/service-controls.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/service-controls.webp" alt="Service controls in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
 
 Use **Start**, **Stop**, or **Restart** for the current service. The DUMB API page has no start/stop/restart buttons. A storage operation affecting a protected media server prompts for playback and scan handling before it runs. Dashboard bulk updates use safe mode; use the individual service page to review an override.
 
@@ -14463,13 +15617,7 @@ Open **Tools → Dependencies** to inspect startup order, missing prerequisites,
 
 Instance links are scoped to the current workflow. An unrelated rclone or Zurg instance is not treated as a valid dependency when the intended mapping is missing. Conditional startup dependencies apply only when the relevant services are enabled. Signals distinguish runtime waits, configured `core_service` links, and optional integrations.
 
-<figure class="docs-visual docs-frontend-figure">
-<video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/v1.91.0/tour-2/dependencies.webp" aria-label="Review a service's dependencies" aria-describedby="dependencies-demo-caption">
-  <source src="../assets/images/guides/frontend/v1.91.0/tour-2/dependencies.webm" type="video/webm">
-  <p><a href="../assets/images/guides/frontend/v1.91.0/tour-2/dependencies.webm">Download the demonstration</a>, or follow the written steps above.</p>
-</video>
-<figcaption id="dependencies-demo-caption" class="docs-visual-caption">Watch: open Dependencies and compare Details with Flow. Review the named prerequisite before using a Fix now action. DUMB Frontend 1.91.0 · example data. Other versions may look different. <a href="../assets/images/guides/frontend/v1.91.0/tour-2/dependencies.webp">Open the full-size screenshot</a>.</figcaption>
-</figure>
+<figure class="docs-frontend-demo"><video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/dependencies.webp" data-ui-video data-light-video="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/dependencies.webm" data-dark-video="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/dependencies.webm" data-light-poster="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/dependencies.webp" data-dark-poster="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/dependencies.webp" aria-label="Read startup dependencies and switch to Flow."><source src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/dependencies.webm" type="video/webm"><p><a href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/dependencies.webm">Open the demonstration</a>.</p></video><figcaption class="docs-visual-caption">Read startup dependencies and switch to Flow. DUMB 2.23.0 · Frontend 1.91.0 · isolated example data. Follow the written steps for your own installation.</figcaption></figure>
 
 With [Geek Mode](settings.md#geek-mode), the panel also exposes API latency, **Copy JSON**, and raw Mermaid source. Use Details if the browser cannot render Flow.
 
@@ -14560,13 +15708,7 @@ You can also change the line limit. Service-aware parsing retains application ti
 
 DUMB applies its sensitive-data redactor to logs viewed or downloaded here. Review a download before sharing it; arbitrary application output can contain values the redactor does not recognize.
 
-<figure class="docs-visual docs-frontend-figure">
-<video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/v1.91.0/tour-2/service-logs.webp" aria-label="Filter service logs demonstration" aria-describedby="service-logs-demo-caption">
-  <source src="../assets/images/guides/frontend/v1.91.0/tour-2/service-logs.webm" type="video/webm">
-  <p><a href="../assets/images/guides/frontend/v1.91.0/tour-2/service-logs.webm">Download the demonstration</a>, or follow the written steps above.</p>
-</video>
-<figcaption id="service-logs-demo-caption" class="docs-visual-caption">Watch the log filters, refresh interval and Follow tail controls. DUMB Frontend 1.91.0 · example data. Other versions may look different. <a href="../assets/images/guides/frontend/v1.91.0/tour-2/service-logs.webp">Open the full-size screenshot</a>.</figcaption>
-</figure>
+<figure class="docs-frontend-demo"><video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/service-logs.webp" data-ui-video data-light-video="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/service-logs.webm" data-dark-video="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/service-logs.webm" data-light-poster="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/service-logs.webp" data-dark-poster="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/service-logs.webp" aria-label="Open native logs, filter lines and pause refresh."><source src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/service-logs.webm" type="video/webm"><p><a href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/service-logs.webm">Open the demonstration</a>.</p></video><figcaption class="docs-visual-caption">Open native logs, filter lines and pause refresh. DUMB 2.23.0 · Frontend 1.91.0 · isolated example data. Follow the written steps for your own installation.</figcaption></figure>
 
 ## Embedded UI
 
@@ -14575,6 +15717,22 @@ Enable service UIs in Settings, then open the service's **Embedded UI** tab. Cho
 DUMB login does not replace the application's own login. Root-relative APIs, assets, and WebSockets use the frontend's service context. Authelia login and TPA admin SSO open at their public HTTPS origins in a top-level tab.
 
 
+
+<section class="ui-example-panel" id="ui-embedded-sonarr">
+  <div class="ui-example-heading">
+    <h3>Sonarr inside DUMB</h3>
+    <a href="../../features/embedded-ui/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Open an actual isolated Sonarr application through the frontend, never a substitute HTML screen.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/embedded-sonarr.webp" aria-label="Open full-size image: Sonarr inside DUMB">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/embedded-sonarr.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/embedded-sonarr.webp" alt="Sonarr inside DUMB in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
 
 ### Service workers and browser notifications
 
@@ -14609,6 +15767,22 @@ Sections start expanded and remember their open/closed state in each browser.
 
 
 
+<section class="ui-example-panel" id="ui-settings-overview">
+  <div class="ui-example-heading">
+    <h3>Settings</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review the Settings page and its section navigation.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-overview.webp" aria-label="Open full-size image: Settings">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-overview.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-overview.webp" alt="Settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
+
 ## Find a setting
 
 | Section | What to change |
@@ -14630,13 +15804,7 @@ Sections start expanded and remember their open/closed state in each browser.
 
 Choose **System Default** to follow your operating system, or select a light/dark palette. This preference is stored in the browser and does not change backend configuration.
 
-<figure class="docs-visual docs-frontend-figure">
-<video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/v1.91.0/tour-2/appearance.webp" aria-label="Choose a dashboard color palette" aria-describedby="appearance-demo-caption">
-  <source src="../assets/images/guides/frontend/v1.91.0/tour-2/appearance.webm" type="video/webm">
-  <p><a href="../assets/images/guides/frontend/v1.91.0/tour-2/appearance.webm">Download the demonstration</a>, or follow the written steps above.</p>
-</video>
-<figcaption id="appearance-demo-caption" class="docs-visual-caption">Watch: open Appearance and select the Light palette. This changes a browser preference. DUMB Frontend 1.91.0 · example data. Other versions may look different. <a href="../assets/images/guides/frontend/v1.91.0/tour-2/appearance.webp">Open the full-size screenshot</a>.</figcaption>
-</figure>
+<figure class="docs-frontend-demo"><video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-appearance.webp" data-ui-video data-light-video="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-appearance.webm" data-dark-video="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-appearance.webm" data-light-poster="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-appearance.webp" data-dark-poster="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-appearance.webp" aria-label="Review theme choices in the selected light or dark appearance."><source src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-appearance.webm" type="video/webm"><p><a href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-appearance.webm">Open the demonstration</a>.</p></video><figcaption class="docs-visual-caption">Review theme choices in the selected light or dark appearance. DUMB 2.23.0 · Frontend 1.91.0 · isolated example data. Follow the written steps for your own installation.</figcaption></figure>
 
 ## About section
 
@@ -14648,12 +15816,21 @@ Dismissing a banner hides it only in that browser. The About section retains the
 
 
 
-<figure class="docs-visual docs-frontend-figure" markdown="1">
-
-![About settings showing the DUMB API and frontend versions.](../assets/images/guides/frontend/v1.91.0/tour-2/about.webp){ loading=lazy decoding=async }
-
-<figcaption class="docs-visual-caption">Check both versions before choosing the matching documentation. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
-</figure>
+<section class="ui-example-panel" id="ui-settings-about">
+  <div class="ui-example-heading">
+    <h3>Application versions</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Compare independent backend and frontend versions.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-about.webp" aria-label="Open full-size image: Application versions">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-about.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-about.webp" alt="Application versions in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
 
 ### Launch Onboarding
 
@@ -14661,16 +15838,41 @@ Choose **Launch Onboarding** and confirm to review services again. If onboarding
 
 Existing application data is retained, but the wizard can apply new settings over the current configuration. Already enabled non-instance services are not offered as new selections; use their service pages for ordinary configuration changes.
 
+<section class="ui-example-panel" id="ui-settings-onboarding">
+  <div class="ui-example-heading">
+    <h3>Run guided setup again</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Locate the real guided-setup launch control without resetting the installation.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-onboarding.webp" aria-label="Open full-size image: Run guided setup again">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-onboarding.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-onboarding.webp" alt="Run guided setup again in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
+
 ## Embedded service UIs
 
 Select **Enable embedded service iFrames** to add embedded application tabs, direct links, and full-window controls to supported service pages. Disabling it removes dashboard access through those routes; native-port access still depends on your deployment's port mappings.
 
-<figure class="docs-visual docs-frontend-figure" markdown="1">
-
-![Embedded UIs settings with the Enable embedded service iFrames checkbox.](../assets/images/guides/frontend/v1.91.0/tour-2/embedded-ui-settings.webp){ loading=lazy decoding=async }
-
-<figcaption class="docs-visual-caption">Use Enable embedded service iFrames to control DUMB's application tabs and links. DUMB Frontend 1.91.0 · example data. Other versions may look different.</figcaption>
-</figure>
+<section class="ui-example-panel" id="ui-settings-embedded-uis">
+  <div class="ui-example-heading">
+    <h3>Embedded UI settings</h3>
+    <a href="../../features/embedded-ui/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review the real embedded-service enablement controls.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-embedded-uis.webp" aria-label="Open full-size image: Embedded UI settings">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-embedded-uis.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-embedded-uis.webp" alt="Embedded UI settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
 
 See [Embedded service UIs](../features/embedded-ui.md) for routing, application logins, and Authelia/TPA SSO exceptions.
 
@@ -14689,6 +15891,22 @@ Saved destination URLs and headers stay on the server. A blank secret field pres
 
 [Notifications](../features/notifications.md) documents events, startup baselining, retries, thresholds, and delivery limitations. Browser-local Metrics banners use separate settings on the Metrics page.
 
+<section class="ui-example-panel" id="ui-settings-notifications">
+  <div class="ui-example-heading">
+    <h3>Notifications</h3>
+    <a href="../../features/notifications/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review notification destinations, event routing and delivery history.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-notifications.webp" aria-label="Open full-size image: Notifications">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-notifications.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-notifications.webp" alt="Notifications in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
+
 ## Token settings
 
 | Token | Used for |
@@ -14699,10 +15917,42 @@ Saved destination URLs and headers stay on the server. A blank secret field pres
 A GitHub token should grant only the read access required by the selected source. Public release checks normally need no token. Enter the required token here, select **Save**, and wait for **Saved**. Retry the connection or update check that needed it. Technical deployments can also use a supported [configuration override](../features/configuration.md#configuration-precedence).
 
 
+<section class="ui-example-panel" id="ui-settings-tokens">
+  <div class="ui-example-heading">
+    <h3>Integration tokens</h3>
+    <a href="../../features/configuration/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Locate token fields; keep credentials blank.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-tokens.webp" aria-label="Open full-size image: Integration tokens">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-tokens.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-tokens.webp" alt="Integration tokens in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
+
 ## UI preferences
 
 **Log Timestamp Format** controls MDY/DMY date order, 12/24-hour time, and leading zeros. It changes log presentation, not the backend's timezone or original log timestamps.
 
+
+<section class="ui-example-panel" id="ui-settings-log-timestamps">
+  <div class="ui-example-heading">
+    <h3>Log timestamp format</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review date and time formatting controls.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-log-timestamps.webp" aria-label="Open full-size image: Log timestamp format">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-log-timestamps.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-log-timestamps.webp" alt="Log timestamp format in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
 
 ## Advanced
 
@@ -14726,6 +15976,22 @@ Database Health stays opt-in per service. Geek Mode does not run repair, integri
 
 The [dependency-panel example](service-pages.md#dependency-graph-view) shows its ordinary views. Geek Mode adds the diagnostic controls listed above.
 
+<section class="ui-example-panel" id="ui-settings-advanced">
+  <div class="ui-example-heading">
+    <h3>Service utilities</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review available service utilities and optional diagnostics.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-advanced.webp" aria-label="Open full-size image: Service utilities">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-advanced.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-advanced.webp" alt="Service utilities in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
+
 ## Authentication settings
 
 ### Authentication provider
@@ -14744,6 +16010,22 @@ For bootstrapped DUMB-managed Authelia, **Link managed Authelia** creates/reuses
 
 Provider TLS verification stays enabled by default. **Allow private endpoint IPs** and **Allow HTTP** are explicit outbound connection exceptions for a trusted provider; changing presets resets them. The full [authentication guide](../features/authentication.md#configure-an-oidc-provider) covers claim mapping and provider restrictions.
 
+<section class="ui-example-panel" id="ui-settings-auth-provider">
+  <div class="ui-example-heading">
+    <h3>Sign-in provider</h3>
+    <a href="../../features/authentication/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review OIDC provider settings without discovery or saving.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-auth-provider.webp" aria-label="Open full-size image: Sign-in provider">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-auth-provider.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-auth-provider.webp" alt="Sign-in provider in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
+
 ### Enable/disable authentication
 
 Enable authentication before allowing untrusted network access. Disabling it exposes DUMB controls to anyone who can reach the API.
@@ -14754,7 +16036,61 @@ Add, disable, enable, or delete local users under Authentication. DUMB protects 
 
 Follow the [sign-in and access-check diagram](../features/authentication.md#sign-in-and-check-access) when testing an authentication change.
 
+<section class="ui-example-panel" id="ui-settings-authentication">
+  <div class="ui-example-heading">
+    <h3>Authentication and local accounts</h3>
+    <a href="../../features/authentication/">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review authentication and local-account management.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-authentication.webp" aria-label="Open full-size image: Authentication and local accounts">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-authentication.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-authentication.webp" alt="Authentication and local accounts in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
 
+
+
+## Support and contributors
+
+Open **Settings → Support and Contributors** for project links and the people
+maintaining DUMB and its frontend. You can use these links without enabling
+Geek Mode.
+
+<section class="ui-example-panel" id="ui-settings-support">
+  <div class="ui-example-heading">
+    <h3>Support the projects</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Locate project support and contribution links.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-support.webp" aria-label="Open full-size image: Support the projects">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-support.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-support.webp" alt="Support the projects in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
+
+<section class="ui-example-panel" id="ui-settings-contributors">
+  <div class="ui-example-heading">
+    <h3>Project contributors</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review the real contributor section; external contributor requests use an explicit empty example response.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-contributors.webp" aria-label="Open full-size image: Project contributors">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/settings-contributors.webp">
+      <img src="../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/settings-contributors.webp" alt="Project contributors in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
 
 ## Related pages
 
@@ -14941,7 +16277,7 @@ Source: https://dumbarr.com/
 
 <div class="docs-home" markdown>
 
-<section class="home-hero" markdown>
+<section class="home-hero home-hero--product" markdown>
 
 <div class="home-intro" markdown>
 
@@ -14958,115 +16294,39 @@ do when something needs attention.
 <div class="home-actions" markdown>
 
 [Install DUMB :lucide-arrow-right:](deployment/index.md){ .md-button .md-button--primary }
-[Use the dashboard](frontend/index.md){ .md-button }
-[Watch the tour](#overview){ .md-button }
+[Explore the interface](frontend/index.md#ui-examples){ .md-button }
 
 </div>
 
-<p class="home-footnote">Already installed? <a href="frontend/index.md">Find your way around the dashboard.</a></p>
-
-</div>
-
-<div class="stack-map" markdown>
-
-<div class="stack-map-heading" markdown>
-
-![DUMB bridge logo](assets/images/logo.png){ width="46" height="46" }
-
-**Choose what you run**
-
-One dashboard. Your choice of services.
-
-</div>
-
-<div class="stack-map-row" markdown>
-
-:lucide-play: **Watch and listen**
-
-Plex · Jellyfin · Emby
-
-</div>
-
-<div class="stack-map-row" markdown>
-
-:lucide-library: **Organize your library**
-
-Sonarr · Radarr · Lidarr · Whisparr
-
-</div>
-
-<div class="stack-map-row" markdown>
-
-:lucide-workflow: **Build a workflow**
-
-Debrid · Usenet · Requests · Indexers
-
-</div>
-
-<div class="stack-map-footer" markdown>
-
-:lucide-sliders-horizontal: Service controls · Logs · Updates · Metrics
-
-</div>
+<p class="home-footnote">Already installed? <a href="frontend/index.md#choose-a-task">Find the guide for your next task.</a></p>
 
 </div>
 
 </section>
 
-## Meet DUMB in two minutes { #overview }
-
-See how the pieces fit together, then follow a few everyday dashboard tasks. This tour has on-screen captions and no narration; you can also read the transcript below.
-
-<figure class="docs-visual docs-overview-figure">
-<video id="dumb-overview" class="docs-frontend-video" controls playsinline preload="none" poster="assets/images/guides/overview/v1/poster.webp" aria-label="Captioned DUMB overview" aria-describedby="overview-caption">
-  <source src="assets/images/guides/overview/v1/dumb-overview.mp4" type="video/mp4">
-  <track kind="captions" src="assets/images/guides/overview/v1/captions.vtt" srclang="en" label="English">
-  <track kind="chapters" src="assets/images/guides/overview/v1/chapters.vtt" srclang="en" label="Tour chapters">
-  <p><a href="assets/images/guides/overview/v1/dumb-overview.mp4">Open the overview video</a>, or read the transcript below.</p>
-</video>
-<figcaption id="overview-caption" class="docs-visual-caption">DUMB Frontend 1.91.0 · example data. The tour reviews controls; it does not install an update or change a live system. Other versions and enabled services may look different.</figcaption>
+<figure id="overview" class="docs-product-showcase" data-showcase data-state="poster">
+  <div class="showcase-frame">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="assets/images/guides/showcase/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/poster.webp">
+      <img class="showcase-poster" src="assets/images/guides/showcase/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/poster.webp" width="1920" height="1280" alt="DUMB's actual dashboard, service controls and settings, shown in a short interface preview." decoding="async" fetchpriority="high">
+    </picture>
+    <video id="dumb-showcase" data-showcase-video hidden controls muted loop playsinline preload="none" poster="assets/images/guides/showcase/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/poster.webp" data-light-video="assets/images/guides/showcase/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/hero.mp4" data-dark-video="assets/images/guides/showcase/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/hero.mp4" data-light-poster="assets/images/guides/showcase/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/poster.webp" data-dark-poster="assets/images/guides/showcase/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/poster.webp" aria-label="Inside DUMB: a short preview of the actual interface" aria-describedby="showcase-caption">
+      <source src="assets/images/guides/showcase/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/hero.mp4" type="video/mp4">
+      <track kind="captions" src="assets/images/guides/showcase/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/captions.vtt" srclang="en" label="English">
+      <track kind="chapters" src="assets/images/guides/showcase/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/chapters.vtt" srclang="en" label="Preview chapters">
+      <p><a href="assets/images/guides/showcase/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/hero.mp4">Open the interface preview</a>.</p>
+    </video>
+  </div>
+  <figcaption id="showcase-caption">
+    <span>Real application screens · Frontend 1.91.0 · DUMB 2.23.0 · Example data</span>
+    <a href="frontend/#ui-examples">Explore the interface <span aria-hidden="true">↗</span></a>
+    <a href="assets/images/guides/showcase/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/transcript.txt">Read preview text</a>
+    <noscript><a href="assets/images/guides/showcase/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/hero.mp4">Play preview</a></noscript>
+    <button class="showcase-motion-control" data-showcase-toggle type="button" hidden aria-controls="dumb-showcase" aria-label="Play the interface preview">
+      <span data-showcase-icon aria-hidden="true">▶</span><span data-showcase-label>Play preview</span>
+    </button>
+  </figcaption>
 </figure>
-
-<details markdown="1">
-<summary>Read the overview transcript and chapter times</summary>
-
-**0:00 — Meet DUMB.** DUMB brings your media tools into one dashboard. Choose the applications and workflow you need.
-
-Set up and manage the applications that find, organize and play your media.
-
-**0:07 — How the pieces work together.** Start with one workflow and one media server. DUMB manages the apps; you choose how your library works.
-
-- **Find or request:** Search directly or use an optional request app.
-- **Prepare the library:** Your selected workflow handles the item and its library path.
-- **Watch or listen:** A media server reads the configured library.
-
-You provide the accounts, provider access and library choices.
-
-**0:19 — Install on the host you use.** Use the deployment guide for your platform. Keep configuration and application data in persistent storage.
-
-- **Pick your host:** Docker, a NAS, Windows with WSL2, or native Proxmox LXC.
-- **Keep your data:** Prepare persistent folders and the required access.
-- **Open DUMB:** Follow first-run setup in the dashboard.
-
-**0:29 — See your selected services.** The dashboard shows the services in your DUMB installation. Open a service to review its status and controls.
-
-**0:39 — Work with one application.** A service page brings its controls, settings and logs together. Use the embedded application to finish its own setup.
-
-**0:49 — Read and filter service logs.** Logs show what the selected service is doing. Filter messages by name or level to focus on the problem.
-
-**1:05 — Check an update before installing.** Open Tools → Updates and check for an available version. Review the result before choosing to install; this example only checks.
-
-**1:25 — Make the dashboard comfortable.** Use appearance settings to choose a comfortable dashboard view. These preferences change how the frontend is displayed.
-
-**1:35 — Check resource use.** Metrics help you review resource use and spot pressure. Use the charts alongside the affected service's logs.
-
-**1:45 — Try one complete workflow.** Follow the deployment guide, then complete first-run setup. Test one import and playback before expanding your stack.
-
-- **Install DUMB:** Follow the guide for your host.
-- **Set up your apps:** Add the accounts, providers and library paths they need.
-- **Test one item:** Check an import and playback before adding more services.
-
-</details>
 
 ## Deployment guides
 
@@ -17811,6 +19071,22 @@ browsers and reappears after seven days.
     recovery aid—not a replacement for an independent backup. The dashboard
     requires an explicit acknowledgement of this backup before it enables
     **Migrate now**.
+
+<section class="ui-example-panel" id="ui-infinidysk-namespace-migration">
+  <div class="ui-example-heading">
+    <h3>Legacy namespace migration review</h3>
+    <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
+  </div>
+  <p>Review legacy identity and full-namespace choices using example eligibility; do not run preflight, migration, playback control or cleanup.</p>
+  <a class="ui-example-image" data-showcase-zoom href="../../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/infinidysk-namespace-migration.webp" aria-label="Open full-size image: Legacy namespace migration review">
+    <picture data-ui-picture>
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/dark/infinidysk-namespace-migration.webp">
+      <img src="../../../assets/images/guides/frontend/channels/release/ebfdf2dec74b-66c90b93ea35-0d5a207b9a06/light/infinidysk-namespace-migration.webp" alt="Legacy namespace migration review in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+    </picture>
+    <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
+  </a>
+  <p class="ui-example-provenance">Actual frontend 1.91.0 · DUMB 2.23.0 · Example data.</p>
+</section>
 
 The available compatibility cutover changes the persisted service identity and
 managed process name to InfiniDysk. It can also rename DUMB-generated attached
