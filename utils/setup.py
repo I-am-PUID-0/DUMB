@@ -4513,16 +4513,9 @@ def setup_bazarr(
             return True, None
 
         install_path = config.get("config_dir", "/opt/bazarr")
-        data_dir = "/bazarr/data"
-        configured_command = config.get("command") or []
-        if isinstance(configured_command, list):
-            try:
-                config_index = configured_command.index("--config")
-                configured_data_dir = str(configured_command[config_index + 1]).strip()
-                if configured_data_dir:
-                    data_dir = configured_data_dir
-            except (ValueError, IndexError):
-                pass
+        from utils.bazarr_paths import bazarr_data_directory
+
+        data_dir = bazarr_data_directory(config)
         bazarr_py_path = os.path.join(install_path, "bazarr.py")
 
         if not os.path.isfile(bazarr_py_path):

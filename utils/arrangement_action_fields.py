@@ -105,7 +105,7 @@ def action_fields(action, fields):
             }
         elif name == "metadata" and action.get("service_key") == "pulsarr":
             keep = suffix == "tmdb_token"
-        elif name == "runtime":
+        elif name in {"runtime", "plex_notifications"}:
             keep = False
         else:
             keep = True

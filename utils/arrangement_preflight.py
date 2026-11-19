@@ -11,6 +11,7 @@ import threading
 import time
 
 from utils.arrangement_plan import project_configuration, resource_config
+from utils.bazarr_paths import bazarr_data_directory
 
 _SLOTS = threading.BoundedSemaphore(8)
 REMOTE_FILESYSTEMS = frozenset(
@@ -60,7 +61,7 @@ def _permission(info, uid, gid, write=False, *, search_only=False):
     return uid == 0 or ((mode >> shift) & required) == required
 
 
-def _probe(path, uid, gid, write, mounts):
+def _probe(path, uid, gid, write, mounts, *, create_owner=None):
     if not isinstance(path, str) or not path.startswith("/") or "\x00" in path:
         raise ValueError("A storage directory must be an absolute path.")
     parts = deque(path.split("/"))
@@ -138,19 +139,33 @@ def _probe(path, uid, gid, write, mounts):
     else:
         raise ValueError("Storage path resolution exceeds its component limit.")
     needs_write = write or not present
-    access = _permission(info, uid, gid, write=needs_write)
+    # A managed installer can create its missing runtime directory and assign
+    # the new directory to the service. Existing ancestors must still be
+    # searchable by that service; an existing unwritable directory never gains
+    # an ownership exemption. This check itself creates or changes nothing.
+    creation_planned = not present and write and create_owner is not None
+    owner = create_owner if creation_planned else (uid, gid)
+    can_assign_owner = not creation_planned or owner[0] == 0 or owner == (uid, gid)
+    access = can_assign_owner and _permission(info, *owner, write=needs_write)
     capacity = os.statvfs(current)
     readonly = bool(getattr(capacity, "f_flag", 0) & os.ST_RDONLY)
+    reason = "Directory metadata and configured primary UID/GID permissions checked; supplementary ACLs and media contents were not checked."
+    if needs_write and readonly:
+        reason = "The configuration filesystem is read-only; it cannot accept service configuration."
+    elif not can_assign_owner:
+        reason = "The controller cannot assign a new runtime directory to the configured service UID/GID."
+    elif creation_planned:
+        reason = (
+            "DUMB can create the missing runtime directory during installation and assign the new directory to the service; existing ancestors are searchable. No directory was created by this check."
+            if access
+            else "The controller lacks write/search permission to create the missing runtime directory."
+        )
     return {
         "present": present,
         "accessible": access and not (needs_write and readonly),
         "filesystem": filesystem_for(str(current), mounts),
         "free_bytes": capacity.f_bavail * capacity.f_frsize,
-        "reason": (
-            "The configuration filesystem is read-only; it cannot accept service configuration."
-            if needs_write and readonly
-            else "Directory metadata and configured primary UID/GID permissions checked; supplementary ACLs and media contents were not checked."
-        ),
+        "reason": reason,
     }
 
 
@@ -162,28 +177,63 @@ def storage_checks(plan, payload, current, defaults, *, mounts=None, timeout=3.0
     except (TypeError, ValueError):
         uid, gid = 1000, 1000
     candidates = {}
+    controller_owner = (os.geteuid(), os.getegid())
+
+    def candidate(
+        path,
+        write,
+        resource,
+        *,
+        owner=None,
+        create_owner=None,
+        label=None,
+        read_owner=None,
+    ):
+        if isinstance(path, str) and path.startswith("/"):
+            candidates.setdefault(
+                (path, write, owner or (uid, gid), create_owner, label, read_owner),
+                resource,
+            )
+
     for resource in plan["services"]:
         cfg = resource_config(proposed, resource["id"])
         fields = ("config_dir", "data_dir", "cache_dir", "mount_dir", "mount_path")
+        if resource["service_key"] == "bazarr":
+            # config_dir is Bazarr's root-owned Python application, not its
+            # writable state. setup_bazarr prepares the separate --config root.
+            candidate(
+                cfg.get("config_dir") or "/opt/bazarr",
+                True,
+                resource["id"],
+                owner=controller_owner,
+                label="Application installation",
+                read_owner=(uid, gid),
+            )
+            candidate(
+                bazarr_data_directory(cfg),
+                True,
+                resource["id"],
+                create_owner=controller_owner,
+            )
+            fields = ("cache_dir", "mount_dir", "mount_path")
         if (
             resource["service_key"] == "infinidysk"
             and str(cfg.get("runtime_generation") or "1") == "2"
         ):
             fields = ("v2_data_dir", "v2_runtime_dir", "mount_path")
         for field in fields:
-            path = cfg.get(field)
-            if isinstance(path, str) and path.startswith("/"):
-                candidates.setdefault(
-                    (path, field not in {"mount_dir", "mount_path"}), resource["id"]
-                )
+            candidate(
+                cfg.get(field),
+                field not in {"mount_dir", "mount_path"},
+                resource["id"],
+            )
     values = (payload.get("arrangement") or {}).get("values") or {}
     for key, rows in values.items():
         if str(key).endswith("::libraries") and isinstance(rows, list):
             for row in rows:
                 if isinstance(row, dict):
                     for path in row.get("paths") or []:
-                        if isinstance(path, str) and path.startswith("/"):
-                            candidates.setdefault((path, False), key.partition("::")[0])
+                        candidate(path, False, key.partition("::")[0])
     result_queue = queue.Queue()
     task_queue = queue.Queue()
     checks = []
@@ -193,11 +243,33 @@ def storage_checks(plan, payload, current, defaults, *, mounts=None, timeout=3.0
         try:
             while time.monotonic() < deadline:
                 try:
-                    index, path, write = task_queue.get_nowait()
+                    index, path, write, owner, create_owner, read_owner = (
+                        task_queue.get_nowait()
+                    )
                 except queue.Empty:
                     return
                 try:
-                    evidence = _probe(path, uid, gid, write, mounts)
+                    evidence = _probe(
+                        path, *owner, write, mounts, create_owner=create_owner
+                    )
+                    if (
+                        read_owner is not None
+                        and evidence.get("present") is True
+                        and evidence.get("accessible") is not False
+                    ):
+                        # A root-owned application need not be service-writable,
+                        # but the service must still read/search an existing
+                        # tree. An absent tree is prepared by the installer.
+                        access = _probe(path, *read_owner, False, mounts)
+                        if access.get("accessible") is not True:
+                            evidence.update(
+                                accessible=access.get("accessible"),
+                                reason=(
+                                    "The configured service UID/GID cannot read/search the existing application directory."
+                                    if access.get("accessible") is False
+                                    else "Service access to the existing application directory remains unverified."
+                                ),
+                            )
                 except (OSError, ValueError, UnboundLocalError):
                     evidence = {
                         "present": None,
@@ -209,10 +281,13 @@ def storage_checks(plan, payload, current, defaults, *, mounts=None, timeout=3.0
             _SLOTS.release()
 
     deadline = time.monotonic() + max(0.05, min(float(timeout), 5.0))
-    for index, ((path, write), resource) in enumerate(list(candidates.items())[:100]):
+    for index, (
+        (path, write, owner, create_owner, label, read_owner),
+        resource,
+    ) in enumerate(list(candidates.items())[:100]):
         record = {
             "key": f"storage:{resource}:{index}",
-            "label": f"{'Writable configuration' if write else 'Media/mount access'}: {path}",
+            "label": f"{label or ('Writable configuration' if write else 'Media/mount access')}: {path}",
             "ok": None,
             "critical": write,
             "resource_id": resource,
@@ -222,7 +297,7 @@ def storage_checks(plan, payload, current, defaults, *, mounts=None, timeout=3.0
         }
         checks.append(record)
         pending[index] = record
-        task_queue.put((index, path, write))
+        task_queue.put((index, path, write, owner, create_owner, read_owner))
     for _ in range(min(4, len(pending))):
         if _SLOTS.acquire(blocking=False):
             threading.Thread(

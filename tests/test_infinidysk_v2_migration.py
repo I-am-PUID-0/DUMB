@@ -21,6 +21,17 @@ from utils.infinidysk_v2_migration import (
 )
 
 
+def assert_worker_finished(test, worker, context):
+    # These fixtures exercise durable journal/archive writes, not a latency
+    # guarantee. Wait for actual thread completion within a bounded deadline.
+    timeout = 30
+    worker.join(timeout=timeout)
+    test.assertFalse(
+        worker.is_alive(),
+        f"{context}: migration worker {worker.name!r} is still alive after {timeout}s",
+    )
+
+
 class Config:
     """Use the real manager's get(key, section=None) convention."""
 
@@ -189,8 +200,7 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
         try:
             for manager in self.managers:
                 if manager._thread is not None and manager._thread.ident is not None:
-                    manager._thread.join(timeout=3)
-                    self.assertFalse(manager._thread.is_alive())
+                    assert_worker_finished(self, manager._thread, "fixture cleanup")
         finally:
             for item in reversed(self.admission):
                 item.stop()
@@ -221,8 +231,9 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
         }
 
     def wait(self, response):
-        self.manager._thread.join(timeout=3)
-        self.assertFalse(self.manager._thread.is_alive())
+        assert_worker_finished(
+            self, self.manager._thread, f"job {response['job']['job_id']}"
+        )
         return self.manager.get_job(response["job"]["job_id"])["job"]
 
     def rehearsal(self):

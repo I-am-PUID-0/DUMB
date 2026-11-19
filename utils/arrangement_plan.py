@@ -346,6 +346,53 @@ def action(
     }
 
 
+def refresh_post_start_tasks(record, config):
+    """Enrich new and retained runs without replaying setup or native writes."""
+    services = record.get("services", [])
+    if not any(
+        item.get("id") == "plex"
+        and item.get("service_key") == "plex"
+        and not item.get("external")
+        for item in services
+    ) or not resource_config(config, "plex").get("enabled"):
+        return
+    actions = record.setdefault("actions", [])
+    identifiers = {item["id"] for item in actions}
+    for resource in services:
+        if (
+            resource.get("service_key") not in {"sonarr", "radarr"}
+            or resource.get("external")
+            or not resource_config(config, resource["id"]).get("enabled")
+        ):
+            continue
+        identifier = resource["id"] + "::plex_notifications"
+        if identifier in identifiers:
+            continue
+        if len(actions) >= MAX_ACTIONS:
+            raise ValueError("This arrangement has too many setup actions.")
+        item = action(
+            resource,
+            "plex_notifications",
+            "Optional: notify Plex after imports from "
+            + str(resource.get("name") or resource["id"]),
+            required=False,
+            target="plex",
+            prerequisites=[resource["id"] + "::runtime", "plex::runtime"],
+            reason=(
+                "Optional: normal Plex library monitoring may already be sufficient. "
+                "DUMB does not create or independently verify this connection."
+            ),
+        )
+        item["instructions"] = [
+            "Open this Arr app's Settings > Connect and inspect any existing Plex Media Server connection. Keep a working connection.",
+            "If needed, add Plex Media Server using an address reachable from this app. Complete the sign-in or credential fields it requests.",
+            "Choose the import or upgrade events you want, use the native Test button, and save the connection.",
+            "Return here to confirm you completed the task, or leave it for later. Your confirmation is recorded as unverified.",
+        ]
+        actions.append(item)
+        identifiers.add(identifier)
+
+
 def _field(resource, name, label, kind, description, **extra):
     return {
         "key": f"{resource['id']}::{name}",
@@ -1615,6 +1662,7 @@ def build_plan(
     from utils.arrangement_infinidysk import adapt_plan
 
     adapt_plan(record, current, proposed, payload)
+    refresh_post_start_tasks(record, proposed)
     from utils.arrangement_action_fields import bind_action_fields
 
     bind_action_fields(record)

@@ -7,9 +7,32 @@ from unittest.mock import Mock, call, patch
 import yaml
 
 from utils import setup
+from utils.bazarr_paths import bazarr_data_directory
 
 
 class BazarrSetupTests(unittest.TestCase):
+    def test_runtime_data_directory_follows_launch_config_not_application_tree(self):
+        self.assertEqual(
+            bazarr_data_directory(
+                {
+                    "config_dir": "/opt/bazarr",
+                    "command": ["python", "bazarr.py", "--config", "/example/state"],
+                }
+            ),
+            "/example/state",
+        )
+        for command in (
+            None,
+            "--config /example/state",
+            [],
+            ["--config"],
+            ["--config", " "],
+        ):
+            with self.subTest(command=command):
+                self.assertEqual(
+                    bazarr_data_directory({"command": command}), "/bazarr/data"
+                )
+
     def test_postgres_job_cleanup_patch_releases_thread_scoped_session(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             jobs_queue = os.path.join(temp_dir, "bazarr", "app", "jobs_queue.py")

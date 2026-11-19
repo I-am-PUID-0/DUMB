@@ -260,9 +260,11 @@ class NativeSetupTests(unittest.TestCase):
         payload = self.payload()
         plan = self.plan(payload)
         paths = []
+        creation_owners = []
 
-        def probe(path, *args):
+        def probe(path, uid, gid, write, mounts, *, create_owner=None):
             paths.append(path)
+            creation_owners.append(create_owner)
             return {
                 "present": True,
                 "accessible": True,
@@ -276,6 +278,7 @@ class NativeSetupTests(unittest.TestCase):
         self.assertIn(str(self.root / "native-data"), paths)
         self.assertIn(str(self.root / "native-runtime"), paths)
         self.assertNotIn(str(self.source), paths)
+        self.assertTrue(all(owner is None for owner in creation_owners))
 
     def test_fresh_rclone_handoff_does_not_create_a_mount_before_native_wizard(self):
         self.config["rclone"]["instances"] = copy.deepcopy(

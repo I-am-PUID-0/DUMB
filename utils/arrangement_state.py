@@ -28,6 +28,7 @@ from utils.arrangement_plan import (
     public_values,
     validate_values,
     refresh_external_resources,
+    refresh_post_start_tasks,
 )
 from utils.arrangement_requirements import refresh_requirements
 from utils.arrangement_link_actions import refresh_link_actions
@@ -763,6 +764,7 @@ class SetupCoordinator:
                     if field.get("resource_id") == action.get("source")
                 ]
             refresh_link_actions(current, payload, config)
+            refresh_post_start_tasks(current, config)
             bind_action_fields(current)
             self.store.write("run", identifier, current)
 
@@ -835,6 +837,7 @@ class SetupCoordinator:
                                 reason="You confirmed this manual task is complete. DUMB has not independently verified it.",
                                 evidence={"level": "user_attested"},
                                 next_retry_at=None,
+                                deferred_by_user=False,
                             )
                         else:
                             target.update(
@@ -847,6 +850,7 @@ class SetupCoordinator:
                                 reason="Deferred by you. Required work remains incomplete.",
                                 next_retry_at=None,
                                 retryable=False,
+                                deferred_by_user=True,
                             )
                         self._finish(record)
                         self.store.write("run", identifier, record)
@@ -1067,6 +1071,13 @@ class SetupCoordinator:
                     )
                     if operation == "preview" and target is not None:
                         target["evidence"] = None
+                    if target is not None and operation in {
+                        "preview",
+                        "apply",
+                        "recheck",
+                        "retry",
+                    }:
+                        target["deferred_by_user"] = False
                     self.store.write("run", identifier, record)
                 self._launch(identifier, descriptor, operation, action_id)
                 descriptor = None
@@ -1105,6 +1116,8 @@ class SetupCoordinator:
                 if key in changes:
                     item[key] = public_value(changes[key], key)
             if changes.get("execution") != "running" and "retryable" not in changes:
+                item["retryable"] = False
+            if item.get("deferred_by_user") is True:
                 item["retryable"] = False
             item["checked_at"] = self._now()
             item["next_retry_at"] = None
@@ -1229,6 +1242,7 @@ class SetupCoordinator:
             and not action_id
             and any(
                 item["execution"] not in {"applied", "already_present"}
+                and item.get("deferred_by_user") is not True
                 for item in runtime
             )
         )
@@ -1243,6 +1257,7 @@ class SetupCoordinator:
                         item["source"]
                         for item in runtime
                         if item.get("execution") not in {"applied", "already_present"}
+                        and item.get("deferred_by_user") is not True
                     ]
                 self.start_services(startup_payload)
             except Exception:
@@ -1288,12 +1303,18 @@ class SetupCoordinator:
                     and operation in {"apply", "preview", "recheck"}
                 ):
                     continue
+            if (
+                item.get("deferred_by_user") is True
+                and action_id != item["id"]
+                and operation != "recheck"
+            ):
+                continue
             if item.get("explicit_only") and not (
                 action_id == item["id"] and operation in {"apply", "recheck", "preview"}
             ):
                 continue
             if (
-                operation != "recheck"
+                (operation != "recheck" or action_id is None)
                 and item.get("automation") in {"manual", "unknown", "unsupported"}
                 and item.get("execution") == "applied"
                 and isinstance(item.get("evidence"), dict)
