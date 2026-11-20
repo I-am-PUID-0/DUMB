@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.17">
+    <meta name="dumb-docs-package-version" content="1.25.18">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="fd6984a8f037c312ac3518726870bc06455b6c5f">
-    <meta name="dumb-docs-release-tag" content="1.25.17">
+    <meta name="dumb-docs-build-commit" content="0fdc1d64d6819569c835710b13748d13c11bca7c">
+    <meta name="dumb-docs-release-tag" content="1.25.18">
   
 
     
@@ -6758,6 +6758,33 @@ be running after activation, but unrelated applications and normal workers still
 need that final restart. <strong>Waiting for review alone does not require a restart.</strong>
 If the prepared state cannot be confirmed, preserve its evidence and follow the
 offered recovery path.</p>
+<h3 id="retry-a-paused-dumb-step">Retry a paused DUMB step<a class="headerlink" href="#retry-a-paused-dumb-step" title="Permanent link">&para;</a></h3>
+<p>On supporting builds, a temporary storage or database-access error can pause a
+retryable DUMB step instead of immediately restoring v1. The panel identifies
+the step that stopped and offers a retry. Work completed before that step is
+kept: retrying the converted-library check, for example, uses the same converted
+database rather than repeating the native import, source capture or archive.
+A long file or archive check can restart its current pass. A failed archive
+transfer restarts that transfer after DUMB confirms removal of its incomplete
+file; earlier source capture and database preparation stay retained. Transfers
+do not continue from their last byte.</p>
+<p>Review the error, reconnect the required storage or resolve the reported access
+or free-space problem, then select <strong>Retry this DUMB step</strong>.
+Nothing retries automatically. A repeated failure leaves the same job paused
+for another decision. Keep DUMB and its required storage running, and keep
+the affected applications and external writers stopped while deciding.
+To abandon the attempt, use the job's cancellation control and follow the
+confirmed restoration result.</p>
+<p>Retry does not bypass changed or damaged input, an invalid report, failed
+ownership checks or uncertainty about whether a migration helper stopped.
+Those conditions still block continuation and retain the recovery path.
+The native import's reported omissions have their own
+<a href="#review-native-import-omissions">review and acceptance decision</a>; retrying a
+DUMB check does not ask the native importer to repair missing items.</p>
+<p>Reloading the page can reopen the paused job. <strong>Restarting DUMB cannot resume
+this failed-step checkpoint:</strong> the old worker is gone, so the job instead offers
+its retained recovery path. This differs from a fully prepared installation
+waiting for activation, which has its own restart-safe verification record.</p>
 <h3 id="older-backend-separate-test-and-migration">Older backend: separate test and migration<a class="headerlink" href="#older-backend-separate-test-and-migration" title="Permanent link">&para;</a></h3>
 <p>A backend without prepared-activation support keeps the earlier
 <strong>Test migration → Start migration</strong> workflow. For existing data, a successful
@@ -6862,6 +6889,10 @@ that the worker stopped.</p>
 <tr>
 <td>Checks failed before applications paused</td>
 <td>Resolve the blocker and obtain a fresh preview. No source restore is needed.</td>
+</tr>
+<tr>
+<td>DUMB step paused; retry offered</td>
+<td>Resolve the reported temporary problem, then retry that step using its current confirmation, or cancel and follow restoration. Earlier completed work stays retained.</td>
 </tr>
 <tr>
 <td>Prepared; waiting for activation</td>
@@ -6984,11 +7015,28 @@ or consumer recovery does not offer this ordinary rollback.</p>
 <p>The job's import report distinguishes imported files, omitted files and their
 reported reasons. Omitted files are absent from v2; a completed native import does
 not establish that those files will be repaired or replaced automatically.</p>
-<p>A known, fully accounted source incompatibility can require review before
-activation. Read the reasons and affected paths, then explicitly accept the
-prepared job's omissions. Acceptance is bound to that candidate's full private
-evidence and exact report digest; the dashboard's limited path samples cannot
-replace it. Activating the prepared candidate does not run another import.</p>
+<p>If the importer finishes and DUMB can account for every imported and omitted
+file, the prepared installation can wait for your review. This includes items
+skipped because of missing articles, provider or connection problems, source
+incompatibilities, or another reported reason. Those reasons describe why an
+item was skipped; they do not mean it is safe to lose or cannot be recovered.</p>
+<ol>
+<li>Review the <strong>Native import report</strong>, including its imported and skipped
+   counts. Expand <strong>Skipped paths and reasons</strong>, and choose <strong>Show full native
+   report</strong> when the summary does not show every item.</li>
+<li>Decide whether to keep this result or try to recover the missing items.
+   Provider or connection problems may be temporary. To retry, choose
+   <strong>Restore v1</strong>, resolve the reported problems, then prepare again. Nothing
+   retries automatically.</li>
+<li>To keep the result, explicitly accept the listed missing items, enter the
+   displayed confirmation, then choose <strong>Activate prepared InfiniDysk 2</strong>.
+   Those items will be absent from the v2 library. Acceptance does not repair,
+   retry or delete them from the retained v1 recovery copy.</li>
+</ol>
+<p>Acceptance applies only to this candidate's complete recorded list of missing
+items and reasons. The dashboard's limited samples cannot replace that evidence.
+Activating the prepared candidate does not run another import. v1 and affected
+apps stay stopped while the prepared result waits for your decision.</p>
 <p>On the older separate test workflow, cutover can omit the same items or fewer,
 including none, when the complete
 canonical source media and history census is unchanged. Every remaining omitted
@@ -7008,20 +7056,21 @@ an older backend.</p>
 tolerance. Every required completed and failed source-history identity must
 still exist in the actual v2 database. Unsupported source states, invalid
 reserved identities and missing required history remain blockers.</p>
-<p>Provider/NNTP failures, unrecognized reasons or report formats, unexplained
-missing identities, changed names, database integrity failures and missing
-history still block migration. Review provider failures separately from known
-source exclusions: the restricted relay can recover missing metadata only when
-the configured provider permits the required reads. An acknowledgement does not
-override unavailable providers or unexplained omissions.</p>
+<p>An unexplained missing file, ambiguous or unrecognized report format, changed
+identity or name, database integrity failure, missing required history, or failed
+containment check still blocks migration. Accepting missing items cannot bypass
+these checks. A reported item-level reason, including a provider failure or an
+unfamiliar reason, can be reviewed only when DUMB verifies the exact missing
+files and the rest of the converted library.</p>
 <p>Supporting builds show <strong>Provider activity</strong> while importing and retain those
 observations after the importer stops. Provider numbers follow the captured
 provider order. The counts distinguish requests, retries, article-not-found
 replies, and connection or protocol errors without showing server addresses or
 credentials. Expand <strong>Connection and protocol errors</strong> to see which step failed.
 An attempt can recover through a retry or another provider, so these counters
-alone do not mean a file was lost. Use the native import report to see whether
-any files remain blocked. Older jobs may not contain these observations.</p>
+alone do not mean a file was lost. Use the native import report to see which
+files remain missing and whether the result can be reviewed. Older jobs may not
+contain these observations.</p>
 <p>The dashboard bounds its path/reason samples and identifies truncated details;
 DUMB retains the full native report privately with the migration job. The
 job's report action retrieves that plain-text report through the authenticated
@@ -7379,11 +7428,11 @@ separate existing workflows.</p>
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.17</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.17">Release notes</a>
+              <span>Documentation release 1.25.18</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.18">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;fd6984a8f037c312ac3518726870bc06455b6c5f" title="Documentation source commit fd6984a8f037c312ac3518726870bc06455b6c5f">Source fd6984a8</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;0fdc1d64d6819569c835710b13748d13c11bca7c" title="Documentation source commit 0fdc1d64d6819569c835710b13748d13c11bca7c">Source 0fdc1d64</a>
             
             
           </div>

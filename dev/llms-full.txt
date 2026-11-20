@@ -2,7 +2,7 @@
 
 > Channel: dev. Canonical base: https://dumbarr.com/dev/
 
-Documentation artifact: release 1.25.17. Source commit: fd6984a8f037c312ac3518726870bc06455b6c5f. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.17.
+Documentation artifact: release 1.25.18. Source commit: 0fdc1d64d6819569c835710b13748d13c11bca7c. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.18.
 
 DUMB coordinates media services. Match instructions to the installed backend version. Development guides can describe features absent from the latest release.
 
@@ -1812,6 +1812,7 @@ coordinates snapshots, checks, containment, activation and recovery.
 | `GET` | `/process/infinidysk-v2/jobs/{job_id}` | Retrieve one persisted job as `{"job": {...}}` |
 | `GET` | `/process/infinidysk-v2/jobs/{job_id}/report` | Read the retained native import report as plain text with `Cache-Control: no-store` |
 | `POST` | `/process/infinidysk-v2/cancel` | Request cooperative cancellation of the exact active major job and protected source recovery |
+| `POST` | `/process/infinidysk-v2/retry-stage` | Retry the current paused DUMB checkpoint while its original worker still owns the job |
 | `POST` | `/process/infinidysk-v2/rollback` | Restore the exact retained major-migration source when authorized |
 | `POST` | `/process/infinidysk-v2/retry-consumers` | Verify/restart the owned exposed v2 target and retry only retained pending consumers |
 | `POST` | `/process/infinidysk-v2/finish-consumer-recovery` | Acknowledge leaving pending consumers stopped after verified v2 delivery |
@@ -2130,6 +2131,59 @@ normal workers and unrelated applications. A prepared review hold alone does not
 request a restart. Retain this instruction on the completed or restored job
 instead of treating its terminal status as proof of full normal startup.
 
+#### Retry a paused DUMB checkpoint
+
+Require strict boolean `infinidysk_v2_stage_retry: true` and numeric
+`infinidysk_v2_stage_retry_protocol: 1` before opting into failed-step review.
+Send `pause_on_stage_error: true` with a new `/prepare`, `/rehearse` or `/start`
+request. Omitting the flag preserves the older automatic source-restoration
+behavior. This option does not authorize skipping integrity or ownership checks.
+
+A supported temporary I/O or database-access failure at a retryable checkpoint
+can publish `status: "stage_retry_required"`. The original worker stays alive,
+keeps migration admission and waits without automatically repeating the work.
+The job's `stage` still identifies the failed step. Its bounded `stage_retry`
+object includes `protocol`, `operation`, `stage`, `label`, `attempt`, `state`,
+`failed_at` and an operator-facing `message`. `state: "waiting"` denotes a pending
+decision. The panel must not display an old throughput or finish estimate as
+live progress while the worker is waiting.
+
+Only offer retry when the current job advertises `can_retry_stage: true` or
+`actions.retry_stage: true`. The client includes the server-issued attempt
+authorization from `confirmation_texts.retry_stage` when the user selects retry;
+the user does not need to type it. Post that value with the job identity to
+`/process/infinidysk-v2/retry-stage`:
+
+```json
+{
+  "job_id": "<paused-job-id>",
+  "confirmation": "<current-confirmation_texts.retry_stage>"
+}
+```
+
+Acceptance resumes the failed callable in the same worker and job. It does not
+repeat preceding completed steps or run another native conversion when only a
+later verification failed. The current pass may restart from its beginning;
+this is not byte-offset transfer resumption. An archive-write retry requires
+confirmed removal of the exact owned incomplete file, then restarts the transfer
+while retaining earlier source fingerprints and prepared database files.
+Uncertain cleanup or publication prevents replay. `stage_retry.state` changes to
+`"retrying"`, then `"completed"` after success. Another failure increments
+`attempt` and requires a fresh confirmation. Replayed, stale or mismatched
+confirmations cannot launch duplicate work. Continue polling the retained job.
+
+The existing cancellation control remains available when advertised and wakes
+the waiting worker to follow its guarded source-recovery path. Closing the
+panel does not cancel or retry. A controller restart cannot reconstruct this
+live continuation: the job reports `"interrupted"`, retry is unavailable, and
+the existing retained recovery actions determine what can proceed. This differs
+from the independently verified `"prepared"` activation checkpoint above.
+
+Invalid inventory, changed input, unsupported reports, uncertain helper
+termination, cancellation and lost worker ownership are not retry permission.
+Native omissions still use their separate complete-proof review and explicit
+acceptance policy; this endpoint does not retry the native importer's omissions.
+
 #### Legacy separate test and start
 
 Use this compatibility flow when prepared activation is not advertised.
@@ -2385,12 +2439,18 @@ and `missing_failed` counts. These diagnostics distinguish a per-attempt report
 count from actual preserved history; they do not relax identity checks.
 
 A prepared job can report `import_report.status: "review_required"` for fully
-accounted known source incompatibilities. Activating that same candidate requires
-its current `review_digest` as `skip_review_digest` and
+reconciled item-level omissions, including provider/NNTP failures, missing
+articles, source incompatibilities and unfamiliar reported reasons. The report
+must identify every omitted file uniquely and reconcile all imported and skipped
+totals with the source and actual destination. A reason alone grants no consent
+and does not establish that the item cannot be recovered. Activating that same
+candidate requires its current `review_digest` as `skip_review_digest` and
 `acknowledgements.skipped_media: true`. These values authorize only that retained
-candidate and its full verified omission evidence.
+candidate and its full verified omission evidence. The user may instead restore
+v1, resolve the reported problems and prepare again. Activation does not retry
+the omitted files or remove them from retained v1 recovery data.
 
-In the legacy flow, known incompatibilities may complete a validated rehearsal
+In the legacy flow, reconciled omissions may complete a validated rehearsal
 with `import_report.status: "review_required"`. Starting its cutover also requires
 `acknowledgements.skipped_media: true` and `skip_review_digest` matching that
 rehearsal's server-issued `review_digest`. The digest covers every omitted
@@ -2404,8 +2464,12 @@ The private complete census also binds referenced metadata/NZB blob contents
 while excluding volatile health scheduling. Changed source facts or stale proof
 require a fresh preparation and review, or a fresh isolated test in the legacy
 flow; public samples cannot reauthorize it.
-Unknown/provider failures, ambiguous identities and unrecognized reports remain blockers; the
-acknowledgement is not a general skip override.
+Unexplained missing files, ambiguous or changed identities, malformed or
+unrecognized report formats, missing required history, database integrity
+failures and failed containment remain blockers. A provider error or unfamiliar
+reason attached to an exactly reconciled omitted file is not itself an integrity
+failure. The acknowledgement is not a general skip override: it binds the exact
+private identity, name, path and reason evidence under the current proof policy.
 
 Only the legacy separate-test flow can record `candidate_discarded=true` after the native
 candidate/group is proven stopped and v1 plus managed consumers are restored.
@@ -13196,6 +13260,38 @@ need that final restart. **Waiting for review alone does not require a restart.*
 If the prepared state cannot be confirmed, preserve its evidence and follow the
 offered recovery path.
 
+### Retry a paused DUMB step
+
+On supporting builds, a temporary storage or database-access error can pause a
+retryable DUMB step instead of immediately restoring v1. The panel identifies
+the step that stopped and offers a retry. Work completed before that step is
+kept: retrying the converted-library check, for example, uses the same converted
+database rather than repeating the native import, source capture or archive.
+A long file or archive check can restart its current pass. A failed archive
+transfer restarts that transfer after DUMB confirms removal of its incomplete
+file; earlier source capture and database preparation stay retained. Transfers
+do not continue from their last byte.
+
+Review the error, reconnect the required storage or resolve the reported access
+or free-space problem, then select **Retry this DUMB step**.
+Nothing retries automatically. A repeated failure leaves the same job paused
+for another decision. Keep DUMB and its required storage running, and keep
+the affected applications and external writers stopped while deciding.
+To abandon the attempt, use the job's cancellation control and follow the
+confirmed restoration result.
+
+Retry does not bypass changed or damaged input, an invalid report, failed
+ownership checks or uncertainty about whether a migration helper stopped.
+Those conditions still block continuation and retain the recovery path.
+The native import's reported omissions have their own
+[review and acceptance decision](#review-native-import-omissions); retrying a
+DUMB check does not ask the native importer to repair missing items.
+
+Reloading the page can reopen the paused job. **Restarting DUMB cannot resume
+this failed-step checkpoint:** the old worker is gone, so the job instead offers
+its retained recovery path. This differs from a fully prepared installation
+waiting for activation, which has its own restart-safe verification record.
+
 ### Older backend: separate test and migration
 
 A backend without prepared-activation support keeps the earlier
@@ -13303,6 +13399,7 @@ that the worker stopped.
 | --- | --- |
 | Cancelled before applications paused | DUMB left the source unchanged. No restore is needed. Obtain a fresh preview before another preparation. |
 | Checks failed before applications paused | Resolve the blocker and obtain a fresh preview. No source restore is needed. |
+| DUMB step paused; retry offered | Resolve the reported temporary problem, then retry that step using its current confirmation, or cancel and follow restoration. Earlier completed work stays retained. |
 | Prepared; waiting for activation | Conversion and preparation checks passed. Applications remain paused. Review this job and explicitly activate its candidate, or restore the previous setup. |
 | Preparation failed or was cancelled, with v1 restoration confirmed | v1 is available again. Resolve the reported error and obtain a fresh preview before trying again. No additional recovery action is needed. |
 | Older backend: test passed | v1 and its previous managed services were restored. Review the matching preview and start migration while its authorization remains valid. |
@@ -13421,11 +13518,28 @@ The job's import report distinguishes imported files, omitted files and their
 reported reasons. Omitted files are absent from v2; a completed native import does
 not establish that those files will be repaired or replaced automatically.
 
-A known, fully accounted source incompatibility can require review before
-activation. Read the reasons and affected paths, then explicitly accept the
-prepared job's omissions. Acceptance is bound to that candidate's full private
-evidence and exact report digest; the dashboard's limited path samples cannot
-replace it. Activating the prepared candidate does not run another import.
+If the importer finishes and DUMB can account for every imported and omitted
+file, the prepared installation can wait for your review. This includes items
+skipped because of missing articles, provider or connection problems, source
+incompatibilities, or another reported reason. Those reasons describe why an
+item was skipped; they do not mean it is safe to lose or cannot be recovered.
+
+1. Review the **Native import report**, including its imported and skipped
+   counts. Expand **Skipped paths and reasons**, and choose **Show full native
+   report** when the summary does not show every item.
+2. Decide whether to keep this result or try to recover the missing items.
+   Provider or connection problems may be temporary. To retry, choose
+   **Restore v1**, resolve the reported problems, then prepare again. Nothing
+   retries automatically.
+3. To keep the result, explicitly accept the listed missing items, enter the
+   displayed confirmation, then choose **Activate prepared InfiniDysk 2**.
+   Those items will be absent from the v2 library. Acceptance does not repair,
+   retry or delete them from the retained v1 recovery copy.
+
+Acceptance applies only to this candidate's complete recorded list of missing
+items and reasons. The dashboard's limited samples cannot replace that evidence.
+Activating the prepared candidate does not run another import. v1 and affected
+apps stay stopped while the prepared result waits for your decision.
 
 On the older separate test workflow, cutover can omit the same items or fewer,
 including none, when the complete
@@ -13449,12 +13563,12 @@ tolerance. Every required completed and failed source-history identity must
 still exist in the actual v2 database. Unsupported source states, invalid
 reserved identities and missing required history remain blockers.
 
-Provider/NNTP failures, unrecognized reasons or report formats, unexplained
-missing identities, changed names, database integrity failures and missing
-history still block migration. Review provider failures separately from known
-source exclusions: the restricted relay can recover missing metadata only when
-the configured provider permits the required reads. An acknowledgement does not
-override unavailable providers or unexplained omissions.
+An unexplained missing file, ambiguous or unrecognized report format, changed
+identity or name, database integrity failure, missing required history, or failed
+containment check still blocks migration. Accepting missing items cannot bypass
+these checks. A reported item-level reason, including a provider failure or an
+unfamiliar reason, can be reviewed only when DUMB verifies the exact missing
+files and the rest of the converted library.
 
 Supporting builds show **Provider activity** while importing and retain those
 observations after the importer stops. Provider numbers follow the captured
@@ -13462,8 +13576,9 @@ provider order. The counts distinguish requests, retries, article-not-found
 replies, and connection or protocol errors without showing server addresses or
 credentials. Expand **Connection and protocol errors** to see which step failed.
 An attempt can recover through a retry or another provider, so these counters
-alone do not mean a file was lost. Use the native import report to see whether
-any files remain blocked. Older jobs may not contain these observations.
+alone do not mean a file was lost. Use the native import report to see which
+files remain missing and whether the result can be reviewed. Older jobs may not
+contain these observations.
 
 The dashboard bounds its path/reason samples and identifies truncated details;
 DUMB retains the full native report privately with the migration job. The
