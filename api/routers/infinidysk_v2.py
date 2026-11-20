@@ -59,6 +59,7 @@ def _invoke(kind, operation, payload, handler, updater, *, mutation=False):
                 "cutover",
                 "cancel",
                 "retry_consumers",
+                "retry_stage",
                 "finish_consumer_recovery",
             }
             with admit_v2_job(kind, existing=existing):
@@ -251,6 +252,20 @@ async def major_cancel(
 ):
     return await run_in_threadpool(
         _invoke, "major", "cancel", request, handler, updater, mutation=True
+    )
+
+
+@infinidysk_v2_router.post("/retry-stage")
+async def major_retry_stage(
+    response: Response = None,
+    request: dict[str, Any] = Body(...),
+    handler=Depends(get_process_handler),
+    updater=Depends(get_updater),
+    current_user=Depends(get_optional_current_user),
+):
+    _private_preview_response(response)
+    return await run_in_threadpool(
+        _invoke, "major", "retry_stage", request, handler, updater, mutation=True
     )
 
 

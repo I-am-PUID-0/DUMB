@@ -607,6 +607,8 @@ def create_retained_archive(
     progress=None,
     extra_files=None,
     owner_check=None,
+    readback_retry=None,
+    write_retry=None,
 ):
     """Stream source trees directly to closed storage, never a full local backup."""
     scratch = Path(workspace["root"])
@@ -642,6 +644,10 @@ def create_retained_archive(
 
     def producer(handle):
         nonlocal written_size
+        # A failed transfer may be retried only after its owned partial file
+        # has been removed. Rebuild this attempt's small metadata manifest;
+        # original fingerprints and PostgreSQL snapshot files remain retained.
+        written_size = None
         previous = (plan.get("capacity") or {}).get("source") or {}
         total = previous.get("entries")
         if type(total) is not int or total < 0:
@@ -918,6 +924,8 @@ def create_retained_archive(
         verifier=verifier,
         extension="tar",
         owner_check=owner_check,
+        readback_retry=readback_retry,
+        write_retry=write_retry,
         metadata={
             "kind": "infinidysk_v2_archive",
             "original_fingerprints": fingerprints,

@@ -10,7 +10,8 @@ import hmac
 import json
 import re
 
-PROOF_POLICY = "infinidysk-beta6-reviewed-omissions-v2"
+PROOF_POLICY = "infinidysk-beta6-reviewed-omissions-v3"
+_LEGACY_PROOF_POLICY = "infinidysk-beta6-reviewed-omissions-v2"
 MAX_OMISSION_PROOF_BYTES = 32_000_000
 _MAX_FIELD_BYTES = 65_536
 _DIGEST = re.compile(r"[0-9a-f]{64}")
@@ -46,10 +47,24 @@ class OmissionProofError(ValueError):
     """Static, credential-free refusal of incomplete or changed consent."""
 
 
-def is_reviewable_reason(reason):
-    return isinstance(reason, str) and (
-        reason in _EXPECTED_SOURCE_REASONS
-        or bool(_SIZE_MISMATCH.fullmatch(reason) or _AES_LENGTH.fullmatch(reason))
+def is_reviewable_reason(reason, *, policy=PROOF_POLICY):
+    """Review exact item losses regardless of why the native importer skipped them.
+
+    Eligibility is established by complete source/target reconciliation, not a
+    reason allowlist. Keep old proofs under their original narrower policy so
+    upgrades do not rewrite or invalidate already reviewed prepared results.
+    """
+    if type(reason) is not str:
+        return False
+    if policy == _LEGACY_PROOF_POLICY:
+        return reason in _EXPECTED_SOURCE_REASONS or bool(
+            _SIZE_MISMATCH.fullmatch(reason) or _AES_LENGTH.fullmatch(reason)
+        )
+    return (
+        policy == PROOF_POLICY
+        and bool(reason.strip())
+        and len(reason.encode("utf-8", "surrogatepass")) <= _MAX_FIELD_BYTES
+        and not any(ord(char) < 32 or ord(char) == 127 for char in reason)
     )
 
 
@@ -92,7 +107,7 @@ def validate_omission_proof(proof):
         type(proof) is not dict
         or set(proof)
         != {"policy", "source_media", "source_history", "omitted", "review_digest"}
-        or proof["policy"] != PROOF_POLICY
+        or proof["policy"] not in (PROOF_POLICY, _LEGACY_PROOF_POLICY)
         or not _valid_census(proof["source_media"])
         or not _valid_census(proof["source_history"])
         or type(proof["omitted"]) is not list
@@ -122,7 +137,7 @@ def validate_omission_proof(proof):
                 for field in ("name", "path", "reason")
             )
             or any(ord(char) < 32 or ord(char) == 127 for char in row["path"])
-            or not is_reviewable_reason(row["reason"])
+            or not is_reviewable_reason(row["reason"], policy=proof["policy"])
         ):
             raise OmissionProofError(
                 "The complete private omission records are malformed or unreviewable."

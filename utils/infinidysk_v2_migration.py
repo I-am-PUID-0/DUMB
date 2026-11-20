@@ -80,6 +80,7 @@ ACTIVE = {
     "validating",
     "cutover",
     "rolling_back",
+    "stage_retry_required",
 }
 PREPARED = {"prepared"}
 RECOVERY = {"interrupted", "recovery_required"}
@@ -332,6 +333,7 @@ class InfiniDyskV2MigrationManager:
         self._cancel_requested = set()
         self._cleanup = None
         self._preview_tasks = None
+        self._stage_retries = None
 
     def configure(
         self, *, process_handler=None, updater=None, config_manager=None, executor=None
@@ -454,6 +456,11 @@ class InfiniDyskV2MigrationManager:
             or not self._thread.is_alive()
         ):
             return "interrupted"
+        if (
+            job.get("status") == "running"
+            and (job.get("stage_retry") or {}).get("state") == "waiting"
+        ):
+            return "stage_retry_required"
         return job.get("status")
 
     @staticmethod
@@ -590,6 +597,12 @@ class InfiniDyskV2MigrationManager:
             **(self._consumer_recovery().public(job) if exposed else {}),
             **cleanup,
         }
+        retry = self._stage_retry_controller().public(job, state)
+        phrase = retry.pop("confirmation", None)
+        public.update(retry)
+        public["actions"]["retry_stage"] = public["can_retry_stage"]
+        if phrase is not None:
+            public.setdefault("confirmation_texts", {})["retry_stage"] = phrase
         public["stage_progress"] = public_stage_progress(job, state)
         public["storage_work"] = storage_work(
             job.get("plan") or {}, job.get("snapshot")
@@ -1978,12 +1991,31 @@ class InfiniDyskV2MigrationManager:
     def prepare(self, request):
         return self._start(dict(request), "prepare")
 
+    def _stage_retry_controller(self):
+        from utils.infinidysk_v2_stage_retry import StageRetry
+
+        with self._lock:
+            if self._stage_retries is None:
+                self._stage_retries = StageRetry(self)
+            return self._stage_retries
+
+    def _run_stage(self, job, operation, callback):
+        return self._stage_retry_controller().run(job, operation, callback)
+
+    def retry_stage(self, request):
+        return self._stage_retry_controller().retry(dict(request))
+
     def activate(self, request):
         from utils.infinidysk_v2_prepared import PreparedMigration
 
         return PreparedMigration(self).start(request)
 
     def _start(self, request, mode):
+        pause_on_error = request.get("pause_on_stage_error", False)
+        if type(pause_on_error) is not bool:
+            raise InfiniDyskV2MigrationError(
+                "The DUMB step retry preference must be an explicit boolean."
+            )
         plan, preview_path, saved = self._request_plan(request, revalidate=False)
         with INFINIDYSK_MIGRATION_ADMISSION_LOCK, self._lock:
             self._preview_controller().require_idle()
@@ -2063,6 +2095,7 @@ class InfiniDyskV2MigrationManager:
                 "job_type": JOB_TYPE,
                 "job_id": job_id,
                 "mode": mode,
+                "stage_retry_enabled": pause_on_error,
                 "source_storage": copy.deepcopy(
                     plan.get("source_storage")
                     or {
@@ -2409,19 +2442,23 @@ class InfiniDyskV2MigrationManager:
             candidate = summary.get("logical_bytes")
             if type(candidate) is int and candidate >= 0:
                 total = candidate
-        telemetry = IOProgress(
-            lambda stage, message, **detail: self._progress(
-                job, stage, message, **detail
-            ),
-            "source_fingerprint",
-            total=total,
-            total_is_estimate=total is not None,
-            check=lambda: self._assert_job_owner(job),
-            message="Reading retained source content to verify its complete fingerprint.",
-        )
-        result = _source_fingerprint(source, progress=telemetry.add, **options)
-        telemetry.finish()
-        return result
+
+        def verify():
+            telemetry = IOProgress(
+                lambda stage, message, **detail: self._progress(
+                    job, stage, message, **detail
+                ),
+                "source_fingerprint",
+                total=total,
+                total_is_estimate=total is not None,
+                check=lambda: self._assert_job_owner(job),
+                message="Reading retained source content to verify its complete fingerprint.",
+            )
+            result = _source_fingerprint(source, progress=telemetry.add, **options)
+            telemetry.finish()
+            return result
+
+        return self._run_stage(job, "source_fingerprint", verify)
 
     def _capture(self, job, workspace, postgres_snapshot=None):
         with self._lock:
@@ -2850,6 +2887,12 @@ class InfiniDyskV2MigrationManager:
             ),
             extra_files=extras,
             owner_check=owner_check,
+            readback_retry=lambda callback: self._run_stage(
+                job, "archive_readback", callback
+            ),
+            write_retry=lambda callback: self._run_stage(
+                job, "archive_write", callback
+            ),
         )
         owner_check()
         # Catch newly created/changed source entries after archive enumeration,
@@ -3248,6 +3291,9 @@ class InfiniDyskV2MigrationManager:
             "receipt_path": str(root / "native-receipt.json"),
         }
         workspace["get_snapshot"] = lambda: copy.deepcopy(job.get("snapshot"))
+        workspace["run_stage"] = lambda operation, callback: self._run_stage(
+            job, operation, callback
+        )
         workspace["capture_source"] = lambda postgres_snapshot=None: self._capture(
             job, workspace, postgres_snapshot
         )

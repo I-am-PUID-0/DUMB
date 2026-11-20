@@ -112,9 +112,14 @@ def _restore_failure(root, error):
         code,
         type(error).__name__,
     )
-    return InfiniDyskV2PostgresSnapshotError(
+    failure = InfiniDyskV2PostgresSnapshotError(
         f"PostgreSQL migration stopped while {description}. {advice} DUMB did not modify the source database."
     )
+    if code == "storage":
+        # The helper exports a fixed code rather than raw driver diagnostics.
+        # A new isolated restore can reuse the retained dump after freeing space.
+        failure.retry_errno = errno.ENOSPC
+    return failure
 
 
 def postgres_tools():

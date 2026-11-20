@@ -63,6 +63,11 @@ class ContainedImportError(ValueError):
     pass
 
 
+def _run_stage(workspace, operation, callback):
+    retry = workspace.get("run_stage")
+    return retry(operation, callback) if callable(retry) else callback()
+
+
 def _native_group_has_live_members(group):
     try:
         os.killpg(group, 0)
@@ -883,9 +888,18 @@ class InfiniDyskV2Executor:
             return guarded(progress, *args, **kwargs)
 
         def verify_restore(dump, binding, settings):
-            return verify_postgres_restore(
-                dump, binding, settings, check_cancel=check_cancel, progress=report
+            nonlocal callback_error
+            result = _run_stage(
+                workspace,
+                "postgres_restore",
+                lambda: verify_postgres_restore(
+                    dump, binding, settings, check_cancel=check_cancel, progress=report
+                ),
             )
+            # A resumed restore may have recovered an earlier progress I/O
+            # failure. It must not mask an unrelated later snapshot error.
+            callback_error = None
+            return result
 
         try:
             return create_postgres_snapshot(
@@ -931,7 +945,11 @@ class InfiniDyskV2Executor:
         private = Path(workspace["root"])
         external_blobs = None
         if plan.get("options", {}).get("offload_legacy_blobs"):
-            external_blobs = Path(workspace["external_blob_source"]())
+            external_blobs = Path(
+                _run_stage(
+                    workspace, "external_input", workspace["external_blob_source"]
+                )
+            )
         if postgres_snapshot is not None:
             # Native source() prefers the retained contract when DATABASE_PROVIDER
             # is absent. Adapt ONLY the private candidate: the verified staged
@@ -996,6 +1014,10 @@ class InfiniDyskV2Executor:
                     native_process_group=child.pid,
                 )
             report_text = process.wait_import(plan["mode"] == "migrate", progress)
+        if getattr(process, "stopped", False) is not True:
+            raise ContainedImportError(
+                "Native candidate shutdown is unverified; its data was retained."
+            )
         credentials = {}
         if source_key is not None:
             credentials = verify_imported_sab_key(
@@ -1018,56 +1040,64 @@ class InfiniDyskV2Executor:
         temporary = candidate / ".dumb-import-tmp"
         if temporary.exists():
             shutil.rmtree(temporary)
-        if plan["mode"] == "migrate":
-            with ExitStack() as verification:
-                blob_root = candidate / "blobs"
-                source_census = None
-                if external_blobs is not None:
-                    census = workspace.get("source_blob_census")
-                    if callable(census):
-                        blob_root, source_census = verification.enter_context(census())
-                        blob_root = Path(blob_root)
-                    else:
-                        blob_root = Path(workspace["external_blob_source"]())
-                    if blob_root != external_blobs:
-                        raise ContainedImportError(
-                            "External migration input changed after native import."
-                        )
-                if blob_root.is_symlink():
-                    from utils.infinidysk_v2_inventory import (
-                        InventoryError,
-                        validate_data_link,
-                    )
 
-                    try:
-                        validate_data_link(
-                            candidate, {"path": "blobs", "link": os.readlink(blob_root)}
+        def verify_inventory():
+            # Every attempt recreates its short-lived census/lease. The native
+            # process has already stopped; conversion and recovery capture stay
+            # completed while only this read-only acceptance pass repeats.
+            if plan["mode"] == "migrate":
+                with ExitStack() as verification:
+                    blob_root = candidate / "blobs"
+                    source_census = None
+                    if external_blobs is not None:
+                        census = workspace.get("source_blob_census")
+                        if callable(census):
+                            blob_root, source_census = verification.enter_context(
+                                census()
+                            )
+                            blob_root = Path(blob_root)
+                        else:
+                            blob_root = Path(workspace["external_blob_source"]())
+                        if blob_root != external_blobs:
+                            raise ContainedImportError(
+                                "External migration input changed after native import."
+                            )
+                    if blob_root.is_symlink():
+                        from utils.infinidysk_v2_inventory import (
+                            InventoryError,
+                            validate_data_link,
                         )
-                        blob_root = blob_root.resolve(strict=True)
-                        blob_root.relative_to(candidate)
-                    except (OSError, ValueError, RuntimeError, InventoryError):
-                        raise ContainedImportError(
-                            "The staged legacy blob alias leaves its verified candidate scope."
-                        ) from None
-                try:
-                    report = verify_import_inventory(
-                        snapshot["source_database"],
-                        candidate / "infinidysk.sqlite",
-                        report_text,
-                        source_blob_root=blob_root,
-                        **(
-                            {"source_blob_census": source_census}
-                            if source_census is not None
-                            else {}
-                        ),
-                    )
-                except ContainedImportError as error:
-                    diagnostics = getattr(error, "import_report", None)
-                    if diagnostics is not None:
-                        record_report(None, diagnostics)
-                    raise
-                record_report(None, report.get("import_report"))
-        else:
+
+                        try:
+                            validate_data_link(
+                                candidate,
+                                {"path": "blobs", "link": os.readlink(blob_root)},
+                            )
+                            blob_root = blob_root.resolve(strict=True)
+                            blob_root.relative_to(candidate)
+                        except (OSError, ValueError, RuntimeError, InventoryError):
+                            raise ContainedImportError(
+                                "The staged legacy blob alias leaves its verified candidate scope."
+                            ) from None
+                    try:
+                        report = verify_import_inventory(
+                            snapshot["source_database"],
+                            candidate / "infinidysk.sqlite",
+                            report_text,
+                            source_blob_root=blob_root,
+                            **(
+                                {"source_blob_census": source_census}
+                                if source_census is not None
+                                else {}
+                            ),
+                        )
+                    except ContainedImportError as error:
+                        diagnostics = getattr(error, "import_report", None)
+                        if diagnostics is not None:
+                            record_report(None, diagnostics)
+                        raise
+                    record_report(None, report.get("import_report"))
+                    return report
             with sqlite3.connect(
                 f"file:{quote(str(candidate / 'infinidysk.sqlite'))}?mode=ro", uri=True
             ) as database:
@@ -1075,7 +1105,9 @@ class InfiniDyskV2Executor:
                     raise ContainedImportError(
                         "The fresh native database did not validate."
                     )
-            report = {"skipped_files": 0, "failed_files": 0, "files": 0, "history": 0}
+            return {"skipped_files": 0, "failed_files": 0, "files": 0, "history": 0}
+
+        report = _run_stage(workspace, "verify_import", verify_inventory)
         receipt = {
             **credentials,
             "plan_fingerprint": plan["plan_fingerprint"],

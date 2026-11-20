@@ -40,6 +40,8 @@ def versioned_capabilities(version):
         "infinidysk_v2_external_blob_staging": supported,
         "infinidysk_v2_async_preview": supported,
         "infinidysk_v2_prepared_activation": supported,
+        "infinidysk_v2_stage_retry": supported,
+        "infinidysk_v2_stage_retry_protocol": 1,
         "infinidysk_v2_reviewed_skips": supported,
         "infinidysk_v2_queue_omission": supported,
         "infinidysk_v2_cancel": supported,

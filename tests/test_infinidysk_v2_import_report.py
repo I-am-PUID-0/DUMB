@@ -11,6 +11,7 @@ from utils.infinidysk_v2_import_report import (
     parse_import_report,
     verify_import_inventory,
 )
+from utils.infinidysk_v2_omissions import OmissionProofError, verify_omission_subset
 
 
 def native_report(files, history=1, skipped=(), fetched=0):
@@ -174,7 +175,7 @@ class ImportReportTests(unittest.TestCase):
         )
         self.assertNotEqual(a["native_report_sha256"], b["native_report_sha256"])
 
-    def test_provider_and_unknown_failures_are_never_reviewable(self):
+    def test_exact_provider_and_unknown_omissions_require_explicit_review(self):
         for reason in (
             "segment sizes unknown: connection refused",
             "RAR volume unreadable: timeout",
@@ -183,24 +184,54 @@ class ImportReportTests(unittest.TestCase):
             "new unsupported reason",
         ):
             with self.subTest(reason=reason):
-                with self.assertRaises(ImportReportError) as caught:
-                    self.verify(
-                        native_report(1, skipped=[("/content/second.mkv", reason)])
-                    )
-                details = caught.exception.import_report
-                self.assertEqual(details["status"], "blocked")
-                self.assertFalse(details["review_required"])
-                self.assertIsNone(details["review_digest"])
-                self.assertEqual(details["skipped_files"], 1)
-                self.assertTrue(details["blocking_reasons"])
-
-    def test_unknown_numeric_file_type_is_not_a_known_exclusion(self):
-        with self.assertRaises(ImportReportError):
-            self.verify(
-                native_report(
-                    1, skipped=[("/content/second.mkv", "unknown file type 999")]
+                result = self.verify(
+                    native_report(1, skipped=[("/content/second.mkv", reason)])
                 )
+                details = result["import_report"]
+                self.assertEqual(details["status"], "review_required")
+                self.assertTrue(details["review_required"])
+                self.assertRegex(details["review_digest"], r"^[a-f0-9]{64}$")
+                self.assertEqual(details["skipped_files"], 1)
+                self.assertEqual(details["blocking_reasons"], [])
+                self.assertEqual(
+                    result["omission_proof"]["omitted"][0]["reason"], reason
+                )
+
+    def test_unknown_numeric_file_type_requires_review_of_the_exact_omission(self):
+        result = self.verify(
+            native_report(1, skipped=[("/content/second.mkv", "unknown file type 999")])
+        )
+        self.assertEqual(result["import_report"]["status"], "review_required")
+        self.assertEqual(
+            result["omission_proof"]["omitted"][0]["reason"], "unknown file type 999"
+        )
+
+    def test_provider_skip_does_not_waive_missing_history_or_media_identity(self):
+        report = native_report(
+            1,
+            skipped=[
+                ("/content/second.mkv", "segment sizes unknown: provider unavailable")
+            ],
+        )
+        with sqlite3.connect(self.target) as database:
+            database.execute("DELETE FROM history")
+        with self.assertRaisesRegex(ImportReportError, "history identities") as caught:
+            self.verify(report)
+        self.assertEqual(caught.exception.import_report["status"], "blocked")
+        self.assertFalse(caught.exception.import_report["review_required"])
+        with sqlite3.connect(self.target) as database:
+            database.execute("INSERT INTO history VALUES(?)", (self.history.bytes,))
+        with sqlite3.connect(self.source) as database:
+            database.execute(
+                "UPDATE DavItems SET Id='not-an-identity' WHERE Id=?",
+                (str(self.second),),
             )
+        with self.assertRaisesRegex(
+            ImportReportError, "identity is unreadable"
+        ) as caught:
+            self.verify(report)
+        self.assertEqual(caught.exception.import_report["status"], "blocked")
+        self.assertIsNone(caught.exception.import_report["review_digest"])
 
     def test_known_bounded_numeric_geometry_reason_is_reviewable(self):
         for reason in ("AES key of 15 bytes", "size 10 differs from C#'s 11"):
@@ -326,22 +357,97 @@ class ImportReportTests(unittest.TestCase):
             parse_import_report(report)
 
     def test_public_provider_details_redact_urls_and_credentials(self):
-        with self.assertRaises(ImportReportError) as caught:
-            self.verify(
-                native_report(
-                    1,
-                    skipped=[
-                        (
-                            "/content/second.mkv",
-                            "segment sizes unknown: nntps://user:secret@example.invalid token=private",
-                        )
-                    ],
-                )
-            )
-        details = str(caught.exception.import_report)
+        reason = (
+            "segment sizes unknown: nntps://user:secret@example.invalid token=private"
+        )
+        result = self.verify(
+            native_report(1, skipped=[("/content/second.mkv", reason)])
+        )
+        details = str(result["import_report"])
         self.assertNotIn("user:secret", details)
         self.assertNotIn("token=private", details)
         self.assertIn("[URL omitted]", details)
+        self.assertEqual(result["omission_proof"]["omitted"][0]["reason"], reason)
+        changed = self.verify(
+            native_report(
+                1,
+                skipped=[
+                    (
+                        "/content/second.mkv",
+                        reason.replace("token=private", "token=changed"),
+                    )
+                ],
+            )
+        )
+        self.assertEqual(
+            result["import_report"]["reasons"], changed["import_report"]["reasons"]
+        )
+        self.assertNotEqual(
+            result["import_report"]["review_digest"],
+            changed["import_report"]["review_digest"],
+        )
+
+    def test_reason_must_be_complete_bounded_nonempty_and_control_free(self):
+        for reason in (
+            " ",
+            "unknown\x00reason",
+            "unknown\treason",
+            "unknown\x7freason",
+            "é" * 32_769,
+        ):
+            with self.subTest(reason=repr(reason[:20])):
+                with self.assertRaises(ImportReportError):
+                    self.verify(
+                        native_report(1, skipped=[("/content/second.mkv", reason)])
+                    )
+
+    def test_731_mixed_native_omissions_reach_review_with_complete_private_consent(
+        self,
+    ):
+        reasons = (
+            "segment sizes unknown: provider unavailable",
+            "segment sizes unknown: article not found",
+            "RAR volume unreadable: provider unavailable",
+            "segment sizes unknown: server closed the connection",
+            "segment sizes unknown: timed out waiting for the server",
+            "new native item-level reason",
+            "no segments",
+        )
+        skipped = []
+        with sqlite3.connect(self.source) as database:
+            database.execute("DELETE FROM DavItems WHERE Id=?", (str(self.second),))
+            for index in range(731):
+                name = f"omitted-{index}.mkv"
+                path = f"/content/{name}"
+                database.execute(
+                    "INSERT INTO DavItems VALUES(?,?,?,2)",
+                    (str(uuid.UUID(int=100 + index)), name, path),
+                )
+                skipped.append((path, reasons[index % len(reasons)]))
+        result = self.verify(native_report(1, skipped=skipped))
+        details = result["import_report"]
+        proof = result["omission_proof"]
+        self.assertEqual(details["status"], "review_required")
+        self.assertTrue(details["review_required"])
+        self.assertEqual(details["blocking_reasons"], [])
+        self.assertEqual(details["skipped_files"], 731)
+        self.assertEqual(details["skipped_details_count"], 731)
+        self.assertEqual(len(details["skipped"]), 200)
+        self.assertTrue(details["skipped_details_truncated"])
+        self.assertEqual(sum(group["count"] for group in details["reasons"]), 731)
+        self.assertEqual(len(proof["omitted"]), 731)
+        self.assertEqual(proof["source_media"]["count"], 732)
+        self.assertEqual(proof["source_history"]["count"], 1)
+        self.assertEqual(details["review_digest"], proof["review_digest"])
+        changed = skipped[:-1] + [
+            (skipped[-1][0], "a different native omission reason")
+        ]
+        second = self.verify(native_report(1, skipped=changed))
+        self.assertNotEqual(
+            details["review_digest"], second["import_report"]["review_digest"]
+        )
+        with self.assertRaisesRegex(OmissionProofError, "outside the exact reviewed"):
+            verify_omission_subset(proof, second["omission_proof"])
 
     def test_public_samples_are_bounded_but_digest_covers_every_omission(self):
         skips = []

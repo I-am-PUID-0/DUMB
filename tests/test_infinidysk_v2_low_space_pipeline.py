@@ -14,6 +14,7 @@ import uuid
 from utils.backup_storage import BackupStorage
 from utils.infinidysk_v2_execution import InfiniDyskV2Executor
 from utils.infinidysk_v2_inventory import tree_fingerprint
+from utils.infinidysk_v2_migration import InfiniDyskV2MigrationError
 from utils.infinidysk_v2_runtime import (
     COMMIT,
     MARKER,
@@ -331,20 +332,118 @@ class LowSpacePipelineTests(unittest.TestCase):
         self.assertTrue(list(self.archive.rglob("*.tar")))
         self.assertEqual("1", self.config.config["infinidysk"]["runtime_generation"])
 
-    def test_provider_required_skip_keeps_diagnostics_and_restores_v1_archive(self):
+    def test_provider_skip_requires_review_and_rehearsal_restores_v1_archive(self):
         self.bad_report = True
         original = tree_fingerprint(self.source, scratch_root=self.fixture.root)
-        preview, request = self.preview()
+        _, request = self.preview()
         result = self.wait(self.manager.rehearse(request))
-        self.assertEqual("failed_restored", result["status"], result)
+        self.assertEqual("rehearsed", result["status"], result)
+        self.assertTrue(result["result"]["validated"])
         self.assertEqual(
             original, tree_fingerprint(self.source, scratch_root=self.fixture.root)
         )
         self.assertEqual(1, result["import_report"]["skipped_files"])
-        self.assertTrue(result["import_report"]["blocking_reasons"])
+        self.assertEqual("review_required", result["import_report"]["status"])
+        self.assertTrue(result["import_report"]["review_required"])
+        self.assertEqual([], result["import_report"]["blocking_reasons"])
+        private = self.manager._read(self.manager._job_path(result["job_id"]))
+        self.assertEqual("restored", private["snapshot"]["space_recovery"]["state"])
+        self.assertTrue(self.executor._running("InfiniDysk"))
+        self.assertTrue(self.executor._running("rclone InfiniDysk"))
+        proof = self.manager._read_omission_proof(private)
+        self.assertEqual(
+            proof["review_digest"], result["import_report"]["review_digest"]
+        )
+        self.assertEqual(1, len(proof["omitted"]))
+        self.assertEqual(
+            "segment sizes unknown: connection refused", proof["omitted"][0]["reason"]
+        )
         raw = self.manager.get_report(result["job_id"])
         self.assertIn("segment sizes unknown", str(raw))
         self.assertFalse(self.native_candidates[-1].exists())
+        self.assertTrue(list(self.archive.rglob("*.tar")))
+        self.assertFalse(self.manager.has_blocking_job())
+        self.assertEqual("1", self.config.config["infinidysk"]["runtime_generation"])
+
+    def test_prepared_provider_skip_keeps_candidate_until_exact_consent_then_activates(
+        self,
+    ):
+        self.bad_report = True
+        original = tree_fingerprint(self.source, scratch_root=self.fixture.root)
+        _, request = self.preview()
+        prepared = self.wait(self.manager.prepare(request))
+        self.assertEqual("prepared", prepared["status"], prepared)
+        self.assertTrue(prepared["can_activate"])
+        self.assertTrue(prepared["can_rollback"])
+        self.assertTrue(self.manager.has_blocking_job())
+        self.assertFalse(self.source.exists())
+        self.assertTrue(self.native_candidates[-1].is_dir())
+        self.assertEqual(1, len(self.native_candidates))
+        self.assertFalse(self.executor._running("InfiniDysk"))
+        self.assertFalse(self.executor._running("rclone InfiniDysk"))
+        self.assertTrue(list(self.archive.rglob("*.tar")))
+        self.assertEqual("1", self.config.config["infinidysk"]["runtime_generation"])
+        report = prepared["import_report"]
+        self.assertEqual("review_required", report["status"])
+        self.assertTrue(report["review_required"])
+        self.assertEqual([], report["blocking_reasons"])
+        private = self.manager._read(self.manager._job_path(prepared["job_id"]))
+        proof = self.manager._read_omission_proof(private)
+        self.assertEqual(proof["review_digest"], report["review_digest"])
+        self.assertEqual(1, len(proof["omitted"]))
+        activation = {
+            "job_id": prepared["job_id"],
+            "confirmation": prepared["activate_confirmation"],
+        }
+        for payload in (
+            activation,
+            {
+                **activation,
+                "acknowledgements": {"skipped_media": True},
+                "skip_review_digest": "0" * 64,
+            },
+        ):
+            with self.subTest(payload=payload):
+                with self.assertRaisesRegex(
+                    InfiniDyskV2MigrationError, "acknowledge the skipped items"
+                ):
+                    self.manager.activate(payload)
+                self.assertEqual(
+                    "prepared",
+                    self.manager.get_job(prepared["job_id"])["job"]["status"],
+                )
+                self.assertTrue(self.native_candidates[-1].is_dir())
+                self.assertEqual(1, len(self.native_candidates))
+        completed = self.wait(
+            self.manager.activate(
+                {
+                    **activation,
+                    "acknowledgements": {"skipped_media": True},
+                    "skip_review_digest": report["review_digest"],
+                }
+            )
+        )
+        self.assertEqual("completed", completed["status"], completed)
+        self.assertEqual(
+            1,
+            len(self.native_candidates),
+            "activation must reuse the prepared conversion",
+        )
+        self.assertFalse(self.source.exists())
+        self.assertEqual("2", self.config.config["infinidysk"]["runtime_generation"])
+        restored = self.wait(
+            self.manager.rollback(
+                {
+                    "job_id": completed["job_id"],
+                    "confirmation": completed["rollback_confirmation_text"],
+                    "acknowledge_discard_v2_writes": True,
+                }
+            )
+        )
+        self.assertEqual("rolled_back", restored["status"], restored)
+        self.assertEqual(
+            original, tree_fingerprint(self.source, scratch_root=self.fixture.root)
+        )
 
     def test_failure_after_target_promotion_restores_original_data_and_configuration(
         self,

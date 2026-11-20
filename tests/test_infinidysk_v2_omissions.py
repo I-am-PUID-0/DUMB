@@ -14,13 +14,27 @@ from tests import test_infinidysk_v2_import_report as fixtures
 from utils.infinidysk_v2_import_report import ImportReportError, verify_import_inventory
 from utils.infinidysk_v2_omissions import (
     OmissionProofError,
+    PROOF_POLICY,
     make_omission_proof,
     validate_omission_proof,
     verify_omission_subset,
 )
 
+LEGACY_PROOF_POLICY = "infinidysk-beta6-reviewed-omissions-v2"
 
-def sample_proof(count=3):
+
+def proof_with_policy(proof, policy):
+    """Construct a historical wire proof without changing the production writer."""
+    body = deepcopy(proof)
+    body.pop("review_digest")
+    body["policy"] = policy
+    raw = json.dumps(
+        body, sort_keys=True, separators=(",", ":"), ensure_ascii=True, allow_nan=False
+    ).encode()
+    return body | {"review_digest": hashlib.sha256(raw).hexdigest()}
+
+
+def sample_proof(count=3, *, reason="no segments"):
     return make_omission_proof(
         {"count": 500, "sha256": "a" * 64},
         {"count": 12, "sha256": "b" * 64},
@@ -29,7 +43,7 @@ def sample_proof(count=3):
                 "id": uuid.UUID(int=index + 10).hex,
                 "name": f"file-{index}",
                 "path": f"/content/file-{index}",
-                "reason": "no segments",
+                "reason": reason,
             }
             for index in range(count)
         ],
@@ -37,6 +51,91 @@ def sample_proof(count=3):
 
 
 class CompleteProofTests(unittest.TestCase):
+    def test_new_proofs_use_expanded_review_policy_and_preserve_raw_reasons(self):
+        reason = "segment sizes unknown: provider unavailable; new native explanation"
+        proof = sample_proof(reason=reason)
+        self.assertEqual(PROOF_POLICY, "infinidysk-beta6-reviewed-omissions-v3")
+        self.assertEqual(proof["policy"], PROOF_POLICY)
+        self.assertEqual(proof["omitted"][0]["reason"], reason)
+        self.assertEqual(validate_omission_proof(proof), proof)
+
+    def test_legacy_proofs_remain_valid_with_original_policy_and_digest(self):
+        proof = proof_with_policy(sample_proof(), LEGACY_PROOF_POLICY)
+        original = deepcopy(proof)
+        self.assertEqual(validate_omission_proof(proof), proof)
+        self.assertEqual(proof, original)
+        self.assertNotEqual(proof["review_digest"], sample_proof()["review_digest"])
+        for reason in (
+            "provider unavailable",
+            "new native item-level reason",
+        ):
+            with self.subTest(reason=reason):
+                forged = proof_with_policy(
+                    sample_proof(reason=reason), LEGACY_PROOF_POLICY
+                )
+                with self.assertRaises(OmissionProofError):
+                    validate_omission_proof(forged)
+
+    def test_known_policies_allow_only_exact_or_fewer_previously_reviewed_losses(self):
+        reviewed = proof_with_policy(sample_proof(), LEGACY_PROOF_POLICY)
+        for count in (3, 1, 0):
+            with self.subTest(count=count):
+                self.assertTrue(verify_omission_subset(reviewed, sample_proof(count)))
+        current = sample_proof()
+        legacy_subset = proof_with_policy(sample_proof(1), LEGACY_PROOF_POLICY)
+        self.assertTrue(verify_omission_subset(current, legacy_subset))
+        for field, value in (
+            ("id", uuid.UUID(int=999).hex),
+            ("name", "renamed"),
+            ("path", "/content/renamed"),
+            ("reason", "provider unavailable"),
+        ):
+            with self.subTest(field=field):
+                rows = deepcopy(current["omitted"][:1])
+                rows[0][field] = value
+                actual = make_omission_proof(
+                    current["source_media"], current["source_history"], rows
+                )
+                with self.assertRaisesRegex(
+                    OmissionProofError, "outside the exact reviewed"
+                ):
+                    verify_omission_subset(reviewed, actual)
+
+    def test_unknown_policies_never_authorize_even_zero_remaining_omissions(self):
+        for policy in ("old-policy", "infinidysk-beta6-reviewed-omissions-v4", ""):
+            with self.subTest(policy=policy):
+                proof = proof_with_policy(sample_proof(0), policy)
+                with self.assertRaises(OmissionProofError):
+                    validate_omission_proof(proof)
+                with self.assertRaises(OmissionProofError):
+                    verify_omission_subset(sample_proof(), proof)
+
+    def test_opaque_reasons_are_bounded_nonempty_and_control_free(self):
+        for reason in (
+            None,
+            1,
+            "",
+            " ",
+            "unknown\x00reason",
+            "unknown\treason",
+            "unknown\nreason",
+            "unknown\rreason",
+            "unknown\x7freason",
+            "é" * 32_769,
+        ):
+            with self.subTest(reason=repr(reason)[:60]):
+                with self.assertRaises(OmissionProofError):
+                    sample_proof(1, reason=reason)
+        self.assertTrue(validate_omission_proof(sample_proof(1, reason="é" * 32_768)))
+
+    def test_raw_opaque_reason_changes_invalidate_prior_consent(self):
+        reason = "native error token=reserved-first-token"
+        reviewed = sample_proof(reason=reason)
+        actual = sample_proof(1, reason=reason.replace("first", "second"))
+        self.assertNotEqual(reviewed["review_digest"], actual["review_digest"])
+        with self.assertRaisesRegex(OmissionProofError, "outside the exact reviewed"):
+            verify_omission_subset(reviewed, actual)
+
     def test_same_or_fewer_exact_losses_including_zero_are_allowed(self):
         reviewed = sample_proof()
         self.assertTrue(verify_omission_subset(reviewed, sample_proof()))
@@ -79,12 +178,11 @@ class CompleteProofTests(unittest.TestCase):
         with self.assertRaises(OmissionProofError):
             validate_omission_proof(actual)
 
-    def test_incomplete_tampered_duplicate_or_provider_proof_is_refused(self):
+    def test_incomplete_tampered_or_duplicate_proof_is_refused(self):
         for mutate in (
             lambda value: value.pop("source_history"),
             lambda value: value["omitted"].pop(),
             lambda value: value["omitted"].append(deepcopy(value["omitted"][0])),
-            lambda value: value["omitted"][0].update(reason="provider unavailable"),
             lambda value: value.update(review_digest="0" * 64),
         ):
             proof = sample_proof()

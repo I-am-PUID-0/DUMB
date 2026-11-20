@@ -1,8 +1,8 @@
 """Pinned native import diagnostics and identity reconciliation.
 
 A native skip is an explained omission, never proof that an item can be repaired.
-Only known deterministic source incompatibilities can be explicitly reviewed;
-provider errors, unknown formats and unaccounted identities remain blockers.
+Complete item-level omissions can be explicitly reviewed, including provider or
+unfamiliar reasons. Unaccounted identities and invalid reports remain blockers.
 """
 
 from collections import Counter
@@ -630,14 +630,14 @@ def verify_import_inventory(
     )
     if blocked:
         public["blocking_reasons"] = [
-            "Provider access, unsupported metadata recovery or an unknown skip reason requires attention: "
+            "The native report contains an invalid item omission reason: "
             + _safe_text(reason)
             for reason in blocked[:MAX_PUBLIC_REASONS]
         ]
         public["status"] = "blocked"
         public["review_required"] = False
         raise ImportReportError(
-            f"The native import omitted {len(missing)} items; provider or unknown failures block cutover.",
+            "The native import contains malformed item omission reasons; review is unavailable.",
             public,
         )
     try:

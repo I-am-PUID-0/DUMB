@@ -212,6 +212,8 @@ def public_stage_progress(job, state):
                 row["state"] = "not_run"
         elif interrupted:
             row["state"] = "interrupted" if row["id"] == current else row["state"]
+        elif row["id"] == current and state == "stage_retry_required":
+            row["state"] = "waiting"
         elif row["id"] == current and state != "prepared":
             row["state"] = "running"
     if current in rows:

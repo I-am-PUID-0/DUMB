@@ -87,6 +87,7 @@ class NativeMigrationAPITests(unittest.TestCase):
             manager.retry_consumers.return_value = {'job': {'status': 'running', 'activation_exposed': True}}
             manager.finish_consumer_recovery.return_value = {'job': {'status': 'completed', 'activation_exposed': True}}
             manager.cancel.return_value = {'job': {'status': 'running', 'cancel_requested': True}}
+            manager.retry_stage.return_value = {'job': {'status': 'running', 'stage_retry': {'state': 'retrying', 'attempt': 1}}}
             with patch.object(router, '_manager', return_value=manager), \
                  patch('utils.auth_config.AuthConfigManager.is_auth_enabled', return_value=True), \
                  patch.object(admission, 'infinidysk_namespace_migration_active', return_value=False), \
@@ -109,6 +110,8 @@ class NativeMigrationAPITests(unittest.TestCase):
                 assert client.post('/process/infinidysk-v2/activate', json={}).status_code == 401
                 assert client.post('/process/infinidysk-v2/cancel', json={}).status_code == 401
                 assert client.post('/process/infinidysk-v2/retry-consumers', json={}).status_code == 401
+                assert client.post('/process/infinidysk-v2/retry-stage', json={}).status_code == 401
+                manager.retry_stage.assert_not_called()
                 assert client.post('/process/infinidysk-v2/finish-consumer-recovery', json={}).status_code == 401
                 assert client.post('/process/infinidysk-v2/cleanup/preview', json={}).status_code == 401
                 assert client.post('/process/infinidysk-v2/cleanup', json={}).status_code == 401
@@ -138,6 +141,8 @@ class NativeMigrationAPITests(unittest.TestCase):
                     assert capabilities['api_version'] == app.version
                     assert capabilities['infinidysk_v2'] is True
                     assert capabilities['infinidysk_v2_prepared_activation'] is True
+                    assert capabilities['infinidysk_v2_stage_retry'] is True
+                    assert capabilities['infinidysk_v2_stage_retry_protocol'] == 1
                     assert capabilities['infinidysk_v2_migration_protocol'] == 1
                     assert capabilities['infinidysk_v2_cleanup'] is True
                     assert capabilities['infinidysk_v2_cleanup_protocol'] == 1
@@ -151,6 +156,7 @@ class NativeMigrationAPITests(unittest.TestCase):
                         assert client.post('/process/infinidysk-v2/cleanup', json={}).status_code == 426
                         assert client.post('/process/infinidysk-v2/cancel', json={}).status_code == 426
                         assert client.post('/process/infinidysk-v2/retry-consumers', json={}).status_code == 426
+                        assert client.post('/process/infinidysk-v2/retry-stage', json={}).status_code == 426
                         assert client.post('/process/infinidysk-v2/finish-consumer-recovery', json={}).status_code == 426
                         assert client.get('/process/infinidysk-v2/status').status_code == 200
                         manager.preview.assert_not_called()
@@ -164,6 +170,12 @@ class NativeMigrationAPITests(unittest.TestCase):
                             assert client.post('/process/infinidysk-v2/prepare', json={}).status_code == 409
                             assert client.post('/process/infinidysk-v2/activate', json={}).json()['job']['stage'] == 'activating'
                             assert client.post('/process/infinidysk-v2/cancel', json={}).json()['job']['cancel_requested'] is True
+                            retry = client.post('/process/infinidysk-v2/retry-stage', json={'job_id': 'a' * 32, 'confirmation': 'current phrase'})
+                            assert retry.status_code == 200, retry.text
+                            assert retry.headers['cache-control'] == 'no-store, private'
+                            assert retry.headers['pragma'] == 'no-cache'
+                            assert retry.json()['job']['stage_retry']['state'] == 'retrying'
+                            manager.retry_stage.assert_called_once_with({'job_id': 'a' * 32, 'confirmation': 'current phrase'})
                             assert client.post('/process/infinidysk-v2/retry-consumers', json={}).json()['job']['activation_exposed'] is True
                             assert client.post('/process/infinidysk-v2/finish-consumer-recovery', json={}).json()['job']['status'] == 'completed'
                         cleanup_preview = client.post('/process/infinidysk-v2/cleanup/preview', json={'job_id': 'a' * 32})

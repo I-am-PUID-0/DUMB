@@ -1996,6 +1996,8 @@ class BackupStorage:
         metadata=None,
         owner_check=None,
         before_publish=None,
+        readback_retry=None,
+        write_retry=None,
     ):
         if extension not in {"tar", "json"} and not (
             namespace == "installation" and extension == "tar.zst"
@@ -2015,47 +2017,145 @@ class BackupStorage:
                 if owner_check is not None:
                     owner_check()
 
-            check()
-            descriptor = os.open(
-                temporary,
-                os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
-                0o600,
-                dir_fd=directory_fd,
-            )
-            try:
-                with os.fdopen(descriptor, "wb") as handle:
-                    writer = _Writer(handle, check)
-                    producer(writer)
-                    handle.flush()
-                    os.fsync(handle.fileno())
-                    expected_hash, expected_size = (
-                        writer.digest.hexdigest(),
-                        writer.size,
+            owned_identity = None
+            expected_hash = expected_size = written_identity = None
+            transfer_complete = False
+
+            def discard_partial():
+                lease_check()
+                try:
+                    current = os.stat(
+                        temporary, dir_fd=directory_fd, follow_symlinks=False
                     )
-                    _external_permissions(
-                        os.fstat(handle.fileno()), allow_shared_permissions=allowed
+                except FileNotFoundError:
+                    return
+                if (
+                    owned_identity is None
+                    or _identity(current) != owned_identity
+                    or not stat.S_ISREG(current.st_mode)
+                    or current.st_nlink != 1
+                ):
+                    raise BackupStorageError(
+                        "The partial archive no longer has its owned identity; it was retained."
                     )
-                check()
-                descriptor = os.open(
-                    temporary,
-                    os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
-                    dir_fd=directory_fd,
+                os.unlink(temporary, dir_fd=directory_fd)
+                os.fsync(directory_fd)
+                try:
+                    os.stat(temporary, dir_fd=directory_fd, follow_symlinks=False)
+                except FileNotFoundError:
+                    return
+                raise BackupStorageError(
+                    "The partial archive cleanup could not be confirmed."
                 )
-                with os.fdopen(descriptor, "rb") as handle:
-                    _external_permissions(
-                        os.fstat(handle.fileno()), allow_shared_permissions=allowed
+
+            def transfer():
+                nonlocal owned_identity, transfer_complete
+                nonlocal expected_hash, expected_size, written_identity
+                transfer_complete = False
+                owned_identity = None
+                descriptor = None
+                try:
+                    check()
+                    descriptor = os.open(
+                        temporary,
+                        os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                        0o600,
+                        dir_fd=directory_fd,
                     )
-                    reader = _Reader(handle, check)
-                    verification = verifier(reader) if verifier is not None else None
-                    while reader.read(1024 * 1024):
-                        pass
-                    if (
-                        reader.digest.hexdigest() != expected_hash
-                        or reader.size != expected_size
-                    ):
-                        raise BackupStorageError(
-                            "The closed archive readback did not match its complete bytes."
+                    owned_identity = _identity(os.fstat(descriptor))
+                    handle = os.fdopen(descriptor, "wb")
+                    descriptor = None  # The file object owns closing this FD.
+                    with handle:
+                        writer = _Writer(handle, check)
+                        producer(writer)
+                        handle.flush()
+                        os.fsync(handle.fileno())
+                        expected_hash, expected_size = (
+                            writer.digest.hexdigest(),
+                            writer.size,
                         )
+                        _external_permissions(
+                            os.fstat(handle.fileno()),
+                            allow_shared_permissions=allowed,
+                        )
+                        written_identity = _identity(os.fstat(handle.fileno()))
+                    transfer_complete = True
+                except BaseException as error:
+                    try:
+                        discard_partial()
+                    except (OSError, BackupStorageError):
+                        # The retry controller must never replay an operation
+                        # whose exact partial artifact could not be removed.
+                        error.stage_retry_safe = False
+                    raise
+                finally:
+                    if descriptor is not None:
+                        os.close(descriptor)
+
+            try:
+                if write_retry is not None:
+                    write_retry(transfer)
+                else:
+                    transfer()
+                if not transfer_complete:
+                    raise BackupStorageError("The archive has no completed transfer.")
+
+                readback_complete = False
+
+                def readback():
+                    nonlocal readback_complete
+                    readback_complete = False
+                    # An explicit migration retry reuses this closed artifact,
+                    # never the producer. Every attempt gets a new complete
+                    # parser/digest and must still prove its original identity.
+                    check()
+                    descriptor = os.open(
+                        temporary,
+                        os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+                        dir_fd=directory_fd,
+                    )
+                    with os.fdopen(descriptor, "rb") as handle:
+                        opened = os.fstat(handle.fileno())
+                        _external_permissions(opened, allow_shared_permissions=allowed)
+                        if (
+                            _identity(opened) != written_identity
+                            or opened.st_size != expected_size
+                        ):
+                            raise BackupStorageError(
+                                "The closed archive identity changed before readback."
+                            )
+                        reader = _Reader(handle, check)
+                        result = verifier(reader) if verifier is not None else None
+                        while reader.read(1024 * 1024):
+                            pass
+                        check()
+                        current = os.stat(
+                            temporary,
+                            dir_fd=directory_fd,
+                            follow_symlinks=False,
+                        )
+                        if (
+                            reader.digest.hexdigest() != expected_hash
+                            or reader.size != expected_size
+                            or _file_stamp(opened)
+                            != _file_stamp(os.fstat(handle.fileno()))
+                            or _file_stamp(opened) != _file_stamp(current)
+                        ):
+                            raise BackupStorageError(
+                                "The closed archive readback did not match its complete bytes and identity."
+                            )
+                        readback_complete = True
+                        return result
+
+                verification = (
+                    readback_retry(readback)
+                    if readback_retry is not None
+                    else readback()
+                )
+                if not readback_complete:
+                    raise BackupStorageError(
+                        "The closed archive has no completed readback verification."
+                    )
                 check()
                 if before_publish is not None:
                     before_publish()
@@ -2093,8 +2193,7 @@ class BackupStorage:
                 return self._public_receipt(receipt)
             finally:
                 try:
-                    lease_check()
-                    os.unlink(temporary, dir_fd=directory_fd)
+                    discard_partial()
                 except (FileNotFoundError, OSError, BackupStorageError):
                     pass
 
