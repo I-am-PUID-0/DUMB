@@ -2,7 +2,7 @@
 
 > Channel: dev. Canonical base: https://dumbarr.com/dev/
 
-Documentation artifact: release 1.25.22. Source commit: cb97827ea6369674b3be0a7b9fa539e6950b0472. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.22.
+Documentation artifact: release 1.25.23. Source commit: 04d5bf2349b50623d920d3ede3eecf0e369bc405. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.23.
 
 DUMB coordinates media services. Match instructions to the installed backend version. Development guides can describe features absent from the latest release.
 
@@ -1817,9 +1817,20 @@ Normal post-activation runtime updates require
 `infinidysk_v2_runtime_updates_protocol: 1`. They use the existing
 `POST /process/update-check` and `POST /process/update-install` routes.
 Preparation and recovery remain fixed to the migration artifact; completed
-activation can release that selector to `latest` once required recovery and
-restart work are finished. Only official v2 releases are eligible.
-An exact `v2_release_version` remains an explicit runtime pin.
+activation releases that internal pin once required recovery and restart work
+are finished. The active service uses standard `release_version` and
+`release_version_enabled` fields, with `runtime_generation: "2"` selecting the
+native installer. Disabled release selection follows latest; enabled selection
+uses the exact v2 tag, or follows latest when blank or `latest`. Only official
+v2 releases are eligible; branch and commit selectors are not native sources.
+
+Configuration loading automatically converts the older `v2_release_version`
+setting into the standard fields. New clients should submit the standard fields
+and use the normalized configuration returned by the backend. Historical major
+migration and native PostgreSQL rollback actions recorded with the old format
+are unavailable, rather than being converted. Their archives and source plans
+are retained, and DUMB may record the one-time migration-pin release. New native
+update journals retain their normal recovery behavior.
 
 A runtime update can retire historical major/provider rollback actions before
 the new binary is allowed to open the database. Retained archives are not
@@ -14026,17 +14037,29 @@ retained state to clear a banner.
 
 Preparation, testing and recovery keep their fixed migration version. Once
 activation has completed and all required service recovery and restart work is
-finished, DUMB releases that migration pin by selecting
-`v2_release_version: latest`. Existing completed migrations receive the same
-one-time transition when normal startup or update controls next verify them.
+finished, DUMB releases that internal migration pin. The active service uses
+the same `release_version` and `release_version_enabled` controls as other DUMB
+services; `runtime_generation` selects the appropriate installer.
 
 Use the service's normal update controls to check for and install newer
 official 2.x releases. While upstream 2.x is in beta, **latest includes v2 beta
-releases**. It never selects a 1.x or 3.x release. You can deliberately pin an
-exact tag, such as `v2.0.0-beta.10`, using `v2_release_version`; the one-time
-migration transition does not undo a later deliberate pin. The retained
-`release_version` and `release_version_enabled` fields belong to the older
-source-selection path and do not select the native v2 archive.
+releases**. It never selects a 1.x or 3.x release. Leave
+`release_version_enabled: false` to follow latest. To pin an exact tag, enable
+that setting and set `release_version`, for example to `v2.0.0-beta.10`.
+An enabled value of `latest` or a blank value also follows latest. Disabled
+release selection ignores any retained value. Native v2 does not use branch or
+commit selection.
+
+Existing `v2_release_version` settings are converted automatically when DUMB
+loads the configuration; do not rename or delete the field yourself. Conversion
+preserves the selected version. A completed migration's initial beta.6 pin is
+released once, while a later deliberate pin is preserved.
+
+Historical rollback actions created with the older release-setting format are
+unavailable after this change. DUMB retains their archives and source plans; it
+does not convert those old rollback records. It may record that the migration
+pin has been released. Recovery for new native runtime updates continues to use
+the current update journal normally.
 
 Your automatic-update preference is preserved. **Check only** continues to
 notify without installing. Normal startup reuses the verified installed
@@ -24642,10 +24665,16 @@ or retaining the original 1.x data and recovery state:
 | `mount_path` | Exact consumer-visible mount path; existing paths are preserved |
 | `v2_runtime_dir` | Native program directory, normally `/opt/infinidysk-v2` |
 | `v2_data_dir` | Separate generation 2 data; blank resolves beneath `data_root` as `infinidysk-v2` |
-| `v2_release_version` | Verified native release, currently `v2.0.0-beta.6` |
+| `release_version_enabled` | Disabled follows the latest official 2.x release; enabled uses `release_version` |
+| `release_version` | An exact official 2.x tag, or `latest`; blank also follows latest |
 
-The 1.x source selection is retained for rollback. Its branch and commit selectors
-are inactive on the prepared native runtime. Do not reuse `postgres_enabled` or
+Preparation and recovery use an internal fixed migration artifact. Once activation
+and required recovery work are complete, the normal release controls select
+future native updates. Existing `v2_release_version` settings are converted
+automatically on configuration load; no manual rename is needed. Old-format
+migration rollback actions are not converted; their archives and source plans
+are retained. Branch and commit selectors are inactive on the native runtime.
+Do not reuse `postgres_enabled` or
 the 1.x `DATABASE_PROVIDER`/`DATABASE_CONNECTION_STRING` variables for generation 2;
 use its [separate native database conversion](../../features/infinidysk-v2-migration.md#native-postgresql-conversion).
 
