@@ -2,7 +2,7 @@
 
 > Channel: dev. Canonical base: https://dumbarr.com/dev/
 
-Documentation artifact: release 1.25.18. Source commit: 0fdc1d64d6819569c835710b13748d13c11bca7c. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.18.
+Documentation artifact: release 1.25.19. Source commit: 99519fac6acd1c4da4cc9fb6782e0dd4cd351a07. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.19.
 
 DUMB coordinates media services. Match instructions to the installed backend version. Development guides can describe features absent from the latest release.
 
@@ -2672,6 +2672,7 @@ Paths below are relative to the API; browser requests use its `/api` proxy.
 |--------|-------|---------|
 | `GET` | `/process/installation-backups/status` | Schedule, preparation, operation/recovery state and current job |
 | `GET` | `/process/installation-backups/catalog` | Verified installation archives from the selected destination |
+| `GET` | `/process/installation-backups/services` | Eligible configured service instances and blockers when individual-service backups are supported |
 | `POST` | `/process/installation-backups/preview` | Review coverage, exclusions, destination, capacity and downtime |
 | `GET` | `/process/installation-backups/preview/status` | Reconnect to the current or selected tracked backup preview when supported |
 | `POST` | `/process/installation-backups/preview/{preview_id}/cancel` | Request cooperative cancellation of that tracked backup preview when supported |
@@ -2683,6 +2684,107 @@ Paths below are relative to the API; browser requests use its `/api` proxy.
 | `POST` | `/process/installation-backups/restore/preview` | Verify a selected archive and preview compatible restore targets |
 | `POST` | `/process/installation-backups/restore/start` | Start the reviewed restore with its required confirmations |
 | `POST` | `/process/installation-backups/jobs/{job_id}/rollback` | Recover the exact retained operation after its typed rollback confirmation |
+
+## Individual-service backup and restore
+
+Backends advertising both `installation_backup_services=true` and numeric
+`installation_backup_services_protocol=1` support selected-service archives.
+`GET /services` returns `protocol: 1` and `services`. Each row includes `id`,
+`key`, `instance_name`, `name`, `enabled`, strict boolean `available` and
+`blocking_reasons`. IDs identify a configured service or instance (`key` or
+`key:instance`); clients must use the backend-provided ID rather than a display
+name. An unavailable row does not authorize a partial backup.
+Optional `required_service_ids` identifies other owners of shared application
+data. Clients must require those owners to be explicitly selected too; the
+backend refuses an incomplete ownership bundle rather than expanding its scope
+silently. Optional `warning` can explain the shared-data requirement.
+
+`POST /preview`, `POST /start-direct` and `PUT /schedule` accept:
+
+```json
+{
+  "scope": "services",
+  "service_ids": ["radarr:movies"]
+}
+```
+
+These fields supplement each route's existing destination, compression,
+confirmation and schedule fields. `scope: "installation"` with an empty
+`service_ids` selects the legacy whole-installation behavior and is the default.
+Clients without the additive capability omit both fields. Service scope needs
+at least one unique eligible instance; it cannot select DUMB control-plane
+services or the shared PostgreSQL cluster. The reviewed preview binds the
+selected IDs, configuration, persistence ownership and database coverage. Start
+with the reviewed token as usual, without resending configuration or database
+credentials. Direct-start request identities also bind the selected scope.
+
+Preview, catalog and job responses add `service_scope`, either
+`{"kind":"installation"}` or:
+
+```json
+{
+  "kind": "services",
+  "service_ids": ["radarr:movies"],
+  "services": [{"id": "radarr:movies", "key": "radarr", "instance_name": "movies", "name": "Movies"}],
+  "affected_process_names": ["Movies"],
+  "database_count": 0
+}
+```
+
+An omitted field on legacy archives means complete-installation scope. Service
+archives use schema `2` so older restorers reject them instead of assuming a
+complete installation. They retain a selected configuration fragment and
+supported owned roots plus separate managed-database exports, without DUMB
+authentication or unrelated configuration. The shared PostgreSQL server stays
+online; only selected writers and their affected dependants are quiesced.
+
+During `database_backup` and `database_restore`, the optional
+`database_progress` reports `phase` (`database_records`, `database_dump` or
+`database_restore`) and measured `completed`, `total` or `bytes` when available.
+Record-check counts measure database **tables checked**, not the number of
+rows copied. Dump bytes describe the current database export. Show this work
+separately from archive counters; an earlier archive percentage does not measure
+database export or restore progress. Missing totals require indeterminate
+activity rather than an inferred percentage or finish time.
+
+Restore preview takes the normal archive reference or mounted path. The archive
+determines the exact saved bundle: no `service_ids` subset is accepted during
+restore. Existing configured instance IDs, persistence paths and compatibility
+bindings must match. Legacy schema `1` archives remain whole-installation
+restores. After service replacement commits, affected previously running
+applications resume without a normal container restart; unrelated app data and
+DUMB accounts are preserved.
+
+A missing configured application root can be restored at its recorded path.
+For a missing standalone file, its parent directory must still exist; missing
+aliases are not remapped to alternative targets. Configured instance identities,
+path ownership and compatibility checks still apply.
+
+PostgreSQL service restores are logical replacements within the existing managed
+cluster. The recorded cluster identity must match, and current targets owned by
+the selected services must already exist. If a service database was removed,
+recreate it through normal managed-service setup before restore preview. A
+service archive cannot replace or rebuild the shared PostgreSQL cluster; cluster
+recovery requires a whole-installation backup.
+
+Scheduled retention is partitioned by exact service IDs or whole-installation
+scope. Switching a schedule's bundle does not prune archives from a different
+bundle or whole-installation scope. Manual archives remain outside scheduled
+retention.
+
+If recovery is finished by a new controller process, the job instead retains
+`restart_required=true` and its exact configuration hash. Follow the instructed
+container restart to resume normal startup; the recovery-only controller does
+not launch application writers itself. Same-controller recovery resumes the
+previously running affected applications normally.
+
+If a service restore reports `service_restore_committed=true` with
+`can_rollback=true`, its existing `POST /jobs/{job_id}/rollback` route uses the
+backend-owned `rollback_confirmation_text` to **finish** cleanup and resumption
+while retaining the restored state. Clients must label that action **Finish
+service restore**, not promise restoration of the old data. Before commit, the
+existing guarded rollback recovers the original service state. Respect the
+advertised action and typed phrase in either case.
 
 ## Compression
 
@@ -13384,6 +13486,19 @@ starts its own counters and estimate. These numbers do not predict the whole
 operation's finish time, and reaching the byte total does not establish
 that integrity checks or service recovery have passed.
 
+After InfiniDysk finishes conversion, DUMB shows its own record checks separately:
+reading the original and converted library and history, comparing download
+history, and verifying file records and their source details. Each pass shows
+records processed, its total when known, elapsed time and a measured pace with
+an approximate time remaining **for that pass**. Reading larger metadata files
+shows bytes read instead of counting a file as complete before it has been read.
+These checks continue after the native importer reports **done**; an import count
+alone does not establish that the converted library or history was preserved.
+
+The converted SQLite database's integrity check shows elapsed time and regular
+status updates. SQLite does not expose a useful total for that check, so DUMB
+keeps its progress indeterminate and does not invent a percentage or finish time.
+
 An unknown total, a new or stale measurement, or work exceeding an earlier
 estimate can leave time remaining unavailable. A failed or cancelled attempt can
 still need a lengthy v1 restoration. Follow the job's confirmed outcome.
@@ -13562,6 +13677,12 @@ A lower count in one native import report is not accepted as a history-loss
 tolerance. Every required completed and failed source-history identity must
 still exist in the actual v2 database. Unsupported source states, invalid
 reserved identities and missing required history remain blockers.
+
+During preparation, DUMB keeps InfiniDysk's automatic history cleanup paused
+until the converter stops, so older completed and failed records remain
+available for this check. After activation, InfiniDysk's normal history
+retention applies, including removal of completed and failed records older
+than 30 days.
 
 An unexplained missing file, ambiguous or unrecognized report format, changed
 identity or name, database integrity failure, missing required history, or failed
@@ -14172,6 +14293,7 @@ backup protocol `1`; older backends continue to expose their existing tools.
 | Task | Start here |
 | --- | --- |
 | Make an archive | [Create a backup](#create-a-backup) |
+| Protect or restore individual apps | [Choose the installation or selected services](#choose-the-installation-or-selected-services) |
 | Keep a recurring archive | [Schedule backups](#schedule-backups) |
 | Recover an installation | [Restore an existing or fresh installation](#restore-an-existing-or-fresh-installation) |
 | Resolve a held startup | [Startup and private recovery state](#startup-and-private-recovery-state) |
@@ -14263,6 +14385,88 @@ Review the reported paths and correct the conflicting profile. A separate
 destination or a dedicated child archive directory can still be used when it
 passes the storage checks.
 
+## Choose the installation or selected services
+
+Backends supporting individual-service backups show **What would you like to
+protect?** on **Back up now** and **Schedule**:
+
+- **Entire DUMB installation** keeps the existing complete-installation flow,
+  including DUMB settings and accounts.
+- **Selected services** lets you choose one or more configured service
+  instances. For example, two Radarr instances appear separately. The archive
+  includes only their supported settings, persistent files, library-link state
+  and managed databases. It excludes other apps and DUMB accounts.
+
+Choose at least one available instance, then preview the backup. The review
+shows the exact files, managed database count and applications that may pause.
+Dependent apps can pause with a selected service so they cannot change its
+state during copying. The shared PostgreSQL server stays online; supported
+service databases use separate verified exports rather than a cluster-directory
+copy. A service archive still contains that app's credentials and private data,
+and is not encrypted.
+
+An unavailable choice explains its blocker. DUMB refuses ambiguous shared
+directories, external databases or persistence it cannot assign safely to the
+selected instance. When apps share supported application data, **Back up
+together with** identifies the other owners. Select those apps as well to create
+one bundle; DUMB does not add services silently. DUMB control-plane services,
+the shared PostgreSQL cluster, and InfiniDysk 1 using PostgreSQL require the
+complete-installation tool. Existing whole-installation archives
+remain whole-installation restores; they cannot be treated as service archives.
+
+### Restore a service bundle
+
+Select the archive on **Restore**. Its label identifies either the whole
+installation or the saved services. Choose **Preview restore**, then review and
+confirm what will be replaced.
+
+A service archive restores **exactly the instances saved together in that
+archive**. Selecting a subset of an existing bundle is not supported. The
+instances and their supported persistence paths must still match the current
+installation; recreate a removed instance's configuration before previewing its
+restore. Use a complete-installation archive to recover an entire replacement
+installation instead.
+
+A lost application data directory can be restored when its instance and path
+are still configured. A missing standalone file needs its parent directory to
+exist. DUMB does not retarget missing aliases to a different location.
+
+For an app using managed PostgreSQL, restore into its existing database server.
+If that app's database was removed, recreate it through normal managed-service
+setup before requesting a restore preview. Use a whole-installation backup to
+rebuild or recover the shared PostgreSQL server.
+
+<details class="geek-details" markdown="1">
+<summary>Technical details: PostgreSQL restore boundary</summary>
+
+Service database restore requires the recorded managed PostgreSQL cluster
+identity to match the running cluster. Its database targets must already exist
+and remain owned by the selected services. A service archive cannot recreate a
+missing database, replace the shared cluster or remap its contents to another
+cluster. Changed or unproven identity and ownership remain restore blockers.
+
+</details>
+
+DUMB preserves unrelated apps and your DUMB accounts. Only selected writers
+and affected dependent apps pause, and previously running affected apps resume
+after a successful service restore. A container restart is not normally needed
+for this flow.
+
+If the DUMB controller restarted while recovery was pending, finish the offered
+recovery action first, then follow its container-restart instruction. This lets
+normal startup safely resume the rest of the installation too.
+
+If a service restore stops before replacement commits, follow its offered
+rollback to recover the original service state. If replacement has committed
+and only cleanup or application resumption fails, **Finish service restore**
+keeps the restored data and completes that recovery. Enter the phrase DUMB
+shows; do not restart another restore or remove its retained recovery files.
+
+Use an updated dashboard and backend to create and review service archives.
+Older backends reject their new archive format. The service choice is hidden when
+the connected backend does not support it; normal installation backups remain
+available.
+
 ## Choose an archive format
 
 Uncompressed `.tar` is the default. When the backend supports Zstandard,
@@ -14293,7 +14497,7 @@ Plan for application downtime. Once DUMB stops managed applications, playback, i
 
 Use direct frontend/API access before starting. Managed proxies and tunnels can stop with the applications, making their public routes unavailable.
 
-1. Select a destination and archive format in **Settings → Backups and restore**.
+1. Select a destination, what to protect, and archive format in **Settings → Backups and restore**.
 2. Choose **Preview backup** to review roots, exclusions, estimated space, and blockers while applications remain running.
 3. Stop external writers, including another container sharing the same state.
 4. Review the downtime, credential-handling, and external-state acknowledgements, enter the displayed phrase, and select **Start reviewed backup**.
@@ -14348,7 +14552,7 @@ Seerr Sync and Metrics storage operations reserve installation persistence for t
 
 There is no fixed overall file-count or payload-size ceiling. Individual path, nesting, record, metadata, and restorable-transaction checks still apply. Local space is needed for verification ledgers and later restore staging in addition to archive capacity. A large NAS destination does not remove those requirements.
 
-Database consistency requires a stopped [PostgreSQL cluster](https://www.postgresql.org/docs/current/backup-file.html) and quiescent [SQLite databases and journals](https://sqlite.org/howtocorrupt.html#_backup_or_restore_while_a_transaction_is_active).
+Whole-installation database consistency requires a stopped [PostgreSQL cluster](https://www.postgresql.org/docs/current/backup-file.html) and quiescent [SQLite databases and journals](https://sqlite.org/howtocorrupt.html#_backup_or_restore_while_a_transaction_is_active). Selected-service backups instead use verified exports for supported managed PostgreSQL databases while the server stays online.
 
 </details>
 
@@ -14454,8 +14658,10 @@ into an installation archive.
 ## Schedule backups
 
 Scheduling is off by default. Enable it deliberately, choose its destination,
-interval, archive format and retention, then select **Save backup schedule**. Check the next scheduled run and use **Reload saved schedule** to verify the saved choices. The schedule
-keeps its own format choice; changing a manual backup does not change it.
+installation or service scope, interval, archive format and retention, then select
+**Save backup schedule**. Check the next scheduled run and use **Reload saved
+schedule** to verify the saved choices. The schedule keeps its own service and
+format choices; changing a manual backup does not change it.
 Each manual or scheduled run
 creates a full, standalone archive; incremental or deduplicated installation
 backups are not currently supported. Scheduled backups use the same
@@ -14471,8 +14677,10 @@ the schedule does not cancel an already-running job; use that job's supported
 
 Missed or blocked jobs remain visible. A schedule does not bypass startup,
 another active operation, unavailable storage or insufficient space. Retention
-applies only to verified scheduled installation archives owned by that schedule;
-manual archives and other tools' backups are retained separately.
+applies only to verified scheduled archives for the same exact service bundle
+or whole-installation scope. Changing the selected services does not remove
+another bundle's archives or whole-installation archives. Manual archives and
+other tools' backups are retained separately.
 
 ## Restore an existing or fresh installation
 

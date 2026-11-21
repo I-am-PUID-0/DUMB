@@ -6,7 +6,7 @@
   
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Back up DUMB configuration, managed application state and databases, schedule verified archives, and restore an installation from mounted storage.">
+  <meta name="description" content="Back up a whole DUMB installation or selected service instances, schedule verified archives, and restore the reviewed state from mounted storage.">
   
     <meta name="author" content="DUMB Team">
   
@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.18">
+    <meta name="dumb-docs-package-version" content="1.25.19">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="0fdc1d64d6819569c835710b13748d13c11bca7c">
-    <meta name="dumb-docs-release-tag" content="1.25.18">
+    <meta name="dumb-docs-build-commit" content="99519fac6acd1c4da4cc9fb6782e0dd4cd351a07">
+    <meta name="dumb-docs-release-tag" content="1.25.19">
   
 
     
@@ -84,7 +84,7 @@
     <meta property="og:locale" content="en_US">
     <meta property="og:site_name" content="DUMB — Distributed Unlimited Media Bridge">
     <meta property="og:title" content="Installation Backup and Restore">
-    <meta property="og:description" content="Back up DUMB configuration, managed application state and databases, schedule verified archives, and restore an installation from mounted storage.">
+    <meta property="og:description" content="Back up a whole DUMB installation or selected service instances, schedule verified archives, and restore the reviewed state from mounted storage.">
     <meta property="og:url" content="https://dumbarr.com/dev/features/installation-backups/">
     <meta property="og:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta property="og:image:secure_url" content="https://dumbarr.com/assets/images/DUMB.png">
@@ -94,7 +94,7 @@
     <meta property="og:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Installation Backup and Restore">
-    <meta name="twitter:description" content="Back up DUMB configuration, managed application state and databases, schedule verified archives, and restore an installation from mounted storage.">
+    <meta name="twitter:description" content="Back up a whole DUMB installation or selected service instances, schedule verified archives, and restore the reviewed state from mounted storage.">
     <meta name="twitter:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta name="twitter:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     
@@ -1573,6 +1573,17 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         Choose storage
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#choose-the-installation-or-selected-services" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Choose the installation or selected services
       </span>
     </span>
   </a>
@@ -6060,6 +6071,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#choose-the-installation-or-selected-services" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Choose the installation or selected services
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#choose-an-archive-format" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -6332,6 +6354,10 @@ backup protocol <code>1</code>; older backends continue to expose their existing
 <td><a href="#create-a-backup">Create a backup</a></td>
 </tr>
 <tr>
+<td>Protect or restore individual apps</td>
+<td><a href="#choose-the-installation-or-selected-services">Choose the installation or selected services</a></td>
+</tr>
+<tr>
 <td>Keep a recurring archive</td>
 <td><a href="#schedule-backups">Schedule backups</a></td>
 </tr>
@@ -6414,6 +6440,73 @@ excluding such a backup location would hide application state from the archive.
 Review the reported paths and correct the conflicting profile. A separate
 destination or a dedicated child archive directory can still be used when it
 passes the storage checks.</p>
+<h2 id="choose-the-installation-or-selected-services">Choose the installation or selected services<a class="headerlink" href="#choose-the-installation-or-selected-services" title="Permanent link">&para;</a></h2>
+<p>Backends supporting individual-service backups show <strong>What would you like to
+protect?</strong> on <strong>Back up now</strong> and <strong>Schedule</strong>:</p>
+<ul>
+<li><strong>Entire DUMB installation</strong> keeps the existing complete-installation flow,
+  including DUMB settings and accounts.</li>
+<li><strong>Selected services</strong> lets you choose one or more configured service
+  instances. For example, two Radarr instances appear separately. The archive
+  includes only their supported settings, persistent files, library-link state
+  and managed databases. It excludes other apps and DUMB accounts.</li>
+</ul>
+<p>Choose at least one available instance, then preview the backup. The review
+shows the exact files, managed database count and applications that may pause.
+Dependent apps can pause with a selected service so they cannot change its
+state during copying. The shared PostgreSQL server stays online; supported
+service databases use separate verified exports rather than a cluster-directory
+copy. A service archive still contains that app's credentials and private data,
+and is not encrypted.</p>
+<p>An unavailable choice explains its blocker. DUMB refuses ambiguous shared
+directories, external databases or persistence it cannot assign safely to the
+selected instance. When apps share supported application data, <strong>Back up
+together with</strong> identifies the other owners. Select those apps as well to create
+one bundle; DUMB does not add services silently. DUMB control-plane services,
+the shared PostgreSQL cluster, and InfiniDysk 1 using PostgreSQL require the
+complete-installation tool. Existing whole-installation archives
+remain whole-installation restores; they cannot be treated as service archives.</p>
+<h3 id="restore-a-service-bundle">Restore a service bundle<a class="headerlink" href="#restore-a-service-bundle" title="Permanent link">&para;</a></h3>
+<p>Select the archive on <strong>Restore</strong>. Its label identifies either the whole
+installation or the saved services. Choose <strong>Preview restore</strong>, then review and
+confirm what will be replaced.</p>
+<p>A service archive restores <strong>exactly the instances saved together in that
+archive</strong>. Selecting a subset of an existing bundle is not supported. The
+instances and their supported persistence paths must still match the current
+installation; recreate a removed instance's configuration before previewing its
+restore. Use a complete-installation archive to recover an entire replacement
+installation instead.</p>
+<p>A lost application data directory can be restored when its instance and path
+are still configured. A missing standalone file needs its parent directory to
+exist. DUMB does not retarget missing aliases to a different location.</p>
+<p>For an app using managed PostgreSQL, restore into its existing database server.
+If that app's database was removed, recreate it through normal managed-service
+setup before requesting a restore preview. Use a whole-installation backup to
+rebuild or recover the shared PostgreSQL server.</p>
+<details class="geek-details">
+<summary>Technical details: PostgreSQL restore boundary</summary>
+<p>Service database restore requires the recorded managed PostgreSQL cluster
+identity to match the running cluster. Its database targets must already exist
+and remain owned by the selected services. A service archive cannot recreate a
+missing database, replace the shared cluster or remap its contents to another
+cluster. Changed or unproven identity and ownership remain restore blockers.</p>
+</details>
+<p>DUMB preserves unrelated apps and your DUMB accounts. Only selected writers
+and affected dependent apps pause, and previously running affected apps resume
+after a successful service restore. A container restart is not normally needed
+for this flow.</p>
+<p>If the DUMB controller restarted while recovery was pending, finish the offered
+recovery action first, then follow its container-restart instruction. This lets
+normal startup safely resume the rest of the installation too.</p>
+<p>If a service restore stops before replacement commits, follow its offered
+rollback to recover the original service state. If replacement has committed
+and only cleanup or application resumption fails, <strong>Finish service restore</strong>
+keeps the restored data and completes that recovery. Enter the phrase DUMB
+shows; do not restart another restore or remove its retained recovery files.</p>
+<p>Use an updated dashboard and backend to create and review service archives.
+Older backends reject their new archive format. The service choice is hidden when
+the connected backend does not support it; normal installation backups remain
+available.</p>
 <h2 id="choose-an-archive-format">Choose an archive format<a class="headerlink" href="#choose-an-archive-format" title="Permanent link">&para;</a></h2>
 <p>Uncompressed <code>.tar</code> is the default. When the backend supports Zstandard,
 manual backups and the schedule can each select compressed <code>.tar.zst</code> archives.
@@ -6437,7 +6530,7 @@ not its filename; existing uncompressed archives remain supported.</p>
 <p>Plan for application downtime. Once DUMB stops managed applications, playback, imports, scans, and service UIs remain unavailable until archive checks and service resume finish. The API and frontend stay available through their direct ports. Large data sets or slow storage can take hours; there is no promised finish time.</p>
 <p>Use direct frontend/API access before starting. Managed proxies and tunnels can stop with the applications, making their public routes unavailable.</p>
 <ol>
-<li>Select a destination and archive format in <strong>Settings → Backups and restore</strong>.</li>
+<li>Select a destination, what to protect, and archive format in <strong>Settings → Backups and restore</strong>.</li>
 <li>Choose <strong>Preview backup</strong> to review roots, exclusions, estimated space, and blockers while applications remain running.</li>
 <li>Stop external writers, including another container sharing the same state.</li>
 <li>Review the downtime, credential-handling, and external-state acknowledgements, enter the displayed phrase, and select <strong>Start reviewed backup</strong>.</li>
@@ -6519,7 +6612,7 @@ not its filename; existing uncompressed archives remain supported.</p>
 <p>Worker timestamps report actual work updates. Polling status does not itself advance inventory or transfer progress. Older backends can show only stage and elapsed time.</p>
 <p>Seerr Sync and Metrics storage operations reserve installation persistence for their complete operations, including SQLite connection cleanup. A busy cycle can delay admission. During the backup hold, those controller writes pause and resume through their normal schedules after the hold ends.</p>
 <p>There is no fixed overall file-count or payload-size ceiling. Individual path, nesting, record, metadata, and restorable-transaction checks still apply. Local space is needed for verification ledgers and later restore staging in addition to archive capacity. A large NAS destination does not remove those requirements.</p>
-<p>Database consistency requires a stopped <a href="https://www.postgresql.org/docs/current/backup-file.html">PostgreSQL cluster</a> and quiescent <a href="https://sqlite.org/howtocorrupt.html#_backup_or_restore_while_a_transaction_is_active">SQLite databases and journals</a>.</p>
+<p>Whole-installation database consistency requires a stopped <a href="https://www.postgresql.org/docs/current/backup-file.html">PostgreSQL cluster</a> and quiescent <a href="https://sqlite.org/howtocorrupt.html#_backup_or_restore_while_a_transaction_is_active">SQLite databases and journals</a>. Selected-service backups instead use verified exports for supported managed PostgreSQL databases while the server stays online.</p>
 </details>
 <h3 id="if-service-resume-needs-attention">If service resume needs attention<a class="headerlink" href="#if-service-resume-needs-attention" title="Permanent link">&para;</a></h3>
 <p>Follow the job's exact recovery action and verify the affected service's logs before retrying a backup. For PostgreSQL, a literal <code>{postgres_config_dir}</code> in a launch error indicates an older launcher that failed to expand its configured placeholders; it is separate from archive consistency. Update through the normal image path and preserve existing database state.</p>
@@ -6600,8 +6693,10 @@ own backup/deployment review; DUMB does not silently omit them or sweep them
 into an installation archive.</p>
 <h2 id="schedule-backups">Schedule backups<a class="headerlink" href="#schedule-backups" title="Permanent link">&para;</a></h2>
 <p>Scheduling is off by default. Enable it deliberately, choose its destination,
-interval, archive format and retention, then select <strong>Save backup schedule</strong>. Check the next scheduled run and use <strong>Reload saved schedule</strong> to verify the saved choices. The schedule
-keeps its own format choice; changing a manual backup does not change it.
+installation or service scope, interval, archive format and retention, then select
+<strong>Save backup schedule</strong>. Check the next scheduled run and use <strong>Reload saved
+schedule</strong> to verify the saved choices. The schedule keeps its own service and
+format choices; changing a manual backup does not change it.
 Each manual or scheduled run
 creates a full, standalone archive; incremental or deduplicated installation
 backups are not currently supported. Scheduled backups use the same
@@ -6615,8 +6710,10 @@ the schedule does not cancel an already-running job; use that job's supported
 <strong>Cancel backup</strong> control and wait for its terminal result.</p>
 <p>Missed or blocked jobs remain visible. A schedule does not bypass startup,
 another active operation, unavailable storage or insufficient space. Retention
-applies only to verified scheduled installation archives owned by that schedule;
-manual archives and other tools' backups are retained separately.</p>
+applies only to verified scheduled archives for the same exact service bundle
+or whole-installation scope. Changing the selected services does not remove
+another bundle's archives or whole-installation archives. Manual archives and
+other tools' backups are retained separately.</p>
 <h2 id="restore-an-existing-or-fresh-installation">Restore an existing or fresh installation<a class="headerlink" href="#restore-an-existing-or-fresh-installation" title="Permanent link">&para;</a></h2>
 <p>A preview verifies the archive before you confirm downtime and replacement:</p>
 <pre class="mermaid"><code>flowchart TD
@@ -6828,11 +6925,11 @@ has its own job, cancellation and rollback flow.</p>
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.18</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.18">Release notes</a>
+              <span>Documentation release 1.25.19</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.19">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;0fdc1d64d6819569c835710b13748d13c11bca7c" title="Documentation source commit 0fdc1d64d6819569c835710b13748d13c11bca7c">Source 0fdc1d64</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;99519fac6acd1c4da4cc9fb6782e0dd4cd351a07" title="Documentation source commit 99519fac6acd1c4da4cc9fb6782e0dd4cd351a07">Source 99519fac</a>
             
             
           </div>

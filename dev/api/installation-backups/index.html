@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.18">
+    <meta name="dumb-docs-package-version" content="1.25.19">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="0fdc1d64d6819569c835710b13748d13c11bca7c">
-    <meta name="dumb-docs-release-tag" content="1.25.18">
+    <meta name="dumb-docs-build-commit" content="99519fac6acd1c4da4cc9fb6782e0dd4cd351a07">
+    <meta name="dumb-docs-release-tag" content="1.25.19">
   
 
     
@@ -5080,6 +5080,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#individual-service-backup-and-restore" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Individual-service backup and restore
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#compression" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -6021,6 +6032,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#individual-service-backup-and-restore" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Individual-service backup and restore
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#compression" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -6318,6 +6340,11 @@ Paths below are relative to the API; browser requests use its <code>/api</code> 
 <td>Verified installation archives from the selected destination</td>
 </tr>
 <tr>
+<td><code>GET</code></td>
+<td><code>/process/installation-backups/services</code></td>
+<td>Eligible configured service instances and blockers when individual-service backups are supported</td>
+</tr>
+<tr>
 <td><code>POST</code></td>
 <td><code>/process/installation-backups/preview</code></td>
 <td>Review coverage, exclusions, destination, capacity and downtime</td>
@@ -6374,6 +6401,90 @@ Paths below are relative to the API; browser requests use its <code>/api</code> 
 </tr>
 </tbody>
 </table>
+<h2 id="individual-service-backup-and-restore">Individual-service backup and restore<a class="headerlink" href="#individual-service-backup-and-restore" title="Permanent link">&para;</a></h2>
+<p>Backends advertising both <code>installation_backup_services=true</code> and numeric
+<code>installation_backup_services_protocol=1</code> support selected-service archives.
+<code>GET /services</code> returns <code>protocol: 1</code> and <code>services</code>. Each row includes <code>id</code>,
+<code>key</code>, <code>instance_name</code>, <code>name</code>, <code>enabled</code>, strict boolean <code>available</code> and
+<code>blocking_reasons</code>. IDs identify a configured service or instance (<code>key</code> or
+<code>key:instance</code>); clients must use the backend-provided ID rather than a display
+name. An unavailable row does not authorize a partial backup.
+Optional <code>required_service_ids</code> identifies other owners of shared application
+data. Clients must require those owners to be explicitly selected too; the
+backend refuses an incomplete ownership bundle rather than expanding its scope
+silently. Optional <code>warning</code> can explain the shared-data requirement.</p>
+<p><code>POST /preview</code>, <code>POST /start-direct</code> and <code>PUT /schedule</code> accept:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">"scope"</span><span class="p">:</span><span class="w"> </span><span class="s2">"services"</span><span class="p">,</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">"service_ids"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"radarr:movies"</span><span class="p">]</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="p">}</span>
+</code></pre></div>
+<p>These fields supplement each route's existing destination, compression,
+confirmation and schedule fields. <code>scope: "installation"</code> with an empty
+<code>service_ids</code> selects the legacy whole-installation behavior and is the default.
+Clients without the additive capability omit both fields. Service scope needs
+at least one unique eligible instance; it cannot select DUMB control-plane
+services or the shared PostgreSQL cluster. The reviewed preview binds the
+selected IDs, configuration, persistence ownership and database coverage. Start
+with the reviewed token as usual, without resending configuration or database
+credentials. Direct-start request identities also bind the selected scope.</p>
+<p>Preview, catalog and job responses add <code>service_scope</code>, either
+<code>{"kind":"installation"}</code> or:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">{</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">"kind"</span><span class="p">:</span><span class="w"> </span><span class="s2">"services"</span><span class="p">,</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nt">"service_ids"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"radarr:movies"</span><span class="p">],</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nt">"services"</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"radarr:movies"</span><span class="p">,</span><span class="w"> </span><span class="nt">"key"</span><span class="p">:</span><span class="w"> </span><span class="s2">"radarr"</span><span class="p">,</span><span class="w"> </span><span class="nt">"instance_name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"movies"</span><span class="p">,</span><span class="w"> </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Movies"</span><span class="p">}],</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nt">"affected_process_names"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"Movies"</span><span class="p">],</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="nt">"database_count"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="p">}</span>
+</code></pre></div>
+<p>An omitted field on legacy archives means complete-installation scope. Service
+archives use schema <code>2</code> so older restorers reject them instead of assuming a
+complete installation. They retain a selected configuration fragment and
+supported owned roots plus separate managed-database exports, without DUMB
+authentication or unrelated configuration. The shared PostgreSQL server stays
+online; only selected writers and their affected dependants are quiesced.</p>
+<p>During <code>database_backup</code> and <code>database_restore</code>, the optional
+<code>database_progress</code> reports <code>phase</code> (<code>database_records</code>, <code>database_dump</code> or
+<code>database_restore</code>) and measured <code>completed</code>, <code>total</code> or <code>bytes</code> when available.
+Record-check counts measure database <strong>tables checked</strong>, not the number of
+rows copied. Dump bytes describe the current database export. Show this work
+separately from archive counters; an earlier archive percentage does not measure
+database export or restore progress. Missing totals require indeterminate
+activity rather than an inferred percentage or finish time.</p>
+<p>Restore preview takes the normal archive reference or mounted path. The archive
+determines the exact saved bundle: no <code>service_ids</code> subset is accepted during
+restore. Existing configured instance IDs, persistence paths and compatibility
+bindings must match. Legacy schema <code>1</code> archives remain whole-installation
+restores. After service replacement commits, affected previously running
+applications resume without a normal container restart; unrelated app data and
+DUMB accounts are preserved.</p>
+<p>A missing configured application root can be restored at its recorded path.
+For a missing standalone file, its parent directory must still exist; missing
+aliases are not remapped to alternative targets. Configured instance identities,
+path ownership and compatibility checks still apply.</p>
+<p>PostgreSQL service restores are logical replacements within the existing managed
+cluster. The recorded cluster identity must match, and current targets owned by
+the selected services must already exist. If a service database was removed,
+recreate it through normal managed-service setup before restore preview. A
+service archive cannot replace or rebuild the shared PostgreSQL cluster; cluster
+recovery requires a whole-installation backup.</p>
+<p>Scheduled retention is partitioned by exact service IDs or whole-installation
+scope. Switching a schedule's bundle does not prune archives from a different
+bundle or whole-installation scope. Manual archives remain outside scheduled
+retention.</p>
+<p>If recovery is finished by a new controller process, the job instead retains
+<code>restart_required=true</code> and its exact configuration hash. Follow the instructed
+container restart to resume normal startup; the recovery-only controller does
+not launch application writers itself. Same-controller recovery resumes the
+previously running affected applications normally.</p>
+<p>If a service restore reports <code>service_restore_committed=true</code> with
+<code>can_rollback=true</code>, its existing <code>POST /jobs/{job_id}/rollback</code> route uses the
+backend-owned <code>rollback_confirmation_text</code> to <strong>finish</strong> cleanup and resumption
+while retaining the restored state. Clients must label that action <strong>Finish
+service restore</strong>, not promise restoration of the old data. Before commit, the
+existing guarded rollback recovers the original service state. Respect the
+advertised action and typed phrase in either case.</p>
 <h2 id="compression">Compression<a class="headerlink" href="#compression" title="Permanent link">&para;</a></h2>
 <p>Backends advertising <code>installation_backup_compression=true</code> accept
 <code>compression</code> in <code>POST /preview</code> and <code>PUT /schedule</code>: <code>"none"</code> selects the default
@@ -6395,17 +6506,17 @@ conservative uncompressed estimate plus overhead, not an assumed ratio.</p>
 <p>Backends advertising <code>installation_backup_direct_start=true</code> support
 <code>POST /start-direct</code>. The status response advertises <code>direct_start</code> with
 <code>confirmation_text</code> and <code>required_acknowledgements</code>. Send:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">"request_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"0123456789abcdef0123456789abcdef"</span><span class="p">,</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">"destination_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"registered_destination"</span><span class="p">,</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="nt">"compression"</span><span class="p">:</span><span class="w"> </span><span class="s2">"none"</span><span class="p">,</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span><span class="nt">"confirmation"</span><span class="p">:</span><span class="w"> </span><span class="s2">"BACK UP DUMB INSTALLATION"</span><span class="p">,</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span><span class="nt">"acknowledgements"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">    </span><span class="nt">"downtime"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">    </span><span class="nt">"secrets"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="nt">"external_state"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">  </span><span class="p">}</span>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="p">{</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">"request_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"0123456789abcdef0123456789abcdef"</span><span class="p">,</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nt">"destination_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"registered_destination"</span><span class="p">,</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="nt">"compression"</span><span class="p">:</span><span class="w"> </span><span class="s2">"none"</span><span class="p">,</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span><span class="nt">"confirmation"</span><span class="p">:</span><span class="w"> </span><span class="s2">"BACK UP DUMB INSTALLATION"</span><span class="p">,</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span><span class="nt">"acknowledgements"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">    </span><span class="nt">"downtime"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">    </span><span class="nt">"secrets"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">    </span><span class="nt">"external_state"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="p">}</span>
 </code></pre></div>
 <p>Use a fresh random 32-character lowercase hexadecimal request identity for each
 intended backup. Retries of the same identity and options return the original
@@ -6613,11 +6724,11 @@ clients retain the session unless authentication itself establishes its expiry.<
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.18</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.18">Release notes</a>
+              <span>Documentation release 1.25.19</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.19">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;0fdc1d64d6819569c835710b13748d13c11bca7c" title="Documentation source commit 0fdc1d64d6819569c835710b13748d13c11bca7c">Source 0fdc1d64</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;99519fac6acd1c4da4cc9fb6782e0dd4cd351a07" title="Documentation source commit 99519fac6acd1c4da4cc9fb6782e0dd4cd351a07">Source 99519fac</a>
             
             
           </div>
