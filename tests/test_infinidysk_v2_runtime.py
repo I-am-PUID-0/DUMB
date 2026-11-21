@@ -322,6 +322,7 @@ class NativeRuntimeTests(unittest.TestCase):
             self.service["command"], [str(self.root / "program/infinidysk")]
         )
 
+    @isolated_runtime_test
     def test_prelaunch_replaces_stale_v1_command_and_excludes_legacy_provider_environment(
         self,
     ):
@@ -677,6 +678,7 @@ class NativeRuntimeTests(unittest.TestCase):
         with self.assertRaises(OSError):
             runtime.native_database_dependency_urls(self.service)
 
+    @isolated_runtime_test
     def test_native_provider_migration_blocks_updates_before_global_admission(self):
         from utils import auto_update
         from utils.infinidysk_v2_postgres import INFINIDYSK_V2_POSTGRES_MANAGER
@@ -983,13 +985,16 @@ class NativeTopologyTests(unittest.TestCase):
         self.assertIn("native API/UI", error)
         legacy.assert_not_called()
 
-    def test_native_fixed_source_status_never_fetches_v1_or_stops_on_bad_selection(
+    @isolated_runtime_test
+    def test_native_release_status_never_fetches_v1_or_stops_on_bad_selection(
         self,
     ):
         from utils import auto_update
 
         updater = auto_update.Update.__new__(auto_update.Update)
         updater.process_handler = Mock()
+        updater.process_handler.process_names = set()
+        updater.logger = Mock()
         service = {
             "runtime_generation": "2",
             "v2_release_version": runtime.RELEASE,
@@ -1003,8 +1008,18 @@ class NativeTopologyTests(unittest.TestCase):
             updater._configured_target_label(service, "release"),
             f"release {runtime.RELEASE}",
         )
-        with patch.object(
-            runtime, "installed_v2_version", return_value=runtime.RELEASE
+        manager = Mock(file_path="/reserved-example/dumb_config.json")
+        manager.get_instance.return_value = service
+        with (
+            patch.object(auto_update, "CONFIG_MANAGER", manager),
+            patch("utils.infinidysk_v2_update.native_update_state", return_value=None),
+            patch.object(updater, "_native_runtime_policy_blocker", return_value=None),
+            patch.object(
+                runtime, "installed_active_v2_version", return_value=runtime.RELEASE
+            ),
+            patch.object(
+                runtime, "resolve_v2_release", return_value={"release": runtime.RELEASE}
+            ),
         ):
             status = updater._manual_check_generic_repo(
                 "InfiniDysk",
@@ -1021,8 +1036,11 @@ class NativeTopologyTests(unittest.TestCase):
         self.assertEqual(status["current_version"], runtime.RELEASE)
         self.assertEqual(status["available_version"], runtime.RELEASE)
         self.assertFalse(status["auto_update_enabled"])
-        with patch.object(
-            runtime, "install_v2_runtime", return_value=(False, "unverified selection")
+        service["branch_enabled"] = True
+        with (
+            patch.object(auto_update, "CONFIG_MANAGER", manager),
+            patch("utils.infinidysk_v2_update.native_update_state", return_value=None),
+            patch.object(updater, "_native_runtime_policy_blocker", return_value=None),
         ):
             result = updater._install_configured_target(
                 "InfiniDysk", service, "infinidysk", None, "release"
@@ -1099,6 +1117,7 @@ class NativeTopologyTests(unittest.TestCase):
             redirected.symlink_to(target, target_is_directory=True)
             self.assertFalse(topology.validate_native_mount_target(redirected, [])[0])
 
+    @isolated_runtime_test
     def test_setup_dispatch_never_enters_v1_source_or_postgres_paths(self):
         from utils import setup
 
@@ -1110,7 +1129,7 @@ class NativeTopologyTests(unittest.TestCase):
         with (
             patch.object(setup, "CONFIG_MANAGER", manager),
             patch.object(
-                runtime, "install_v2_runtime", return_value=(True, None)
+                runtime, "ensure_active_v2_runtime", return_value=(True, None)
             ) as install,
             patch.object(
                 runtime, "configure_v2_runtime", return_value=(True, None)
@@ -1124,6 +1143,7 @@ class NativeTopologyTests(unittest.TestCase):
         legacy.assert_not_called()
         self.assertIn("InfiniDysk", handler.setup_tracker)
 
+    @isolated_runtime_test
     def test_shared_startup_inventory_and_mounts_use_selected_owner(self):
         from utils import setup
 

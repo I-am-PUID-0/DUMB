@@ -63,6 +63,157 @@ def validate_v2_selection(service):
     return True, None
 
 
+def validate_active_v2_selection(service):
+    """Validate normal native release choices without relaxing migration pinning."""
+    from utils.infinidysk_v2_releases import NativeReleaseError, validate_service
+
+    try:
+        validate_service(service)
+        return True, None
+    except NativeReleaseError as error:
+        return False, str(error)
+
+
+def installed_active_v2_version(service):
+    from utils.infinidysk_v2_releases import installed_release
+
+    return installed_release(service)
+
+
+def resolve_v2_release(service):
+    from utils.infinidysk_v2_releases import resolve_release
+
+    return resolve_release(service)
+
+
+def compare_v2_releases(first, second):
+    from utils.infinidysk_v2_releases import compare_releases
+
+    return compare_releases(first, second)
+
+
+def stage_v2_runtime_update(service, release_plan, *, uid, gid):
+    from utils.infinidysk_v2_releases import stage_release
+
+    return stage_release(service, release_plan, uid=uid, gid=gid)
+
+
+def ensure_active_v2_runtime(process_handler, process_name, service):
+    """Reuse active files, restore their exact receipt, or prepare initial beta6.
+
+    A container rebuild must never put beta6 over data already upgraded by a
+    later accepted runtime. Only that completed immutable receipt can restore a
+    missing program; latest discovery and upgrades remain separate operations.
+    """
+    valid, error = validate_active_v2_selection(service)
+    if not valid:
+        return False, error
+    if installed_active_v2_version(service):
+        return True, None
+    from utils.config_loader import CONFIG_MANAGER
+    from utils.infinidysk_v2_update import native_runtime_restore_metadata
+
+    try:
+        journal_root = (
+            Path(CONFIG_MANAGER.file_path).parent / "updates" / "infinidysk-v2"
+        )
+        accepted = native_runtime_restore_metadata(service, journal_root)
+    except (OSError, ValueError, TypeError, AttributeError):
+        return (
+            False,
+            "The retained native runtime update journal needs recovery review. No older runtime was installed.",
+        )
+    if accepted is not None:
+        try:
+            return _restore_accepted_v2_runtime(
+                process_handler,
+                service,
+                accepted,
+                journal_root,
+                data_root=CONFIG_MANAGER.get("data_root") or "/data",
+                uid=int(CONFIG_MANAGER.get("puid") or 1000),
+                gid=int(CONFIG_MANAGER.get("pgid") or 1000),
+            )
+        except (ValueError, TypeError):
+            return (
+                False,
+                "The accepted native runtime requires verified runtime ownership before it can be restored.",
+            )
+    selected = service.get("v2_release_version") or "latest"
+    if selected not in {"latest", RELEASE, RELEASE.lstrip("v")}:
+        return False, "Prepare InfiniDysk 2 before selecting a newer managed release."
+    return install_v2_runtime(
+        process_handler, process_name, {**service, "v2_release_version": RELEASE}
+    )
+
+
+def _restore_accepted_v2_runtime(
+    process_handler, service, accepted, journal_root, *, data_root, uid, gid
+):
+    """Restore identical accepted bytes into an absent/verified empty program path."""
+    from utils.infinidysk_v2_space_control import identity, rename_exclusive
+    from utils.infinidysk_v2_update import native_runtime_restore_metadata
+
+    valid, error = validate_v2_paths(service, data_root)
+    if not valid:
+        return False, error
+    try:
+        target = _directory(runtime_dir(service))
+        previous = identity(target)
+        if os.path.ismount(target) or (previous is not None and any(target.iterdir())):
+            raise ValueError(
+                "The missing native runtime path contains unverified files."
+            )
+        # A retained user's older selector must never downgrade already upgraded
+        # data. Resolve the immutable accepted tag, never the latest channel.
+        restore_service = {**service, "v2_release_version": accepted["release"]}
+        plan = resolve_v2_release(restore_service)
+        if any(
+            plan[key] != accepted[key]
+            for key in ("release", "commit", "architecture", "archive_sha256")
+        ):
+            raise ValueError("The accepted native release tag or archive changed.")
+        with stage_v2_runtime_update(restore_service, plan, uid=uid, gid=gid) as (
+            candidate,
+            metadata,
+        ):
+            if metadata != accepted:
+                raise ValueError(
+                    "The restored native runtime bytes differ from the accepted receipt."
+                )
+            if native_runtime_restore_metadata(service, journal_root) != accepted:
+                raise ValueError(
+                    "The accepted native runtime receipt changed during restoration."
+                )
+            parent = identity(target.parent)
+            if identity(target) != previous:
+                raise ValueError(
+                    "The native runtime destination changed during restoration."
+                )
+            if previous is not None:
+                if any(target.iterdir()) or os.path.ismount(target):
+                    raise ValueError(
+                        "The native runtime destination is no longer empty."
+                    )
+                target.rmdir()
+            rename_exclusive(
+                candidate,
+                target,
+                identity(candidate),
+                identity(candidate.parent),
+                parent,
+            )
+        process_handler.logger.info(
+            "Restored accepted InfiniDysk native runtime %s", accepted["release"]
+        )
+        return True, None
+    except (OSError, ValueError, TypeError, KeyError):
+        return (
+            False,
+            "The exact accepted native runtime could not be restored. Its receipt and database were preserved; no older release was installed.",
+        )
+
+
 def _directory(path):
     path = Path(path)
     if not path.is_absolute() or path == Path("/") or ".." in path.parts:
@@ -582,14 +733,23 @@ def prepare_v2_launch(
     allow_v1_import=False,
 ):
     for valid, error in (
-        validate_v2_selection(service),
+        validate_active_v2_selection(service),
         validate_v2_paths(service, data_root),
     ):
         if not valid:
             return False, error
-    if not installed_v2_version(service):
+    if not installed_active_v2_version(service):
         return False, "Native runtime is missing or its pinned provenance changed"
     try:
+        from utils.config_loader import CONFIG_MANAGER
+        from utils.infinidysk_v2_update import validate_native_update_launch
+
+        config_path = getattr(CONFIG_MANAGER, "file_path", None)
+        if not isinstance(config_path, (str, os.PathLike)):
+            config_path = "/config/dumb_config.json"
+        validate_native_update_launch(
+            service, Path(config_path).parent / "updates" / "infinidysk-v2"
+        )
         compatibility_auth_environment(service)
         if rclone_instances is not None:
             valid, error = validate_selected_owners(service, rclone_instances)

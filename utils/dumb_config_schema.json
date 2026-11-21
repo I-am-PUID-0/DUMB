@@ -1594,9 +1594,9 @@
         },
         "v2_release_version": {
           "type": "string",
-          "enum": [
-            "v2.0.0-beta.6"
-          ]
+          "maxLength": 128,
+          "pattern": "^(latest|v?2\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?)$",
+          "description": "Migration preparation uses the verified fixed release. After successful activation, latest tracks official v2 releases; an exact v2 tag pins normal runtime updates."
         },
         "enabled": {
           "type": "boolean"

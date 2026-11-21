@@ -1405,17 +1405,22 @@ async def get_service_ui_map(
 @config_router.get("/service-ui")
 async def get_service_ui_links(
     request: Request,
+    metadata_only: bool = False,
     logger=Depends(get_logger),
     current_user: str = Depends(get_optional_current_user),
 ):
     """Retrieve service UI links and generate Traefik configs dynamically."""
     try:
-        traefik_config_dir = get_traefik_config_dir()
-        services = ensure_ui_services_config(str(traefik_config_dir))
+        if metadata_only:
+            services = build_ui_services()
+        else:
+            traefik_config_dir = get_traefik_config_dir()
+            services = ensure_ui_services_config(str(traefik_config_dir))
         services = [_normalize_direct_url(service, request) for service in services]
         traefik_config_path = get_traefik_dynamic_config_dir() / "services.yaml"
 
-        logger.info("Updated Traefik configuration for service UIs.")
+        if not metadata_only:
+            logger.info("Updated Traefik configuration for service UIs.")
         return {
             "enabled": bool(CONFIG_MANAGER.config.get("traefik", {}).get("enabled")),
             "services": services,

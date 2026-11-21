@@ -50,6 +50,41 @@ class TraefikSetupHelperTests(unittest.TestCase):
     def setUp(self):
         traefik_setup.CONFIG_MANAGER.config = {}
 
+    def test_native_infinidysk_metadata_preserves_direct_url_and_native_csp(self):
+        traefik_setup.CONFIG_MANAGER.config = {
+            "infinidysk": {
+                "enabled": True,
+                "runtime_generation": "2",
+                "frontend_port": 3333,
+                "direct_url": "https://infinidysk.example.com/",
+            }
+        }
+        service = traefik_setup._resolve_ui_service(
+            {"name": "InfiniDysk", "config_key": "infinidysk"}
+        )[0]
+        self.assertEqual(service["runtime_generation"], "2")
+        self.assertEqual(service["embedded_ui_protocol"], 1)
+        self.assertEqual(service["direct_url"], "https://infinidysk.example.com/")
+        generated = traefik_setup.generate_traefik_config([service])
+        middlewares = generated["http"]["routers"]["infinidysk_router"]["middlewares"]
+        self.assertNotIn("ui_frame_headers", middlewares)
+        self.assertIn("infinidysk_strip", middlewares)
+
+    def test_legacy_infinidysk_keeps_existing_frame_headers(self):
+        traefik_setup.CONFIG_MANAGER.config = {
+            "infinidysk": {"enabled": True, "frontend_port": 3333}
+        }
+        service = traefik_setup._resolve_ui_service(
+            {"name": "InfiniDysk", "config_key": "infinidysk"}
+        )[0]
+        self.assertEqual(service["runtime_generation"], "1")
+        self.assertNotIn("embedded_ui_protocol", service)
+        generated = traefik_setup.generate_traefik_config([service])
+        self.assertIn(
+            "ui_frame_headers",
+            generated["http"]["routers"]["infinidysk_router"]["middlewares"],
+        )
+
     def test_normalize_version_adds_v_prefix_and_lowercases(self):
         self.assertEqual(traefik_setup._normalize_version("3.3.6"), "v3.3.6")
         self.assertEqual(traefik_setup._normalize_version(" V3.3.6 "), "v3.3.6")

@@ -59,6 +59,7 @@ from utils.install_cache import INSTALL_CACHE
 from utils.transactional_install import RuntimeRollbackSnapshot
 from utils.transactional_install import DirectoryReleaseTransaction
 from datetime import datetime
+from pathlib import Path
 import copy
 from glob import glob
 import threading, time, os, schedule, subprocess, shutil
@@ -406,7 +407,11 @@ class Update:
 
     def _get_update_block_reason(self, config, key=None):
         if key == "infinidysk" and infinidysk_v2_runtime.is_v2(config):
-            return "release"
+            return (
+                None
+                if (config.get("v2_release_version") or "latest") == "latest"
+                else "release"
+            )
         if config.get("pinned_version"):
             return "pinned_version"
         if str(config.get("commit_sha") or "").strip():
@@ -1279,31 +1284,14 @@ class Update:
         next_check_at,
     ):
         if key == "infinidysk" and infinidysk_v2_runtime.is_v2(config):
-            supported, error = infinidysk_v2_runtime.validate_v2_selection(config)
-            current = infinidysk_v2_runtime.installed_v2_version(config)
-            return {
-                "status": (
-                    "error"
-                    if not supported
-                    else "up_to_date" if current else "update_available"
-                ),
-                "reason": "unsupported_source" if not supported else "release",
-                "message": (
-                    error
-                    if not supported
-                    else "Native InfiniDysk uses the verified pinned 2.x release"
-                ),
-                "current_version": current,
-                "available_version": infinidysk_v2_runtime.RELEASE,
-                "checked_at": checked_at,
-                "auto_update_enabled": False,
-                "configured_target_kind": "release",
-                "configured_target_value": infinidysk_v2_runtime.RELEASE,
-                "configured_target_installed": bool(current),
-                "auto_update_interval": interval_hours,
-                "auto_update_start_time": start_time,
-                "next_check_at": None,
-            }
+            return self._native_runtime_update_status(
+                process_name,
+                config,
+                checked_at=checked_at,
+                interval_hours=interval_hours,
+                start_time=start_time,
+                next_check_at=next_check_at,
+            )
         versions = Versions()
         repo_owner = config.get("repo_owner")
         repo_name = config.get("repo_name")
@@ -2081,6 +2069,16 @@ class Update:
                 "message": native_blocker,
             }
 
+        if native_key == "infinidysk" and infinidysk_v2_runtime.is_v2(native_config):
+            # The native updater reserves the shared lifecycle lane only for
+            # admission checks; downloads and dependency waits run outside it.
+            return self._manual_update_install_once_admitted(
+                process_name,
+                allow_override=allow_override,
+                target=target,
+                protection_override=protection_override,
+            )
+
         with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
             key, _ = CONFIG_MANAGER.find_key_for_process(process_name)
             blocker = self._infinidysk_migration_update_blocker(key)
@@ -2108,6 +2106,36 @@ class Update:
     ):
         key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
         config = CONFIG_MANAGER.get_instance(instance_name, key) if key else None
+        native = key == "infinidysk" and infinidysk_v2_runtime.is_v2(config or {})
+        native_recovery = False
+        if native:
+            from utils.infinidysk_migration_admission import (
+                INFINIDYSK_MIGRATION_ADMISSION_LOCK,
+            )
+            from utils.infinidysk_v2_update import native_update_state
+
+            valid, error = infinidysk_v2_runtime.validate_active_v2_selection(config)
+            if not valid:
+                payload = {
+                    "status": "error",
+                    "reason": "unsupported_source",
+                    "message": error,
+                }
+                self._safe_record_update_status(process_name, payload)
+                return payload
+            with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+                blocker = self._native_runtime_policy_blocker(allow_unlock=True)
+                if blocker:
+                    payload = {
+                        "status": "blocked",
+                        "reason": "native_migration_pending",
+                        "message": blocker,
+                    }
+                    self._safe_record_update_status(process_name, payload)
+                    return payload
+                config = CONFIG_MANAGER.get_instance(instance_name, key)
+            state = native_update_state(config, self._native_runtime_journal_root())
+            native_recovery = bool(state and state.get("recovery_required"))
         requested_target = str(target or "").strip().lower()
         block_reason = self._get_update_block_reason(config, key) if config else None
         request_is_actionable = bool(
@@ -2118,7 +2146,21 @@ class Update:
             )
             and not (requested_target == "configured" and not block_reason)
         )
+        if native_recovery:
+            request_is_actionable = True
         if not request_is_actionable:
+            if native:
+                payload = {
+                    "status": "blocked" if block_reason else "error",
+                    "reason": block_reason or "configured_target_missing",
+                    "message": (
+                        "Use Install configured release or explicitly choose latest."
+                        if block_reason
+                        else "No configured pinned native release is selected."
+                    ),
+                }
+                self._safe_record_update_status(process_name, payload)
+                return payload
             return self._manual_update_install_unprotected(
                 process_name, allow_override, target
             )
@@ -2187,7 +2229,9 @@ class Update:
                 payload["media_protection"] = protection
             return payload
         finally:
-            if not success:
+            if not success and not (
+                key == "infinidysk" and infinidysk_v2_runtime.is_v2(config)
+            ):
                 self._recover_pending_snapshot(process_name)
             if timing_started:
                 self._finish_update_timing(process_name, payload)
@@ -2226,6 +2270,19 @@ class Update:
                     "reason": "unsupported",
                     "message": f"Manual updates are not supported for {process_name}.",
                 }
+                self._safe_record_update_status(process_name, payload)
+                return payload
+
+            if key == "infinidysk" and infinidysk_v2_runtime.is_v2(config):
+                payload = self._update_native_runtime(
+                    process_name,
+                    config,
+                    key,
+                    instance_name,
+                    allow_override=allow_override,
+                    target=target,
+                    manual=True,
+                )
                 self._safe_record_update_status(process_name, payload)
                 return payload
 
@@ -2356,22 +2413,15 @@ class Update:
         block_reason,
     ):
         if key == "infinidysk" and infinidysk_v2_runtime.is_v2(config):
-            success, error = infinidysk_v2_runtime.install_v2_runtime(
-                self.process_handler, process_name, config
+            payload = self._update_native_runtime(
+                process_name,
+                config,
+                key,
+                instance_name,
+                target="configured",
+                manual=True,
             )
-            if not success:
-                return False, error
-            if process_name in self.process_handler.process_names:
-                self.stop_process(process_name)
-            success, error = infinidysk_v2_runtime.configure_v2_runtime(
-                self.process_handler, process_name, config
-            )
-            if not success:
-                return False, error
-            process, error = self.start_process(
-                process_name, config, key, instance_name
-            )
-            return bool(process), error
+            return payload.get("status") == "updated", payload.get("message")
         if key in {"whisparr", "whisparr-v3"}:
             return self._update_whisparr(
                 process_name, config, key, instance_name, force=True
@@ -3258,7 +3308,7 @@ class Update:
         self, process_name, key, instance_name, config
     ):
         if key == "infinidysk" and infinidysk_v2_runtime.is_v2(config):
-            return not bool(infinidysk_v2_runtime.installed_v2_version(config))
+            return not bool(infinidysk_v2_runtime.installed_active_v2_version(config))
         if key == "audiobookshelf":
             try:
                 selector = audiobookshelf_install_selector(config)
@@ -3406,6 +3456,10 @@ class Update:
                     "next_check_at": None,
                 },
             )
+        if key == "infinidysk" and infinidysk_v2_runtime.is_v2(latest_config):
+            if infinidysk_v2_runtime.validate_active_v2_selection(latest_config)[0]:
+                self._native_runtime_policy_blocker(allow_unlock=True)
+            latest_config = CONFIG_MANAGER.get_instance(instance_name, key)
         block_reason = self._get_update_block_reason(latest_config, key)
         if block_reason:
             self._cancel_auto_update_job(process_name)
@@ -3526,6 +3580,468 @@ class Update:
             "update", process_name, schedule_status
         )
 
+    @staticmethod
+    def _native_runtime_journal_root():
+        return Path(CONFIG_MANAGER.file_path).parent / "updates" / "infinidysk-v2"
+
+    @staticmethod
+    def _native_runtime_managers():
+        from utils.infinidysk_v2_migration import INFINIDYSK_V2_MIGRATION_MANAGER
+        from utils.infinidysk_v2_postgres import INFINIDYSK_V2_POSTGRES_MANAGER
+
+        return INFINIDYSK_V2_MIGRATION_MANAGER, INFINIDYSK_V2_POSTGRES_MANAGER
+
+    def _native_runtime_policy_blocker(self, *, allow_unlock=False):
+        try:
+            major, postgres = self._native_runtime_managers()
+            blocker = postgres.runtime_update_blocker()
+            if blocker:
+                return blocker
+            if allow_unlock:
+                # The coordinator independently refuses active/unsettled jobs,
+                # and can finish its own pending selector intent after restart.
+                major.unlock_runtime_updates()
+            return major.runtime_update_blocker()
+        except (OSError, ValueError, TypeError):
+            return "Native migration and recovery state could not be verified; runtime updates are deferred."
+
+    def release_completed_native_migration(self):
+        """Release the migration-only selector after the controller becomes ready.
+
+        This hook changes no runtime and performs no release discovery. Existing
+        disabled/check-only update choices remain owned by the service config.
+        """
+        if getattr(self.process_handler, "startup_phase", None) != "ready":
+            return False
+        service = CONFIG_MANAGER.get_instance(None, "infinidysk") or {}
+        if (
+            not infinidysk_v2_runtime.is_v2(service)
+            or not infinidysk_v2_runtime.validate_active_v2_selection(service)[0]
+            or not infinidysk_v2_runtime.installed_active_v2_version(service)
+        ):
+            return False
+        try:
+            major, postgres = self._native_runtime_managers()
+            if postgres.runtime_update_blocker():
+                return False
+            changed = major.unlock_runtime_updates()
+            if changed:
+                current = CONFIG_MANAGER.get_instance(None, "infinidysk") or {}
+                self.reschedule_auto_update(current.get("process_name") or "InfiniDysk")
+            return bool(changed)
+        except (OSError, ValueError, TypeError):
+            self.logger.warning(
+                "Completed native migration still needs review before its release selector can be unlocked."
+            )
+            return False
+
+    @staticmethod
+    def _native_runtime_recovery_status(state=None, service=None):
+        state = state or {}
+        metadata = state.get("release_metadata") or {}
+        release = state.get("release") or (
+            metadata.get("release") if isinstance(metadata, dict) else None
+        )
+        retained = bool(
+            service
+            and release
+            and infinidysk_v2_runtime.installed_active_v2_version(service) == release
+        )
+        retry = (
+            retained
+            and state.get("launched") is True
+            and type(state.get("was_running")) is bool
+        )
+        return {
+            "status": "error",
+            "reason": "native_runtime_recovery",
+            "can_retry_update": retry,
+            "message": (
+                "The runtime update needs recovery. Retry Update to start and verify the retained replacement. Keep both runtime directories and all database backups; the previous binary will not be restarted against potentially upgraded data."
+                if retry
+                else "The runtime update needs inspection. Its exact replacement is missing, changed, or not authorized for automatic retry. Review the retained update journal and restore only its recorded replacement; do not install an older binary against potentially upgraded data. Keep all database backups."
+            ),
+        }
+
+    def _native_runtime_update_status(
+        self,
+        process_name,
+        config,
+        *,
+        checked_at=None,
+        interval_hours=None,
+        start_time=None,
+        next_check_at=None,
+    ):
+        from utils.infinidysk_v2_update import native_update_state
+
+        block_reason = self._get_update_block_reason(config, "infinidysk")
+        payload = {
+            "checked_at": int(time.time()) if checked_at is None else checked_at,
+            "auto_update_enabled": bool(config.get("auto_update")) and not block_reason,
+            "auto_update_mode": self.auto_update_mode(config),
+            "auto_update_interval": interval_hours
+            or self.auto_update_interval(process_name, config),
+            "auto_update_start_time": start_time
+            or self.auto_update_start_time(process_name, config),
+            "next_check_at": None if block_reason else next_check_at,
+        }
+        supported, error = infinidysk_v2_runtime.validate_active_v2_selection(config)
+        if not supported:
+            return {
+                **payload,
+                "status": "error",
+                "reason": "unsupported_source",
+                "message": error,
+            }
+        state = native_update_state(config, self._native_runtime_journal_root())
+        if state and state.get("recovery_required"):
+            return {**payload, **self._native_runtime_recovery_status(state, config)}
+        blocker = self._native_runtime_policy_blocker()
+        if blocker:
+            return {
+                **payload,
+                "status": "blocked",
+                "reason": "native_migration_pending",
+                "message": blocker,
+            }
+        current = infinidysk_v2_runtime.installed_active_v2_version(config)
+        if not current:
+            return {
+                **payload,
+                "status": "error",
+                "reason": "native_runtime_unverified",
+                "message": "The installed native runtime could not be verified. Complete its setup before updating.",
+            }
+        try:
+            plan = infinidysk_v2_runtime.resolve_v2_release(config)
+            order = infinidysk_v2_runtime.compare_v2_releases(plan["release"], current)
+        except (OSError, ValueError, TypeError) as error:
+            return {
+                **payload,
+                "status": "error",
+                "reason": "version_check_failed",
+                "message": str(error),
+            }
+        payload.update(current_version=current, available_version=plan["release"])
+        if order < 0:
+            return {
+                **payload,
+                "status": "error",
+                "reason": "native_downgrade_unsupported",
+                "message": "The selected release is older than the installed runtime. Native database downgrades are not supported.",
+            }
+        if block_reason:
+            payload.update(
+                configured_target_kind="release",
+                configured_target_value=config.get("v2_release_version"),
+                configured_target_installed=order == 0,
+            )
+        return {
+            **payload,
+            "status": (
+                "no_update"
+                if order == 0
+                else ("blocked" if block_reason else "update_available")
+            ),
+            "reason": block_reason,
+            "message": (
+                "No updates available for native InfiniDysk."
+                if order == 0
+                else "A verified official InfiniDysk 2 release is available. Installing it retires the old migration and provider-conversion rollback actions; retained backups are kept."
+            ),
+        }
+
+    def _update_native_runtime(
+        self,
+        process_name,
+        config,
+        key="infinidysk",
+        instance_name=None,
+        *,
+        allow_override=False,
+        target=None,
+        manual=False,
+    ):
+        from utils.infinidysk_migration_admission import (
+            INFINIDYSK_MIGRATION_ADMISSION_LOCK,
+            reserve_infinidysk_external_mutation,
+            release_infinidysk_external_mutation,
+        )
+        from utils.infinidysk_v2_update import (
+            NativeUpdateError,
+            NativeUpdateRecoveryRequired,
+            native_update_state,
+            perform_native_update,
+            resume_native_update,
+        )
+
+        token = None
+        requested = str(target or "").strip().lower()
+        if requested not in {"", "configured", "latest"}:
+            return {
+                "status": "error",
+                "reason": "unsupported_source",
+                "message": "Choose the configured official v2 release or latest.",
+            }
+        with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+            config = CONFIG_MANAGER.get_instance(instance_name, key)
+            if not config or not infinidysk_v2_runtime.is_v2(config):
+                return {
+                    "status": "error",
+                    "reason": "config_changed",
+                    "message": "Native configuration changed before the update.",
+                }
+            # Release checks and media protection can outlive a settings edit.
+            # Honor the live policy before selector unlock or runtime mutation.
+            if not manual:
+                if not config.get("auto_update"):
+                    return {
+                        "status": "disabled",
+                        "reason": "auto_update_disabled",
+                        "message": "Automatic native runtime updates are disabled.",
+                    }
+                if self.auto_update_mode(config) == "check_only":
+                    return {
+                        "status": "no_update",
+                        "reason": "check_only",
+                        "message": "Native update checks are enabled without automatic installation.",
+                    }
+            valid, error = infinidysk_v2_runtime.validate_active_v2_selection(config)
+            if not valid:
+                return {
+                    "status": "error",
+                    "reason": "unsupported_source",
+                    "message": error,
+                }
+            blocker = self._native_runtime_policy_blocker(allow_unlock=True)
+            if blocker:
+                return {
+                    "status": "blocked",
+                    "reason": "native_migration_pending",
+                    "message": blocker,
+                }
+            config = CONFIG_MANAGER.get_instance(instance_name, key)
+            original = copy.deepcopy(config)
+            state = native_update_state(original, self._native_runtime_journal_root())
+            recovering = bool(state and state.get("recovery_required"))
+            if recovering and (
+                not manual
+                or not state.get("launched")
+                or type(state.get("was_running")) is not bool
+            ):
+                return self._native_runtime_recovery_status(state, original)
+            selected = copy.deepcopy(original)
+            if recovering:
+                selected["v2_release_version"] = state["target_selector"]
+            elif allow_override and requested != "configured":
+                selected["v2_release_version"] = "latest"
+            block_reason = self._get_update_block_reason(original, key)
+            if (
+                not recovering
+                and block_reason
+                and not allow_override
+                and requested != "configured"
+            ):
+                return {
+                    "status": "blocked",
+                    "reason": block_reason,
+                    "message": "Use Install configured release or explicitly choose latest.",
+                }
+            valid, error = infinidysk_v2_runtime.validate_active_v2_selection(selected)
+            if not valid:
+                return {
+                    "status": "error",
+                    "reason": "unsupported_source",
+                    "message": error,
+                }
+            blocker = self._infinidysk_migration_update_blocker(key)
+            if blocker:
+                return {
+                    "status": "blocked",
+                    "reason": "native_migration_pending",
+                    "message": blocker,
+                }
+            token = reserve_infinidysk_external_mutation(
+                f"native runtime update: {process_name}"
+            )
+        was_running = (
+            state["was_running"]
+            if recovering
+            else process_name in self.process_handler.process_names
+        )
+        stopped = recovering
+
+        def verify_admission():
+            with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+                if CONFIG_MANAGER.get_instance(instance_name, key) != original:
+                    raise ValueError(
+                        "Native configuration changed during the update; retained files were not reused."
+                    )
+                blocker = (
+                    self._native_runtime_policy_blocker()
+                    or self._infinidysk_migration_update_blocker(key)
+                )
+                if blocker:
+                    raise ValueError(blocker)
+                if (
+                    not stopped
+                    and (process_name in self.process_handler.process_names)
+                    != was_running
+                ):
+                    raise ValueError(
+                        "The native running state changed during release preparation."
+                    )
+
+        def stop_current():
+            nonlocal stopped
+            if process_name in self.process_handler.process_names:
+                result = self.process_handler.stop_process(
+                    process_name, disable_restart=True
+                )
+                if result is False or (isinstance(result, tuple) and not result[0]):
+                    raise ValueError("The native service could not be stopped safely.")
+            if process_name in self.process_handler.process_names:
+                raise ValueError("The native service still has registered writers.")
+            stopped = True
+            if was_running:
+                self._mark_update_downtime_started(process_name)
+
+        def prepare_launch():
+            success, error = infinidysk_v2_runtime.configure_v2_runtime(
+                self.process_handler, process_name, copy.deepcopy(selected)
+            )
+            if not success:
+                raise ValueError(error or "Native launch preparation failed.")
+
+        def start_candidate():
+            if was_running:
+                result = self.process_handler.start_prepared_process(process_name)
+                process = result[0] if isinstance(result, tuple) else result
+                if not process:
+                    raise ValueError("The selected native runtime did not start.")
+
+        def wait_ready():
+            if was_running:
+                healthy, error = self._wait_for_update_health(process_name)
+                if not healthy:
+                    raise ValueError(error or "Native readiness checks failed.")
+
+        def save_selection(metadata):
+            if CONFIG_MANAGER.get_instance(instance_name, key) != original:
+                raise ValueError(
+                    "Native configuration changed before the release selection was saved."
+                )
+            live = CONFIG_MANAGER.get_instance(instance_name, key)
+            live["v2_release_version"] = selected.get("v2_release_version") or "latest"
+            CONFIG_MANAGER.save_config(process_name)
+
+        def retire_rollback(receipt):
+            for manager in self._native_runtime_managers():
+                manager.retire_runtime_rollback(receipt)
+
+        try:
+            if recovering:
+                resume_native_update(
+                    original,
+                    journal_root=self._native_runtime_journal_root(),
+                    prepare_launch=prepare_launch,
+                    start_candidate=start_candidate,
+                    wait_ready=wait_ready,
+                    save_selection=save_selection,
+                    verify_admission=verify_admission,
+                )
+                return {
+                    "status": "updated",
+                    "message": "The retained native replacement was verified; runtime update recovery is complete.",
+                }
+            current = infinidysk_v2_runtime.installed_active_v2_version(original)
+            if not current:
+                return {
+                    "status": "error",
+                    "reason": "native_runtime_unverified",
+                    "message": "The installed native runtime could not be verified.",
+                }
+            plan = infinidysk_v2_runtime.resolve_v2_release(selected)
+            order = infinidysk_v2_runtime.compare_v2_releases(plan["release"], current)
+            if order <= 0:
+                return {
+                    "status": "no_update" if order == 0 else "error",
+                    "reason": None if order == 0 else "native_downgrade_unsupported",
+                    "message": (
+                        "No updates available for native InfiniDysk."
+                        if order == 0
+                        else "Native database downgrades are not supported; the installed runtime was preserved."
+                    ),
+                }
+            uid = int(CONFIG_MANAGER.get("puid") or 1000)
+            gid = int(CONFIG_MANAGER.get("pgid") or 1000)
+            with infinidysk_v2_runtime.stage_v2_runtime_update(
+                selected, plan, uid=uid, gid=gid
+            ) as (candidate, metadata):
+                perform_native_update(
+                    original,
+                    candidate,
+                    metadata,
+                    journal_root=self._native_runtime_journal_root(),
+                    stop_current=stop_current,
+                    prepare_launch=prepare_launch,
+                    start_candidate=start_candidate,
+                    wait_ready=wait_ready,
+                    save_selection=save_selection,
+                    verify_admission=verify_admission,
+                    retire_rollback=retire_rollback,
+                    was_running=was_running,
+                    target_selector=selected.get("v2_release_version") or "latest",
+                )
+            return {
+                "status": "updated",
+                "message": f"Updated native InfiniDysk to {plan['release']}.",
+                "current_version": plan["release"],
+            }
+        except NativeUpdateRecoveryRequired as error:
+            try:
+                if process_name in self.process_handler.process_names:
+                    self.process_handler.stop_process(
+                        process_name, disable_restart=True
+                    )
+                disable = getattr(self.process_handler, "_set_restart_disabled", None)
+                if callable(disable):
+                    disable(process_name, True)
+            except Exception:
+                self.logger.error(
+                    "Native replacement shutdown needs review; both runtimes and database evidence remain retained."
+                )
+            return self._native_runtime_recovery_status(
+                {
+                    **(error.receipt or {}),
+                    "launched": error.launched,
+                    "was_running": was_running,
+                },
+                original,
+            )
+        except NativeUpdateError as error:
+            if was_running and error.receipt.get("state") == "restored":
+                try:
+                    self.process_handler.start_prepared_process(process_name)
+                except Exception:
+                    self.logger.error(
+                        "The previous native runtime was restored but needs a manual restart."
+                    )
+            return {
+                "status": "error",
+                "reason": "native_update_failed",
+                "message": str(error),
+            }
+        except (OSError, ValueError, TypeError) as error:
+            return {
+                "status": "error",
+                "reason": "native_update_failed",
+                "message": str(error),
+            }
+        finally:
+            release_infinidysk_external_mutation(token)
+
     def _native_provider_update_blocker(self, process_name, key, config):
         if key != "infinidysk" or not infinidysk_v2_runtime.is_v2(config):
             return None
@@ -3586,6 +4102,19 @@ class Update:
         )
         if native_blocker:
             return None, native_blocker
+        if native_key == "infinidysk" and infinidysk_v2_runtime.is_v2(native_config):
+            from utils.infinidysk_v2_update import native_update_state
+
+            state = native_update_state(
+                native_config, self._native_runtime_journal_root()
+            )
+            if state and state.get("recovery_required"):
+                return (
+                    None,
+                    self._native_runtime_recovery_status(state, native_config)[
+                        "message"
+                    ],
+                )
         mutation_token = None
         with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
             key, _ = CONFIG_MANAGER.find_key_for_process(process_name)
@@ -3632,10 +4161,18 @@ class Update:
         if not config:
             return None, f"Configuration for {process_name} not found."
         if key == "infinidysk" and infinidysk_v2_runtime.is_v2(config):
+            if infinidysk_v2_runtime.validate_active_v2_selection(config)[0]:
+                self._native_runtime_policy_blocker(allow_unlock=True)
+            config = CONFIG_MANAGER.get_instance(instance_name, key)
             success, error = setup_project(self.process_handler, process_name)
             if not success:
                 return None, error
-            return self.start_process(process_name, config, key, instance_name)
+            process, error = self.start_process(
+                process_name, config, key, instance_name
+            )
+            if process and enable_update:
+                self.reschedule_auto_update(process_name)
+            return process, error
         try:
             self.reschedule_symlink_backup(process_name)
         except Exception as e:
@@ -3889,11 +4426,15 @@ class Update:
                 }
                 self._safe_record_update_status(process_name, payload)
                 return payload
-            return self._scheduled_update_check_admitted(
-                process_name, config, key, instance_name
-            )
+            if not (key == "infinidysk" and infinidysk_v2_runtime.is_v2(config)):
+                return self._scheduled_update_check_admitted(
+                    process_name, config, key, instance_name
+                )
         finally:
             INFINIDYSK_MIGRATION_ADMISSION_LOCK.release()
+        return self._scheduled_update_check_admitted(
+            process_name, config, key, instance_name
+        )
 
     def _scheduled_update_check_admitted(
         self, process_name, config, key, instance_name
@@ -3975,6 +4516,19 @@ class Update:
                     f"Performing scheduled update check for {process_name}"
                 )
                 INSTALL_CACHE.update_operation(operation_id, stage="checking")
+                if key == "infinidysk" and infinidysk_v2_runtime.is_v2(config):
+                    payload = self._update_native_runtime(
+                        process_name, config, key, instance_name
+                    )
+                    success = payload.get("status") in {"updated", "no_update"}
+                    INSTALL_CACHE.update_operation(
+                        operation_id,
+                        stage="complete" if success else "failed",
+                        status="completed" if success else "failed",
+                        message=str(payload.get("message") or "")[:1000],
+                    )
+                    self._safe_record_update_status(process_name, payload)
+                    return payload
                 success, error = self.update_check(
                     process_name, config, key, instance_name
                 )
@@ -4009,7 +4563,9 @@ class Update:
                 return payload
             finally:
                 try:
-                    if not success:
+                    if not success and not (
+                        key == "infinidysk" and infinidysk_v2_runtime.is_v2(config)
+                    ):
                         try:
                             self._recover_pending_snapshot(process_name)
                         except Exception as recovery_error:
@@ -4030,11 +4586,13 @@ class Update:
 
     def update_check(self, process_name, config, key, instance_name):
         if key == "infinidysk" and infinidysk_v2_runtime.is_v2(config):
-            supported, error = infinidysk_v2_runtime.validate_v2_selection(config)
-            return False, (
-                error
-                if not supported
-                else f"No updates available: native InfiniDysk is pinned to {infinidysk_v2_runtime.RELEASE}."
+            payload = self._update_native_runtime(
+                process_name, config, key, instance_name
+            )
+            self._safe_record_update_status(process_name, payload)
+            return (
+                payload.get("status") == "updated",
+                payload.get("message") or "Native runtime update failed.",
             )
         if key == "audiobookshelf":
             return self._update_audiobookshelf(process_name, config, key, instance_name)

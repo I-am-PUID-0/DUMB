@@ -54,6 +54,7 @@ _PUBLIC_JOB = {
     "protocol",
     "operation",
     "cleanup_required",
+    "rollback_unavailable_reason",
 }
 
 
@@ -470,6 +471,21 @@ class InfiniDyskV2PostgresManager:
     def has_recovery_pending_job(self):
         job = self._job()
         return bool(job and job.get("recovery_required"))
+
+    def runtime_update_blocker(self):
+        from utils.infinidysk_v2_runtime_policy import pg_runtime_update_blocker
+
+        return pg_runtime_update_blocker(self)
+
+    def rebind_runtime_selector(self, old_service, new_service):
+        from utils.infinidysk_v2_runtime_policy import rebind_runtime_selector
+
+        return rebind_runtime_selector(self, old_service, new_service)
+
+    def retire_runtime_rollback(self, receipt):
+        from utils.infinidysk_v2_runtime_policy import retire_pg_runtime_rollback
+
+        return retire_pg_runtime_rollback(self, receipt)
 
     def resume_runtime_allowed(self, service_key, service=None):
         """Permit configure-only cold boot of exactly a retained native job.
@@ -1013,6 +1029,11 @@ class InfiniDyskV2PostgresManager:
 
     def rollback(self, request):
         with self._lock:
+            retained = self._job()
+            if retained and retained.get("runtime_rollback_retired"):
+                from utils.infinidysk_v2_runtime_policy import ROLLBACK_RETIRED
+
+                raise NativePostgresError(ROLLBACK_RETIRED)
             job = self._action_job(request, "rollback")
             if not self.process_handler:
                 raise NativePostgresError(

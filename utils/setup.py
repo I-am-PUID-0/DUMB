@@ -1583,7 +1583,7 @@ def _install_nzbdav_prebuilt_release(
 
 def setup_release_version(process_handler, config, process_name, key):
     if key == "infinidysk" and infinidysk_v2_runtime.is_v2(config):
-        return infinidysk_v2_runtime.install_v2_runtime(
+        return infinidysk_v2_runtime.ensure_active_v2_runtime(
             process_handler, process_name, config
         )
     logger.info(f"Using release version {config['release_version']} for {process_name}")
@@ -2513,7 +2513,7 @@ def _setup_project_inner(
 
     if key == "infinidysk" and infinidysk_v2_runtime.is_v2(config):
         if install_phase:
-            success, error = infinidysk_v2_runtime.install_v2_runtime(
+            success, error = infinidysk_v2_runtime.ensure_active_v2_runtime(
                 process_handler, process_name, config
             )
             if not success:
@@ -5051,7 +5051,7 @@ def setup_nzbdav(
         if install_only and configure_only:
             return False, "Invalid InfiniDysk setup phase."
         if not configure_only:
-            success, error = infinidysk_v2_runtime.install_v2_runtime(
+            success, error = infinidysk_v2_runtime.ensure_active_v2_runtime(
                 process_handler, config.get("process_name", "InfiniDysk"), config
             )
             if not success:

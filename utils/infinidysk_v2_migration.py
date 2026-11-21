@@ -543,6 +543,7 @@ class InfiniDyskV2MigrationManager:
         rollback = (
             rollback
             and self._owned_process_cleanup_complete(job)
+            and not job.get("runtime_rollback_retired")
             and not cleanup["rollback_retired"]
             and not self._cleanup_controller().has_blocking_job(job)
         )
@@ -573,6 +574,10 @@ class InfiniDyskV2MigrationManager:
             "status": state,
             "state": state,
             "can_rollback": rollback,
+            "rollback_unavailable_reason": (
+                (job.get("runtime_rollback_retired") or {}).get("reason")
+            ),
+            "runtime_updates_unlocked": job.get("runtime_updates_unlocked") is True,
             "prepare_mode": (
                 job.get("plan", {}).get("mode")
                 if job.get("mode") == "prepare"
@@ -792,6 +797,21 @@ class InfiniDyskV2MigrationManager:
     def has_prepared_job(self):
         with self._lock:
             return any(job.get("status") == "prepared" for job in self._jobs())
+
+    def runtime_update_blocker(self):
+        from utils.infinidysk_v2_runtime_policy import major_runtime_update_blocker
+
+        return major_runtime_update_blocker(self)
+
+    def unlock_runtime_updates(self):
+        from utils.infinidysk_v2_runtime_policy import unlock_runtime_updates
+
+        return unlock_runtime_updates(self)
+
+    def retire_runtime_rollback(self, receipt):
+        from utils.infinidysk_v2_runtime_policy import retire_major_runtime_rollback
+
+        return retire_major_runtime_rollback(self, receipt)
 
     def _config(self):
         value = getattr(self.config_manager, "config", None)
@@ -3270,7 +3290,13 @@ class InfiniDyskV2MigrationManager:
             raise InfiniDyskV2MigrationError(
                 "Legacy provider variables cannot remain on the activated v2 runtime."
             )
-        config["infinidysk"] = prepared
+        # Private journals use canonical sorted keys. Preserve the user's
+        # visible field order when publishing that saved service definition.
+        current = config.get("infinidysk") or {}
+        config["infinidysk"] = {
+            **{key: prepared[key] for key in current if key in prepared},
+            **{key: value for key, value in prepared.items() if key not in current},
+        }
         if plan["target"]["mount_backend"] == "fuse":
             for mount in plan["inventory"]["mounts"]:
                 config["rclone"]["instances"][mount["instance"]]["enabled"] = False

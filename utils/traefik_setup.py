@@ -362,6 +362,9 @@ def _resolve_ui_service(service_def: Dict[str, Any]) -> List[Dict[str, Any]]:
     if config_key == "authelia":
         service["public_url"] = str(cfg.get("public_url") or "").strip()
     if config_key == "infinidysk":
+        service["runtime_generation"] = str(cfg.get("runtime_generation") or "1")
+        if service["runtime_generation"] == "2":
+            service["embedded_ui_protocol"] = 1
         direct_url_template = cfg.get("direct_url")
         if direct_url_template:
             service["direct_url"] = direct_url_template.format_map(
@@ -500,7 +503,13 @@ def generate_traefik_config(services: List[Dict[str, Any]]) -> Dict[str, Any]:
                 }
                 middlewares.append(replace_all_middleware)
 
-        middlewares.append("ui_frame_headers")
+        # The native adapter preserves and narrowly adjusts InfiniDysk's own
+        # CSP. Do not replace its script/form policy at the internal proxy.
+        if not (
+            service.get("config_key") == "infinidysk"
+            and service.get("runtime_generation") == "2"
+        ):
+            middlewares.append("ui_frame_headers")
 
         if service_name == "traefik":
             traefik_config["http"]["routers"][router_name] = {

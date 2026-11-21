@@ -1444,6 +1444,15 @@ def main():
                     process_name, f"Startup readiness failed: {reason}"
                 )
         else:
+            # A migration requiring a controller restart keeps its fixed
+            # preparation release until all startup readiness checks pass.
+            try:
+                updater.release_completed_native_migration()
+            except Exception:
+                logger.warning(
+                    "Native InfiniDysk update selection still needs review after startup.",
+                    exc_info=True,
+                )
             logger.info(
                 "DUMB startup is ready after %.1f seconds.",
                 startup_status["completed_at"] - startup_status["started_at"],

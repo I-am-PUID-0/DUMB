@@ -55,6 +55,31 @@ class DumbConfigSchemaTests(unittest.TestCase):
             ],
         )
 
+    def test_native_runtime_update_selection_is_limited_to_latest_or_v2_tags(self):
+        definition = self.schema["properties"]["infinidysk"]["properties"][
+            "v2_release_version"
+        ]
+        validator = Draft7Validator(definition)
+        for selected in (
+            "latest",
+            "v2.0.0-beta.6",
+            "v2.0.0-beta.10",
+            "2.1.0",
+            "v2.1.0+build.1",
+        ):
+            self.assertEqual([], list(validator.iter_errors(selected)), selected)
+        for selected in (
+            "",
+            "main",
+            "v1.7.1",
+            "v3.0.0",
+            "https://example.com/release",
+            "v2.01.0",
+            "v2.0.0/foreign",
+            "v2.0.0-" + "x" * 128,
+        ):
+            self.assertTrue(list(validator.iter_errors(selected)), selected)
+
     def test_whisparr_version_defaults_to_detection_and_permits_both_families(self):
         instance = self.config["whisparr"]["instances"]["Default"]
         self.assertEqual("", instance["whisparr_version"])

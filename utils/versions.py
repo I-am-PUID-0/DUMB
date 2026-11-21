@@ -257,6 +257,15 @@ class Versions:
                 is_file = True
             elif key == "infinidysk":
                 config = CONFIG_MANAGER.get("infinidysk") or {}
+                if is_v2(config):
+                    from utils.infinidysk_v2_runtime import installed_active_v2_version
+
+                    current = installed_active_v2_version(config)
+                    return current, (
+                        None
+                        if current
+                        else "Native runtime provenance could not be verified."
+                    )
                 version_path = os.path.join(
                     (
                         str(runtime_dir(config))
@@ -726,18 +735,35 @@ class Versions:
             config = self._get_service_config_for_compare(key, instance_name)
             if key == "infinidysk" and is_v2(config):
                 from utils.infinidysk_v2_runtime import (
-                    RELEASE,
-                    installed_v2_version,
-                    validate_v2_selection,
+                    compare_v2_releases,
+                    installed_active_v2_version,
+                    resolve_v2_release,
+                    validate_active_v2_selection,
                 )
 
-                valid, error = validate_v2_selection(config)
-                current = installed_v2_version(config)
-                return bool(valid and not current), {
-                    "message": error
-                    or "Native InfiniDysk is pinned to the supported release",
+                valid, error = validate_active_v2_selection(config)
+                current = installed_active_v2_version(config)
+                if not valid or not current:
+                    return False, {
+                        "message": error
+                        or "Native runtime provenance could not be verified.",
+                        "current_version": current,
+                        "latest_version": None,
+                    }
+                plan = resolve_v2_release(config)
+                order = compare_v2_releases(plan["release"], current)
+                return order > 0, {
+                    "message": (
+                        "Native release update is available."
+                        if order > 0
+                        else (
+                            "Native database downgrades are not supported."
+                            if order < 0
+                            else "No updates available."
+                        )
+                    ),
                     "current_version": current,
-                    "latest_version": RELEASE,
+                    "latest_version": plan["release"],
                 }
             if key in (
                 "decypharr",

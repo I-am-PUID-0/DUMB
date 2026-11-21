@@ -117,7 +117,13 @@ def validate_candidate(current, candidate, *, data_root="/data"):
                     False,
                     "Legacy database variables are reserved for the guarded major importer.",
                 )
-        if str(candidate.get("v2_release_version") or V2_RELEASE) != V2_RELEASE:
+        if old == "2":
+            from utils.infinidysk_v2_runtime import validate_active_v2_selection
+
+            valid, error = validate_active_v2_selection(candidate)
+            if not valid:
+                return False, error
+        elif str(candidate.get("v2_release_version") or V2_RELEASE) != V2_RELEASE:
             return (
                 False,
                 "This integration supports the verified InfiniDysk v2.0.0-beta.6 artifact.",
