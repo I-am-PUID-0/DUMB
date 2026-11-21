@@ -22,8 +22,11 @@ class Controller:
     def status(self):
         self.calls.append("status")
         return {"protocol":1,"job":None,"preparation":None,"recovery_required":False,"schedule":{},"scope":{}}
+    def service_choices(self):
+        self.calls.append("service_choices")
+        return {"protocol":1,"services":[{"id":"sonarr:Default","name":"Shows","enabled":False,"supported":True,"required_service_ids":[]}]}
     def preview(self, value):
-        return {"protocol":1,"ready":True,"capacity":{"status":"sufficient"},"destination":value["destination_id"],"compression":value["compression"]}
+        return {"protocol":1,"ready":True,"capacity":{"status":"sufficient"},"destination":value["destination_id"],"compression":value["compression"],"scope":value["scope"],"service_ids":value["service_ids"]}
     def preview_status(self, identifier=None):
         if identifier == "b"*32:
             from utils.installation_backup import InstallationBackupError
@@ -33,6 +36,7 @@ class Controller:
         return {"protocol":1,"controller_session":"reserved-session","preview":{"preview_id":identifier,"status":"cancelling","cancel_requested":True,"result":None}}
     def start_direct(self, value):
         self.calls.append("start_direct")
+        self.direct_options = value
         return {"protocol":1,"job":{"job_id":"c"*32,"request_id":value["request_id"],"job_type":"installation_backup","status":"queued"}}
     def start(self, value):
         return {"protocol":1,"job":{"job_id":"a"*32,"job_type":"installation_backup","status":"queued"}}
@@ -105,12 +109,17 @@ async def prove():
         assert (await client.get("/process/installation-backups/jobs/"+"a"*32)).status_code==401
         assert (await client.post("/process/installation-backups/jobs/"+"a"*32+"/cancel")).status_code==401
         assert (await client.get("/process/installation-backups/preview/status")).status_code==401
+        assert (await client.get("/process/installation-backups/services")).status_code==401
         assert (await client.post("/process/installation-backups/preview/"+"a"*32+"/cancel")).status_code==401
         assert not created, "unauthorized polling or cancellation initialized controller state"
         app.dependency_overrides[get_optional_current_user]=lambda: "reserved-fixture-admin"
         status=await client.get("/process/installation-backups/status")
         assert status.json()["protocol"]==1 and status.json()["preparation"] is None
         assert status.headers["cache-control"]=="no-store"
+        choices=await client.get("/process/installation-backups/services")
+        assert choices.status_code==200 and choices.json()["services"][0]["id"]=="sonarr:Default"
+        assert choices.headers["cache-control"]=="no-store"
+        assert controller.calls.count("service_choices")==1
         job=await client.get("/process/installation-backups/jobs/"+"a"*32)
         assert job.status_code==200 and job.json()["job"]["status"]=="running"
         assert job.headers["cache-control"]=="no-store"
@@ -124,6 +133,16 @@ async def prove():
         assert preview.status_code==200 and preview.json()["capacity"]["status"]=="sufficient"
         assert preview.headers["cache-control"]=="no-store"
         assert preview.json()["compression"]=="none"
+        assert preview.json()["scope"]=="installation" and preview.json()["service_ids"]==[]
+        selected=await client.post("/process/installation-backups/preview",json={"destination_id":"fixture","scope":"services","service_ids":["sonarr:Default","radarr:Films"]})
+        assert selected.status_code==200 and selected.json()["scope"]=="services"
+        assert selected.json()["service_ids"]==["sonarr:Default","radarr:Films"]
+        maximum=["fixture:instance"+str(index) for index in range(64)]
+        selected=await client.post("/process/installation-backups/preview",json={"destination_id":"fixture","scope":"services","service_ids":maximum})
+        assert selected.status_code==200 and selected.json()["service_ids"]==maximum
+        for field,value in [("scope","private-scope-must-not-echo"),("service_ids",maximum+["fixture:overflow"]),("service_ids",["private-service-must-not-echo"*6]),("service_ids",[""]),("service_ids","private-service-must-not-echo"),("service_ids",[None]),("service_ids",[7])]:
+            invalid=await client.post("/process/installation-backups/preview",json={"destination_id":"fixture","scope":"services","service_ids":["sonarr:Default"],field:value})
+            assert invalid.status_code==422 and "must-not-echo" not in invalid.text
         compressed=await client.post("/process/installation-backups/preview",json={"destination_id":"fixture","compression":"zstd"})
         assert compressed.status_code==200 and compressed.json()["compression"]=="zstd"
         unsupported=await client.post("/process/installation-backups/preview",json={"destination_id":"fixture","compression":"gzip-private-invalid"})
@@ -155,6 +174,14 @@ async def prove():
         schedule=await client.put("/process/installation-backups/schedule",json={"enabled":False,"destination_id":"","interval_hours":24,"keep_last":7})
         assert schedule.status_code==200 and schedule.json()["schedule"]["enabled"] is False
         assert "compression" not in schedule.json()["schedule"]
+        assert "scope" not in schedule.json()["schedule"] and "service_ids" not in schedule.json()["schedule"]
+        scoped=await client.put("/process/installation-backups/schedule",json={"enabled":False,"scope":"services","service_ids":["sonarr:Default"]})
+        assert scoped.status_code==200 and scoped.json()["schedule"]["scope"]=="services"
+        assert scoped.json()["schedule"]["service_ids"]==["sonarr:Default"]
+        scope_only=await client.put("/process/installation-backups/schedule",json={"enabled":False,"scope":"installation"})
+        assert scope_only.status_code==200 and scope_only.json()["schedule"]["scope"]=="installation" and "service_ids" not in scope_only.json()["schedule"]
+        selection_only=await client.put("/process/installation-backups/schedule",json={"enabled":False,"service_ids":["sonarr:Default"]})
+        assert selection_only.status_code==200 and selection_only.json()["schedule"]["service_ids"]==["sonarr:Default"] and "scope" not in selection_only.json()["schedule"]
         explicit=await client.put("/process/installation-backups/schedule",json={"enabled":False,"compression":"none"})
         assert explicit.status_code==200 and explicit.json()["schedule"]["compression"]=="none"
         explicit=await client.put("/process/installation-backups/schedule",json={"enabled":False,"compression":"zstd"})
@@ -167,6 +194,11 @@ async def prove():
         direct=await client.post("/process/installation-backups/start-direct",json=payload)
         assert direct.status_code==200 and direct.json()["job"]["request_id"]=="d"*32
         assert direct.headers["cache-control"]=="no-store"
+        assert controller.direct_options["scope"]=="installation" and controller.direct_options["service_ids"]==[]
+        scoped_direct=await client.post("/process/installation-backups/start-direct",json={**payload,"scope":"services","service_ids":["sonarr:Default"]})
+        assert scoped_direct.status_code==200 and controller.direct_options["scope"]=="services" and controller.direct_options["service_ids"]==["sonarr:Default"]
+        scoped_direct=await client.post("/process/installation-backups/start-direct",json={**payload,"scope":"services","service_ids":["fixture"]*65})
+        assert scoped_direct.status_code==422
         for wrong in ["private-input-never-echo",None,12]:
             invalid=await client.post("/process/installation-backups/start-direct",json={**payload,"request_id":wrong})
             assert invalid.status_code==422 and "private-input-never-echo" not in invalid.text

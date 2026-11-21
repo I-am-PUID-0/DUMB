@@ -50,6 +50,12 @@ from utils.installation_backup_inventory import (
 
 from utils.installation_backup_limits import paired_workspace_bytes
 from utils.installation_backup_codec import compression_kind
+from utils.service_backup import (
+    ServiceBackupOperations,
+    is_service_plan,
+    retention_key,
+    scope_options,
+)
 
 from utils.installation_backup_lifecycle import BackupLifecycleError, order_resume_rows
 from utils.installation_backup_preview import (
@@ -81,6 +87,8 @@ _SCHEDULE = {
     "interval_hours": 24,
     "keep_last": 7,
     "compression": "none",
+    "scope": "installation",
+    "service_ids": [],
 }
 _BLOCKER = "An installation backup or restore owns managed state, or its retained recovery requires review."
 
@@ -513,8 +521,21 @@ class InstallationBackupManager:
             "cancel_requested",
             "services_stopped",
             "stopped_process_names",
+            "service_restore_committed",
+            "database_progress",
         }
         public = {key: deepcopy(value) for key, value in job.items() if key in keys}
+        plan = job.get("plan") or {}
+        if is_service_plan(plan):
+            public["service_scope"] = deepcopy(plan["service_scope"])
+        elif (plan.get("options") or {}).get("scope") == "services":
+            public["service_scope"] = {
+                "kind": "services",
+                "service_ids": list(plan["options"]["service_ids"]),
+                "services": [],
+                "affected_process_names": [],
+                "database_count": 0,
+            }
         public["can_cancel"] = self._can_cancel(job)
         public["archive_verified"] = self._verified_backup_archive(job) is not None
         public["archive_publication_uncertain"] = bool(
@@ -650,10 +671,18 @@ class InstallationBackupManager:
             ):
                 job.update(
                     status="recovery_required",
-                    stage="interrupted",
+                    stage=(
+                        "service_finish_required"
+                        if job.get("service_restore_committed")
+                        else "interrupted"
+                    ),
                     message="The installation worker is no longer live. Review retained recovery before starting services.",
                     can_rollback=True,
-                    rollback_confirmation_text=f"ROLL BACK {identifier}",
+                    rollback_confirmation_text=(
+                        f"FINISH SERVICE RESTORE {identifier}"
+                        if job.get("service_restore_committed")
+                        else f"ROLL BACK {identifier}"
+                    ),
                 )
                 self._save(job)
             schedule = _SCHEDULE | (self.config.get("installation_backup") or {})
@@ -752,7 +781,9 @@ class InstallationBackupManager:
 
     @staticmethod
     def _verify_controller_proof(metadata, proof):
-        for name in ("config", "auth"):
+        for name in (
+            ("config",) if metadata.get("schema_version") == 2 else ("config", "auth")
+        ):
             expected = metadata.get(name + "_sha256")
             if (
                 not isinstance(expected, str)
@@ -770,7 +801,9 @@ class InstallationBackupManager:
             else inspect_archive(stream, scratch, owner_check=check, progress=progress)
         )
         self._verify_controller_proof(metadata, proof)
-        return proof
+        return {
+            key: value for key, value in proof.items() if key != "service_configuration"
+        }
 
     def _critical_binding(self):
         result = {}
@@ -1032,6 +1065,9 @@ class InstallationBackupManager:
             raise
 
     def _backup_plan(self, options, *, progress=None):
+        selection = scope_options(options)
+        if selection["scope"] == "services":
+            return ServiceBackupOperations(self).backup_plan(options | selection)
         destination = self.storage.bound_identity(options.get("destination_id"))
         scratch = self._workspace("preview")
         if progress:
@@ -1080,6 +1116,9 @@ class InstallationBackupManager:
             "compression": options.get("compression", "none"),
         }, scratch
 
+    def service_choices(self):
+        return ServiceBackupOperations(self).choices()
+
     def _backup_preview(self, options, *, progress=None):
         compression = options.get("compression", "none")
         blockers, roots, details = [], [], []
@@ -1126,6 +1165,10 @@ class InstallationBackupManager:
                     progress=progress,
                     compression=compression,
                 )
+            if is_service_plan(plan):
+                report = ServiceBackupOperations.reserve_database_capacity(
+                    report, plan.get("database_estimated_bytes", 0)
+                )
             report["observed_at"] = self.clock()
             if report["status"] != "sufficient":
                 blockers.append(
@@ -1133,7 +1176,7 @@ class InstallationBackupManager:
                 )
             if self.handler is None:
                 blockers.append("The managed process lifecycle is unavailable.")
-            plan = {
+            plan = plan | {
                 "roots": roots,
                 "exclusions": exclusions,
                 "destination": destination,
@@ -1164,6 +1207,14 @@ class InstallationBackupManager:
                 "This private archive is checksummed, not encrypted or signed.",
             ],
         }
+        if is_service_plan(plan):
+            public["service_scope"] = deepcopy(plan["service_scope"])
+            public["warnings"] = [
+                "Only the selected apps and their affected dependants pause. Shared PostgreSQL stays online.",
+                "Selected settings and databases are included; DUMB accounts, global settings and unselected apps are excluded.",
+                "Services sharing app storage must be selected together. External services and media need their own backups.",
+                "This private archive contains selected service credentials. It is checksummed, not encrypted or signed.",
+            ]
         if progress:
             progress(
                 force=True,
@@ -1420,6 +1471,10 @@ class InstallationBackupManager:
         ):
             raise InstallationBackupError("The backup request identity is invalid.")
         options = {k: request.get(k) for k in ("destination_id", "compression")}
+        selection = scope_options(request)
+        # Keep old whole-installation request receipts byte-compatible.
+        if selection["scope"] == "services":
+            options.update(selection)
         options["compression"] = options["compression"] or "none"
         if (
             not isinstance(options["destination_id"], str)
@@ -1530,6 +1585,24 @@ class InstallationBackupManager:
 
     def _quiesce(self, identifier):
         running = self._running()
+        job = self._job(identifier)
+        scoped = is_service_plan(job.get("plan") or {})
+        if scoped:
+            from utils.service_backup_scope import affected_running_rows
+
+            running = affected_running_rows(
+                self.config, job["plan"]["service_scope"]["service_ids"], running
+            )
+            plan = deepcopy(job["plan"])
+            plan["service_scope"]["affected_process_names"] = [
+                row["name"] for row in running
+            ]
+            self._progress(
+                identifier,
+                "quiescing",
+                "Pausing selected apps and their affected dependants.",
+                plan=plan,
+            )
         self._progress(
             identifier,
             "quiescing",
@@ -1567,11 +1640,16 @@ class InstallationBackupManager:
                     raise InstallationBackupError(
                         "A managed child process group remains live; no snapshot was accepted."
                     )
-        verify_cold_postgres(self.config)
+        if not scoped:
+            verify_cold_postgres(self.config)
         self._progress(
             identifier,
             "quiescing",
-            "The previous managed running set is stopped and verified cold.",
+            (
+                "Selected apps and their affected dependants are stopped and verified."
+                if scoped
+                else "The previous managed running set is stopped and verified cold."
+            ),
             services_stopped=True,
             stopped_process_names=[row["name"] for row in running],
         )
@@ -1641,7 +1719,18 @@ class InstallationBackupManager:
                         postgres.get("port"),
                     )
                 else:
-                    success, error = self.handler.start_process(name)
+                    if (
+                        is_service_plan(job.get("plan") or {})
+                        and job.get("job_type") == "installation_restore"
+                    ):
+                        start = getattr(
+                            self.handler,
+                            "start_prepared_process",
+                            self.handler.start_process,
+                        )
+                        success, error = start(name)
+                    else:
+                        success, error = self.handler.start_process(name)
             except Exception:
                 # Start errors may contain raw environment values, URLs or
                 # subprocess output. Never stringify or persist them here.
@@ -1828,29 +1917,37 @@ class InstallationBackupManager:
                 plan=plan,
             )
         self._quiesce(identifier)
+        plan = self._job(identifier)["plan"]
         progress = self._backup_progress(identifier)
         progress(stage="inventorying", force=True)
         if self._binding() != job["config_binding"]:
             raise InstallationBackupError(
                 "Configuration changed before the cold backup."
             )
-        metadata = {
-            "format": FORMAT,
-            "schema_version": SCHEMA,
-            "created_at": self.clock(),
-            "compatibility": plan["compatibility"],
-            "roots": [
-                {k: value for k, value in root.items() if k != "exclusions"}
-                for root in plan["roots"]
-            ],
-            "excluded": deepcopy(EXCLUSIONS),
-            "excluded_paths": plan["exclusions"],
-            "scope": _SCOPE,
-            "config_path": str(self.config_manager.file_path),
-            "auth_config_path": str(self._critical_files()["auth"]),
-            "auth_sha256": self._controller_json(self._critical_files()["auth"]),
-            "config_sha256": self._controller_json(Path(self.config_manager.file_path)),
-        }
+        if is_service_plan(plan):
+            plan, metadata = ServiceBackupOperations(self).prepare_backup(
+                identifier, plan
+            )
+        else:
+            metadata = {
+                "format": FORMAT,
+                "schema_version": SCHEMA,
+                "created_at": self.clock(),
+                "compatibility": plan["compatibility"],
+                "roots": [
+                    {k: value for k, value in root.items() if k != "exclusions"}
+                    for root in plan["roots"]
+                ],
+                "excluded": deepcopy(EXCLUSIONS),
+                "excluded_paths": plan["exclusions"],
+                "scope": _SCOPE,
+                "config_path": str(self.config_manager.file_path),
+                "auth_config_path": str(self._critical_files()["auth"]),
+                "auth_sha256": self._controller_json(self._critical_files()["auth"]),
+                "config_sha256": self._controller_json(
+                    Path(self.config_manager.file_path)
+                ),
+            }
         scratch = self._workspace(identifier)
 
         def check():
@@ -1900,6 +1997,11 @@ class InstallationBackupManager:
                 "kind": "installation_backup",
                 "compression": plan.get("compression", "none"),
                 "retention_scope": "scheduled" if job.get("scheduled") else "manual",
+                **(
+                    {"service_scope": plan["service_scope"]}
+                    if is_service_plan(plan)
+                    else {}
+                ),
             },
             owner_check=check,
             before_publish=lambda: self._close_backup_cancel(identifier),
@@ -1931,7 +2033,11 @@ class InstallationBackupManager:
             identifier,
             status="completed",
             stage="completed",
-            message="The complete installation archive verified and the previous running services resumed.",
+            message=(
+                "The selected-service archive verified and affected apps resumed."
+                if is_service_plan(plan)
+                else "The complete installation archive verified and the previous running services resumed."
+            ),
             can_rollback=False,
             result={"archive": receipt, "complete": True},
         )
@@ -2017,6 +2123,17 @@ class InstallationBackupManager:
                     else "An unexpected filesystem or lifecycle error occurred."
                 )
                 current = self._job(identifier)
+                if current.get("service_restore_committed"):
+                    self._finish(
+                        identifier,
+                        status="recovery_required",
+                        stage="service_finish_required",
+                        message="Selected service state is committed. Finish its retained cleanup and service resume; old databases must not replace the accepted state.",
+                        errors=[detail],
+                        can_rollback=True,
+                        rollback_confirmation_text=f"FINISH SERVICE RESTORE {identifier}",
+                    )
+                    return
                 if self._verified_backup_archive(current) is not None:
                     self._verified_backup_failure(identifier, current, detail)
                     return
@@ -2319,6 +2436,8 @@ class InstallationBackupManager:
             scratch = self._workspace("restore-preview")
             proof = self._inspect_source(source, scratch)
             metadata = proof["metadata"]
+            if metadata.get("schema_version") == 2:
+                return self._service_restore_preview(source, proof, scratch)
             self._verify_controller_proof(metadata, proof)
             if metadata.get("compatibility") != compatibility(self.config):
                 raise InstallationBackupError(
@@ -2466,6 +2585,94 @@ class InstallationBackupManager:
         }
         return self._preview_record("restore", plan, public)
 
+    def _service_restore_preview(self, source, proof, scratch):
+        operations = ServiceBackupOperations(self)
+        blockers, plan, details = [], {}, []
+        report = {
+            "status": "unavailable",
+            "complete": False,
+            "estimated": True,
+            "reserved": False,
+            "filesystems": [],
+        }
+        try:
+            plan = operations.restore_plan(source, proof, scratch)
+            report = operations.restore_capacity(plan, scratch)
+            if report["status"] != "sufficient":
+                blockers.append(
+                    "There is insufficient room for selected-service staging and retained original databases."
+                )
+            details = [
+                {key: row[key] for key in ("id", "path", "kind", "roles")}
+                for row in plan["roots"]
+            ]
+            if self.handler is None:
+                blockers.append("The managed process lifecycle is unavailable.")
+        except (
+            OSError,
+            ValueError,
+            KeyError,
+            BackupStorageError,
+            InstallationArchiveError,
+            InstallationBackupError,
+        ) as error:
+            blockers.append(str(error))
+        metadata = proof["metadata"]
+        public = {
+            "protocol": PROTOCOL,
+            "ready": not blockers,
+            "confirmation_text": "RESTORE DUMB INSTALLATION",
+            "required_acknowledgements": [
+                "downtime",
+                "replace_state",
+                "external_state",
+            ],
+            "inventory": {"roots": details, "excluded": []},
+            "service_scope": deepcopy(
+                plan.get("service_scope")
+                or {
+                    "kind": "services",
+                    "service_ids": [],
+                    "services": [],
+                    "affected_process_names": [],
+                    "database_count": 0,
+                }
+            ),
+            "backup": {
+                "schema_version": 2,
+                "created_at": (
+                    metadata.get("created_at")
+                    if type(metadata.get("created_at")) in {int, float}
+                    else None
+                ),
+                "compatibility": compatibility(self.config) if plan else None,
+                "verified": True,
+                "compression": proof.get("compression", "none"),
+                "sha256": proof["archive_sha256"],
+                **{
+                    key: source[key]
+                    for key in (
+                        "reference",
+                        "archive_path",
+                        "allow_shared_permissions",
+                        "observed_permissions",
+                    )
+                    if key in source
+                },
+            },
+            "observed_permissions": source.get("observed_permissions"),
+            "capacity": report,
+            "blockers": blockers,
+            "warnings": [
+                "Restore only service archives you trust: selected app settings, credentials, files and databases are replaced.",
+                "This restores the saved service bundle together. The same configured instances, process names and container paths are required.",
+                "DUMB accounts, global settings, enabled selections and unselected services are preserved.",
+                "Selected apps and affected dependants pause and their previous running set resumes after restore; shared PostgreSQL stays online.",
+                "External media, external databases and the container image are excluded.",
+            ],
+        }
+        return self._preview_record("restore", plan, public)
+
     def restore_start(self, request):
         replay = self._replay("restore", request)
         if replay is not None:
@@ -2487,12 +2694,16 @@ class InstallationBackupManager:
                     raise InstallationBackupError(
                         "A restore filesystem changed; review a new preview."
                     )
-            if (
-                self._restore_capacity(
+            report = (
+                ServiceBackupOperations(self).restore_capacity(
+                    plan, self._workspace("restore-preview")
+                )
+                if is_service_plan(plan)
+                else self._restore_capacity(
                     plan["proof"], plan["roots"], self._workspace("restore-preview")
-                )["status"]
-                != "sufficient"
-            ):
+                )
+            )
+            if report["status"] != "sufficient":
                 raise InstallationBackupError(
                     "Restore capacity changed; review a new preview."
                 )
@@ -2579,6 +2790,8 @@ class InstallationBackupManager:
     def _restore(self, identifier):
         job = self._job(identifier)
         plan = job["plan"]
+        if is_service_plan(plan):
+            return ServiceBackupOperations(self).restore(identifier)
         self._progress(
             identifier,
             "verifying",
@@ -2686,9 +2899,14 @@ class InstallationBackupManager:
         with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
             with self._lock:
                 job = self._job(identifier)
+                confirmation = (
+                    f"FINISH SERVICE RESTORE {identifier}"
+                    if job.get("service_restore_committed")
+                    else f"ROLL BACK {identifier}"
+                )
                 if (
                     not job.get("can_rollback")
-                    or request.get("confirmation") != f"ROLL BACK {identifier}"
+                    or request.get("confirmation") != confirmation
                 ):
                     raise InstallationBackupError(
                         "Review the retained job and type its exact rollback confirmation."
@@ -2739,6 +2957,13 @@ class InstallationBackupManager:
                     raise
         try:
             with installation_owner():
+                if job.get("job_type") == "installation_restore" and is_service_plan(
+                    job["plan"]
+                ):
+                    ServiceBackupOperations(self).recover(
+                        identifier, same_boot=same_boot
+                    )
+                    return self.get_job(identifier)
                 if job.get("mutated"):
                     self._rollback_roots(identifier, job)
                 if (
@@ -2784,13 +3009,18 @@ class InstallationBackupManager:
                     result=result,
                 )
         except Exception:
+            current = self._job(identifier)
             self._finish(
                 identifier,
                 status="recovery_required",
                 stage="rollback_interrupted",
                 message="Rollback did not finish; all retained originals and recovery evidence remain protected.",
                 can_rollback=True,
-                rollback_confirmation_text=f"ROLL BACK {identifier}",
+                rollback_confirmation_text=(
+                    f"FINISH SERVICE RESTORE {identifier}"
+                    if current.get("service_restore_committed")
+                    else f"ROLL BACK {identifier}"
+                ),
             )
             raise InstallationBackupError(
                 "Rollback requires recovery review; no concurrent writer was admitted."
@@ -2819,6 +3049,13 @@ class InstallationBackupManager:
 
     def update_schedule(self, options):
         schedule = _SCHEDULE | (self.config.get("installation_backup") or {}) | options
+        if options.get("scope") == "installation":
+            schedule["service_ids"] = []
+        schedule.update(
+            scope_options(schedule, allow_empty=not schedule.get("enabled"))
+        )
+        if schedule.get("enabled") and schedule.get("scope") == "services":
+            ServiceBackupOperations(self).resolve(schedule["service_ids"])
         compression_kind(schedule["compression"])
         if type(schedule.get("enabled")) is not bool or not isinstance(
             schedule.get("destination_id"), str
@@ -2843,6 +3080,9 @@ class InstallationBackupManager:
 
     def _retention(self, latest):
         schedule = _SCHEDULE | (self.config.get("installation_backup") or {})
+        selected_scope = retention_key(latest)
+        if selected_scope is None:
+            raise BackupStorageError("The saved archive has no valid retention scope.")
         rows = [
             x
             for x in self.storage.list_artifacts(
@@ -2850,6 +3090,7 @@ class InstallationBackupManager:
             )
             if x.get("artifact_kind") == "installation_backup"
             and x.get("retention_scope") == "scheduled"
+            and retention_key(x) == selected_scope
         ]
         keep = {latest["reference"]}
         keep.update(
@@ -2902,6 +3143,8 @@ class InstallationBackupManager:
                 "request_id": secrets.token_hex(16),
                 "destination_id": schedule["destination_id"],
                 "compression": schedule.get("compression", "none"),
+                "scope": schedule.get("scope", "installation"),
+                "service_ids": schedule.get("service_ids", []),
                 "confirmation": "BACK UP DUMB INSTALLATION",
                 "acknowledgements": {
                     "downtime": True,

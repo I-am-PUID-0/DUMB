@@ -971,7 +971,14 @@ def _inspect_archive(
                         not isinstance(metadata, dict)
                         or metadata.get("format") != FORMAT
                         or type(metadata.get("schema_version")) is not int
-                        or metadata.get("schema_version") != SCHEMA
+                        or metadata.get("schema_version") not in {SCHEMA, 2}
+                        or (
+                            metadata.get("schema_version") == 2
+                            and (
+                                not isinstance(metadata.get("service_scope"), dict)
+                                or metadata["service_scope"].get("kind") != "services"
+                            )
+                        )
                     ):
                         raise InstallationArchiveError(
                             "The installation archive format is unsupported."
@@ -1086,12 +1093,26 @@ def _inspect_archive(
                             os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
                             0o600,
                         )
+                capture = None
+                if info.isreg() and metadata.get("schema_version") == 2:
+                    selected_root = next(
+                        root for root in roots if root["id"] == parts[1]
+                    )
+                    absolute = Path(selected_root["path"]).joinpath(*parts[2:])
+                    if metadata.get("config_path") == str(absolute):
+                        if info.size > MAX_METADATA:
+                            raise InstallationArchiveError(
+                                "The selected service configuration exceeds its bound."
+                            )
+                        capture = bytearray()
                 digest = hashlib.sha256()
                 if info.isreg():
                     try:
                         with archive.extractfile(info) as stream:
                             while chunk := stream.read(1024 * 1024):
                                 digest.update(chunk)
+                                if capture is not None:
+                                    capture.extend(chunk)
                                 counters.payload_read(len(chunk))
                                 if destination is not None:
                                     pending = memoryview(chunk)
@@ -1104,6 +1125,12 @@ def _inspect_archive(
                         if destination is not None:
                             os.close(descriptor)
                     row["sha256"] = digest.hexdigest()
+                    if capture is not None:
+                        metadata_configuration = json.loads(capture)
+                        if not isinstance(metadata_configuration, dict):
+                            raise InstallationArchiveError(
+                                "The selected service configuration is invalid."
+                            )
                 if info.isreg():
                     selected_root = next(
                         root for root in roots if root["id"] == parts[1]
@@ -1186,6 +1213,11 @@ def _inspect_archive(
             counters.report()
         counters.report(force=True, complete=True)
         return {
+            **(
+                {"service_configuration": metadata_configuration}
+                if metadata.get("schema_version") == 2 and "config" in controller_sha256
+                else {}
+            ),
             "verified": True,
             "compression": compression,
             "metadata": metadata,

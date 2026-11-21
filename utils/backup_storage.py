@@ -1973,6 +1973,11 @@ class BackupStorage:
         } | {
             "artifact_kind": (receipt.get("metadata") or {}).get("kind"),
             "retention_scope": (receipt.get("metadata") or {}).get("retention_scope"),
+            **(
+                {"service_scope": (receipt.get("metadata") or {})["service_scope"]}
+                if (receipt.get("metadata") or {}).get("service_scope")
+                else {}
+            ),
             "allow_shared_permissions": _shared_permissions(receipt),
             **(
                 {

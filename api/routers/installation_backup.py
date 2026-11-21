@@ -52,12 +52,15 @@ installation_backup_router = APIRouter(
     prefix="/installation-backups", route_class=PrivateInstallationRoute
 )
 Destination = Annotated[str, Field(min_length=1, max_length=64)]
+ServiceID = Annotated[str, Field(min_length=1, max_length=128)]
 
 
 class BackupPreviewRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     destination_id: Destination
     compression: Literal["none", "zstd"] = "none"
+    scope: Literal["installation", "services"] = "installation"
+    service_ids: list[ServiceID] = Field(default_factory=list, max_length=64)
 
 
 class RestorePreviewRequest(BaseModel):
@@ -79,6 +82,8 @@ class DirectStartRequest(BaseModel):
     request_id: str = Field(min_length=32, max_length=32, pattern="^[0-9a-f]{32}$")
     destination_id: Destination
     compression: Literal["none", "zstd"] = "none"
+    scope: Literal["installation", "services"] = "installation"
+    service_ids: list[ServiceID] = Field(default_factory=list, max_length=64)
     confirmation: str = Field(min_length=1, max_length=160)
     acknowledgements: dict[str, StrictBool]
 
@@ -95,6 +100,8 @@ class ScheduleRequest(BaseModel):
     interval_hours: int = Field(default=24, ge=1, le=8760, strict=True)
     keep_last: int = Field(default=7, ge=1, le=100, strict=True)
     compression: Literal["none", "zstd"] = "none"
+    scope: Literal["installation", "services"] = "installation"
+    service_ids: list[ServiceID] = Field(default_factory=list, max_length=64)
 
 
 def manager(
@@ -136,6 +143,16 @@ def catalog(
     _user=Depends(get_optional_current_user),
 ):
     return invoke(controller, "catalog", destination_id)
+
+
+@installation_backup_router.get("/services")
+def service_choices(
+    response: Response,
+    controller=Depends(manager),
+    _user=Depends(get_optional_current_user),
+):
+    response.headers["Cache-Control"] = "no-store"
+    return invoke(controller, "service_choices")
 
 
 @installation_backup_router.post("/preview")
@@ -226,8 +243,9 @@ def schedule(
     _user=Depends(get_optional_current_user),
 ):
     options = request.model_dump()
-    if "compression" not in request.model_fields_set:
-        options.pop("compression")
+    for field in ("compression", "scope", "service_ids"):
+        if field not in request.model_fields_set:
+            options.pop(field)
     return invoke(controller, "update_schedule", options)
 
 

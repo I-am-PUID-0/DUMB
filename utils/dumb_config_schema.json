@@ -5816,6 +5816,23 @@
             "none",
             "zstd"
           ]
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "installation",
+            "services"
+          ]
+        },
+        "service_ids": {
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
         }
       },
       "required": [
@@ -5823,7 +5840,9 @@
         "destination_id",
         "interval_hours",
         "keep_last",
-        "compression"
+        "compression",
+        "scope",
+        "service_ids"
       ]
     }
   },
