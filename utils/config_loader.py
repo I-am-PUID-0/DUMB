@@ -4,6 +4,7 @@ from jsonschema import validate, ValidationError
 from dotenv import load_dotenv, find_dotenv
 from collections import OrderedDict
 from utils.release_selection import normalize_release_selectors
+from utils.infinidysk_release_controls import normalize_config
 from utils.runtime_paths import default_config_file, default_schema_file
 from utils.service_identity import INFINIDYSK_KEY, INFINIDYSK_LEGACY_KEY
 
@@ -120,10 +121,11 @@ class ConfigManager:
     def _canonicalize_runtime_config(self, config):
         mapped = self._map_infinidysk_identity(config, INFINIDYSK_KEY)
         mapped = self._map_infinidysk_tokens(mapped, INFINIDYSK_KEY)
-        return normalize_release_selectors(mapped)
+        return normalize_release_selectors(normalize_config(mapped))
 
     def _serialize_config_for_disk(self, config):
         serialized = copy.deepcopy(config)
+        normalize_config(serialized)
         normalize_release_selectors(serialized)
         if self._legacy_infinidysk_identity:
             serialized = self._map_infinidysk_tokens(serialized, INFINIDYSK_LEGACY_KEY)
@@ -533,6 +535,7 @@ class ConfigManager:
                         ConfigManager.fix_null_strings(inst, template_schema)
 
     def save_config(self, process_name=None):
+        normalize_config(self.config)
         if process_name:
             section_config = find_service_config(self.config, process_name)
             if not section_config:

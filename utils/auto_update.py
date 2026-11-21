@@ -10,6 +10,7 @@ from utils.logger import format_time
 from utils.versions import Versions, display_version
 from utils.download import Downloader
 from utils.infinidysk_release_line import validate_infinidysk_source
+from utils.infinidysk_release_controls import selected_release, set_release_selection
 from utils import infinidysk_v2_runtime
 from utils.backup_storage import selected_backup_destination
 from utils.setup import (
@@ -407,11 +408,13 @@ class Update:
 
     def _get_update_block_reason(self, config, key=None):
         if key == "infinidysk" and infinidysk_v2_runtime.is_v2(config):
-            return (
-                None
-                if (config.get("v2_release_version") or "latest") == "latest"
-                else "release"
-            )
+            try:
+                selector = selected_release(config)
+            except ValueError:
+                # Status still needs to report an invalid native selection;
+                # never turn malformed controls into a moving release.
+                return "release"
+            return None if selector == "latest" else "release"
         if config.get("pinned_version"):
             return "pinned_version"
         if str(config.get("commit_sha") or "").strip():
@@ -445,7 +448,10 @@ class Update:
     @staticmethod
     def _configured_target_label(config, block_reason):
         if infinidysk_v2_runtime.is_v2(config):
-            return f"release {config.get('v2_release_version') or infinidysk_v2_runtime.RELEASE}"
+            try:
+                return f"release {selected_release(config)}"
+            except ValueError:
+                return "invalid release selection"
         if block_reason == "commit":
             commit_sha = str(config.get("commit_sha") or "").strip().lower()
             return f"commit {commit_sha[:12]}"
@@ -3734,7 +3740,7 @@ class Update:
         if block_reason:
             payload.update(
                 configured_target_kind="release",
-                configured_target_value=config.get("v2_release_version"),
+                configured_target_value=selected_release(config),
                 configured_target_installed=order == 0,
             )
         return {
@@ -3833,9 +3839,9 @@ class Update:
                 return self._native_runtime_recovery_status(state, original)
             selected = copy.deepcopy(original)
             if recovering:
-                selected["v2_release_version"] = state["target_selector"]
+                set_release_selection(selected, state["target_selector"])
             elif allow_override and requested != "configured":
-                selected["v2_release_version"] = "latest"
+                set_release_selection(selected, "latest")
             block_reason = self._get_update_block_reason(original, key)
             if (
                 not recovering
@@ -3933,7 +3939,15 @@ class Update:
                     "Native configuration changed before the release selection was saved."
                 )
             live = CONFIG_MANAGER.get_instance(instance_name, key)
-            live["v2_release_version"] = selected.get("v2_release_version") or "latest"
+            set_release_selection(
+                live,
+                selected_release(selected),
+                enabled=(
+                    selected.get("release_version_enabled")
+                    if "v2_release_version" not in selected
+                    else None
+                ),
+            )
             CONFIG_MANAGER.save_config(process_name)
 
         def retire_rollback(receipt):
@@ -3992,7 +4006,7 @@ class Update:
                     verify_admission=verify_admission,
                     retire_rollback=retire_rollback,
                     was_running=was_running,
-                    target_selector=selected.get("v2_release_version") or "latest",
+                    target_selector=selected_release(selected),
                 )
             return {
                 "status": "updated",

@@ -22,6 +22,7 @@ import threading
 import time
 from urllib.parse import quote
 
+from utils.infinidysk_release_controls import selected_release, set_release_selection
 from utils.config_loader import CONFIG_MANAGER
 from utils.infinidysk_migration_admission import INFINIDYSK_MIGRATION_ADMISSION_LOCK
 from utils.infinidysk_v2_io_progress import IOProgress, public_io_progress
@@ -62,7 +63,7 @@ from utils.infinidysk_v2_proxy import (
     compatibility_auth_policy,
 )
 from utils.infinidysk_v2_subprocess import migration_process_cleanup_complete
-from utils.infinidysk_v2_support import V2_RELEASE, generation, v1_data_root
+from utils.infinidysk_v2_support import generation, v1_data_root
 from utils.infinidysk_v2_topology import associated_rclone, rclone_mount_path
 
 PROTOCOL = 1
@@ -540,8 +541,15 @@ class InfiniDyskV2MigrationManager:
             cleanup["can_cleanup"] = False
         if (job.get("plan", {}).get("options") or {}).get("reclaim_source_space"):
             cleanup["can_cleanup"] = False
+        from utils.infinidysk_v2_runtime_policy import (
+            LEGACY_RELEASE_RECOVERY,
+            legacy_completed_release_job,
+        )
+
+        legacy_release = legacy_completed_release_job(job)
         rollback = (
             rollback
+            and not legacy_release
             and self._owned_process_cleanup_complete(job)
             and not job.get("runtime_rollback_retired")
             and not cleanup["rollback_retired"]
@@ -575,7 +583,9 @@ class InfiniDyskV2MigrationManager:
             "state": state,
             "can_rollback": rollback,
             "rollback_unavailable_reason": (
-                (job.get("runtime_rollback_retired") or {}).get("reason")
+                LEGACY_RELEASE_RECOVERY
+                if legacy_release
+                else (job.get("runtime_rollback_retired") or {}).get("reason")
             ),
             "runtime_updates_unlocked": job.get("runtime_updates_unlocked") is True,
             "prepare_mode": (
@@ -1373,10 +1383,12 @@ class InfiniDyskV2MigrationManager:
             mount_path=mount_path,
             v2_runtime_dir=str(target_runtime),
             v2_data_dir=str(target_data),
-            v2_release_version=V2_RELEASE,
             postgres_enabled=False,
             enabled=True if mode == "fresh" else bool(service.get("enabled")),
         )
+        # Preparation still installs the importer's fixed verified artifact.
+        # The active service uses the normal moving-release preference.
+        set_release_selection(target_service, "latest")
         timezone = env.get("TZ") or os.environ.get("TZ")
         target_service["env"] = {
             key: value
@@ -1425,6 +1437,7 @@ class InfiniDyskV2MigrationManager:
                 "Upgrade v1 to a native-import-compatible schema (v1.3.0 or newer) first."
             )
         plan = {
+            "release_controls_schema": "standard-v1",
             "protocol": PROTOCOL,
             "job_type": JOB_TYPE,
             "mode": mode,
@@ -1600,7 +1613,14 @@ class InfiniDyskV2MigrationManager:
         binding = copy.deepcopy(
             {
                 key: plan[key]
-                for key in ("mode", "options", "source", "target", "inventory")
+                for key in (
+                    "release_controls_schema",
+                    "mode",
+                    "options",
+                    "source",
+                    "target",
+                    "inventory",
+                )
             }
         )
         if plan.get("backup_storage"):
@@ -2111,6 +2131,7 @@ class InfiniDyskV2MigrationManager:
                         )
             job_id = secrets.token_hex(16)
             job = {
+                "release_controls_schema": "standard-v1",
                 "protocol": PROTOCOL,
                 "job_type": JOB_TYPE,
                 "job_id": job_id,
@@ -3272,12 +3293,15 @@ class InfiniDyskV2MigrationManager:
             "mount_path",
             "v2_data_dir",
             "v2_runtime_dir",
-            "v2_release_version",
         ):
             if prepared.get(key) != plan["target"]["service"].get(key):
                 raise InfiniDyskV2MigrationError(
                     "Prepared runtime configuration differs from the accepted target."
                 )
+        if selected_release(prepared) != selected_release(plan["target"]["service"]):
+            raise InfiniDyskV2MigrationError(
+                "Prepared runtime changed the accepted release selection."
+            )
         expected_tz = plan["source"].get("timezone")
         if expected_tz and (prepared.get("env") or {}).get("TZ") != expected_tz:
             raise InfiniDyskV2MigrationError(
@@ -3820,6 +3844,13 @@ class InfiniDyskV2MigrationManager:
     def rollback(self, request):
         with INFINIDYSK_MIGRATION_ADMISSION_LOCK, self._lock:
             job = self._read(self._job_path(request.get("job_id")))
+            from utils.infinidysk_v2_runtime_policy import (
+                LEGACY_RELEASE_RECOVERY,
+                legacy_completed_release_job,
+            )
+
+            if legacy_completed_release_job(job):
+                raise InfiniDyskV2MigrationError(LEGACY_RELEASE_RECOVERY)
             if job and not self._owned_process_cleanup_complete(job):
                 raise InfiniDyskV2MigrationError(
                     "Owned helper termination is unconfirmed; retain recovery state before rollback."

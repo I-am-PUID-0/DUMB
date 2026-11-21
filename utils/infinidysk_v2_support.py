@@ -89,6 +89,11 @@ def validate_candidate(current, candidate, *, data_root="/data"):
     validator. Ordinary config edits can never supply an authorization receipt.
     """
     current, candidate = current or {}, candidate or {}
+    if "v2_release_version" in candidate and "v2_release_version" not in current:
+        return (
+            False,
+            "Use release_version and release_version_enabled; the old v2 release setting has been replaced.",
+        )
     old, new = generation(current), generation(candidate)
     backend = str(candidate.get("mount_backend") or "rclone")
     if backend not in {"rclone", "fuse"}:
@@ -117,17 +122,11 @@ def validate_candidate(current, candidate, *, data_root="/data"):
                     False,
                     "Legacy database variables are reserved for the guarded major importer.",
                 )
-        if old == "2":
-            from utils.infinidysk_v2_runtime import validate_active_v2_selection
+        from utils.infinidysk_v2_runtime import validate_active_v2_selection
 
-            valid, error = validate_active_v2_selection(candidate)
-            if not valid:
-                return False, error
-        elif str(candidate.get("v2_release_version") or V2_RELEASE) != V2_RELEASE:
-            return (
-                False,
-                "This integration supports the verified InfiniDysk v2.0.0-beta.6 artifact.",
-            )
+        valid, error = validate_active_v2_selection(candidate)
+        if not valid:
+            return False, error
         for name in ("v2_runtime_dir", "v2_data_dir", "mount_path"):
             value = str(candidate.get(name) or "")
             if value and (not Path(value).is_absolute() or ".." in Path(value).parts):

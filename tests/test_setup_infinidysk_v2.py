@@ -358,7 +358,7 @@ class NativeSetupTests(unittest.TestCase):
             with self.subTest(options=options):
                 payload = self.payload()
                 payload["core_services"][0]["service_options"] = {"infinidysk": options}
-                with self.assertRaisesRegex(ValueError, "pinned native"):
+                with self.assertRaisesRegex(ValueError, "Native setup cannot change"):
                     self.plan(payload)
 
     def test_low_level_legacy_provider_entrypoints_refuse_native_before_http_or_db(

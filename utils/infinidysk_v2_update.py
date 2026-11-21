@@ -23,6 +23,7 @@ from utils.infinidysk_v2_runtime import MARKER, MAX_BINARY, runtime_dir
 from utils.infinidysk_v2_releases import release_tag
 from utils.infinidysk_v2_space_control import identity, rename_exclusive
 from utils.private_files import atomic_write_private_text, read_private_text
+from utils.infinidysk_release_controls import selected_release
 
 _FORMAT = "native-runtime-update-v1"
 _ARTIFACT = "official-v2-release-v1"
@@ -105,15 +106,25 @@ def _metadata(value):
     return copy.deepcopy(value)
 
 
-def _service_fingerprint(service):
-    scope = {
-        key: value for key, value in service.items() if key != "v2_release_version"
-    }
+def _service_fingerprint(service, *, version=2):
+    excluded = {"v2_release_version"}
+    if version == 2:
+        excluded.update({"release_version", "release_version_enabled"})
+    scope = {key: value for key, value in service.items() if key not in excluded}
     return hashlib.sha256(
         json.dumps(
             scope, sort_keys=True, separators=(",", ":"), allow_nan=False
         ).encode()
     ).hexdigest()
+
+
+def _service_matches(service, record):
+    return (
+        _service_fingerprint(
+            service, version=record.get("service_fingerprint_version", 1)
+        )
+        == record["service_fingerprint"]
+    )
 
 
 def _selector(value):
@@ -222,6 +233,8 @@ def _load(path, runtime):
         or not re.fullmatch(r"[a-z_]{1,64}", record["stage"])
         or not isinstance(record.get("service_fingerprint"), str)
         or not re.fullmatch(r"[0-9a-f]{64}", record["service_fingerprint"])
+        or type(record.get("service_fingerprint_version", 1)) is not int
+        or record.get("service_fingerprint_version", 1) not in {1, 2}
     ):
         raise NativeUpdateRecoveryRequired()
     for key in ("previous_identity", "candidate_identity"):
@@ -316,7 +329,7 @@ def validate_native_update_launch(service, journal_root):
             and owner["active"] is True
             and owner["runtime"] == str(runtime)
             and owner["id"] == record["id"]
-            and _service_fingerprint(service) == record["service_fingerprint"]
+            and _service_matches(service, record)
         ):
             _artifact(runtime, record["release_metadata"], record["candidate_identity"])
         else:
@@ -348,8 +361,8 @@ def native_runtime_restore_metadata(service, journal_root):
         record = _load(_journal_path(service, journal_root), runtime)
         if (
             record["state"] != "completed"
-            or _service_fingerprint(service) != record["service_fingerprint"]
-            or _selector(service.get("v2_release_version"))
+            or not _service_matches(service, record)
+            or _selector(selected_release(service))
             not in {record["original_selector"], record["target_selector"]}
         ):
             raise NativeUpdateRecoveryRequired()
@@ -529,7 +542,7 @@ def perform_native_update(
                 )
             _call(verify_admission)
             metadata = _metadata(release_metadata)
-            original_selector = _selector(service.get("v2_release_version"))
+            original_selector = _selector(selected_release(service))
             selected = _selector(target_selector or metadata["release"])
             if selected not in {"latest", metadata["release"]}:
                 raise NativeUpdateError(
@@ -572,6 +585,7 @@ def perform_native_update(
                 "candidate_identity": new_identity,
                 "release_metadata": metadata,
                 "service_fingerprint": _service_fingerprint(service),
+                "service_fingerprint_version": 2,
                 "original_selector": original_selector,
                 "target_selector": selected,
                 "launched": False,
@@ -696,9 +710,9 @@ def resume_native_update(
         metadata = record["release_metadata"]
         previous = _direct(record["previous_runtime"])
         try:
-            if _service_fingerprint(service) != record["service_fingerprint"]:
+            if not _service_matches(service, record):
                 raise NativeUpdateRecoveryRequired()
-            if _selector(service.get("v2_release_version")) not in {
+            if _selector(selected_release(service)) not in {
                 record["original_selector"],
                 record["target_selector"],
             }:

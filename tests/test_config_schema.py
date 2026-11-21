@@ -56,20 +56,26 @@ class DumbConfigSchemaTests(unittest.TestCase):
         )
 
     def test_native_runtime_update_selection_is_limited_to_latest_or_v2_tags(self):
-        definition = self.schema["properties"]["infinidysk"]["properties"][
-            "v2_release_version"
-        ]
-        validator = Draft7Validator(definition)
+        definition = self.schema["properties"]["infinidysk"]
+        self.assertNotIn("v2_release_version", definition["properties"])
+        self.assertNotIn("v2_release_version", self.config["infinidysk"])
+        validator = Draft7Validator(self.schema)
         for selected in (
+            "",
             "latest",
             "v2.0.0-beta.6",
             "v2.0.0-beta.10",
             "2.1.0",
             "v2.1.0+build.1",
         ):
-            self.assertEqual([], list(validator.iter_errors(selected)), selected)
+            candidate = json.loads(json.dumps(self.config))
+            candidate["infinidysk"].update(
+                runtime_generation="2",
+                release_version_enabled=True,
+                release_version=selected,
+            )
+            self.assertEqual([], list(validator.iter_errors(candidate)), selected)
         for selected in (
-            "",
             "main",
             "v1.7.1",
             "v3.0.0",
@@ -78,7 +84,16 @@ class DumbConfigSchemaTests(unittest.TestCase):
             "v2.0.0/foreign",
             "v2.0.0-" + "x" * 128,
         ):
-            self.assertTrue(list(validator.iter_errors(selected)), selected)
+            candidate["infinidysk"]["release_version"] = selected
+            self.assertTrue(list(validator.iter_errors(candidate)), selected)
+        candidate["infinidysk"].update(
+            release_version_enabled=False, release_version="rc"
+        )
+        self.assertEqual([], list(validator.iter_errors(candidate)))
+        candidate["infinidysk"].update(
+            runtime_generation="1", release_version_enabled=True
+        )
+        self.assertEqual([], list(validator.iter_errors(candidate)))
 
     def test_whisparr_version_defaults_to_detection_and_permits_both_families(self):
         instance = self.config["whisparr"]["instances"]["Default"]

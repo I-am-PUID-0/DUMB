@@ -38,7 +38,8 @@ class NativeRuntimeRebuildTests(unittest.TestCase):
             "config_dir": str(self.root / "legacy"),
             "v2_runtime_dir": str(self.program),
             "v2_data_dir": str(self.data),
-            "v2_release_version": "latest",
+            "release_version": "latest",
+            "release_version_enabled": False,
         }
         self.handler = SimpleNamespace(logger=Mock())
         self.uid = os.geteuid() or 1000
@@ -70,7 +71,8 @@ class NativeRuntimeRebuildTests(unittest.TestCase):
 
     def completed_update(self, *, original_selector="latest", prepare=None):
         """Create real lifecycle evidence without starting a process or database."""
-        self.service["v2_release_version"] = original_selector
+        self.service["release_version"] = original_selector
+        self.service["release_version_enabled"] = original_selector != "latest"
         self.artifact(self.program, runtime.RELEASE, b"initial beta6 program")
         staging = self.root / "update-staging"
         staging.mkdir()
@@ -100,13 +102,15 @@ class NativeRuntimeRebuildTests(unittest.TestCase):
         return paths[0]
 
     def resolve(self, service):
-        self.assertEqual(service["v2_release_version"], "v2.0.0-beta.10")
+        self.assertEqual(service["release_version"], "v2.0.0-beta.10")
+        self.assertTrue(service["release_version_enabled"])
         self.assertEqual(self.service["v2_runtime_dir"], service["v2_runtime_dir"])
         return {**self.accepted, **self.plan_changes}
 
     @contextmanager
     def stage(self, service, plan, *, uid, gid):
-        self.assertEqual(service["v2_release_version"], "v2.0.0-beta.10")
+        self.assertEqual(service["release_version"], "v2.0.0-beta.10")
+        self.assertTrue(service["release_version_enabled"])
         self.assertEqual((uid, gid), (self.uid, self.gid))
         staging = self.root / "restore-staging"
         staging.mkdir()
@@ -192,7 +196,7 @@ class NativeRuntimeRebuildTests(unittest.TestCase):
         result, initial, _resolve, _stage = self.ensure()
         self.assertEqual(result, (True, None))
         initial.assert_not_called()
-        self.assertEqual(self.service["v2_release_version"], runtime.RELEASE)
+        self.assertEqual(self.service["release_version"], runtime.RELEASE)
         self.assertEqual(
             runtime.installed_active_v2_version(self.service), "v2.0.0-beta.10"
         )
@@ -374,14 +378,15 @@ class NativeRuntimeRebuildTests(unittest.TestCase):
         initial.assert_called_once_with(
             self.handler,
             "InfiniDysk",
-            {**self.service, "v2_release_version": runtime.RELEASE},
+            self.service,
         )
         resolve.assert_not_called()
         stage.assert_not_called()
         self.assertFalse(self.journals.exists())
 
     def test_no_journal_cannot_install_an_unprepared_newer_release(self):
-        self.service["v2_release_version"] = "v2.0.0-beta.10"
+        self.service["release_version"] = "v2.0.0-beta.10"
+        self.service["release_version_enabled"] = True
         resolve, stage = self.assert_refused()
         resolve.assert_not_called()
         stage.assert_not_called()

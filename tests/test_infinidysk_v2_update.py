@@ -429,27 +429,80 @@ class NativeRuntimeUpdateTests(unittest.TestCase):
             self.resume(start_candidate=start)
         start.assert_not_called()
 
+    def test_new_journal_binds_standard_controls_separately_from_service_scope(self):
+        self.service.update(
+            release_version="v2.0.0-beta.6", release_version_enabled=True
+        )
+        self.failed_after_launch()
+        _path, record = self.journal()
+        self.assertEqual(record["service_fingerprint_version"], 2)
+        self.service.update(
+            release_version="v2.0.0-beta.7", release_version_enabled=True
+        )
+        self.assertEqual(self.resume()["state"], "completed")
+
+    def test_invalid_fingerprint_versions_do_not_authorize_retry(self):
+        self.failed_after_launch()
+        path, record = self.journal()
+        for version in (True, 0, 3, "2"):
+            with self.subTest(version=version):
+                record["service_fingerprint_version"] = version
+                path.write_text(json.dumps(record))
+                start = Mock()
+                with self.assertRaises(NativeUpdateRecoveryRequired):
+                    self.resume(start_candidate=start)
+                start.assert_not_called()
+
+    def test_legacy_completed_journal_does_not_block_verified_runtime_or_new_update(
+        self,
+    ):
+        self.service.update(release_version="rc", release_version_enabled=False)
+        self.update()
+        path, record = self.journal()
+        record.pop("service_fingerprint_version")
+        record["service_fingerprint"] = hashlib.sha256(
+            json.dumps(
+                self.service, sort_keys=True, separators=(",", ":"), allow_nan=False
+            ).encode()
+        ).hexdigest()
+        path.write_text(json.dumps(record))
+        self.service["release_version"] = "latest"
+        self.assertTrue(validate_native_update_launch(self.service, self.journals))
+        self.assertFalse(
+            native_update_state(self.service, self.journals)["recovery_required"]
+        )
+        self.new = self.artifact(self.candidate, "v2.0.0-beta.8", b"newer program")
+        result = self.update()
+        self.assertEqual(result["service_fingerprint_version"], 2)
+        self.assertEqual(result["state"], "completed")
+        history = list(self.journals.glob("*.history"))
+        self.assertEqual(len(history), 1)
+        self.assertEqual(json.loads(history[0].read_text()), record)
+
     def test_resume_allows_only_a_selector_save_before_final_journal_commit(self):
         self.failed_after_launch()
-        self.service["v2_release_version"] = "v2.0.0-beta.7"
+        self.service["release_version"] = "v2.0.0-beta.7"
+        self.service["release_version_enabled"] = True
         result = self.resume()
         self.assertEqual(result["state"], "completed")
 
     def test_manual_latest_override_survives_failed_update_and_retry(self):
-        self.service["v2_release_version"] = "v2.0.0-beta.6"
+        self.service["release_version"] = "v2.0.0-beta.6"
+        self.service["release_version_enabled"] = True
         with self.assertRaises(NativeUpdateRecoveryRequired):
             self.update(target_selector="latest", wait_ready=lambda: False)
         self.assertEqual(
             native_update_state(self.service, self.journals)["target_selector"],
             "latest",
         )
-        self.assertEqual(self.service["v2_release_version"], "v2.0.0-beta.6")
+        self.assertEqual(self.service["release_version"], "v2.0.0-beta.6")
         result = self.resume()
         self.assertEqual(result["target_selector"], "latest")
 
     def test_unrelated_release_selector_edit_cannot_retarget_resume(self):
         self.failed_after_launch()
-        self.service["v2_release_version"] = "v2.0.0-beta.8"
+        self.service["release_version"] = "v2.0.0-beta.8"
+        self.service["release_version_enabled"] = True
         start = Mock()
         with self.assertRaises(NativeUpdateRecoveryRequired):
             self.resume(start_candidate=start)

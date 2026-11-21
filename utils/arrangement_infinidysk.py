@@ -57,7 +57,7 @@ def project_choice(current, target, options, values, config):
         for key in NATIVE_SOURCE_FIELDS
     ):
         raise ValueError(
-            "Preserve the pinned native runtime and retained source identity; legacy source selectors are not native setup options."
+            "Native setup cannot change release or source settings. Change release preferences on the service page after installation."
         )
     environment = options.get("env") or {}
     if not isinstance(environment, dict):

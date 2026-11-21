@@ -242,6 +242,59 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
         self.assertEqual("rehearsed", job["status"], job)
         return preview, request, job
 
+    def test_new_plan_uses_standard_release_controls_without_exposing_import_pin(self):
+        self.config.config["infinidysk"].update(
+            release_version_enabled=True, release_version="v1.7.1"
+        )
+        original = copy.deepcopy(self.config.config)
+        plan = self.manager._plan(
+            {
+                "mode": "migrate",
+                "mount_backend": "rclone",
+                "import_strategy": "preserve",
+            }
+        )
+        self.assertEqual(plan["release_controls_schema"], "standard-v1")
+        self.assertEqual(plan["source"]["service"]["release_version"], "v1.7.1")
+        service = plan["target"]["service"]
+        self.assertEqual(service["release_version"], "latest")
+        self.assertFalse(service["release_version_enabled"])
+        self.assertNotIn("v2_release_version", service)
+        self.assertEqual(self.config.config, original)
+
+    def test_legacy_completed_record_retires_automatic_rollback_without_changing_files(
+        self,
+    ):
+        _, request, rehearsal = self.rehearsal()
+        request["rehearsal_job_id"] = rehearsal["job_id"]
+        completed = self.wait(self.manager.start(request))
+        identifier = completed["job_id"]
+        path = self.manager._job_path(identifier)
+        record = self.manager._read(path)
+        record.pop("release_controls_schema")
+        record["plan"].pop("release_controls_schema")
+        self.manager._write(path, record)
+        saved = path.read_bytes()
+        source = (self.source / "db.sqlite").read_bytes()
+        public = self.manager.get_job(identifier)["job"]
+        self.assertFalse(public["can_rollback"])
+        self.assertFalse(public["actions"]["rollback"])
+        self.assertIn(
+            "retired release configuration", public["rollback_unavailable_reason"]
+        )
+        with self.assertRaisesRegex(
+            InfiniDyskV2MigrationError, "retired release configuration"
+        ):
+            self.manager.rollback(
+                {
+                    "job_id": identifier,
+                    "confirmation": public["rollback_confirmation_text"],
+                }
+            )
+        self.assertEqual(path.read_bytes(), saved)
+        self.assertEqual((self.source / "db.sqlite").read_bytes(), source)
+        self.assertTrue(Path(record["snapshot"]["data_snapshot"]).is_dir())
+
     def test_preview_is_private_metadata_and_never_runs_converter(self):
         preview, request = self.preview_request()
         self.assertTrue(preview["rehearsal_required"])

@@ -16,6 +16,7 @@ import urllib.error
 from pathlib import Path
 
 from utils.infinidysk_v2_proxy import compatibility_auth_environment
+from utils.infinidysk_release_controls import selected_release, set_release_selection
 from utils.infinidysk_v2_fuse import validate_fuse_prerequisites
 
 from utils.infinidysk_v2_topology import (
@@ -51,8 +52,6 @@ def validate_v2_selection(service):
             False,
             "InfiniDysk 2.x currently supports only the pinned official release archive",
         )
-    if str(service.get("v2_release_version") or RELEASE) != RELEASE:
-        return False, f"Unsupported native release; supported release is {RELEASE}"
     if (
         str(service.get("repo_owner") or "infinidysk").lower() != "infinidysk"
         or str(service.get("repo_name") or "infinidysk").lower() != "infinidysk"
@@ -139,12 +138,12 @@ def ensure_active_v2_runtime(process_handler, process_name, service):
                 False,
                 "The accepted native runtime requires verified runtime ownership before it can be restored.",
             )
-    selected = service.get("v2_release_version") or "latest"
+    selected = selected_release(service)
     if selected not in {"latest", RELEASE, RELEASE.lstrip("v")}:
         return False, "Prepare InfiniDysk 2 before selecting a newer managed release."
-    return install_v2_runtime(
-        process_handler, process_name, {**service, "v2_release_version": RELEASE}
-    )
+    # Initial installation always uses the internally qualified migration artifact.
+    # A user-facing release selector never changes this preparation boundary.
+    return install_v2_runtime(process_handler, process_name, service)
 
 
 def _restore_accepted_v2_runtime(
@@ -166,7 +165,8 @@ def _restore_accepted_v2_runtime(
             )
         # A retained user's older selector must never downgrade already upgraded
         # data. Resolve the immutable accepted tag, never the latest channel.
-        restore_service = {**service, "v2_release_version": accepted["release"]}
+        restore_service = dict(service)
+        set_release_selection(restore_service, accepted["release"], enabled=True)
         plan = resolve_v2_release(restore_service)
         if any(
             plan[key] != accepted[key]

@@ -32,16 +32,21 @@ class Config:
                 "process_name": "InfiniDysk",
                 "v2_runtime_dir": str(root / "runtime"),
                 "v2_data_dir": str(root / "data"),
-                "v2_release_version": RELEASE,
+                "release_version_enabled": True,
+                "release_version": RELEASE,
             },
         }
         self.saved = []
+        self.file_path = str(root / "dumb-config.json")
+        self.save_config("fixture")
+        self.saved.clear()
 
     def get(self, key):
         return self.config.get(key)
 
     def save_config(self, name):
         self.saved.append(name)
+        Path(self.file_path).write_text(json.dumps(self.config))
 
 
 class MajorHarness:
@@ -67,10 +72,11 @@ class MajorHarness:
             "accepted_import": {"immutable": "receipt"},
             "result": {"restart_required": False},
             "plan": {
+                "release_controls_schema": "standard-v1",
                 "target": {
                     "runtime_dir": service["v2_runtime_dir"],
                     "data_dir": service["v2_data_dir"],
-                }
+                },
             },
             "consumer_recovery": {
                 "schema": 1,
@@ -139,6 +145,7 @@ class RuntimePolicyTests(unittest.TestCase):
         job = {
             "job_id": "b" * 32,
             "status": "completed",
+            "release_controls_schema": "standard-v1",
             "can_rollback": True,
             "service_fingerprint": _fingerprint(self.config.get("infinidysk")),
         }
@@ -157,73 +164,93 @@ class RuntimePolicyTests(unittest.TestCase):
             "release_metadata": {"release": "v2.0.0-beta.7"},
         }
 
-    def test_unlock_once_rebinds_only_live_selector_and_retains_original_evidence(self):
+    def legacy_job(self):
+        self.major.job["plan"].pop("release_controls_schema")
+        return self.major.job
+
+    def test_new_jobs_never_override_normal_release_preferences(self):
+        for selected, enabled in (
+            ("latest", False),
+            (RELEASE, True),
+            ("v2.0.0-beta.10", True),
+        ):
+            with self.subTest(selected=selected):
+                service = self.config.get("infinidysk")
+                service.update(
+                    release_version=selected, release_version_enabled=enabled
+                )
+                before = copy.deepcopy(self.config.config)
+                self.assertFalse(self.major.unlock_runtime_updates())
+                self.assertEqual(self.config.config, before)
+                self.assertEqual(self.config.saved, [])
+
+    def test_legacy_migration_pin_releases_once_without_rewriting_original_records(
+        self,
+    ):
+        self.legacy_job()
         before = copy.deepcopy(self.major.job)
-        self.pg_job()
+        pg = self.pg_job()
         self.assertTrue(self.major.unlock_runtime_updates())
-        self.assertEqual(self.config.get("infinidysk")["v2_release_version"], "latest")
-        self.assertEqual(self.major.job["plan"], before["plan"])
-        self.assertEqual(self.major.job["accepted_import"], before["accepted_import"])
-        self.assertNotIn("runtime_rollback_retired", self.major.job)
-        self.assertTrue(self.pg._job()["can_rollback"])
-        self.assertEqual(
-            self.pg._job()["service_fingerprint"],
-            _fingerprint(self.config.get("infinidysk")),
-        )
-        self.assertEqual(
-            self.major.job["activation_fingerprint"],
-            _digest(self.config.get("infinidysk")),
-        )
-        self.config.get("infinidysk")["v2_release_version"] = RELEASE
+        service = self.config.get("infinidysk")
+        self.assertEqual(service["release_version"], "latest")
+        self.assertFalse(service["release_version_enabled"])
+        self.assertNotIn("v2_release_version", service)
+        self.assertEqual(self.major.job, {**before, "runtime_updates_unlocked": True})
+        self.assertEqual(self.pg._job(), pg)
+        service.update(release_version=RELEASE, release_version_enabled=True)
         self.assertFalse(self.major.unlock_runtime_updates())
-        self.assertEqual(self.config.get("infinidysk")["v2_release_version"], RELEASE)
+        self.assertEqual(service["release_version"], RELEASE)
+        self.assertTrue(service["release_version_enabled"])
 
-    def test_failed_configuration_save_leaves_resumable_exact_intent(self):
+    def test_failed_config_save_retains_exact_original_and_can_retry(self):
+        self.legacy_job()
+        before, job = copy.deepcopy(self.config.config), copy.deepcopy(self.major.job)
         with patch.object(
             self.config, "save_config", side_effect=OSError("fixture save failure")
         ):
             with self.assertRaises(OSError):
                 self.major.unlock_runtime_updates()
-        self.assertEqual(self.config.get("infinidysk")["v2_release_version"], RELEASE)
-        self.assertEqual(self.major.job["runtime_updates_unlock"]["state"], "pending")
-        self.assertIsNotNone(self.major.runtime_update_blocker())
+        self.assertEqual(self.config.config, before)
+        self.assertEqual(self.major.job, job)
         self.assertTrue(self.major.unlock_runtime_updates())
-        self.assertIsNone(self.major.runtime_update_blocker())
 
-    def test_failed_provider_rebind_resumes_after_configuration_was_saved(self):
-        self.pg_job()
+    def test_restart_after_config_save_finishes_marker_without_unpinning_again(self):
+        self.legacy_job()
+        original = copy.deepcopy(self.major.job)
         with patch.object(
-            self.pg,
-            "rebind_runtime_selector",
-            side_effect=OSError("fixture provider journal failure"),
+            self.major, "_write", side_effect=OSError("fixture journal failure")
         ):
             with self.assertRaises(OSError):
                 self.major.unlock_runtime_updates()
-        self.assertEqual(self.config.get("infinidysk")["v2_release_version"], "latest")
-        self.assertEqual(self.major.job["runtime_updates_unlock"]["state"], "pending")
-        self.assertTrue(self.major.unlock_runtime_updates())
-        self.assertEqual(
-            self.pg._job()["service_fingerprint"],
-            _fingerprint(self.config.get("infinidysk")),
+        self.assertEqual(self.major.job, original)
+        self.config.config = json.loads(Path(self.config.file_path).read_text())
+        self.assertEqual(self.config.get("infinidysk")["release_version"], "latest")
+        self.assertFalse(self.major.unlock_runtime_updates())
+        self.assertTrue(self.major.job["runtime_updates_unlocked"])
+        self.config.get("infinidysk").update(
+            release_version=RELEASE, release_version_enabled=True
         )
+        self.assertFalse(self.major.unlock_runtime_updates())
+        self.assertEqual(self.config.get("infinidysk")["release_version"], RELEASE)
 
-    def test_unrelated_change_cannot_reuse_pending_selector_intent(self):
-        with patch.object(
-            self.config, "save_config", side_effect=OSError("fixture save failure")
-        ):
-            with self.assertRaises(OSError):
-                self.major.unlock_runtime_updates()
-        self.config.get("infinidysk")["mount_path"] = "/example/changed"
-        with self.assertRaises(InfiniDyskV2MigrationError):
-            self.major.unlock_runtime_updates()
-        self.assertEqual(self.config.get("infinidysk")["v2_release_version"], RELEASE)
+    def test_existing_explicit_user_selection_is_preserved(self):
+        self.legacy_job()
+        self.config.get("infinidysk").update(
+            release_version="v2.0.0-beta.10", release_version_enabled=True
+        )
+        self.assertFalse(self.major.unlock_runtime_updates())
+        self.assertTrue(self.major.job["runtime_updates_unlocked"])
+        self.assertEqual(
+            self.config.get("infinidysk")["release_version"], "v2.0.0-beta.10"
+        )
 
     def test_unsettled_consumers_restart_cleanup_and_uncommitted_jobs_do_not_unlock(
         self,
     ):
-        for field in ("consumers", "restart", "cleanup", "committed"):
+        for field in ("consumers", "restart", "cleanup", "committed", "active"):
             with self.subTest(field=field):
                 self.major = MajorHarness(self.config)
+                self.legacy_job()
                 if field == "consumers":
                     self.major.job["consumer_recovery"]["pending"] = ["Example Arr"]
                 elif field == "restart":
@@ -231,38 +258,46 @@ class RuntimePolicyTests(unittest.TestCase):
                     self.major.job["worker_id"] = self.major._worker_id
                 elif field == "cleanup":
                     self.major.job["staging_cleanup_required"] = True
+                elif field == "active":
+                    self.major.blocked = True
                 else:
                     self.major.job["activation_committed"] = False
+                before = copy.deepcopy(self.config.config)
                 self.assertFalse(self.major.unlock_runtime_updates())
                 self.assertIsNotNone(self.major.runtime_update_blocker())
-                self.assertEqual(
-                    self.config.get("infinidysk")["v2_release_version"], RELEASE
-                )
+                self.assertEqual(self.config.config, before)
 
     def test_database_operation_always_prevents_unlock(self):
+        self.legacy_job()
         self.pg_job(status="copying")
         self.assertFalse(self.major.unlock_runtime_updates())
         self.assertIsNotNone(self.major.runtime_update_blocker())
 
-    def test_active_installation_backup_keeps_selector_and_private_job_unchanged(self):
-        configuration = copy.deepcopy(self.config.config)
-        job = copy.deepcopy(self.major.job)
+    def test_active_installation_backup_keeps_selector_and_job_unchanged(self):
+        self.legacy_job()
+        configuration, job = copy.deepcopy(self.config.config), copy.deepcopy(
+            self.major.job
+        )
         with patch(
             "utils.installation_backup.installation_backup_blocker",
-            return_value="Installation backup owns configuration persistence.",
+            return_value="Backup owns persistence.",
         ):
             self.assertFalse(self.major.unlock_runtime_updates())
         self.assertEqual(self.config.config, configuration)
         self.assertEqual(self.major.job, job)
         self.assertEqual(self.config.saved, [])
-        self.assertTrue(self.major.unlock_runtime_updates())
-        self.assertEqual(self.config.get("infinidysk")["v2_release_version"], "latest")
 
     def test_fresh_native_install_needs_no_old_major_job(self):
         self.major.job = None
-        self.config.get("infinidysk")["v2_release_version"] = "latest"
         self.assertFalse(self.major.unlock_runtime_updates())
         self.assertIsNone(self.major.runtime_update_blocker())
+
+    def test_legacy_pending_selector_metadata_does_not_block_settled_updates(self):
+        self.legacy_job()
+        self.major.job["runtime_updates_unlock"] = {"state": "pending", "legacy": True}
+        self.assertIsNone(self.major.runtime_update_blocker())
+        self.assertTrue(self.major.unlock_runtime_updates())
+        self.assertTrue(self.major.job["runtime_updates_unlocked"])
 
     def test_actual_update_retires_both_rollback_actions_without_removing_backups(self):
         self.pg_job()
@@ -285,7 +320,8 @@ class RuntimePolicyTests(unittest.TestCase):
         before = copy.deepcopy(self.config.get("infinidysk"))
         after = {
             **before,
-            "v2_release_version": "latest",
+            "release_version": "latest",
+            "release_version_enabled": False,
             "mount_path": "/example/changed",
         }
         with self.assertRaises(NativePostgresError):

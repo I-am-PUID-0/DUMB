@@ -443,15 +443,22 @@ class InfiniDyskV2PostgresManager:
 
     @staticmethod
     def _public(job):
-        return (
-            {
-                key: copy.deepcopy(value)
-                for key, value in job.items()
-                if key in _PUBLIC_JOB
-            }
-            if job
-            else None
-        )
+        if not job:
+            return None
+        public = {
+            key: copy.deepcopy(value)
+            for key, value in job.items()
+            if key in _PUBLIC_JOB
+        }
+        if (
+            job.get("status") == "completed"
+            and job.get("release_controls_schema") != "standard-v1"
+        ):
+            from utils.infinidysk_v2_runtime_policy import LEGACY_RELEASE_RECOVERY
+
+            public["can_rollback"] = False
+            public["rollback_unavailable_reason"] = LEGACY_RELEASE_RECOVERY
+        return public
 
     def has_blocking_job(self):
         # Admission holds the shared lock. Do not wait for this manager's I/O
@@ -724,7 +731,10 @@ class InfiniDyskV2PostgresManager:
                 "rollback": bool(
                     job
                     and (
-                        (job.get("status") == "completed" and job.get("can_rollback"))
+                        (
+                            job.get("status") == "completed"
+                            and (self._public(job) or {}).get("can_rollback")
+                        )
                         or (
                             job.get("status") == "rolling_back"
                             and job.get("rollback_requested")
@@ -771,6 +781,7 @@ class InfiniDyskV2PostgresManager:
                 if value["expires_at"] > self.clock()
             }
             record = {
+                "release_controls_schema": "standard-v1",
                 "target_private": target,
                 "target_identity": identity,
                 "target_url_private": url,
@@ -1030,6 +1041,14 @@ class InfiniDyskV2PostgresManager:
     def rollback(self, request):
         with self._lock:
             retained = self._job()
+            if (
+                retained
+                and retained.get("status") == "completed"
+                and retained.get("release_controls_schema") != "standard-v1"
+            ):
+                from utils.infinidysk_v2_runtime_policy import LEGACY_RELEASE_RECOVERY
+
+                raise NativePostgresError(LEGACY_RELEASE_RECOVERY)
             if retained and retained.get("runtime_rollback_retired"):
                 from utils.infinidysk_v2_runtime_policy import ROLLBACK_RETIRED
 

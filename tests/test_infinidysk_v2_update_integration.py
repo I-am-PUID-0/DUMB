@@ -59,7 +59,8 @@ class NativeUpdateIntegrationTests(unittest.TestCase):
             "repo_name": "infinidysk",
             "v2_runtime_dir": str(self.runtime),
             "v2_data_dir": str(self.root / "data"),
-            "v2_release_version": selected,
+            "release_version": selected,
+            "release_version_enabled": selected != "latest",
             "config_dir": str(self.root / "legacy"),
             "mount_backend": "rclone",
             "auto_update": True,
@@ -258,6 +259,32 @@ class NativeUpdateIntegrationTests(unittest.TestCase):
         self.manager.save_config.assert_not_called()
 
     @isolated_update_test
+    def test_disabled_release_control_ignores_dormant_v1_value(self):
+        from utils.infinidysk_v2_releases import selected_release
+
+        updater = self.fixture()
+        self.config.update(release_version="rc", release_version_enabled=False)
+        self.assertIsNone(updater._get_update_block_reason(self.config, "infinidysk"))
+        self.assertEqual(selected_release(self.config), "latest")
+        payload = updater._native_runtime_update_status("InfiniDysk", self.config)
+        self.assertEqual(payload["status"], "update_available")
+        self.assertTrue(payload["auto_update_enabled"])
+        self.assertNotIn("configured_target_value", payload)
+        self.patches["resolve"].assert_called_with(self.config)
+
+    @isolated_update_test
+    def test_invalid_release_flag_is_a_status_error_before_network_or_mutation(self):
+        updater = self.fixture()
+        self.config["release_version_enabled"] = "true"
+        payload = updater._native_runtime_update_status("InfiniDysk", self.config)
+        self.assertEqual(payload["status"], "error")
+        self.assertEqual(payload["reason"], "unsupported_source")
+        for name in ("resolve", "stage", "perform", "resume"):
+            self.patches[name].assert_not_called()
+        updater.process_handler.stop_process.assert_not_called()
+        self.manager.save_config.assert_not_called()
+
+    @isolated_update_test
     def test_configured_release_does_not_silently_follow_latest(self):
         self.fixture(selected="v2.0.0-beta.7")
         self.plan["release"] = "v2.0.0-beta.7"
@@ -265,16 +292,17 @@ class NativeUpdateIntegrationTests(unittest.TestCase):
         payload = self.update(manual=True, target="configured")
         self.assertEqual(payload["status"], "updated")
         resolved = self.patches["resolve"].call_args.args[0]
-        self.assertEqual(resolved["v2_release_version"], "v2.0.0-beta.7")
-        self.assertEqual(self.config["v2_release_version"], "v2.0.0-beta.7")
+        self.assertEqual(resolved["release_version"], "v2.0.0-beta.7")
+        self.assertEqual(self.config["release_version"], "v2.0.0-beta.7")
 
     @isolated_update_test
     def test_explicit_latest_override_uses_latest_without_early_config_mutation(self):
         self.fixture(selected="v2.0.0-beta.7")
 
         def resolved(service):
-            self.assertEqual(service["v2_release_version"], "latest")
-            self.assertEqual(self.config["v2_release_version"], "v2.0.0-beta.7")
+            self.assertEqual(service["release_version"], "latest")
+            self.assertFalse(service["release_version_enabled"])
+            self.assertEqual(self.config["release_version"], "v2.0.0-beta.7")
             return self.plan
 
         self.patches["resolve"].side_effect = resolved
@@ -339,7 +367,7 @@ class NativeUpdateIntegrationTests(unittest.TestCase):
         updater.process_handler.start_prepared_process.assert_not_called()
         updater._wait_for_update_health.assert_not_called()
         updater.start_process.assert_not_called()
-        self.assertEqual(self.config["v2_release_version"], "latest")
+        self.assertEqual(self.config["release_version"], "latest")
         self.manager.save_config.assert_called()
         self.patches["major_retire"].assert_called_once()
         self.patches["pg_retire"].assert_called_once()
@@ -349,7 +377,7 @@ class NativeUpdateIntegrationTests(unittest.TestCase):
         updater = self.fixture(running=True, selected="v2.0.0-beta.7")
 
         def health(name):
-            self.assertEqual(self.config["v2_release_version"], "v2.0.0-beta.7")
+            self.assertEqual(self.config["release_version"], "v2.0.0-beta.7")
             self.manager.save_config.assert_not_called()
             self.events.append("health")
             return True, None
@@ -370,7 +398,7 @@ class NativeUpdateIntegrationTests(unittest.TestCase):
         self.assertLess(
             self.events.index("health"), self.events.index("save_selection")
         )
-        self.assertEqual(self.config["v2_release_version"], "latest")
+        self.assertEqual(self.config["release_version"], "latest")
 
     @isolated_update_test
     def test_postlaunch_failure_retains_new_runtime_without_generic_rollback(self):
@@ -429,13 +457,14 @@ class NativeUpdateIntegrationTests(unittest.TestCase):
 
         @contextmanager
         def stage_after_user_edit(*args, **kwargs):
-            self.config["v2_release_version"] = "v2.0.0-beta.9"
+            self.config["release_version"] = "v2.0.0-beta.9"
+            self.config["release_version_enabled"] = True
             yield self.candidate, self.metadata
 
         self.patches["stage"].side_effect = stage_after_user_edit
         payload = self.update(manual=True)
         self.assertIn(payload["status"], {"blocked", "error"})
-        self.assertEqual(self.config["v2_release_version"], "v2.0.0-beta.9")
+        self.assertEqual(self.config["release_version"], "v2.0.0-beta.9")
         updater.process_handler.stop_process.assert_not_called()
         updater.process_handler.start_prepared_process.assert_not_called()
         self.manager.save_config.assert_not_called()
@@ -455,9 +484,9 @@ class NativeUpdateIntegrationTests(unittest.TestCase):
         }
         payload = self.update(manual=True)
         self.assertEqual(payload["status"], "updated")
-        self.assertEqual(self.config["v2_release_version"], "latest")
+        self.assertEqual(self.config["release_version"], "latest")
         configured = self.patches["configure"].call_args.args[2]
-        self.assertEqual(configured["v2_release_version"], "latest")
+        self.assertEqual(configured["release_version"], "latest")
         self.patches["resolve"].assert_not_called()
         self.patches["stage"].assert_not_called()
 
@@ -732,7 +761,8 @@ class NativeUpdateIntegrationTests(unittest.TestCase):
         updater.reschedule_auto_update = Mock()
 
         def unlock():
-            self.config["v2_release_version"] = "latest"
+            self.config["release_version"] = "latest"
+            self.config["release_version_enabled"] = False
             return True
 
         self.patches["unlock"].side_effect = unlock
@@ -740,7 +770,8 @@ class NativeUpdateIntegrationTests(unittest.TestCase):
             for enabled, mode in ((False, "apply"), (True, "check_only")):
                 with self.subTest(auto_update=enabled, mode=mode):
                     self.config.update(
-                        v2_release_version="v2.0.0-beta.6",
+                        release_version="v2.0.0-beta.6",
+                        release_version_enabled=True,
                         auto_update=enabled,
                         auto_update_mode=mode,
                     )
@@ -748,7 +779,11 @@ class NativeUpdateIntegrationTests(unittest.TestCase):
                     self.patches["unlock"].reset_mock()
                     updater.reschedule_auto_update.reset_mock()
                     self.assertTrue(updater.release_completed_native_migration())
-                    expected = {**before, "v2_release_version": "latest"}
+                    expected = {
+                        **before,
+                        "release_version": "latest",
+                        "release_version_enabled": False,
+                    }
                     self.assertEqual(self.config, expected)
                     self.patches["unlock"].assert_called_once_with()
                     updater.reschedule_auto_update.assert_called_once_with("InfiniDysk")
@@ -810,17 +845,18 @@ class NativeUpdateIntegrationTests(unittest.TestCase):
         updater = self.fixture(selected="v2.0.0-beta.6")
         self.patches["major_blocker"].side_effect = lambda: (
             "The native selector change needs to finish before updating."
-            if self.config["v2_release_version"] != "latest"
+            if self.config["release_version"] != "latest"
             else None
         )
 
         def unlock():
-            self.config["v2_release_version"] = "latest"
+            self.config["release_version"] = "latest"
+            self.config["release_version_enabled"] = False
             return True
 
         self.patches["unlock"].side_effect = unlock
         self.assertIsNone(updater._native_runtime_policy_blocker(allow_unlock=True))
-        self.assertEqual(self.config["v2_release_version"], "latest")
+        self.assertEqual(self.config["release_version"], "latest")
         self.patches["unlock"].assert_called_once_with()
         self.patches["resolve"].assert_not_called()
         self.patches["stage"].assert_not_called()

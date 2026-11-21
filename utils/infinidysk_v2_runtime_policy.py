@@ -5,12 +5,29 @@ import re
 import time
 
 from utils.infinidysk_migration_admission import INFINIDYSK_MIGRATION_ADMISSION_LOCK
+from utils.infinidysk_release_controls import selected_release, set_release_selection
 from utils.infinidysk_v2_runtime import (
     RELEASE,
     installed_v2_version,
     resolve_v2_data_dir,
     runtime_dir,
 )
+
+RELEASE_CONTROLS_SCHEMA = "standard-v1"
+LEGACY_RELEASE_RECOVERY = (
+    "This completed migration used the retired release configuration format. "
+    "Its recovery files remain retained, but automatic rollback is unavailable."
+)
+
+
+def legacy_completed_release_job(job):
+    return bool(
+        job
+        and job.get("status") == "completed"
+        and (job.get("plan") or {}).get("release_controls_schema")
+        != RELEASE_CONTROLS_SCHEMA
+    )
+
 
 ROLLBACK_RETIRED = (
     "This retained migration rollback is unavailable because a later native "
@@ -76,7 +93,11 @@ def major_runtime_update_blocker(manager):
                 blocker = _settled(manager, job)
                 if blocker:
                     return blocker
-                if (job.get("runtime_updates_unlock") or {}).get("state") == "pending":
+                if (
+                    not legacy_completed_release_job(job)
+                    and (job.get("runtime_updates_unlock") or {}).get("state")
+                    == "pending"
+                ):
                     return "The native runtime selector change needs to finish before an update."
     return None
 
@@ -85,12 +106,13 @@ def _selector_pair(old_service, new_service):
     from utils.infinidysk_v2_postgres import NativePostgresError
 
     old, new = copy.deepcopy(old_service), copy.deepcopy(new_service)
-    old.pop("v2_release_version", None)
-    new.pop("v2_release_version", None)
-    if (
-        old != new
-        or str(old_service.get("v2_release_version") or RELEASE) != RELEASE
-        or new_service.get("v2_release_version") != "latest"
+    for value in (old, new):
+        for key in ("v2_release_version", "release_version", "release_version_enabled"):
+            value.pop(key, None)
+    if old != new or (
+        selected_release(old_service) != selected_release(new_service)
+        and (selected_release(old_service), selected_release(new_service))
+        != (RELEASE, "latest")
     ):
         raise NativePostgresError(
             "Only the completed import's release selector may be rebound."
@@ -169,8 +191,13 @@ def _rebind_locked(manager, old_service, new_service):
 
 
 def unlock_runtime_updates(manager):
-    """One durable selector transition after a fully settled, verified import."""
-    from utils.infinidysk_v2_migration import InfiniDyskV2MigrationError, _digest
+    """Release the former migration pin once; new jobs never impose one.
+
+    Only completed legacy metadata is marked. Its original plan, snapshots and
+    fingerprints remain retained, and automatic legacy rollback is unavailable.
+    A saved latest selector lets a restart finish the marker after an interrupted
+    save; a later deliberate pin is respected once the marker exists.
+    """
     from utils.installation_backup import installation_backup_blocker
 
     with INFINIDYSK_MIGRATION_ADMISSION_LOCK, manager._lock:
@@ -183,122 +210,36 @@ def unlock_runtime_updates(manager):
         jobs = [
             job
             for job in manager._jobs()
-            if _current(manager, job, service) and job.get("status") == "completed"
+            if _current(manager, job, service) and legacy_completed_release_job(job)
         ]
         if not jobs:
-            return False  # Fresh native installs need no historical source job.
+            return False
         job = max(
             jobs, key=lambda item: (item.get("created_at", 0), item.get("job_id", ""))
         )
         if job.get("runtime_updates_unlocked") is True or _settled(manager, job):
             return False
-        intent = job.get("runtime_updates_unlock")
-        if intent is None:
-            if str(service.get("v2_release_version") or RELEASE) != RELEASE:
-                # An explicit user choice already replaced the migration pin.
-                job["runtime_updates_unlocked"] = True
-                manager._write(manager._job_path(job["job_id"]), job)
-                return False
+        changed = False
+        if selected_release(service) == RELEASE:
             if installed_v2_version(service) != RELEASE:
                 return False
-            current = _digest(manager._owned_for_job(configuration, job))
-            if current != job.get("activation_fingerprint"):
-                raise InfiniDyskV2MigrationError(
-                    "The completed native configuration changed before its release pin could be unlocked."
-                )
-            new_service = copy.deepcopy(service)
-            new_service["v2_release_version"] = "latest"
-            changed = copy.deepcopy(configuration)
-            changed["infinidysk"] = new_service
-            intent = {
-                "state": "pending",
-                "before": _digest(service),
-                "after": _digest(new_service),
-                "old_selector_present": "v2_release_version" in service,
-                "old_selector": service.get("v2_release_version"),
-                "old_activation": current,
-                "new_activation": _digest(manager._owned_for_job(changed, job)),
-            }
-            job["runtime_updates_unlock"] = intent
-            manager._write(manager._job_path(job["job_id"]), job)
-        if (
-            not isinstance(intent, dict)
-            or intent.get("state") != "pending"
-            or _digest(service) not in {intent.get("before"), intent.get("after")}
-        ):
-            raise InfiniDyskV2MigrationError(
-                "The interrupted native release selector change requires recovery review."
-            )
-        old_service = copy.deepcopy(service)
-        if intent["old_selector_present"]:
-            old_service["v2_release_version"] = intent["old_selector"]
-        else:
-            old_service.pop("v2_release_version", None)
-        new_service = copy.deepcopy(old_service)
-        new_service["v2_release_version"] = "latest"
-        _selector_pair(old_service, new_service)
-        if (
-            _digest(old_service) != intent["before"]
-            or _digest(new_service) != intent["after"]
-        ):
-            raise InfiniDyskV2MigrationError(
-                "The retained native release selector intent changed."
-            )
-        if installed_v2_version(service) != RELEASE:
-            raise InfiniDyskV2MigrationError(
-                "The pinned native runtime changed during its release selector transition."
-            )
-        expected_owned = (
-            intent["old_activation"]
-            if _digest(service) == intent["before"]
-            else intent["new_activation"]
-        )
-        if _digest(manager._owned_for_job(configuration, job)) != expected_owned:
-            raise InfiniDyskV2MigrationError(
-                "The owned native configuration changed during its selector transition."
-            )
-        consumers = job.get("consumer_recovery") or {}
-        target = consumers.get("target_binding") or {}
-        if target.get("configuration") != intent["old_activation"]:
-            raise InfiniDyskV2MigrationError(
-                "The completed native recovery configuration binding changed."
-            )
-        process_name = service.get("process_name") or "InfiniDysk"
-        for binding in consumers.get("scope_bindings") or []:
-            if binding.get("name") == process_name and binding.get("sha256") != _digest(
-                {"key": "infinidysk", "service": old_service}
-            ):
-                raise InfiniDyskV2MigrationError(
-                    "The completed native runtime scope binding changed."
-                )
-        if _digest(service) == intent["before"]:
             live = manager.config_manager.config["infinidysk"]
-            if _digest(live) != intent["before"]:
-                raise InfiniDyskV2MigrationError(
-                    "The native release selector changed during unlock."
-                )
-            live["v2_release_version"] = "latest"
+            before = copy.deepcopy(live)
+            if live != service:
+                return False
+            set_release_selection(live, "latest")
             try:
                 manager.config_manager.save_config(
                     service.get("process_name") or "InfiniDysk"
                 )
             except Exception:
-                if _digest(live) == intent["after"]:
-                    live.clear()
-                    live.update(old_service)
+                live.clear()
+                live.update(before)
                 raise
-        _pg().rebind_runtime_selector(old_service, new_service)
-        target["configuration"] = intent["new_activation"]
-        for binding in consumers.get("scope_bindings") or []:
-            if binding.get("name") == process_name:
-                binding["sha256"] = _digest(
-                    {"key": "infinidysk", "service": new_service}
-                )
-        job["activation_fingerprint"] = intent["new_activation"]
-        intent["state"] = "completed"
+            changed = True
         job["runtime_updates_unlocked"] = True
         manager._write(manager._job_path(job["job_id"]), job)
-        return True
+        return changed
 
 
 def _retirement(receipt, service):
@@ -337,7 +278,11 @@ def retire_major_runtime_rollback(manager, receipt):
             )
         changed = False
         for job in manager._jobs():
-            if _current(manager, job, service) and job.get("status") == "completed":
+            if (
+                _current(manager, job, service)
+                and job.get("status") == "completed"
+                and not legacy_completed_release_job(job)
+            ):
                 if (
                     _settled(manager, job)
                     or (job.get("runtime_updates_unlock") or {}).get("state")

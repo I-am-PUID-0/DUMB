@@ -1592,12 +1592,6 @@
           "type": "string",
           "pattern": "^$|^/[^\\u0000]*$"
         },
-        "v2_release_version": {
-          "type": "string",
-          "maxLength": 128,
-          "pattern": "^(latest|v?2\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?)$",
-          "description": "Migration preparation uses the verified fixed release. After successful activation, latest tracks official v2 releases; an exact v2 tag pins normal runtime updates."
-        },
         "enabled": {
           "type": "boolean"
         },
@@ -1759,6 +1753,26 @@
         "log_file",
         "webdav_password",
         "env"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "runtime_generation": { "const": "2" },
+              "release_version_enabled": { "const": true }
+            },
+            "required": ["runtime_generation", "release_version_enabled"]
+          },
+          "then": {
+            "properties": {
+              "release_version": {
+                "type": "string",
+                "maxLength": 128,
+                "pattern": "^(|latest|v?2\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?)$"
+              }
+            }
+          }
+        }
       ]
     },
     "emby": {

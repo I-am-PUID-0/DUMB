@@ -39,7 +39,8 @@ class NativeReleaseTests(unittest.TestCase):
         self.root.chmod(0o755)
         self.service = {
             "runtime_generation": 2,
-            "v2_release_version": "latest",
+            "release_version": "latest",
+            "release_version_enabled": False,
             "v2_runtime_dir": str(self.root / "program"),
             "v2_data_dir": str(self.root / "data"),
             "config_dir": str(self.root / "legacy"),
@@ -180,7 +181,8 @@ class NativeReleaseTests(unittest.TestCase):
         self.assertEqual(api.call_args_list[0].args[0], "/releases?per_page=100&page=1")
 
     def test_explicit_release_supports_annotated_tags(self):
-        self.service["v2_release_version"] = self.tag.lstrip("v")
+        self.service["release_version"] = self.tag.lstrip("v")
+        self.service["release_version_enabled"] = True
         object_id = "b" * 40
         with (
             self.machine(),
@@ -204,6 +206,34 @@ class NativeReleaseTests(unittest.TestCase):
                 runtime.resolve_v2_release(self.service)["commit"], self.commit
             )
 
+    def test_standard_release_controls_honor_disabled_and_enabled_selectors(self):
+        for enabled, selected, expected in (
+            (False, "rc", "latest"),
+            (False, self.tag, "latest"),
+            (True, "latest", "latest"),
+            (True, "", "latest"),
+            (True, self.tag.lstrip("v"), self.tag),
+        ):
+            with self.subTest(enabled=enabled, selected=selected):
+                service = {
+                    **self.service,
+                    "release_version": selected,
+                    "release_version_enabled": enabled,
+                }
+                self.assertEqual(releases.selected_release(service), expected)
+                self.assertTrue(runtime.validate_active_v2_selection(service)[0])
+
+    def test_raw_legacy_alias_remains_readable_without_changing_the_config(self):
+        service = {
+            **self.service,
+            "v2_release_version": self.tag,
+            "release_version": "rc",
+            "release_version_enabled": True,
+        }
+        original = dict(service)
+        self.assertEqual(releases.selected_release(service), self.tag)
+        self.assertEqual(service, original)
+
     def test_semver_comparison_refuses_downgrade_and_ignores_build_metadata(self):
         self.assertEqual(
             runtime.compare_v2_releases("v2.0.0-beta.10", "v2.0.0-beta.9"), 1
@@ -218,7 +248,11 @@ class NativeReleaseTests(unittest.TestCase):
     def test_startup_only_prepares_beta6_and_never_resolves_latest(self):
         for selected in ("latest", runtime.RELEASE):
             with self.subTest(selected=selected):
-                service = {**self.service, "v2_release_version": selected}
+                service = {
+                    **self.service,
+                    "release_version": selected,
+                    "release_version_enabled": True,
+                }
                 with (
                     patch.object(
                         runtime, "install_v2_runtime", return_value=(True, None)
@@ -229,26 +263,31 @@ class NativeReleaseTests(unittest.TestCase):
                         runtime.ensure_active_v2_runtime(None, "InfiniDysk", service),
                         (True, None),
                     )
-                    self.assertEqual(
-                        install.call_args.args[2]["v2_release_version"], runtime.RELEASE
-                    )
-                    self.assertEqual(service["v2_release_version"], selected)
+                    self.assertEqual(install.call_args.args[2], service)
+                    self.assertEqual(service["release_version"], selected)
                     api.assert_not_called()
         with patch.object(runtime, "install_v2_runtime") as install:
             self.assertFalse(
                 runtime.ensure_active_v2_runtime(
-                    None, "InfiniDysk", {**self.service, "v2_release_version": self.tag}
+                    None,
+                    "InfiniDysk",
+                    {
+                        **self.service,
+                        "release_version": self.tag,
+                        "release_version_enabled": True,
+                    },
                 )[0]
             )
             install.assert_not_called()
 
     def test_invalid_selectors_forks_or_source_builds_never_query_github(self):
         for options in (
-            {"v2_release_version": "v3.0.0"},
-            {"v2_release_version": "v2.00.0"},
-            {"v2_release_version": "v2.0.0-beta.01"},
-            {"v2_release_version": 0},
-            {"v2_release_version": "../../main"},
+            {"release_version": "v3.0.0", "release_version_enabled": True},
+            {"release_version": "v2.00.0", "release_version_enabled": True},
+            {"release_version": "v2.0.0-beta.01", "release_version_enabled": True},
+            {"release_version": 0, "release_version_enabled": True},
+            {"release_version": "../../main", "release_version_enabled": True},
+            {"release_version_enabled": "true"},
             {"branch_enabled": True},
             {"commit_sha": "a" * 40},
             {"repo_owner": "fork"},
@@ -260,7 +299,7 @@ class NativeReleaseTests(unittest.TestCase):
                     runtime.resolve_v2_release(service)
                 api.assert_not_called()
         self.assertTrue(runtime.validate_active_v2_selection(self.service)[0])
-        self.assertFalse(runtime.validate_v2_selection(self.service)[0])
+        self.assertTrue(runtime.validate_v2_selection(self.service)[0])
 
     def test_missing_digest_bad_asset_or_tag_mismatch_is_refused(self):
         for change in ("digest", "url", "size", "duplicate", "tag", "commit"):

@@ -174,11 +174,23 @@ class NativeRuntimeTests(unittest.TestCase):
         for selected in (
             {"commit_sha": "a" * 40},
             {"branch_enabled": True},
-            {"v2_release_version": "latest"},
             {"repo_owner": "fork"},
         ):
             valid, error = runtime.validate_v2_selection({**self.service, **selected})
             self.assertFalse(valid, error)
+
+    def test_migration_artifact_pin_is_internal_to_the_installer(self):
+        for selector in ("latest", "v2.0.0-beta.10"):
+            with self.subTest(selector=selector):
+                self.service.update(
+                    release_version=selector, release_version_enabled=True
+                )
+                result, _probe = self.install(self.archive())
+                self.assertTrue(result[0], result[1])
+                self.assertEqual(
+                    runtime.installed_v2_version(self.service), runtime.RELEASE
+                )
+                self.assertEqual(self.service["release_version"], selector)
 
     def test_shared_or_redirected_data_paths_refused(self):
         for path in (

@@ -20,6 +20,8 @@ import tempfile
 import urllib.request
 from urllib.parse import quote, urlsplit
 
+from utils.infinidysk_release_controls import selected_release as configured_release
+
 API = "https://api.github.com/repos/infinidysk/infinidysk"
 DOWNLOAD = "https://github.com/infinidysk/infinidysk/releases/download"
 FORMAT = "official-v2-release-v1"
@@ -90,9 +92,10 @@ def compare_releases(first, second):
 
 
 def selected_release(service):
-    selected = service.get("v2_release_version")
-    if selected is None or selected == "":
-        selected = "latest"
+    try:
+        selected = configured_release(service)
+    except ValueError as error:
+        raise NativeReleaseError(str(error)) from None
     return "latest" if selected == "latest" else release_tag(selected)
 
 

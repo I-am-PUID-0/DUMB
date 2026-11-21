@@ -557,6 +557,31 @@ class NativePostgresTests(unittest.TestCase):
             self.manager.rollback(request)
         self.assertEqual(before, (self.data / "infinidysk.sqlite").read_bytes())
 
+    def test_legacy_completed_provider_job_preserves_files_but_retires_automatic_rollback(
+        self,
+    ):
+        job = self.finish_cutover()
+        retained = self.manager._job()
+        retained.pop("release_controls_schema")
+        self.manager._save(retained)
+        path = self.manager.state_root / "job.json"
+        saved = path.read_bytes()
+        public = self.manager._public(self.manager._job())
+        self.assertFalse(public["can_rollback"])
+        self.assertIn(
+            "retired release configuration", public["rollback_unavailable_reason"]
+        )
+        self.assertFalse(self.manager.status()["actions"]["rollback"])
+        request = self.action(job, "rollback")
+        calls = list(self.calls)
+        with self.assertRaisesRegex(
+            NativePostgresError, "retired release configuration"
+        ):
+            self.manager.rollback(request)
+        self.assertEqual(path.read_bytes(), saved)
+        self.assertEqual(self.calls, calls)
+        self.assertTrue(Path(retained["snapshot_private"]).is_file())
+
     def test_request_objects_and_acknowledgements_fail_closed_without_echoing_input(
         self,
     ):
