@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.21">
+    <meta name="dumb-docs-package-version" content="1.25.22">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="7980eacd1aa86673d3d1b2eb1bf0f6fccccf7dd7">
-    <meta name="dumb-docs-release-tag" content="1.25.21">
+    <meta name="dumb-docs-build-commit" content="cb97827ea6369674b3be0a7b9fa539e6950b0472">
+    <meta name="dumb-docs-release-tag" content="1.25.22">
   
 
     
@@ -1969,6 +1969,17 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         Validate and recover
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#update-infinidysk-2-after-activation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Update InfiniDysk 2 after activation
       </span>
     </span>
   </a>
@@ -6148,6 +6159,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#update-infinidysk-2-after-activation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Update InfiniDysk 2 after activation
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#retire-the-old-v1-installation" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -6355,8 +6377,11 @@ controls.</p>
 <p>The wizard requires DUMB API <strong>2.24.0 or newer</strong>, explicit InfiniDysk 2 capabilities
 and migration protocol <strong>1</strong>. An older, unknown or temporarily unavailable
 backend cannot start a migration. Previously discovered job identities and
-recovery information remain visible. The supported native artifact is currently
-<strong><code>v2.0.0-beta.6</code></strong>; selecting 2.x through a 1.x release or source field is refused.</p>
+recovery information remain visible. Preparation and migration use the verified
+<strong><code>v2.0.0-beta.6</code></strong> artifact. After a fully completed activation, normal runtime
+updates can follow official <strong>2.x</strong> releases; see
+<a href="#update-infinidysk-2-after-activation">updating after activation</a>.
+Selecting 2.x through a 1.x release or source field is refused.</p>
 <h2 id="choose-your-path">Choose your path<a class="headerlink" href="#choose-your-path" title="Permanent link">&para;</a></h2>
 <p>Keep major installation, recovery and the optional database conversion as separate decisions:</p>
 <pre class="mermaid"><code>flowchart TD
@@ -6802,6 +6827,12 @@ The global notice reopens progress or recovery after navigation and reload.
 Only job identities are saved for browser recovery; preview authorizations and
 database passwords are not. A transport error does not prove that a job stopped.
 Refresh status before retrying, and retain an unconfirmed job's recovery evidence.</p>
+<p>After a confirmed successful completion, <strong>Dismiss</strong> hides that completion notice
+in this browser. The migration and database-conversion tools still retain the
+job, its results and any available rollback action. This choice is separate from
+upgrade-invitation reminders. Active or unconfirmed work, required restarts,
+unfinished service recovery and required cleanup cannot be dismissed; a new
+recovery or cleanup requirement makes the notice visible again.</p>
 <p>The migration view refreshes status automatically while visible and rechecks it
 when you return. These checks do not repeat preview, preparation, activation or legacy test
 request. Use <strong>Refresh status</strong> if a connection is interrupted. Supporting builds
@@ -7323,9 +7354,26 @@ file/range/seek reads, signed STRM playback and paths from each real consumer.
 Run a deliberate test import only after those checks and review the resulting
 Arr and media-server paths. A healthy process or a successful fixture test is
 not proof of real provider/account playback.</p>
-<p>InfiniDysk 2 uses a dedicated root URL for its UI. Use the direct local address
-or configured public portal; embedded subpath login/playback remains unavailable
-unless the backend explicitly advertises a validated adapter.</p>
+<p>On supporting backend and dashboard builds, <strong>Embedded UI</strong> displays InfiniDysk 2
+through DUMB's own address. This also works when DUMB is reached through a reverse
+proxy: the browser uses DUMB's service path, and DUMB forwards it internally.
+The adapter preserves InfiniDysk's native login and security restrictions while
+routing its pages, API calls and live updates.</p>
+<p>Direct access such as <code>http://server:3000/</code> and a dedicated reverse-proxy hostname
+such as <code>https://infinidysk.example.com/</code> remain separate options. DUMB does not
+change the native <strong>Public URL</strong>, existing playback URLs or the direct listener
+to enable its embedded adapter. <strong>Open in New Tab</strong> remains available. Older
+builds without the adapter continue to use that direct option.</p>
+<p>InfiniDysk itself still requires the root of its own address; DUMB's adapter
+provides the extra routing needed for its embedded service path. See the
+<a href="https://www.infinidysk.com/v2/operate/reverse-proxy/">upstream reverse-proxy guide</a>.</p>
+<p>SSO needs additional care. A provider or native callback configured for a
+different hostname may send sign-in out of DUMB, and that external session may
+not be available inside the embedded page. Use <strong>Open in New Tab</strong> for that
+existing sign-in flow. An embedded SSO setup needs a callback registered for
+DUMB's embedded path; changing the native callback can also change where direct
+SSO access returns. Preserve working sign-in addresses until that setup has
+been tested. Password sign-in does not require changing the native Public URL.</p>
 <p>If the job is interrupted or needs recovery, keep the original data, any exposed
 v2 target and private job evidence under <code>/config/migrations/infinidysk-v2</code>.
 Use the offered action for that recovery boundary: retrying v2 service recovery
@@ -7334,6 +7382,37 @@ Post-cutover rollback requires accepting discarded v2 writes; those writes are
 not copied back. A failed rollback or unavailable recovery action needs
 investigation before restarting imports, scans or services. Do not delete
 retained state to clear a banner.</p>
+<h2 id="update-infinidysk-2-after-activation">Update InfiniDysk 2 after activation<a class="headerlink" href="#update-infinidysk-2-after-activation" title="Permanent link">&para;</a></h2>
+<p>Preparation, testing and recovery keep their fixed migration version. Once
+activation has completed and all required service recovery and restart work is
+finished, DUMB releases that migration pin by selecting
+<code>v2_release_version: latest</code>. Existing completed migrations receive the same
+one-time transition when normal startup or update controls next verify them.</p>
+<p>Use the service's normal update controls to check for and install newer
+official 2.x releases. While upstream 2.x is in beta, <strong>latest includes v2 beta
+releases</strong>. It never selects a 1.x or 3.x release. You can deliberately pin an
+exact tag, such as <code>v2.0.0-beta.10</code>, using <code>v2_release_version</code>; the one-time
+migration transition does not undo a later deliberate pin. The retained
+<code>release_version</code> and <code>release_version_enabled</code> fields belong to the older
+source-selection path and do not select the native v2 archive.</p>
+<p>Your automatic-update preference is preserved. <strong>Check only</strong> continues to
+notify without installing. Normal startup reuses the verified installed
+runtime; it does not download latest or repeat conversion on every restart.
+Active preparation, migration, provider conversion, required restarts and
+unresolved service recovery block runtime updates.</p>
+<p>DUMB verifies the official archive, published checksum, exact release and commit
+before stopping the service. Create an independent service backup before an
+update. Starting a newer binary can upgrade its database schema. At that point
+DUMB retires the old major-migration and provider-conversion rollback actions;
+their retained backups are not deleted. Later recovery should use a compatible
+backup rather than starting an older binary against a newer database.</p>
+<p>A failure before the replacement is started restores the previous program
+files. A failure after launch retains the replacement, previous program files
+and update journal, and stops automatic runtime rollback. After resolving the
+reported problem, retry <strong>Update</strong> to start and verify that same retained
+replacement. This retry does not download another release or repeat the major
+migration. Interrupted work before launch or changed recovery evidence needs
+inspection rather than an automatic retry.</p>
 <h2 id="retire-the-old-v1-installation">Retire the old v1 installation<a class="headerlink" href="#retire-the-old-v1-installation" title="Permanent link">&para;</a></h2>
 <p>After a verified cutover and real-library validation, the same migration panel
 can offer <strong>Retire the old v1 installation</strong> for a migration that retained the
@@ -7444,11 +7523,11 @@ separate existing workflows.</p>
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.21</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.21">Release notes</a>
+              <span>Documentation release 1.25.22</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.22">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;7980eacd1aa86673d3d1b2eb1bf0f6fccccf7dd7" title="Documentation source commit 7980eacd1aa86673d3d1b2eb1bf0f6fccccf7dd7">Source 7980eacd</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;cb97827ea6369674b3be0a7b9fa539e6950b0472" title="Documentation source commit cb97827ea6369674b3be0a7b9fa539e6950b0472">Source cb97827e</a>
             
             
           </div>
