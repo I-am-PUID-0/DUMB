@@ -17,6 +17,7 @@ _STAGES = {
     "releasing_local_blobs": "prepare_input",
     "verifying_blob_input": "prepare_input",
     "preparing_queue_input": "prepare_input",
+    "preparing_native_database": "prepare_input",
     "rehearsing": "native_import",
     "importing": "native_import",
     "validating": "validate_import",

@@ -100,6 +100,11 @@ class LowSpacePipelineTests(unittest.TestCase):
             ("utils.infinidysk_v2_space_control.get_backup_storage", self.storage),
             ("utils.infinidysk_v2_space_control.preflight_reuse", None),
             ("utils.infinidysk_v2_execution.install_v2_runtime", (True, None)),
+            ("utils.infinidysk_v2_execution.prepare_import_history", {"version": 1}),
+            (
+                "utils.infinidysk_v2_execution.remove_history_guard",
+                {"history_guard_removed": True},
+            ),
             ("utils.infinidysk_v2_execution.mount_records", []),
         ):
             self.start_patch(patch(target, return_value=value))

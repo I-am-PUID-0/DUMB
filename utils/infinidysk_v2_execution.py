@@ -16,6 +16,7 @@ import sqlite3
 import stat
 import subprocess
 import sys
+import tempfile
 import time
 from urllib.parse import quote
 import uuid
@@ -30,6 +31,7 @@ from utils.infinidysk_v2_fuse import (
     safe_native_preparation_error,
     validate_fuse_prerequisites,
 )
+from utils.infinidysk_v2_history import prepare_history_guard, remove_history_guard
 from utils.infinidysk_v2_runtime import (
     build_v2_environment,
     configure_v2_runtime,
@@ -112,7 +114,14 @@ def _uuid(value):
 
 
 def verify_import_inventory(
-    source, destination, report, *, source_blob_root=None, source_blob_census=None
+    source,
+    destination,
+    report,
+    *,
+    source_blob_root=None,
+    source_blob_census=None,
+    progress=None,
+    check_cancel=None,
 ):
     from utils.infinidysk_v2_import_report import (
         ImportReportError,
@@ -126,6 +135,8 @@ def verify_import_inventory(
             report,
             source_blob_root=source_blob_root,
             source_blob_census=source_blob_census,
+            progress=progress,
+            check_cancel=check_cancel,
         )
     except ImportReportError as error:
         refused = ContainedImportError(str(error))
@@ -507,6 +518,103 @@ class NativeCandidate:
                 if getattr(cleanup_failure, "cleanup_complete", None) is False:
                     raise cleanup_failure from None
                 raise
+
+
+def prepare_import_history(
+    service, candidate, private, uid, gid, timezone, *, check_cancel=None, progress=None
+):
+    """Use the pinned binary's empty schema to defer its post-import maintenance.
+
+    The bootstrap contains no source data. Its generated settings are discarded
+    only after verified shutdown; the actual import still starts genuinely fresh.
+    """
+    candidate, private = Path(candidate), Path(private)
+    data = Path(tempfile.mkdtemp(prefix=".dumb-history-bootstrap-", dir=candidate))
+    control = Path(tempfile.mkdtemp(prefix=".history-bootstrap-", dir=private))
+    roots = [(path, path.stat().st_dev, path.stat().st_ino) for path in (data, control)]
+    worker = None
+    try:
+        os.chown(data, uid, gid)
+        bootstrap = {
+            **service,
+            "v2_data_dir": str(data),
+            # User overrides and legacy connections belong to the actual import,
+            # never this empty, private schema initialization.
+            "env": {
+                "TZ": timezone or "UTC",
+                "INFINIDYSK__SAB__CATEGORIES": "[]",
+                "INFINIDYSK__SAB__MANUAL_CATEGORY": "*",
+            },
+        }
+        native_auth(bootstrap, create=True, uid=uid, gid=gid)
+        worker = NativeCandidate(
+            bootstrap,
+            data,
+            control,
+            uid,
+            gid,
+            timezone,
+            {"DATABASE_PROVIDER": "sqlite"},
+            check_cancel=check_cancel,
+        )
+        deadline = time.monotonic() + 60
+        original_check = worker.check_cancel
+
+        def check_bootstrap():
+            original_check()
+            if time.monotonic() >= deadline:
+                raise ContainedImportError(
+                    "The empty converter database could not be initialized; no source history was converted."
+                )
+
+        worker.check_cancel = check_bootstrap
+
+        def update(*unused, **details):
+            if progress is not None:
+                progress(
+                    "preparing_native_database",
+                    "Preparing the isolated converter to preserve completed and failed download history.",
+                )
+
+        with worker:
+            child = getattr(worker, "process", None)
+            if progress is not None and type(getattr(child, "pid", None)) is int:
+                progress(
+                    "preparing_native_database",
+                    "Initializing an empty converter database; no library files are copied in this step.",
+                    native_process_group=child.pid,
+                )
+            worker.wait_import(False, update)
+        if worker.stopped is not True:
+            raise ContainedImportError(
+                "The empty converter database still has unverified writers; its schema was not copied."
+            )
+        return prepare_history_guard(
+            data / "infinidysk.sqlite",
+            candidate / "infinidysk.sqlite",
+            native_stopped=worker.stopped,
+            uid=uid,
+            gid=gid,
+        )
+    finally:
+        child = getattr(worker, "process", None)
+        if type(getattr(child, "pid", None)) is int and (
+            child.poll() is None or _native_group_has_live_members(child.pid)
+        ):
+            raise MigrationProcessCleanupError(
+                "The empty converter still has live writers; its private data was retained.",
+                process_group=child.pid,
+            )
+        for path, device, inode in reversed(roots):
+            value = path.lstat()
+            if not stat.S_ISDIR(value.st_mode) or (value.st_dev, value.st_ino) != (
+                device,
+                inode,
+            ):
+                raise ContainedImportError(
+                    "The private converter initialization directory changed; it was retained."
+                )
+            shutil.rmtree(path)
 
 
 class InfiniDyskV2Executor:
@@ -977,6 +1085,18 @@ class InfiniDyskV2Executor:
                 "The pinned native runtime could not be installed safely."
             )
         native_auth(service, create=True, uid=uid, gid=gid, allow_v1_import=True)
+        history_guard = None
+        if plan["mode"] == "migrate":
+            history_guard = prepare_import_history(
+                service,
+                candidate,
+                private,
+                uid,
+                gid,
+                plan["source"].get("timezone"),
+                check_cancel=workspace.get("check_cancel"),
+                progress=progress,
+            )
         if plan.get("options", {}).get("omit_queued_downloads"):
             workspace["verify_queue_input"]()
         progress(
@@ -1018,6 +1138,14 @@ class InfiniDyskV2Executor:
             raise ContainedImportError(
                 "Native candidate shutdown is unverified; its data was retained."
             )
+        if history_guard is not None:
+            remove_history_guard(
+                candidate / "infinidysk.sqlite",
+                history_guard,
+                native_stopped=process.stopped,
+                uid=uid,
+                gid=gid,
+            )
         credentials = {}
         if source_key is not None:
             credentials = verify_imported_sab_key(
@@ -1049,13 +1177,34 @@ class InfiniDyskV2Executor:
                 with ExitStack() as verification:
                     blob_root = candidate / "blobs"
                     source_census = None
+                    ensure_census = None
                     if external_blobs is not None:
                         census = workspace.get("source_blob_census")
                         if callable(census):
-                            blob_root, source_census = verification.enter_context(
-                                census()
-                            )
-                            blob_root = Path(blob_root)
+                            blob_root = external_blobs
+                            verified = {}
+
+                            def ensure_census():
+                                if not verified:
+                                    verified_root, lookup = verification.enter_context(
+                                        census()
+                                    )
+                                    if Path(
+                                        verified_root
+                                    ) != external_blobs or not callable(lookup):
+                                        raise ContainedImportError(
+                                            "External migration input changed after native import."
+                                        )
+                                    verified["lookup"] = lookup
+                                return verified["lookup"]
+
+                            def source_census(root, identifier):
+                                if Path(root) != external_blobs:
+                                    raise ContainedImportError(
+                                        "The verified external input is outside its retained scope."
+                                    )
+                                return ensure_census()(root, identifier)
+
                         else:
                             blob_root = Path(workspace["external_blob_source"]())
                         if blob_root != external_blobs:
@@ -1085,19 +1234,26 @@ class InfiniDyskV2Executor:
                             candidate / "infinidysk.sqlite",
                             report_text,
                             source_blob_root=blob_root,
+                            progress=progress,
+                            check_cancel=workspace.get("check_cancel"),
                             **(
                                 {"source_blob_census": source_census}
                                 if source_census is not None
                                 else {}
                             ),
                         )
+                        # Empty/no-payload imports still require the complete
+                        # external readback before any successful acceptance.
+                        # Known database/history failures can stop beforehand.
+                        if ensure_census is not None:
+                            ensure_census()
                     except ContainedImportError as error:
                         diagnostics = getattr(error, "import_report", None)
                         if diagnostics is not None:
                             record_report(None, diagnostics)
                         raise
-                    record_report(None, report.get("import_report"))
-                    return report
+                record_report(None, report.get("import_report"))
+                return report
             with sqlite3.connect(
                 f"file:{quote(str(candidate / 'infinidysk.sqlite'))}?mode=ro", uri=True
             ) as database:

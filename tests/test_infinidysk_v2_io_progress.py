@@ -98,6 +98,45 @@ class IOProgressTests(unittest.TestCase):
         self.assertIsNone(public["total"])
         self.assertIsNone(public["estimated_remaining_seconds"])
 
+    def test_post_import_record_progress_reaches_status_with_phase_only_eta(self):
+        clock, events, measured = self.recorder(
+            phase="import_history_check", total=5000
+        )
+        for second in range(1, 11):
+            clock.value = second
+            measured.update(second * 100)
+        self.assertEqual("validating", events[-1][0])
+        public = public_io_progress(
+            events[-1][1], active=True, stage="validating", now=1010
+        )
+        self.assertEqual("entries", public["unit"])
+        self.assertEqual((1000, 5000), (public["processed"], public["total"]))
+        self.assertEqual(40, public["estimated_remaining_seconds"])
+        for active, stage, now in (
+            (False, "validating", 1010),
+            (True, "rolling_back", 1010),
+            (True, "validating", 1041),
+        ):
+            stale = public_io_progress(
+                events[-1][1], active=active, stage=stage, now=now
+            )
+            self.assertIsNone(stale["estimated_remaining_seconds"])
+
+    def test_integrity_heartbeat_reports_elapsed_without_inventing_records_or_eta(self):
+        clock, events, measured = self.recorder(
+            phase="import_target_integrity", total=None
+        )
+        clock.value = 20
+        measured.update(0)
+        public = public_io_progress(
+            events[-1][1], active=True, stage="validating", now=1020
+        )
+        self.assertEqual(20, public["elapsed_seconds"])
+        self.assertEqual(0, public["processed"])
+        self.assertIsNone(public["total"])
+        self.assertIsNone(public["rate_per_second"])
+        self.assertIsNone(public["estimated_remaining_seconds"])
+
     def test_pause_overrun_completion_and_new_pass_reset_estimates(self):
         clock, events, measured = self.recorder(total=2000)
         for second in range(1, 11):

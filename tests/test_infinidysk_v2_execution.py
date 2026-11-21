@@ -170,6 +170,8 @@ class ExecutionTests(unittest.TestCase):
             ("mount_records", []),
             ("install_v2_runtime", (True, None)),
             ("native_auth", {}),
+            ("prepare_import_history", {"version": 1}),
+            ("remove_history_guard", {"history_guard_removed": True}),
             ("configure_v2_runtime", (True, None)),
             ("native_api_request", {"status": 200}),
             ("delivery_mount_ready", True),
@@ -492,7 +494,7 @@ class ExecutionTests(unittest.TestCase):
             receipt = self.executor.prepare(self.plan, self.workspace, self.progress)
         self.assertFalse(active)
         self.assertEqual(1, len(calls))
-        self.assertIs(lookup, verify.call_args.kwargs["source_blob_census"])
+        self.assertTrue(callable(verify.call_args.kwargs["source_blob_census"]))
         self.assertEqual(external, verify.call_args.kwargs["source_blob_root"])
         self.assertEqual("accepted", receipt["report"]["import_report"]["status"])
         self.assertTrue(receipt["external_blob_staging_verified"])

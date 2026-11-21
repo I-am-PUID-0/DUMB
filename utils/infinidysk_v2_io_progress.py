@@ -23,6 +23,16 @@ PHASES = {
     "blob_release": ("releasing_local_blobs", "entries"),
     "blob_verify_input": ("verifying_blob_input", "bytes"),
     "blob_cleanup": ("cleaning_blob_staging", "entries"),
+    "import_source_media": ("validating", "entries"),
+    "import_source_history": ("validating", "entries"),
+    "import_target_items": ("validating", "entries"),
+    "import_target_history": ("validating", "entries"),
+    "import_target_integrity": ("validating", "entries"),
+    "import_history_check": ("validating", "entries"),
+    "import_media_check": ("validating", "entries"),
+    "import_media_census": ("validating", "entries"),
+    "import_history_census": ("validating", "entries"),
+    "import_source_blobs": ("validating", "bytes"),
 }
 MAX_AGE = 30
 

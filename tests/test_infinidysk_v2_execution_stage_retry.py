@@ -63,9 +63,19 @@ class ExecutionStageRetryTests(unittest.TestCase):
 
         self.fixture.workspace["source_blob_census"] = census
         report = {"files": 0, "history": 0, "skipped_files": 0, "failed_files": 0}
+        attempts = 0
+
+        def verify_after_readback(*args, source_blob_census, **kwargs):
+            nonlocal attempts
+            attempts += 1
+            source_blob_census(external, "fixture-identifier")
+            if attempts == 1:
+                raise OSError(errno.ETIMEDOUT, "temporary read")
+            return report
+
         with patch(
             "utils.infinidysk_v2_execution.verify_import_inventory",
-            side_effect=[OSError(errno.ETIMEDOUT, "temporary read"), report],
+            side_effect=verify_after_readback,
         ) as verify:
             self.fixture.executor.prepare(
                 self.fixture.plan, self.fixture.workspace, self.fixture.progress
