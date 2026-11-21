@@ -1,0 +1,557 @@
+{
+  "schema_version": 2,
+  "complete": true,
+  "kind": "product-showcase",
+  "channel": "release",
+  "frontend": {
+    "commit": "66c90b93ea35abe546c07cbf643dc00a184bbd7f",
+    "ref": "v1.91.0",
+    "repository": "https://github.com/nicocapalbo/dmbdb",
+    "tag": "v1.91.0",
+    "version": "1.91.0"
+  },
+  "backend": {
+    "commit": "ebfdf2dec74bf451b03d81fa0659badbc53b9e14",
+    "ref": "2.23.0",
+    "repository": "https://github.com/I-am-PUID-0/DUMB",
+    "tag": "2.23.0",
+    "version": "2.23.0"
+  },
+  "captured_at": "2026-11-21T06:14:39.930Z",
+  "scope": "Actual source-pinned frontend screenshots and recorded log/dependency actions with example API data. Action clips play at their captured speed. Minimal image camera motion and transitions; no reconstructed UI, AI imagery, narration or implied live operation.",
+  "viewport": {
+    "width": 1920,
+    "height": 1280
+  },
+  "duration_seconds": 30,
+  "themes": [
+    "dark",
+    "light"
+  ],
+  "input_package_manifest_sha256": "d1f03e347a7382329efda7a771789008d8981d08777014b0d556fa4c1e39d633",
+  "plan_sha256": "bb7a56808d2f45052f82db7b9ab385a17e1b5b5c62cf8512eec685950b64c4d8",
+  "showcase_plan_sha256": "38beea636cc9a83065d8b49b00069ab6d32511dbe533d95781619e47707577ae",
+  "catalog_sha256": "4172c81beac82b5d42d38b9e89da9e215751a18d804928bcf65b20cc863d35b8",
+  "dataset_sha256": "7f52c30bd48e7c312401013a1c3d4a6388da3272df454f971c013aed7265010c",
+  "tooling_sha256": "a5289f7b55b319aefa10b536ed06f3c6858adb4b4c5fd48873538aee0de11642",
+  "renderer_sha256": "0c1926f06656db9cd84e3f214f3fa0e6b84af75629f690e606d01be11c052f61",
+  "scenes": [
+    {
+      "id": "dashboard",
+      "scenario": "dashboard",
+      "kind": "image",
+      "label": "Your media apps. One place.",
+      "description": "Review your selected services and their status.",
+      "duration_seconds": 3.5,
+      "camera": {
+        "from": [
+          0,
+          0,
+          1
+        ],
+        "to": [
+          -3,
+          -2,
+          1.012
+        ]
+      }
+    },
+    {
+      "id": "onboarding",
+      "scenario": "onboarding-services",
+      "kind": "image",
+      "label": "Choose what you run.",
+      "description": "Select the applications for your own workflow.",
+      "duration_seconds": 3.5,
+      "camera": {
+        "from": [
+          -3,
+          -2,
+          1.012
+        ],
+        "to": [
+          0,
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "id": "service",
+      "scenario": "service-controls",
+      "kind": "image",
+      "label": "Everything for one app.",
+      "description": "Open its controls, settings and application interface.",
+      "duration_seconds": 4,
+      "camera": {
+        "from": [
+          0,
+          0,
+          1
+        ],
+        "to": [
+          -3,
+          -2,
+          1.012
+        ]
+      }
+    },
+    {
+      "id": "dependencies",
+      "scenario": "dependencies",
+      "kind": "video",
+      "chapter": "Choose Dependencies",
+      "chapter_offset_seconds": 2.5,
+      "label": "See what connects.",
+      "description": "Inspect the dependencies behind a selected service.",
+      "duration_seconds": 6
+    },
+    {
+      "id": "logs",
+      "scenario": "service-logs",
+      "kind": "video",
+      "chapter": "Open Service Logs",
+      "chapter_offset_seconds": 3.4,
+      "label": "Find the useful line.",
+      "description": "Read and filter the selected service's logs.",
+      "duration_seconds": 6
+    },
+    {
+      "id": "notifications",
+      "scenario": "settings-notifications",
+      "kind": "image",
+      "label": "Keep the right alerts.",
+      "description": "Review notification destinations and event settings.",
+      "duration_seconds": 3.5,
+      "camera": {
+        "from": [
+          -3,
+          -2,
+          1.012
+        ],
+        "to": [
+          0,
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "id": "metrics",
+      "scenario": "metrics",
+      "kind": "image",
+      "label": "Know how it's running.",
+      "description": "Review resource use alongside your service checks.",
+      "duration_seconds": 3.5,
+      "camera": {
+        "from": [
+          0,
+          0,
+          1
+        ],
+        "to": [
+          -3,
+          -2,
+          1.012
+        ]
+      }
+    }
+  ],
+  "inputs": [
+    {
+      "path": "dark/dashboard.webp",
+      "scenario": "dashboard",
+      "kind": "image",
+      "theme": "dark",
+      "sha256": "bd7e4fd5ac3c17197ac3197f5cce5c57c6b14fc0f489881d3458f68064d2d595",
+      "bytes": 51996,
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      }
+    },
+    {
+      "path": "dark/onboarding-services.webp",
+      "scenario": "onboarding-services",
+      "kind": "image",
+      "theme": "dark",
+      "sha256": "27298b58b3c1c9abfa520d0f480d7fcc596ca7ddabd306c920795dc3cafa648f",
+      "bytes": 35574,
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      }
+    },
+    {
+      "path": "dark/service-controls.webp",
+      "scenario": "service-controls",
+      "kind": "image",
+      "theme": "dark",
+      "sha256": "36fc965ce8b9956351598571a5e1e4bf9223492775ab915d91cef5833bad0bb9",
+      "bytes": 57366,
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      }
+    },
+    {
+      "path": "dark/dependencies.webm",
+      "scenario": "dependencies",
+      "kind": "video",
+      "theme": "dark",
+      "sha256": "3b659932031f564bfa7fbf9da0ae9be7b2ee12048977d982aabc4af1151f8cbd",
+      "bytes": 1909655,
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "chapter": "Choose Dependencies",
+      "chapter_offset_seconds": 2.5,
+      "source_start_seconds": 8.4,
+      "source_end_seconds": 14.4,
+      "source_duration_seconds": 20.84,
+      "playback_rate": 1
+    },
+    {
+      "path": "dark/service-logs.webm",
+      "scenario": "service-logs",
+      "kind": "video",
+      "theme": "dark",
+      "sha256": "3e61ee81dfa6630d8d5510ccf33c5716688d37a558ad0a49a08de269e7bdfcba",
+      "bytes": 2340722,
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "chapter": "Open Service Logs",
+      "chapter_offset_seconds": 3.4,
+      "source_start_seconds": 5,
+      "source_end_seconds": 11,
+      "source_duration_seconds": 22.72,
+      "playback_rate": 1
+    },
+    {
+      "path": "dark/settings-notifications.webp",
+      "scenario": "settings-notifications",
+      "kind": "image",
+      "theme": "dark",
+      "sha256": "442f5559feb2a6c591642f8c22979c29bda2738206cab75d5cd80722b09d1ab1",
+      "bytes": 115722,
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      }
+    },
+    {
+      "path": "dark/metrics.webp",
+      "scenario": "metrics",
+      "kind": "image",
+      "theme": "dark",
+      "sha256": "0498ac0210042b7f61bb1536d6738646be0022c8aaaad480f19b1c0aa835c68d",
+      "bytes": 73058,
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      }
+    },
+    {
+      "path": "light/dashboard.webp",
+      "scenario": "dashboard",
+      "kind": "image",
+      "theme": "light",
+      "sha256": "bf8ba9e733f92421aadd2f52eb6232db5d563914ca6adf02e3c0d052af257833",
+      "bytes": 51558,
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      }
+    },
+    {
+      "path": "light/onboarding-services.webp",
+      "scenario": "onboarding-services",
+      "kind": "image",
+      "theme": "light",
+      "sha256": "44672e6292d16423b9444809e72e1587cd1d752a7c6df0ffec878517bfd9b720",
+      "bytes": 35550,
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      }
+    },
+    {
+      "path": "light/service-controls.webp",
+      "scenario": "service-controls",
+      "kind": "image",
+      "theme": "light",
+      "sha256": "b17d59e3428ca1941c21aaf7202c00b10f22a7720399bd28f7452e979f792b17",
+      "bytes": 57750,
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      }
+    },
+    {
+      "path": "light/dependencies.webm",
+      "scenario": "dependencies",
+      "kind": "video",
+      "theme": "light",
+      "sha256": "8e76e2ebcd33b483be9a8b466cc969e8045d0d09288af93e0e42483f8d47110f",
+      "bytes": 1987765,
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "chapter": "Choose Dependencies",
+      "chapter_offset_seconds": 2.5,
+      "source_start_seconds": 8.4,
+      "source_end_seconds": 14.4,
+      "source_duration_seconds": 20.84,
+      "playback_rate": 1
+    },
+    {
+      "path": "light/service-logs.webm",
+      "scenario": "service-logs",
+      "kind": "video",
+      "theme": "light",
+      "sha256": "fdf1f1aa134df53795850c1a68fd2d28ac13412bf0bf5013b8540bda02e57673",
+      "bytes": 2403777,
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "chapter": "Open Service Logs",
+      "chapter_offset_seconds": 3.4,
+      "source_start_seconds": 5,
+      "source_end_seconds": 11,
+      "source_duration_seconds": 22.96,
+      "playback_rate": 1
+    },
+    {
+      "path": "light/settings-notifications.webp",
+      "scenario": "settings-notifications",
+      "kind": "image",
+      "theme": "light",
+      "sha256": "49ce1b935c2c7f03eadd81743e04546d1433caf93a685097bb1fb6446ef7dc4a",
+      "bytes": 111474,
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      }
+    },
+    {
+      "path": "light/metrics.webp",
+      "scenario": "metrics",
+      "kind": "image",
+      "theme": "light",
+      "sha256": "225c8eb09c0333fe5f10bcb45fc7c75a21e27f53fabecde0ba2fbf79e64ff578",
+      "bytes": 60892,
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      }
+    }
+  ],
+  "recordings": [
+    {
+      "theme": "dark",
+      "duration_seconds": 30,
+      "raw_duration_seconds": 31.76,
+      "leading_trim_seconds": 1.7600000000000016,
+      "animation": {
+        "frames": 175,
+        "duration_seconds": 29.999
+      },
+      "scene_timing": [
+        {
+          "id": "dashboard",
+          "at_seconds": 0.1521294389999998
+        },
+        {
+          "id": "onboarding",
+          "at_seconds": 3.529044651
+        },
+        {
+          "id": "service",
+          "at_seconds": 7.056833248000001
+        },
+        {
+          "id": "dependencies",
+          "at_seconds": 11.047913995,
+          "source_start_seconds": 8.4,
+          "source_end_seconds": 14.3999,
+          "playback_rate": 1
+        },
+        {
+          "id": "logs",
+          "at_seconds": 17.02736841,
+          "source_start_seconds": 5,
+          "source_end_seconds": 10.9976,
+          "playback_rate": 1
+        },
+        {
+          "id": "notifications",
+          "at_seconds": 23.027207691999998
+        },
+        {
+          "id": "metrics",
+          "at_seconds": 26.536485726
+        }
+      ],
+      "errors": []
+    },
+    {
+      "theme": "light",
+      "duration_seconds": 30,
+      "raw_duration_seconds": 31.72,
+      "leading_trim_seconds": 1.7199999999999989,
+      "animation": {
+        "frames": 177,
+        "duration_seconds": 29.999
+      },
+      "scene_timing": [
+        {
+          "id": "dashboard",
+          "at_seconds": 0.14890685700000175
+        },
+        {
+          "id": "onboarding",
+          "at_seconds": 3.542259840999999
+        },
+        {
+          "id": "service",
+          "at_seconds": 7.039301770999999
+        },
+        {
+          "id": "dependencies",
+          "at_seconds": 11.039938507999999,
+          "source_start_seconds": 8.4,
+          "source_end_seconds": 14.3981,
+          "playback_rate": 1
+        },
+        {
+          "id": "logs",
+          "at_seconds": 17.017203465000005,
+          "source_start_seconds": 5,
+          "source_end_seconds": 10.9994,
+          "playback_rate": 1
+        },
+        {
+          "id": "notifications",
+          "at_seconds": 23.033312421
+        },
+        {
+          "id": "metrics",
+          "at_seconds": 26.548409183000004
+        }
+      ],
+      "errors": []
+    }
+  ],
+  "files": [
+    {
+      "path": "dark/hero.mp4",
+      "theme": "dark",
+      "role": "video",
+      "kind": "video",
+      "media_type": "video/mp4",
+      "sha256": "6a0d9b66e24e1052529472b4781c9040ea89a8ecbb1ea0da4316675678eff213",
+      "bytes": 6655697,
+      "duration_seconds": 30,
+      "viewport": {
+        "width": 1920,
+        "height": 1280
+      }
+    },
+    {
+      "path": "dark/poster.webp",
+      "theme": "dark",
+      "role": "poster",
+      "kind": "image",
+      "media_type": "image/webp",
+      "sha256": "fe99199c350fdaceb3435c4774db092d56304ac4bd81f3144ebb8533174a12b2",
+      "bytes": 94210,
+      "viewport": {
+        "width": 1920,
+        "height": 1280
+      }
+    },
+    {
+      "path": "dark/animated.webp",
+      "theme": "dark",
+      "role": "animated",
+      "kind": "image",
+      "media_type": "image/webp",
+      "sha256": "ba4096129ca0ffb91565e34cecb9ab027db7f8e1f05a4e17c63e18b4e46c716b",
+      "bytes": 4148386,
+      "viewport": {
+        "width": 1280,
+        "height": 854
+      }
+    },
+    {
+      "path": "light/hero.mp4",
+      "theme": "light",
+      "role": "video",
+      "kind": "video",
+      "media_type": "video/mp4",
+      "sha256": "0a56e237e30b5cf0fb94c188f3f0f6bf7db14a5af8f8eebf152f794ebb56773d",
+      "bytes": 6611034,
+      "duration_seconds": 30,
+      "viewport": {
+        "width": 1920,
+        "height": 1280
+      }
+    },
+    {
+      "path": "light/poster.webp",
+      "theme": "light",
+      "role": "poster",
+      "kind": "image",
+      "media_type": "image/webp",
+      "sha256": "eb89a71c7af8edcbbec2dddab702a6ae6394486525393ff9699124ea45abd295",
+      "bytes": 90350,
+      "viewport": {
+        "width": 1920,
+        "height": 1280
+      }
+    },
+    {
+      "path": "light/animated.webp",
+      "theme": "light",
+      "role": "animated",
+      "kind": "image",
+      "media_type": "image/webp",
+      "sha256": "5c2737ae7d31a8f93a6a12e5d76f0ed3f7eb38b8f2553c8e12b8a58fc89dbc57",
+      "bytes": 3687236,
+      "viewport": {
+        "width": 1280,
+        "height": 854
+      }
+    },
+    {
+      "path": "captions.vtt",
+      "role": "captions",
+      "kind": "text",
+      "media_type": "text/vtt",
+      "sha256": "f7d5e786f3b4e91ab924f2228d24a0266895049d2c5d0e6b3785f8209082833c",
+      "bytes": 805
+    },
+    {
+      "path": "chapters.vtt",
+      "role": "chapters",
+      "kind": "text",
+      "media_type": "text/vtt",
+      "sha256": "8997532d96cd065e4d934f1fe09989ad281f842736807e3e5f4a382d8298de93",
+      "bytes": 454
+    },
+    {
+      "path": "transcript.txt",
+      "role": "transcript",
+      "kind": "text",
+      "media_type": "text/plain",
+      "sha256": "5ac00e0a26286d9aba6209a42c9100fa25be855039d13db7a7c87fe8daa51e4d",
+      "bytes": 722
+    }
+  ],
+  "errors": []
+}

@@ -1,0 +1,37 @@
+WEBVTT
+
+dashboard
+00:00:00.000 --> 00:00:03.500
+Your media apps. One place.
+Review your selected services and their status.
+
+onboarding
+00:00:03.500 --> 00:00:07.000
+Choose what you run.
+Select the applications for your own workflow.
+
+service
+00:00:07.000 --> 00:00:11.000
+Everything for one app.
+Open its controls, settings and application interface.
+
+dependencies
+00:00:11.000 --> 00:00:17.000
+See what connects.
+Inspect the dependencies behind a selected service.
+
+logs
+00:00:17.000 --> 00:00:23.000
+Find the useful line.
+Read and filter the selected service's logs.
+
+notifications
+00:00:23.000 --> 00:00:26.500
+Keep the right alerts.
+Review notification destinations and event settings.
+
+metrics
+00:00:26.500 --> 00:00:30.000
+Know how it's running.
+Review resource use alongside your service checks.
+

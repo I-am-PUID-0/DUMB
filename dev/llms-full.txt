@@ -2,7 +2,7 @@
 
 > Channel: dev. Canonical base: https://dumbarr.com/dev/
 
-Documentation artifact: release 1.25.20. Source commit: 059b90256ffd3e796260cd7431c33a5e06d14e46. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.20.
+Documentation artifact: release 1.25.21. Source commit: 7980eacd1aa86673d3d1b2eb1bf0f6fccccf7dd7. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.21.
 
 DUMB coordinates media services. Match instructions to the installed backend version. Development guides can describe features absent from the latest release.
 
@@ -10196,10 +10196,10 @@ The assistant is disabled by default. You can still use **Preview bundle** witho
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Choose the services, time period and question for AI Assist to investigate.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/ai-overview.webp" aria-label="Open full-size image: Stack AI Assist">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/ai-overview.webp" aria-label="Open full-size image: Stack AI Assist">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/ai-overview.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/ai-overview.webp" alt="Stack AI Assist in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/ai-overview.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/ai-overview.webp" alt="Stack AI Assist in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -10306,10 +10306,10 @@ If no local docs are available, DUMB fetches the matching public page from `http
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Choose a local model and its server address for AI Assist.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/ai-provider.webp" aria-label="Open full-size image: Local AI provider settings">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/ai-provider.webp" aria-label="Open full-size image: Local AI provider settings">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/ai-provider.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/ai-provider.webp" alt="Local AI provider settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/ai-provider.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/ai-provider.webp" alt="Local AI provider settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -10793,10 +10793,10 @@ Preflight does not change the service configuration.
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Review the checks, backup requirements and migration choices for PostgreSQL.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/postgres-migration.webp" aria-label="Open full-size image: Move from SQLite to PostgreSQL">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/postgres-migration.webp" aria-label="Open full-size image: Move from SQLite to PostgreSQL">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/postgres-migration.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/postgres-migration.webp" alt="Move from SQLite to PostgreSQL in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/postgres-migration.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/postgres-migration.webp" alt="Move from SQLite to PostgreSQL in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -10993,10 +10993,10 @@ flowchart LR
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Create the first account for your DUMB installation.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/account-setup.webp" aria-label="Open full-size image: Create your first account">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/account-setup.webp" aria-label="Open full-size image: Create your first account">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/account-setup.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/account-setup.webp" alt="Create your first account in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/account-setup.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/account-setup.webp" alt="Create your first account in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -11056,10 +11056,10 @@ paths fall back to the dashboard home page.
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Sign in with your DUMB account.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/login.webp" aria-label="Open full-size image: Sign in to DUMB">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/login.webp" aria-label="Open full-size image: Sign in to DUMB">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/login.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/login.webp" alt="Sign in to DUMB in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/login.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/login.webp" alt="Sign in to DUMB in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -11404,7 +11404,7 @@ Auto-restart monitors explicitly selected services and retries a restart after r
 
 An empty service list monitors nothing, even when the global switch is enabled. A deliberate manual stop disables monitoring for that service until it is started again.
 
-<figure class="docs-frontend-demo"><video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/auto-restart.webp" data-ui-video data-light-video="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/auto-restart.webm" data-dark-video="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/auto-restart.webm" data-light-poster="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/auto-restart.webp" data-dark-poster="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/auto-restart.webp" aria-label="Choose when DUMB should try to recover a service that stops responding."><source src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/auto-restart.webm" type="video/webm"><p><a href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/auto-restart.webm">Open the demonstration</a>.</p></video><figcaption class="docs-visual-caption">Choose when DUMB should try to recover a service that stops responding. DUMB 2.24.0 · Frontend 1.92.0 · Example data.</figcaption></figure>
+<figure class="docs-frontend-demo"><video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/auto-restart.webp" data-ui-video data-light-video="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/auto-restart.webm" data-dark-video="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/auto-restart.webm" data-light-poster="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/auto-restart.webp" data-dark-poster="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/auto-restart.webp" aria-label="Choose when DUMB should try to recover a service that stops responding."><source src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/auto-restart.webm" type="video/webm"><p><a href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/auto-restart.webm">Open the demonstration</a>.</p></video><figcaption class="docs-visual-caption">Choose when DUMB should try to recover a service that stops responding. DUMB 2.24.0 · Frontend 1.92.0 · Example data.</figcaption></figure>
 
 <details class="geek-details" markdown="1">
 <summary>Technical details: monitoring and restart lifecycle</summary>
@@ -11584,7 +11584,7 @@ Choose how each service checks for new versions and whether it should install th
 3. Select **Install update** when you are ready for that service to restart. Review any playback or library-protection prompt before confirming.
 4. Keep the panel open while the install runs. When it completes, check the reported result, service health, and **Service Logs**. For a storage service, also test an item in your media player.
 
-<figure class="docs-frontend-demo"><video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/updates.webp" data-ui-video data-light-video="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/updates.webm" data-dark-video="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/updates.webm" data-light-poster="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/updates.webp" data-dark-poster="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/updates.webp" aria-label="See installed versions and check which updates are available."><source src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/updates.webm" type="video/webm"><p><a href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/updates.webm">Open the demonstration</a>.</p></video><figcaption class="docs-visual-caption">See installed versions and check which updates are available. DUMB 2.24.0 · Frontend 1.92.0 · Example data.</figcaption></figure>
+<figure class="docs-frontend-demo"><video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/updates.webp" data-ui-video data-light-video="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/updates.webm" data-dark-video="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/updates.webm" data-light-poster="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/updates.webp" data-dark-poster="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/updates.webp" aria-label="See installed versions and check which updates are available."><source src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/updates.webm" type="video/webm"><p><a href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/updates.webm">Open the demonstration</a>.</p></video><figcaption class="docs-visual-caption">See installed versions and check which updates are available. DUMB 2.24.0 · Frontend 1.92.0 · Example data.</figcaption></figure>
 
 ```mermaid
 flowchart LR
@@ -12430,7 +12430,7 @@ Use the dashboard to change DUMB settings and the settings of individual applica
 
     Changing user/group IDs, data paths, or ports can prevent an existing service from starting. Follow the service's guide and keep a backup before changing these values. Configuration and backups may contain live credentials; keep them private and redact values before sharing them.
 
-<figure class="docs-frontend-demo"><video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/configuration.webp" data-ui-video data-light-video="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/configuration.webm" data-dark-video="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/configuration.webm" data-light-poster="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/configuration.webp" data-dark-poster="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/configuration.webp" aria-label="Find the settings managed by DUMB and the app&#x27;s own configuration."><source src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/configuration.webm" type="video/webm"><p><a href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/configuration.webm">Open the demonstration</a>.</p></video><figcaption class="docs-visual-caption">Find the settings managed by DUMB and the app&#x27;s own configuration. DUMB 2.24.0 · Frontend 1.92.0 · Example data.</figcaption></figure>
+<figure class="docs-frontend-demo"><video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/configuration.webp" data-ui-video data-light-video="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/configuration.webm" data-dark-video="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/configuration.webm" data-light-poster="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/configuration.webp" data-dark-poster="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/configuration.webp" aria-label="Find the settings managed by DUMB and the app&#x27;s own configuration."><source src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/configuration.webm" type="video/webm"><p><a href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/configuration.webm">Open the demonstration</a>.</p></video><figcaption class="docs-visual-caption">Find the settings managed by DUMB and the app&#x27;s own configuration. DUMB 2.24.0 · Frontend 1.92.0 · Example data.</figcaption></figure>
 
 ## Add an integration token
 
@@ -12589,10 +12589,10 @@ A matching enabled TPA public HTTPS route can supply an external link. AIOStream
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Choose whether supported apps open inside DUMB.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-embedded-uis.webp" aria-label="Open full-size image: Embedded UI settings">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-embedded-uis.webp" aria-label="Open full-size image: Embedded UI settings">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-embedded-uis.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-embedded-uis.webp" alt="Embedded UI settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-embedded-uis.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-embedded-uis.webp" alt="Embedded UI settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -12605,10 +12605,10 @@ A matching enabled TPA public HTTPS route can supply an external link. AIOStream
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Use Sonarr inside DUMB without changing browser tabs.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/embedded-sonarr.webp" aria-label="Open full-size image: Sonarr inside DUMB">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/embedded-sonarr.webp" aria-label="Open full-size image: Sonarr inside DUMB">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/embedded-sonarr.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/embedded-sonarr.webp" alt="Sonarr inside DUMB in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/embedded-sonarr.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/embedded-sonarr.webp" alt="Sonarr inside DUMB in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -14912,10 +14912,10 @@ After the dependency restarts and remains healthy, the recovery journal restores
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Choose how DUMB protects your Plex library during storage outages.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/library-protection.webp" aria-label="Open full-size image: Media library protection">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/library-protection.webp" aria-label="Open full-size image: Media library protection">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/library-protection.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/library-protection.webp" alt="Media library protection in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/library-protection.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/library-protection.webp" alt="Media library protection in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -15024,10 +15024,10 @@ The metrics system provides:
     <a href="../../frontend/metrics/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>See CPU, memory, storage and network activity.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/metrics.webp" aria-label="Open full-size image: Container metrics">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/metrics.webp" aria-label="Open full-size image: Container metrics">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/metrics.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/metrics.webp" alt="Container metrics in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/metrics.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/metrics.webp" alt="Container metrics in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -15573,10 +15573,10 @@ Use **Settings → Notifications** to configure destinations, send a test or man
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Choose where alerts go and which events you want to receive.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-notifications.webp" aria-label="Open full-size image: Notifications">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-notifications.webp" aria-label="Open full-size image: Notifications">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-notifications.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-notifications.webp" alt="Notifications in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-notifications.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-notifications.webp" alt="Notifications in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -15902,10 +15902,10 @@ flowchart TD
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Review safety limits and test settings for InfiniDysk streaming.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/rclone-optimizer.webp" aria-label="Open full-size image: Rclone streaming optimizer">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/rclone-optimizer.webp" aria-label="Open full-size image: Rclone streaming optimizer">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/rclone-optimizer.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/rclone-optimizer.webp" alt="Rclone streaming optimizer in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/rclone-optimizer.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/rclone-optimizer.webp" alt="Rclone streaming optimizer in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -16917,10 +16917,10 @@ Start with a dry run, inspect its scope, and keep a snapshot before applying cha
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Repair library links, take snapshots and set backup schedules.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/symlink-tools.webp" aria-label="Open full-size image: Symlink repair and snapshots">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/symlink-tools.webp" aria-label="Open full-size image: Symlink repair and snapshots">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/symlink-tools.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/symlink-tools.webp" alt="Symlink repair and snapshots in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/symlink-tools.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/symlink-tools.webp" alt="Symlink repair and snapshots in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -17676,10 +17676,10 @@ The dashboard displays service cards for each configured service, showing:
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>See which services are running and open the app you need.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/dashboard.webp" aria-label="Open full-size image: Service Dashboard">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/dashboard.webp" aria-label="Open full-size image: Service Dashboard">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/dashboard.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/dashboard.webp" alt="Service Dashboard in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/dashboard.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/dashboard.webp" alt="Service Dashboard in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -17904,10 +17904,10 @@ Enabled services are displayed in a grid layout, organized by:
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Use the sidebar filters to find services that are turned off.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/disabled-services.webp" aria-label="Open full-size image: Find disabled services">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/disabled-services.webp" aria-label="Open full-size image: Find disabled services">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/disabled-services.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/disabled-services.webp" alt="Find disabled services in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/disabled-services.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/disabled-services.webp" alt="Find disabled services in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18076,10 +18076,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="dashboard/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>See which services are running and open the app you need.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/dashboard.webp" aria-label="Open full-size image: Service Dashboard">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/dashboard.webp" aria-label="Open full-size image: Service Dashboard">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/dashboard.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/dashboard.webp" alt="Service Dashboard in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/dashboard.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/dashboard.webp" alt="Service Dashboard in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18090,10 +18090,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="dashboard/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Use the sidebar filters to find services that are turned off.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/disabled-services.webp" aria-label="Open full-size image: Find disabled services">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/disabled-services.webp" aria-label="Open full-size image: Find disabled services">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/disabled-services.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/disabled-services.webp" alt="Find disabled services in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/disabled-services.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/disabled-services.webp" alt="Find disabled services in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18104,10 +18104,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="metrics/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>See CPU, memory, storage and network activity.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/metrics.webp" aria-label="Open full-size image: Container metrics">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/metrics.webp" aria-label="Open full-size image: Container metrics">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/metrics.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/metrics.webp" alt="Container metrics in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/metrics.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/metrics.webp" alt="Container metrics in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18128,10 +18128,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="service-pages/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Check a service&#39;s status and find its start, stop and restart controls.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/service-controls.webp" aria-label="Open full-size image: Service controls">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/service-controls.webp" aria-label="Open full-size image: Service controls">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/service-controls.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/service-controls.webp" alt="Service controls in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/service-controls.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/service-controls.webp" alt="Service controls in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18142,10 +18142,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="../features/configuration/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Find the settings managed by DUMB and the app&#39;s own configuration.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/configuration.webp" aria-label="Open full-size image: DUMB and application configuration">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/configuration.webp" aria-label="Open full-size image: DUMB and application configuration">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/configuration.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/configuration.webp" alt="DUMB and application configuration in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/configuration.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/configuration.webp" alt="DUMB and application configuration in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18156,10 +18156,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="../features/configuration/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Review the DUMB API&#39;s settings and find its temporary debug logging controls.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/api-configuration.webp" aria-label="Open full-size image: DUMB API configuration">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/api-configuration.webp" aria-label="Open full-size image: DUMB API configuration">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/api-configuration.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/api-configuration.webp" alt="DUMB API configuration in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/api-configuration.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/api-configuration.webp" alt="DUMB API configuration in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18170,10 +18170,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="../features/embedded-ui/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Use Sonarr inside DUMB without changing browser tabs.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/embedded-sonarr.webp" aria-label="Open full-size image: Sonarr inside DUMB">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/embedded-sonarr.webp" aria-label="Open full-size image: Sonarr inside DUMB">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/embedded-sonarr.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/embedded-sonarr.webp" alt="Sonarr inside DUMB in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/embedded-sonarr.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/embedded-sonarr.webp" alt="Sonarr inside DUMB in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18184,10 +18184,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="service-pages/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>See which services an app needs before it can start.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/dependencies.webp" aria-label="Open full-size image: Review service dependencies">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/dependencies.webp" aria-label="Open full-size image: Review service dependencies">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/dependencies.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/dependencies.webp" alt="Review service dependencies in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/dependencies.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/dependencies.webp" alt="Review service dependencies in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18198,10 +18198,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="../features/auto-restart/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Choose when DUMB should try to recover a service that stops responding.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/auto-restart.webp" aria-label="Open full-size image: Automatic recovery settings">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/auto-restart.webp" aria-label="Open full-size image: Automatic recovery settings">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/auto-restart.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/auto-restart.webp" alt="Automatic recovery settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/auto-restart.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/auto-restart.webp" alt="Automatic recovery settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18222,10 +18222,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="service-pages/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Filter a service&#39;s messages and pause refresh to read them at your own pace.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/service-logs.webp" aria-label="Open full-size image: Filter and pause service logs">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/service-logs.webp" aria-label="Open full-size image: Filter and pause service logs">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/service-logs.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/service-logs.webp" alt="Filter and pause service logs in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/service-logs.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/service-logs.webp" alt="Filter and pause service logs in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18236,10 +18236,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Follow messages from across your DUMB installation in one place.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/realtime-logs.webp" aria-label="Open full-size image: Real-Time Logs">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/realtime-logs.webp" aria-label="Open full-size image: Real-Time Logs">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/realtime-logs.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/realtime-logs.webp" alt="Real-Time Logs in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/realtime-logs.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/realtime-logs.webp" alt="Real-Time Logs in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18250,10 +18250,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="../features/auto-update/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>See installed versions and check which updates are available.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/updates.webp" aria-label="Open full-size image: Check for updates">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/updates.webp" aria-label="Open full-size image: Check for updates">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/updates.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/updates.webp" alt="Check for updates in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/updates.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/updates.webp" alt="Check for updates in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18274,10 +18274,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="../features/metrics/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Find monitoring options for a service&#39;s database.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/database-health.webp" aria-label="Open full-size image: Database health">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/database-health.webp" aria-label="Open full-size image: Database health">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/database-health.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/database-health.webp" alt="Database health in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/database-health.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/database-health.webp" alt="Database health in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18288,10 +18288,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="../features/media-library-protection/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Choose how DUMB protects your Plex library during storage outages.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/library-protection.webp" aria-label="Open full-size image: Media library protection">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/library-protection.webp" aria-label="Open full-size image: Media library protection">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/library-protection.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/library-protection.webp" alt="Media library protection in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/library-protection.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/library-protection.webp" alt="Media library protection in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18302,10 +18302,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="../features/symlinks/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Repair library links, take snapshots and set backup schedules.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/symlink-tools.webp" aria-label="Open full-size image: Symlink repair and snapshots">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/symlink-tools.webp" aria-label="Open full-size image: Symlink repair and snapshots">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/symlink-tools.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/symlink-tools.webp" alt="Symlink repair and snapshots in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/symlink-tools.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/symlink-tools.webp" alt="Symlink repair and snapshots in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18316,10 +18316,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="../features/rclone-optimizer/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Review safety limits and test settings for InfiniDysk streaming.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/rclone-optimizer.webp" aria-label="Open full-size image: Rclone streaming optimizer">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/rclone-optimizer.webp" aria-label="Open full-size image: Rclone streaming optimizer">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/rclone-optimizer.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/rclone-optimizer.webp" alt="Rclone streaming optimizer in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/rclone-optimizer.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/rclone-optimizer.webp" alt="Rclone streaming optimizer in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18330,10 +18330,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="../services/core/infinidysk-installation/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Choose the mount and backup options for a new InfiniDysk 2 installation.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/infinidysk-v2-install.webp" aria-label="Open full-size image: Install InfiniDysk 2">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/infinidysk-v2-install.webp" aria-label="Open full-size image: Install InfiniDysk 2">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/infinidysk-v2-install.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/infinidysk-v2-install.webp" alt="Install InfiniDysk 2 in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/infinidysk-v2-install.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/infinidysk-v2-install.webp" alt="Install InfiniDysk 2 in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18344,10 +18344,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="../services/core/infinidysk-migration/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Review the choices for moving an older NzbDAV setup to InfiniDysk.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/infinidysk-namespace-migration.webp" aria-label="Open full-size image: Move from NzbDAV to InfiniDysk">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/infinidysk-namespace-migration.webp" aria-label="Open full-size image: Move from NzbDAV to InfiniDysk">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/infinidysk-namespace-migration.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/infinidysk-namespace-migration.webp" alt="Move from NzbDAV to InfiniDysk in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/infinidysk-namespace-migration.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/infinidysk-namespace-migration.webp" alt="Move from NzbDAV to InfiniDysk in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18358,10 +18358,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="../features/arr-postgres-migration/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Review the checks, backup requirements and migration choices for PostgreSQL.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/postgres-migration.webp" aria-label="Open full-size image: Move from SQLite to PostgreSQL">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/postgres-migration.webp" aria-label="Open full-size image: Move from SQLite to PostgreSQL">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/postgres-migration.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/postgres-migration.webp" alt="Move from SQLite to PostgreSQL in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/postgres-migration.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/postgres-migration.webp" alt="Move from SQLite to PostgreSQL in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18382,10 +18382,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="settings/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Find settings for appearance, connections, access and alerts.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-overview.webp" aria-label="Open full-size image: Settings">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-overview.webp" aria-label="Open full-size image: Settings">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-overview.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-overview.webp" alt="Settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-overview.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-overview.webp" alt="Settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18396,10 +18396,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="settings/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Choose a light or dark theme, or follow your device&#39;s appearance.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-appearance.webp" aria-label="Open full-size image: Appearance">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-appearance.webp" aria-label="Open full-size image: Appearance">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-appearance.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-appearance.webp" alt="Appearance in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-appearance.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-appearance.webp" alt="Appearance in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18410,10 +18410,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="settings/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Choose the date and time format used in logs.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-log-timestamps.webp" aria-label="Open full-size image: Log timestamp format">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-log-timestamps.webp" aria-label="Open full-size image: Log timestamp format">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-log-timestamps.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-log-timestamps.webp" alt="Log timestamp format in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-log-timestamps.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-log-timestamps.webp" alt="Log timestamp format in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18424,10 +18424,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="../features/embedded-ui/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Choose whether supported apps open inside DUMB.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-embedded-uis.webp" aria-label="Open full-size image: Embedded UI settings">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-embedded-uis.webp" aria-label="Open full-size image: Embedded UI settings">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-embedded-uis.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-embedded-uis.webp" alt="Embedded UI settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-embedded-uis.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-embedded-uis.webp" alt="Embedded UI settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18438,10 +18438,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="settings/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Open guided setup again to review or change your service choices.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-onboarding.webp" aria-label="Open full-size image: Run guided setup again">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-onboarding.webp" aria-label="Open full-size image: Run guided setup again">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-onboarding.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-onboarding.webp" alt="Run guided setup again in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-onboarding.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-onboarding.webp" alt="Run guided setup again in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18452,10 +18452,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="settings/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Enable Geek Mode to show additional service information and diagnostics.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-advanced.webp" aria-label="Open full-size image: Advanced settings">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-advanced.webp" aria-label="Open full-size image: Advanced settings">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-advanced.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-advanced.webp" alt="Advanced settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-advanced.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-advanced.webp" alt="Advanced settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18466,10 +18466,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="settings/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Check the installed DUMB, frontend and service versions.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-about.webp" aria-label="Open full-size image: Application versions">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-about.webp" aria-label="Open full-size image: Application versions">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-about.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-about.webp" alt="Application versions in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-about.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-about.webp" alt="Application versions in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18480,10 +18480,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="settings/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Find help, project links and ways to support the maintainers.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-support.webp" aria-label="Open full-size image: Support the projects">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-support.webp" aria-label="Open full-size image: Support the projects">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-support.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-support.webp" alt="Support the projects in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-support.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-support.webp" alt="Support the projects in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18494,10 +18494,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="settings/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Meet the people who contribute to DUMB and its frontend.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-contributors.webp" aria-label="Open full-size image: Project contributors">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-contributors.webp" aria-label="Open full-size image: Project contributors">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-contributors.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-contributors.webp" alt="Project contributors in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-contributors.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-contributors.webp" alt="Project contributors in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18518,10 +18518,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="../features/authentication/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Sign in with your DUMB account.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/login.webp" aria-label="Open full-size image: Sign in to DUMB">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/login.webp" aria-label="Open full-size image: Sign in to DUMB">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/login.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/login.webp" alt="Sign in to DUMB in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/login.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/login.webp" alt="Sign in to DUMB in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18532,10 +18532,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="../features/authentication/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Create the first account for your DUMB installation.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/account-setup.webp" aria-label="Open full-size image: Create your first account">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/account-setup.webp" aria-label="Open full-size image: Create your first account">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/account-setup.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/account-setup.webp" alt="Create your first account in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/account-setup.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/account-setup.webp" alt="Create your first account in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18546,10 +18546,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="../features/configuration/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Add the Plex and GitHub credentials used by your installation.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-tokens.webp" aria-label="Open full-size image: Integration tokens">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-tokens.webp" aria-label="Open full-size image: Integration tokens">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-tokens.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-tokens.webp" alt="Integration tokens in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-tokens.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-tokens.webp" alt="Integration tokens in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18560,10 +18560,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="../features/authentication/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Manage sign-in and local accounts for your installation.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-authentication.webp" aria-label="Open full-size image: Authentication and local accounts">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-authentication.webp" aria-label="Open full-size image: Authentication and local accounts">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-authentication.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-authentication.webp" alt="Authentication and local accounts in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-authentication.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-authentication.webp" alt="Authentication and local accounts in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18574,10 +18574,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="../features/authentication/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Choose local sign-in, an identity provider, or both.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-auth-provider.webp" aria-label="Open full-size image: Sign-in provider">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-auth-provider.webp" aria-label="Open full-size image: Sign-in provider">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-auth-provider.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-auth-provider.webp" alt="Sign-in provider in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-auth-provider.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-auth-provider.webp" alt="Sign-in provider in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18588,10 +18588,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="../features/notifications/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Choose where alerts go and which events you want to receive.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-notifications.webp" aria-label="Open full-size image: Notifications">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-notifications.webp" aria-label="Open full-size image: Notifications">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-notifications.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-notifications.webp" alt="Notifications in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-notifications.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-notifications.webp" alt="Notifications in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18602,10 +18602,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="../features/installation-backups/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Review your backup and restore options.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-backups.webp" aria-label="Open full-size image: Backups and restore">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-backups.webp" aria-label="Open full-size image: Backups and restore">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-backups.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-backups.webp" alt="Backups and restore in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-backups.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-backups.webp" alt="Backups and restore in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18616,10 +18616,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="../features/ai-assistant/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Choose the services, time period and question for AI Assist to investigate.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/ai-overview.webp" aria-label="Open full-size image: Stack AI Assist">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/ai-overview.webp" aria-label="Open full-size image: Stack AI Assist">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/ai-overview.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/ai-overview.webp" alt="Stack AI Assist in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/ai-overview.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/ai-overview.webp" alt="Stack AI Assist in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18630,10 +18630,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="../features/ai-assistant/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Choose a local model and its server address for AI Assist.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/ai-provider.webp" aria-label="Open full-size image: Local AI provider settings">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/ai-provider.webp" aria-label="Open full-size image: Local AI provider settings">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/ai-provider.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/ai-provider.webp" alt="Local AI provider settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/ai-provider.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/ai-provider.webp" alt="Local AI provider settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18644,10 +18644,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="../features/ai-assistant/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Choose an OpenAI model and add its API key for AI Assist.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/ai-provider-openai.webp" aria-label="Open full-size image: OpenAI provider settings">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/ai-provider-openai.webp" aria-label="Open full-size image: OpenAI provider settings">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/ai-provider-openai.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/ai-provider-openai.webp" alt="OpenAI provider settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/ai-provider-openai.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/ai-provider-openai.webp" alt="OpenAI provider settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18658,10 +18658,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="../features/ai-assistant/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Choose a Gemini model and add its API key for AI Assist.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/ai-provider-gemini.webp" aria-label="Open full-size image: Gemini provider settings">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/ai-provider-gemini.webp" aria-label="Open full-size image: Gemini provider settings">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/ai-provider-gemini.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/ai-provider-gemini.webp" alt="Gemini provider settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/ai-provider-gemini.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/ai-provider-gemini.webp" alt="Gemini provider settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18682,10 +18682,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="onboarding/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Choose the apps you want DUMB to set up.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-services.webp" aria-label="Open full-size image: Choose services">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-services.webp" aria-label="Open full-size image: Choose services">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/onboarding-services.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-services.webp" alt="Choose services in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/onboarding-services.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-services.webp" alt="Choose services in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18696,10 +18696,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="onboarding/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Check that DUMB is ready before continuing with setup.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-preflight.webp" aria-label="Open full-size image: Readiness checks">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-preflight.webp" aria-label="Open full-size image: Readiness checks">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/onboarding-preflight.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-preflight.webp" alt="Readiness checks in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/onboarding-preflight.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-preflight.webp" alt="Readiness checks in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18710,10 +18710,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="onboarding/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Enter the credentials for your chosen provider.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-provider.webp" aria-label="Open full-size image: Provider credentials">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-provider.webp" aria-label="Open full-size image: Provider credentials">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/onboarding-provider.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-provider.webp" alt="Provider credentials in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/onboarding-provider.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-provider.webp" alt="Provider credentials in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18724,10 +18724,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="onboarding/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Choose optional apps to use alongside your main services.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-companions.webp" aria-label="Open full-size image: Companion services">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-companions.webp" aria-label="Open full-size image: Companion services">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/onboarding-companions.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-companions.webp" alt="Companion services in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/onboarding-companions.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-companions.webp" alt="Companion services in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18738,10 +18738,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="onboarding/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Review the options for your selected services.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-options.webp" aria-label="Open full-size image: Service options">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-options.webp" aria-label="Open full-size image: Service options">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/onboarding-options.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-options.webp" alt="Service options in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/onboarding-options.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-options.webp" alt="Service options in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18752,10 +18752,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="onboarding/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Choose whether supported service pages open inside DUMB.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-embedded-uis.webp" aria-label="Open full-size image: Embedded service access">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-embedded-uis.webp" aria-label="Open full-size image: Embedded service access">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/onboarding-embedded-uis.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-embedded-uis.webp" alt="Embedded service access in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/onboarding-embedded-uis.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-embedded-uis.webp" alt="Embedded service access in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18766,10 +18766,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="onboarding/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Review the installation choices before starting your services.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-installation.webp" aria-label="Open full-size image: Installation choices">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-installation.webp" aria-label="Open full-size image: Installation choices">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/onboarding-installation.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-installation.webp" alt="Installation choices in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/onboarding-installation.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-installation.webp" alt="Installation choices in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18780,10 +18780,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="onboarding/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Check your selected services and settings before starting setup.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-review.webp" aria-label="Open full-size image: Review your setup">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-review.webp" aria-label="Open full-size image: Review your setup">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/onboarding-review.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-review.webp" alt="Review your setup in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/onboarding-review.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-review.webp" alt="Review your setup in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18794,10 +18794,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="onboarding/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Follow the progress messages while your selected services start.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-progress.webp" aria-label="Open full-size image: Setup progress">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-progress.webp" aria-label="Open full-size image: Setup progress">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/onboarding-progress.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-progress.webp" alt="Setup progress in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/onboarding-progress.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-progress.webp" alt="Setup progress in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18808,10 +18808,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="onboarding/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>See the confirmation shown when guided setup finishes.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-result.webp" aria-label="Open full-size image: Setup complete">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-result.webp" aria-label="Open full-size image: Setup complete">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/onboarding-result.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-result.webp" alt="Setup complete in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/onboarding-result.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-result.webp" alt="Setup complete in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18822,10 +18822,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="onboarding/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Read the problem reported during setup before reviewing your settings.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-error.webp" aria-label="Open full-size image: Setup needs attention">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-error.webp" aria-label="Open full-size image: Setup needs attention">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/onboarding-error.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-error.webp" alt="Setup needs attention in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/onboarding-error.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-error.webp" alt="Setup needs attention in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18836,10 +18836,10 @@ The guides below include short recordings with time to read the menus and contro
     <a href="../features/setup-checklist/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Complete the remaining connections between your apps.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/setup-connections.webp" aria-label="Open full-size image: Finish setup connections">
+  <a class="ui-example-image" data-showcase-zoom href="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/setup-connections.webp" aria-label="Open full-size image: Finish setup connections">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/setup-connections.webp">
-      <img src="../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/setup-connections.webp" alt="Finish setup connections in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/setup-connections.webp">
+      <img src="../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/setup-connections.webp" alt="Finish setup connections in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -18929,10 +18929,10 @@ The metrics dashboard shows:
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>See CPU, memory, storage and network activity.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/metrics.webp" aria-label="Open full-size image: Container metrics">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/metrics.webp" aria-label="Open full-size image: Container metrics">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/metrics.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/metrics.webp" alt="Container metrics in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/metrics.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/metrics.webp" alt="Container metrics in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -19076,10 +19076,10 @@ Only services explicitly opted into Database Health monitoring appear in the **D
     <a href="../../features/metrics/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Find monitoring options for a service&#39;s database.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/database-health.webp" aria-label="Open full-size image: Database health">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/database-health.webp" aria-label="Open full-size image: Database health">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/database-health.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/database-health.webp" alt="Database health in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/database-health.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/database-health.webp" alt="Database health in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -19356,10 +19356,10 @@ Review **Chosen by you**, **Required dependency**, and **Optional companion** se
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Choose the apps you want DUMB to set up.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-services.webp" aria-label="Open full-size image: Choose services">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-services.webp" aria-label="Open full-size image: Choose services">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/onboarding-services.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-services.webp" alt="Choose services in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/onboarding-services.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-services.webp" alt="Choose services in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -19389,10 +19389,10 @@ A readiness check blocks progress only when DUMB confirms a critical failure. **
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Check that DUMB is ready before continuing with setup.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-preflight.webp" aria-label="Open full-size image: Readiness checks">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-preflight.webp" aria-label="Open full-size image: Readiness checks">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/onboarding-preflight.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-preflight.webp" alt="Readiness checks in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/onboarding-preflight.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-preflight.webp" alt="Readiness checks in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -19411,10 +19411,10 @@ An NNTP provider account and an NZB indexer account serve different purposes; su
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Enter the credentials for your chosen provider.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-provider.webp" aria-label="Open full-size image: Provider credentials">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-provider.webp" aria-label="Open full-size image: Provider credentials">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/onboarding-provider.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-provider.webp" alt="Provider credentials in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/onboarding-provider.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-provider.webp" alt="Provider credentials in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -19439,10 +19439,10 @@ Authelia appears only when the backend supports its managed integration. A newer
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Choose optional apps to use alongside your main services.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-companions.webp" aria-label="Open full-size image: Companion services">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-companions.webp" aria-label="Open full-size image: Companion services">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/onboarding-companions.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-companions.webp" alt="Companion services in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/onboarding-companions.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-companions.webp" alt="Companion services in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -19475,10 +19475,10 @@ Choosing generation 2 opens its guarded installation/migration tool without acce
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Review the installation choices before starting your services.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-installation.webp" aria-label="Open full-size image: Installation choices">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-installation.webp" aria-label="Open full-size image: Installation choices">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/onboarding-installation.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-installation.webp" alt="Installation choices in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/onboarding-installation.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-installation.webp" alt="Installation choices in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -19509,10 +19509,10 @@ credential drafts.
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Review the options for your selected services.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-options.webp" aria-label="Open full-size image: Service options">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-options.webp" aria-label="Open full-size image: Service options">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/onboarding-options.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-options.webp" alt="Service options in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/onboarding-options.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-options.webp" alt="Service options in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -19529,10 +19529,10 @@ Enable embedded UIs when offered to use proxied service tabs, split view, and di
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Choose whether supported service pages open inside DUMB.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-embedded-uis.webp" aria-label="Open full-size image: Embedded service access">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-embedded-uis.webp" aria-label="Open full-size image: Embedded service access">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/onboarding-embedded-uis.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-embedded-uis.webp" alt="Embedded service access in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/onboarding-embedded-uis.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-embedded-uis.webp" alt="Embedded service access in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -19549,10 +19549,10 @@ Review selected services, dependencies, credentials, instance paths, and custom 
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Check your selected services and settings before starting setup.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-review.webp" aria-label="Open full-size image: Review your setup">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-review.webp" aria-label="Open full-size image: Review your setup">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/onboarding-review.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-review.webp" alt="Review your setup in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/onboarding-review.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-review.webp" alt="Review your setup in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -19581,10 +19581,10 @@ does not mark deferred tasks or untested connections complete.
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Follow the progress messages while your selected services start.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-progress.webp" aria-label="Open full-size image: Setup progress">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-progress.webp" aria-label="Open full-size image: Setup progress">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/onboarding-progress.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-progress.webp" alt="Setup progress in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/onboarding-progress.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-progress.webp" alt="Setup progress in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -19607,10 +19607,10 @@ Manual completion records your confirmation separately from an independently pas
     <a href="../../features/setup-checklist/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Complete the remaining connections between your apps.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/setup-connections.webp" aria-label="Open full-size image: Finish setup connections">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/setup-connections.webp" aria-label="Open full-size image: Finish setup connections">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/setup-connections.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/setup-connections.webp" alt="Finish setup connections in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/setup-connections.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/setup-connections.webp" alt="Finish setup connections in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -19700,10 +19700,10 @@ Check service status, actual application configuration, and one intended end-to-
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>See the confirmation shown when guided setup finishes.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-result.webp" aria-label="Open full-size image: Setup complete">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-result.webp" aria-label="Open full-size image: Setup complete">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/onboarding-result.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-result.webp" alt="Setup complete in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/onboarding-result.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-result.webp" alt="Setup complete in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -19745,10 +19745,10 @@ installed program files.
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Read the problem reported during setup before reviewing your settings.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-error.webp" aria-label="Open full-size image: Setup needs attention">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-error.webp" aria-label="Open full-size image: Setup needs attention">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/onboarding-error.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/onboarding-error.webp" alt="Setup needs attention in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/onboarding-error.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/onboarding-error.webp" alt="Setup needs attention in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -19801,10 +19801,10 @@ The header shows process status, application health, and restart information. Ho
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Check a service&#39;s status and find its start, stop and restart controls.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/service-controls.webp" aria-label="Open full-size image: Service controls">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/service-controls.webp" aria-label="Open full-size image: Service controls">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/service-controls.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/service-controls.webp" alt="Service controls in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/service-controls.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/service-controls.webp" alt="Service controls in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -19878,7 +19878,7 @@ Open **Tools → Dependencies** to inspect startup order, missing prerequisites,
 
 Instance links are scoped to the current workflow. An unrelated rclone or Zurg instance is not treated as a valid dependency when the intended mapping is missing. Conditional startup dependencies apply only when the relevant services are enabled. Signals distinguish runtime waits, configured `core_service` links, and optional integrations.
 
-<figure class="docs-frontend-demo"><video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/dependencies.webp" data-ui-video data-light-video="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/dependencies.webm" data-dark-video="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/dependencies.webm" data-light-poster="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/dependencies.webp" data-dark-poster="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/dependencies.webp" aria-label="See which services an app needs before it can start."><source src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/dependencies.webm" type="video/webm"><p><a href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/dependencies.webm">Open the demonstration</a>.</p></video><figcaption class="docs-visual-caption">See which services an app needs before it can start. DUMB 2.24.0 · Frontend 1.92.0 · Example data.</figcaption></figure>
+<figure class="docs-frontend-demo"><video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/dependencies.webp" data-ui-video data-light-video="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/dependencies.webm" data-dark-video="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/dependencies.webm" data-light-poster="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/dependencies.webp" data-dark-poster="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/dependencies.webp" aria-label="See which services an app needs before it can start."><source src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/dependencies.webm" type="video/webm"><p><a href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/dependencies.webm">Open the demonstration</a>.</p></video><figcaption class="docs-visual-caption">See which services an app needs before it can start. DUMB 2.24.0 · Frontend 1.92.0 · Example data.</figcaption></figure>
 
 With [Geek Mode](settings.md#geek-mode), the panel also exposes API latency, **Copy JSON**, and raw Mermaid source. Use Details if the browser cannot render Flow.
 
@@ -19969,7 +19969,7 @@ You can also change the line limit. Service-aware parsing retains application ti
 
 DUMB applies its sensitive-data redactor to logs viewed or downloaded here. Review a download before sharing it; arbitrary application output can contain values the redactor does not recognize.
 
-<figure class="docs-frontend-demo"><video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/service-logs.webp" data-ui-video data-light-video="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/service-logs.webm" data-dark-video="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/service-logs.webm" data-light-poster="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/service-logs.webp" data-dark-poster="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/service-logs.webp" aria-label="Filter a service&#x27;s messages and pause refresh to read them at your own pace."><source src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/service-logs.webm" type="video/webm"><p><a href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/service-logs.webm">Open the demonstration</a>.</p></video><figcaption class="docs-visual-caption">Filter a service&#x27;s messages and pause refresh to read them at your own pace. DUMB 2.24.0 · Frontend 1.92.0 · Example data.</figcaption></figure>
+<figure class="docs-frontend-demo"><video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/service-logs.webp" data-ui-video data-light-video="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/service-logs.webm" data-dark-video="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/service-logs.webm" data-light-poster="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/service-logs.webp" data-dark-poster="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/service-logs.webp" aria-label="Filter a service&#x27;s messages and pause refresh to read them at your own pace."><source src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/service-logs.webm" type="video/webm"><p><a href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/service-logs.webm">Open the demonstration</a>.</p></video><figcaption class="docs-visual-caption">Filter a service&#x27;s messages and pause refresh to read them at your own pace. DUMB 2.24.0 · Frontend 1.92.0 · Example data.</figcaption></figure>
 
 ## Embedded UI
 
@@ -19995,10 +19995,10 @@ InfiniDysk 2 currently opens at its own root URL. Use the direct local/public ad
     <a href="../../features/embedded-ui/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Use Sonarr inside DUMB without changing browser tabs.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/embedded-sonarr.webp" aria-label="Open full-size image: Sonarr inside DUMB">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/embedded-sonarr.webp" aria-label="Open full-size image: Sonarr inside DUMB">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/embedded-sonarr.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/embedded-sonarr.webp" alt="Sonarr inside DUMB in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/embedded-sonarr.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/embedded-sonarr.webp" alt="Sonarr inside DUMB in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -20052,10 +20052,10 @@ Sections start collapsed until you choose otherwise. Each browser remembers expl
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Find settings for appearance, connections, access and alerts.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-overview.webp" aria-label="Open full-size image: Settings">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-overview.webp" aria-label="Open full-size image: Settings">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-overview.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-overview.webp" alt="Settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-overview.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-overview.webp" alt="Settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -20093,7 +20093,7 @@ The **Advanced** section also includes service utilities. **Backups and restore*
 
 Choose **System Default** to follow your operating system, or select a light/dark palette. This preference is stored in the browser and does not change backend configuration.
 
-<figure class="docs-frontend-demo"><video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-appearance.webp" data-ui-video data-light-video="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-appearance.webm" data-dark-video="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-appearance.webm" data-light-poster="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-appearance.webp" data-dark-poster="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-appearance.webp" aria-label="Choose a light or dark theme, or follow your device&#x27;s appearance."><source src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-appearance.webm" type="video/webm"><p><a href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-appearance.webm">Open the demonstration</a>.</p></video><figcaption class="docs-visual-caption">Choose a light or dark theme, or follow your device&#x27;s appearance. DUMB 2.24.0 · Frontend 1.92.0 · Example data.</figcaption></figure>
+<figure class="docs-frontend-demo"><video class="docs-frontend-video" controls playsinline preload="none" poster="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-appearance.webp" data-ui-video data-light-video="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-appearance.webm" data-dark-video="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-appearance.webm" data-light-poster="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-appearance.webp" data-dark-poster="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-appearance.webp" aria-label="Choose a light or dark theme, or follow your device&#x27;s appearance."><source src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-appearance.webm" type="video/webm"><p><a href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-appearance.webm">Open the demonstration</a>.</p></video><figcaption class="docs-visual-caption">Choose a light or dark theme, or follow your device&#x27;s appearance. DUMB 2.24.0 · Frontend 1.92.0 · Example data.</figcaption></figure>
 
 ## About section
 
@@ -20121,10 +20121,10 @@ Ordinary stable notices are suppressed when the installed version is equal to or
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Check the installed DUMB, frontend and service versions.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-about.webp" aria-label="Open full-size image: Application versions">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-about.webp" aria-label="Open full-size image: Application versions">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-about.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-about.webp" alt="Application versions in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-about.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-about.webp" alt="Application versions in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -20143,10 +20143,10 @@ Existing application data is retained, but the wizard can apply new settings ove
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Open guided setup again to review or change your service choices.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-onboarding.webp" aria-label="Open full-size image: Run guided setup again">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-onboarding.webp" aria-label="Open full-size image: Run guided setup again">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-onboarding.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-onboarding.webp" alt="Run guided setup again in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-onboarding.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-onboarding.webp" alt="Run guided setup again in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -20163,10 +20163,10 @@ Select **Enable embedded service iFrames** to add embedded application tabs, dir
     <a href="../../features/embedded-ui/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Choose whether supported apps open inside DUMB.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-embedded-uis.webp" aria-label="Open full-size image: Embedded UI settings">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-embedded-uis.webp" aria-label="Open full-size image: Embedded UI settings">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-embedded-uis.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-embedded-uis.webp" alt="Embedded UI settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-embedded-uis.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-embedded-uis.webp" alt="Embedded UI settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -20196,10 +20196,10 @@ Saved destination URLs and headers stay on the server. A blank secret field pres
     <a href="../../features/notifications/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Choose where alerts go and which events you want to receive.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-notifications.webp" aria-label="Open full-size image: Notifications">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-notifications.webp" aria-label="Open full-size image: Notifications">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-notifications.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-notifications.webp" alt="Notifications in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-notifications.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-notifications.webp" alt="Notifications in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -20222,10 +20222,10 @@ A GitHub token should grant only the read access required by the selected source
     <a href="../../features/configuration/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Add the Plex and GitHub credentials used by your installation.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-tokens.webp" aria-label="Open full-size image: Integration tokens">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-tokens.webp" aria-label="Open full-size image: Integration tokens">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-tokens.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-tokens.webp" alt="Integration tokens in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-tokens.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-tokens.webp" alt="Integration tokens in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -20243,10 +20243,10 @@ A GitHub token should grant only the read access required by the selected source
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Choose the date and time format used in logs.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-log-timestamps.webp" aria-label="Open full-size image: Log timestamp format">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-log-timestamps.webp" aria-label="Open full-size image: Log timestamp format">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-log-timestamps.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-log-timestamps.webp" alt="Log timestamp format in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-log-timestamps.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-log-timestamps.webp" alt="Log timestamp format in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -20295,10 +20295,10 @@ The [dependency-panel example](service-pages.md#dependency-graph-view) shows its
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Enable Geek Mode to show additional service information and diagnostics.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-advanced.webp" aria-label="Open full-size image: Advanced settings">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-advanced.webp" aria-label="Open full-size image: Advanced settings">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-advanced.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-advanced.webp" alt="Advanced settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-advanced.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-advanced.webp" alt="Advanced settings in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -20329,10 +20329,10 @@ Provider TLS verification stays enabled by default. **Allow private endpoint IPs
     <a href="../../features/authentication/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Choose local sign-in, an identity provider, or both.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-auth-provider.webp" aria-label="Open full-size image: Sign-in provider">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-auth-provider.webp" aria-label="Open full-size image: Sign-in provider">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-auth-provider.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-auth-provider.webp" alt="Sign-in provider in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-auth-provider.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-auth-provider.webp" alt="Sign-in provider in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -20355,10 +20355,10 @@ Follow the [sign-in and access-check diagram](../features/authentication.md#sign
     <a href="../../features/authentication/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Manage sign-in and local accounts for your installation.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-authentication.webp" aria-label="Open full-size image: Authentication and local accounts">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-authentication.webp" aria-label="Open full-size image: Authentication and local accounts">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-authentication.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-authentication.webp" alt="Authentication and local accounts in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-authentication.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-authentication.webp" alt="Authentication and local accounts in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -20379,10 +20379,10 @@ Follow the [sign-in and access-check diagram](../features/authentication.md#sign
     <a href="../../features/installation-backups/">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Review your backup and restore options.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-backups.webp" aria-label="Open full-size image: Backups and restore">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-backups.webp" aria-label="Open full-size image: Backups and restore">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-backups.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-backups.webp" alt="Backups and restore in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-backups.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-backups.webp" alt="Backups and restore in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -20416,10 +20416,10 @@ Geek Mode.
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Find help, project links and ways to support the maintainers.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-support.webp" aria-label="Open full-size image: Support the projects">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-support.webp" aria-label="Open full-size image: Support the projects">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-support.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-support.webp" alt="Support the projects in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-support.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-support.webp" alt="Support the projects in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -20432,10 +20432,10 @@ Geek Mode.
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Meet the people who contribute to DUMB and its frontend.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-contributors.webp" aria-label="Open full-size image: Project contributors">
+  <a class="ui-example-image" data-showcase-zoom href="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-contributors.webp" aria-label="Open full-size image: Project contributors">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/settings-contributors.webp">
-      <img src="../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/settings-contributors.webp" alt="Project contributors in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/settings-contributors.webp">
+      <img src="../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/settings-contributors.webp" alt="Project contributors in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
@@ -20667,21 +20667,21 @@ do when something needs attention.
 <figure id="overview" class="docs-product-showcase" data-showcase data-state="poster">
   <div class="showcase-frame">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="assets/images/guides/showcase/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/poster.webp">
-      <img class="showcase-poster" src="assets/images/guides/showcase/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/poster.webp" width="1920" height="1280" alt="DUMB's actual dashboard, service controls and settings, shown in a short interface preview." decoding="async" fetchpriority="high">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="assets/images/guides/showcase/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/poster.webp">
+      <img class="showcase-poster" src="assets/images/guides/showcase/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/poster.webp" width="1920" height="1280" alt="DUMB's actual dashboard, service controls and settings, shown in a short interface preview." decoding="async" fetchpriority="high">
     </picture>
-    <video id="dumb-showcase" data-showcase-video hidden controls muted loop playsinline preload="none" poster="assets/images/guides/showcase/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/poster.webp" data-light-video="assets/images/guides/showcase/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/hero.mp4" data-dark-video="assets/images/guides/showcase/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/hero.mp4" data-light-poster="assets/images/guides/showcase/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/poster.webp" data-dark-poster="assets/images/guides/showcase/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/poster.webp" aria-label="Inside DUMB: a short preview of the actual interface" aria-describedby="showcase-caption">
-      <source src="assets/images/guides/showcase/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/hero.mp4" type="video/mp4">
-      <track kind="captions" src="assets/images/guides/showcase/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/captions.vtt" srclang="en" label="English">
-      <track kind="chapters" src="assets/images/guides/showcase/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/chapters.vtt" srclang="en" label="Preview chapters">
-      <p><a href="assets/images/guides/showcase/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/hero.mp4">Open the interface preview</a>.</p>
+    <video id="dumb-showcase" data-showcase-video hidden controls muted loop playsinline preload="none" poster="assets/images/guides/showcase/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/poster.webp" data-light-video="assets/images/guides/showcase/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/hero.mp4" data-dark-video="assets/images/guides/showcase/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/hero.mp4" data-light-poster="assets/images/guides/showcase/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/poster.webp" data-dark-poster="assets/images/guides/showcase/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/poster.webp" aria-label="Inside DUMB: a short preview of the actual interface" aria-describedby="showcase-caption">
+      <source src="assets/images/guides/showcase/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/hero.mp4" type="video/mp4">
+      <track kind="captions" src="assets/images/guides/showcase/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/captions.vtt" srclang="en" label="English">
+      <track kind="chapters" src="assets/images/guides/showcase/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/chapters.vtt" srclang="en" label="Preview chapters">
+      <p><a href="assets/images/guides/showcase/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/hero.mp4">Open the interface preview</a>.</p>
     </video>
   </div>
   <figcaption id="showcase-caption">
     <span>Frontend 1.92.0 · DUMB 2.24.0 · Example data</span>
     <a href="frontend/#ui-examples">Explore the interface <span aria-hidden="true">↗</span></a>
-    <a href="assets/images/guides/showcase/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/transcript.txt">Read preview text</a>
-    <noscript><a href="assets/images/guides/showcase/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/hero.mp4">Play preview</a></noscript>
+    <a href="assets/images/guides/showcase/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/transcript.txt">Read preview text</a>
+    <noscript><a href="assets/images/guides/showcase/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/hero.mp4">Play preview</a></noscript>
     <button class="showcase-motion-control" data-showcase-toggle type="button" hidden aria-controls="dumb-showcase" aria-label="Play the interface preview">
       <span data-showcase-icon aria-hidden="true">▶</span><span data-showcase-label>Play preview</span>
     </button>
@@ -23590,10 +23590,10 @@ browsers and reappears after seven days.
     <a href="./">Read the guide <span aria-hidden="true">↗</span></a>
   </div>
   <p>Review the choices for moving an older NzbDAV setup to InfiniDysk.</p>
-  <a class="ui-example-image" data-showcase-zoom href="../../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/infinidysk-namespace-migration.webp" aria-label="Open full-size image: Move from NzbDAV to InfiniDysk">
+  <a class="ui-example-image" data-showcase-zoom href="../../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/infinidysk-namespace-migration.webp" aria-label="Open full-size image: Move from NzbDAV to InfiniDysk">
     <picture data-ui-picture>
-      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/dark/infinidysk-namespace-migration.webp">
-      <img src="../../../assets/images/guides/frontend/channels/dev/90778cb260ae-836c92e776b0-6e853511d7fb/light/infinidysk-namespace-migration.webp" alt="Move from NzbDAV to InfiniDysk in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
+      <source data-ui-dark media="(prefers-color-scheme: dark)" srcset="../../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/dark/infinidysk-namespace-migration.webp">
+      <img src="../../../assets/images/guides/frontend/channels/dev/65ccf3f52dc6-6bbf57d0af29-3b87596c2fb5/light/infinidysk-namespace-migration.webp" alt="Move from NzbDAV to InfiniDysk in the actual DUMB frontend, with example data." width="1280" height="800" loading="lazy" decoding="async">
     </picture>
     <span class="ui-example-enlarge" aria-hidden="true">View full size <span>↗</span></span>
   </a>
