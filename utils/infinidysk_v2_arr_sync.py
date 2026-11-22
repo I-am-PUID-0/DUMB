@@ -159,7 +159,7 @@ def _create_client(config, scope, connection, service, key, check_cancel):
     )
 
 
-def sync_arr_clients(
+def _sync_arr_clients(
     configuration,
     *,
     request=None,
@@ -168,6 +168,7 @@ def sync_arr_clients(
     adopt_key=None,
     check_cancel=None,
     result_collector=None,
+    _only_scope=None,
 ):
     """Use configured credentials; unowned broken clients remain review-only."""
     config = _configuration(configuration)
@@ -233,6 +234,12 @@ def sync_arr_clients(
 
     results = []
     for scope in scopes:
+        if (
+            _only_scope is not None
+            and (scope["service_key"], scope["instance"], scope["process_name"])
+            != _only_scope
+        ):
+            continue
         check_current()
         try:
             connection = _connection(scope)
@@ -366,6 +373,87 @@ def sync_arr_clients(
     return results
 
 
+def _review_result(scope, error):
+    message = (
+        "This older InfiniDysk connection has no DUMB ownership record and its saved connection test failed. "
+        "In this Arr's download-client settings, copy the InfiniDysk download-client key from DUMB Config "
+        "(env: INFINIDYSK__SAB__API_KEY), save, then Test. DUMB can verify and remember that working connection "
+        "on the next synchronization. Existing downloader settings were preserved."
+        if error.reason_code == "proof_missing"
+        else str(error)
+    )
+    return {
+        "process_name": scope["process_name"],
+        "changed": False,
+        "connection_verified": False,
+        "reason_code": error.reason_code,
+        "message": message,
+        "retryable": error.reason_code
+        in {
+            "native_key_unavailable",
+            "client_unverified",
+            "arr_unready",
+        },
+    }
+
+
+def sync_arr_clients(configuration, *, continue_on_review=False, **options):
+    """Keep independent Arr connections usable when another needs review."""
+    if not continue_on_review:
+        return _sync_arr_clients(configuration, **options)
+    scopes = _all_scopes(_configuration(configuration))
+    if not scopes:
+        return _sync_arr_clients(configuration, **options)
+    results = []
+    for scope in scopes:
+        try:
+            results.extend(
+                _sync_arr_clients(
+                    configuration,
+                    _only_scope=(
+                        scope["service_key"],
+                        scope["instance"],
+                        scope["process_name"],
+                    ),
+                    **options,
+                )
+            )
+        except ArrClientReconciliationError as error:
+            result = _review_result(scope, error)
+            results.append(result)
+            emit_action(
+                ActionResult(
+                    action_id=f"infinidysk.arr.{scope['service_key']}.{scope['instance']}.download_client_credential",
+                    service_key="infinidysk",
+                    instance_key=f"{scope['service_key']}.{scope['instance']}",
+                    action="download_client_credential",
+                    execution=(
+                        "waiting_dependency" if result["retryable"] else "waiting_input"
+                    ),
+                    detail=result["message"],
+                    retryable=result["retryable"],
+                ),
+                collector=options.get("result_collector"),
+            )
+    return results
+
+
+def _admission_recovery_pending():
+    from utils.infinidysk_migration_admission import (
+        infinidysk_major_recovery_pending,
+        infinidysk_v2_recovery_pending,
+        infinidysk_namespace_recovery_pending,
+        infinidysk_postgres_recovery_pending,
+    )
+
+    return bool(
+        infinidysk_major_recovery_pending()
+        or infinidysk_v2_recovery_pending()
+        or infinidysk_namespace_recovery_pending()
+        or infinidysk_postgres_recovery_pending()
+    )
+
+
 class ArrSync:
     """One bounded retry chain per controller; never block process startup."""
 
@@ -373,6 +461,7 @@ class ArrSync:
         self.handler, self.configuration = handler, configuration
         self.retry = BoundedIntegrationRetry()
         self.lock = threading.Lock()
+        self.last_results = []
 
     def shutdown(self):
         return bool(getattr(self.handler, "shutting_down", False))
@@ -429,14 +518,48 @@ class ArrSync:
                     raise ArrClientReconciliationError("scope_changed")
                 assert_infinidysk_external_mutation_reserved(token)
 
-            results = sync_arr_clients(self.configuration, check_cancel=check_owner)
+            results = sync_arr_clients(
+                self.configuration, check_cancel=check_owner, continue_on_review=True
+            )
+            self.last_results = copy.deepcopy(results)
+            failures = [
+                result for result in results if not result["connection_verified"]
+            ]
+            if failures:
+                for result in failures:
+                    self.handler.logger.warning(
+                        "InfiniDysk connection for %s: %s",
+                        result["process_name"],
+                        result["message"],
+                    )
+                if any(result["retryable"] for result in failures):
+                    self.retry.schedule(self.run, self.shutdown)
+                return any(result["changed"] for result in results), " ".join(
+                    f"{result['process_name']}: {result['message']}"
+                    for result in failures
+                )
             self.retry.reset()
             return any(result["changed"] for result in results), None
         except InfiniDyskMigrationAdmissionError:
-            return (
-                False,
-                "Arr credential synchronization is deferred while a guarded operation is active.",
+            recovery = _admission_recovery_pending()
+            message = (
+                "Arr credential synchronization is paused while migration recovery needs review."
+                if recovery
+                else "Arr credential synchronization is deferred while a guarded operation is active; DUMB will retry when it finishes."
             )
+            emit_action(
+                ActionResult(
+                    action_id="infinidysk.arr.credentials",
+                    service_key="infinidysk",
+                    action="download_client_credential",
+                    execution="waiting_input" if recovery else "waiting_dependency",
+                    detail=message,
+                    retryable=not recovery,
+                )
+            )
+            if not recovery:
+                self.retry.schedule(self.run, self.shutdown)
+            return False, message
         except NativeSabKeyError as error:
             message = str(error)
             emit_action(

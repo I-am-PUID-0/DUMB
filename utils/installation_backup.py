@@ -117,7 +117,7 @@ def installation_persistence_work(label):
     from utils.infinidysk_migration_admission import (
         InfiniDyskMigrationAdmissionError,
         reserve_installation_control_write,
-        release_infinidysk_external_mutation,
+        release_installation_control_write,
     )
 
     try:
@@ -128,7 +128,7 @@ def installation_persistence_work(label):
     try:
         yield True
     finally:
-        release_infinidysk_external_mutation(token)
+        release_installation_control_write(token)
 
 
 def set_installation_backup_boot_hold(message):
@@ -1259,7 +1259,7 @@ class InstallationBackupManager:
     def _admit(self, kind, record, *, scheduled=False, require_preview=True):
         from utils.infinidysk_migration_admission import (
             INFINIDYSK_MIGRATION_ADMISSION_LOCK,
-            infinidysk_external_mutation_active,
+            installation_persistence_active,
             infinidysk_namespace_recovery_pending,
             infinidysk_postgres_migration_active,
             infinidysk_postgres_recovery_pending,
@@ -1284,7 +1284,7 @@ class InstallationBackupManager:
                 }
             if (
                 self.has_blocking_job()
-                or infinidysk_external_mutation_active()
+                or installation_persistence_active()
                 or infinidysk_postgres_migration_active()
                 or infinidysk_namespace_recovery_pending()
                 or infinidysk_postgres_recovery_pending()
@@ -2890,7 +2890,7 @@ class InstallationBackupManager:
     def rollback(self, identifier, request):
         from utils.infinidysk_migration_admission import (
             INFINIDYSK_MIGRATION_ADMISSION_LOCK,
-            infinidysk_external_mutation_active,
+            installation_persistence_active,
             infinidysk_namespace_recovery_pending,
             infinidysk_postgres_recovery_pending,
             infinidysk_v2_recovery_pending,
@@ -2924,7 +2924,7 @@ class InstallationBackupManager:
                     )
                 with installation_owner():
                     if (
-                        infinidysk_external_mutation_active()
+                        installation_persistence_active()
                         or infinidysk_namespace_recovery_pending()
                         or infinidysk_postgres_recovery_pending()
                         or infinidysk_v2_recovery_pending()

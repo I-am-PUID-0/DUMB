@@ -544,6 +544,91 @@ class ManagerTests(unittest.TestCase):
         self.join_worker()
         return self.manager.get_job(result["job"]["job_id"])["job"]
 
+    def test_backup_waits_for_control_and_lifecycle_writers_without_consuming_review(
+        self,
+    ):
+        from utils import infinidysk_migration_admission as admission
+
+        request = self.backup_request()
+        for reserve, release, label in (
+            (
+                admission.reserve_installation_control_write,
+                admission.release_installation_control_write,
+                "Seerr synchronization cycle",
+            ),
+            (
+                admission.reserve_infinidysk_external_mutation,
+                admission.release_infinidysk_external_mutation,
+                "service startup/update: fixture",
+            ),
+        ):
+            with self.subTest(label=label):
+                token = reserve(label)
+                try:
+                    with self.assertRaisesRegex(
+                        InstallationBackupError, "managed mutation"
+                    ):
+                        self.manager.start(request)
+                    self.assertFalse(self.manager.has_blocking_job())
+                    self.assertIsNone(self.manager._worker)
+                    self.assertEqual(self.handler.events, [])
+                finally:
+                    release(token)
+                self.assertFalse(admission._EXTERNAL_MUTATIONS)
+                self.assertFalse(admission._INSTALLATION_CONTROL_WRITES)
+        self.manager.start(request)
+        self.join_worker()
+        self.assertEqual(self.manager.status()["job"]["status"], "completed")
+
+    def test_backup_rollback_waits_for_control_and_lifecycle_writers(self):
+        from utils import infinidysk_migration_admission as admission
+        from utils.installation_backup import installation_owner
+
+        backup = self.start_backup()
+        request = self.restore_request(backup["result"]["archive"]["reference"])
+        restored = self.manager.restore_start(request)
+        self.join_worker()
+        identifier = restored["job"]["job_id"]
+        before = list(self.handler.events)
+        for reserve, release, label in (
+            (
+                admission.reserve_installation_control_write,
+                admission.release_installation_control_write,
+                "Seerr synchronization cycle",
+            ),
+            (
+                admission.reserve_infinidysk_external_mutation,
+                admission.release_infinidysk_external_mutation,
+                "service startup/update: fixture",
+            ),
+        ):
+            with self.subTest(label=label):
+                # Recovery normally prevents new writers. The controller owner
+                # lets this fixture exercise the rollback's independent fence.
+                with installation_owner():
+                    token = reserve(label)
+                try:
+                    with (
+                        patch.object(self.manager, "_rollback_roots") as rollback,
+                        self.assertRaisesRegex(
+                            InstallationBackupError, "managed mutation"
+                        ),
+                    ):
+                        self.manager.rollback(
+                            identifier, {"confirmation": "ROLL BACK " + identifier}
+                        )
+                    rollback.assert_not_called()
+                    self.assertFalse(self.manager._rollback_running)
+                    self.assertEqual(self.handler.events, before)
+                finally:
+                    release(token)
+                self.assertFalse(admission._EXTERNAL_MUTATIONS)
+                self.assertFalse(admission._INSTALLATION_CONTROL_WRITES)
+        self.manager.rollback(identifier, {"confirmation": "ROLL BACK " + identifier})
+        self.assertEqual(
+            self.manager.get_job(identifier)["job"]["status"], "rolled_back"
+        )
+
     def test_real_backup_restore_roundtrip_and_exact_rollback(self):
         job = self.start_backup()
         self.assertEqual(job["status"], "completed", job)

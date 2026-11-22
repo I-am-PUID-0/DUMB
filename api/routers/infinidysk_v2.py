@@ -65,10 +65,11 @@ def _invoke(kind, operation, payload, handler, updater, *, mutation=False):
             with admit_v2_job(kind, existing=existing):
                 return callback(payload)
         return callback(payload) if payload is not None else callback()
-    except InfiniDyskMigrationAdmissionError:
+    except InfiniDyskMigrationAdmissionError as error:
         raise HTTPException(
             status_code=409,
-            detail="Another lifecycle or migration operation owns admission.",
+            detail=error.public_message,
+            headers={"X-DUMB-Admission-Reason": error.reason_code},
         ) from None
     except (InfiniDyskV2MigrationError, ValueError, OSError) as error:
         # Manager errors are already sanitized. Unexpected driver/native errors

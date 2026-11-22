@@ -116,6 +116,9 @@ class MetricsBackupAdmissionTests(unittest.TestCase):
             patch.object(admission, "_installation_blocked", return_value=False)
         )
         self.enterContext(patch.object(admission, "_EXTERNAL_MUTATIONS", {}))
+        self.enterContext(patch.object(admission, "_INSTALLATION_CONTROL_WRITES", {}))
+        self.addCleanup(self.assertFalse, admission._EXTERNAL_MUTATIONS)
+        self.addCleanup(self.assertFalse, admission._INSTALLATION_CONTROL_WRITES)
 
     def test_every_public_disk_operation_refuses_before_opening_a_store(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -139,6 +142,7 @@ class MetricsBackupAdmissionTests(unittest.TestCase):
             manager._configure.assert_not_called()
             self.assertFalse(directory.exists())
             self.assertEqual(admission._EXTERNAL_MUTATIONS, {})
+            self.assertEqual(admission._INSTALLATION_CONTROL_WRITES, {})
 
     def test_store_connections_close_while_the_admission_reservation_is_held(self):
         closed_during_reservation = []
@@ -147,7 +151,7 @@ class MetricsBackupAdmissionTests(unittest.TestCase):
         class ObservedConnection(sqlite3.Connection):
             def close(self):
                 closed_during_reservation.append(
-                    admission.infinidysk_external_mutation_active()
+                    admission.installation_persistence_active()
                 )
                 return super().close()
 
@@ -168,23 +172,28 @@ class MetricsBackupAdmissionTests(unittest.TestCase):
 
         self.assertTrue(closed_during_reservation)
         self.assertTrue(all(closed_during_reservation))
-        self.assertFalse(admission.infinidysk_external_mutation_active())
+        self.assertFalse(admission.installation_persistence_active())
 
     def test_nested_worker_reservation_survives_manager_operation_and_failure(self):
         with tempfile.TemporaryDirectory() as temporary:
             manager = MetricsHistoryManager(history_config(Path(temporary)))
             with installation_persistence_work("Outer metrics worker") as admitted:
                 self.assertTrue(admitted)
-                outer_tokens = set(admission._EXTERNAL_MUTATIONS)
+                outer_tokens = set(admission._INSTALLATION_CONTROL_WRITES)
+                self.assertFalse(admission.infinidysk_external_mutation_active())
                 manager.write({"timestamp": 1})
-                self.assertEqual(set(admission._EXTERNAL_MUTATIONS), outer_tokens)
+                self.assertEqual(
+                    set(admission._INSTALLATION_CONTROL_WRITES), outer_tokens
+                )
                 with patch.object(
                     manager._sqlite, "status", side_effect=OSError("fixture")
                 ):
                     with self.assertRaises(OSError):
                         manager.status()
-                self.assertEqual(set(admission._EXTERNAL_MUTATIONS), outer_tokens)
-            self.assertFalse(admission.infinidysk_external_mutation_active())
+                self.assertEqual(
+                    set(admission._INSTALLATION_CONTROL_WRITES), outer_tokens
+                )
+            self.assertFalse(admission.installation_persistence_active())
 
 
 def source_functions(relative, names, namespace):

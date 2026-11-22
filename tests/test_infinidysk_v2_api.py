@@ -209,9 +209,23 @@ class NativeMigrationAPITests(unittest.TestCase):
                             assert client.patch('/config/', json={}).status_code == 409
                         token = admission.reserve_infinidysk_external_mutation('API fixture')
                         try:
-                            assert client.post('/process/infinidysk-v2/postgres/prepare-target', json=managed_target).status_code == 409
+                            denied = client.post('/process/infinidysk-v2/postgres/prepare-target', json=managed_target)
+                            assert denied.status_code == 409
+                            assert denied.headers['x-dumb-admission-reason'] == 'dashboard_request'
+                            assert 'dashboard request' in denied.json()['detail']
+                            assert 'fixture' not in denied.text
                             assert manager.prepare_target.call_count == 1
                             assert client.post('/process/infinidysk-v2/start', json={}).status_code == 409
+                        finally:
+                            admission.release_infinidysk_external_mutation(token)
+                        token = admission.reserve_infinidysk_external_mutation('service startup/update: private-service-name')
+                        try:
+                            denied = client.post('/process/infinidysk-v2/postgres/prepare-target', json=managed_target)
+                            assert denied.status_code == 409
+                            assert denied.headers['x-dumb-admission-reason'] == 'service_lifecycle'
+                            assert 'starting or updating a service' in denied.json()['detail']
+                            assert 'private-service-name' not in denied.text
+                            assert manager.prepare_target.call_count == 1
                         finally:
                             admission.release_infinidysk_external_mutation(token)
                         manager.get_job.side_effect = InfiniDyskV2MigrationError('Invalid retained job identifier.')

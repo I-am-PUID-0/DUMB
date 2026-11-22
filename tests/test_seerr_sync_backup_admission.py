@@ -10,7 +10,11 @@ from unittest.mock import Mock, patch
 from tests import test_installation_backup as fixtures
 from utils import installation_backup as backup
 from utils import seerr_sync as sync
-from utils.infinidysk_migration_admission import infinidysk_external_mutation_active
+from utils import infinidysk_migration_admission as admission
+from utils.infinidysk_migration_admission import (
+    infinidysk_external_mutation_active,
+    installation_persistence_active,
+)
 
 
 class SeerrBackupAdmissionTests(unittest.TestCase):
@@ -57,6 +61,11 @@ class SeerrBackupAdmissionTests(unittest.TestCase):
             patch.object(sync, "_poll_requests", return_value=[])
         )
         self.assertFalse(infinidysk_external_mutation_active())
+        self.assertFalse(installation_persistence_active())
+        self.assertFalse(admission._EXTERNAL_MUTATIONS)
+        self.assertFalse(admission._INSTALLATION_CONTROL_WRITES)
+        self.addCleanup(self.assertFalse, admission._EXTERNAL_MUTATIONS)
+        self.addCleanup(self.assertFalse, admission._INSTALLATION_CONTROL_WRITES)
 
     def request(self):
         preview = self.manager.preview({"destination_id": "fixture"})
@@ -117,7 +126,7 @@ class SeerrBackupAdmissionTests(unittest.TestCase):
             json.loads(self.state_file.read_text())["last_poll_ts"],
             "reserved original poll",
         )
-        self.assertFalse(infinidysk_external_mutation_active())
+        self.assertFalse(installation_persistence_active())
 
     def assert_inflight_cycle_blocks_backup(self, boundary):
         request = self.request()
@@ -143,7 +152,8 @@ class SeerrBackupAdmissionTests(unittest.TestCase):
             worker.start()
             try:
                 self.assertTrue(entered.wait(5))
-                self.assertTrue(infinidysk_external_mutation_active())
+                self.assertTrue(installation_persistence_active())
+                self.assertFalse(infinidysk_external_mutation_active())
                 with self.assertRaisesRegex(
                     backup.InstallationBackupError, "managed mutation"
                 ):
@@ -155,7 +165,7 @@ class SeerrBackupAdmissionTests(unittest.TestCase):
                 worker.join(timeout=10)
                 self.assertFalse(worker.is_alive())
         self.assertEqual(errors, [])
-        self.assertFalse(infinidysk_external_mutation_active())
+        self.assertFalse(installation_persistence_active())
         self.assertNotEqual(
             json.loads(self.state_file.read_text())["last_poll_ts"],
             "reserved original poll",
@@ -176,11 +186,11 @@ class SeerrBackupAdmissionTests(unittest.TestCase):
         self.poll.side_effect = RuntimeError("reserved fixture request failure")
         with self.assertRaisesRegex(RuntimeError, "reserved fixture request failure"):
             sync.run_sync_cycle()
-        self.assertFalse(infinidysk_external_mutation_active())
+        self.assertFalse(installation_persistence_active())
         self.assertEqual(self.state_identity(), before)
         self.poll.side_effect = None
         sync.run_sync_cycle()
-        self.assertFalse(infinidysk_external_mutation_active())
+        self.assertFalse(installation_persistence_active())
         self.assertNotEqual(self.state_file.read_bytes(), before[0])
 
     def test_recovery_hold_preserves_state_without_loading_or_network_work(self):
@@ -195,7 +205,7 @@ class SeerrBackupAdmissionTests(unittest.TestCase):
         self.wait_for_seerr.assert_not_called()
         self.poll.assert_not_called()
         self.assertEqual(self.state_identity(), before)
-        self.assertFalse(infinidysk_external_mutation_active())
+        self.assertFalse(installation_persistence_active())
 
 
 if __name__ == "__main__":

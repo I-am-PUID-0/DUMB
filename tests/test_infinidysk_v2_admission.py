@@ -41,8 +41,10 @@ class NativeMigrationAdmissionTests(unittest.TestCase):
             self.addCleanup(replacement.stop)
         self.assertFalse(admission._V2_PENDING)
         self.assertFalse(admission._EXTERNAL_MUTATIONS)
+        self.assertFalse(admission._INSTALLATION_CONTROL_WRITES)
         self.addCleanup(self.assertFalse, admission._V2_PENDING)
         self.addCleanup(self.assertFalse, admission._EXTERNAL_MUTATIONS)
+        self.addCleanup(self.assertFalse, admission._INSTALLATION_CONTROL_WRITES)
 
     def legacy_job(self, service_key="infinidysk", status="running"):
         identifier = uuid.uuid4()
@@ -268,6 +270,287 @@ class NativeMigrationAdmissionTests(unittest.TestCase):
                     self.fail("Native start bypassed an existing API reservation")
         finally:
             admission.release_infinidysk_external_mutation(token)
+
+    def test_background_persistence_does_not_block_v1_or_v2_migration_admission(self):
+        from utils.installation_backup import installation_persistence_work
+
+        for label in (
+            "Metrics history persistence",
+            "Notification persistence",
+            "Seerr synchronization cycle",
+            # Reservation type, rather than its diagnostic label, is authority.
+            "native runtime update: background fixture",
+        ):
+            with self.subTest(label=label):
+                with installation_persistence_work(label) as admitted:
+                    self.assertTrue(admitted)
+                    self.assertTrue(admission.installation_persistence_active())
+                    self.assertFalse(admission.infinidysk_external_mutation_active())
+                    self.assertEqual(len(admission._INSTALLATION_CONTROL_WRITES), 1)
+                    for kind in ("major", "postgres"):
+                        with admission.admit_v2_job(kind):
+                            self.assertIn(kind, admission._V2_PENDING)
+                    with patch.object(
+                        self.postgres, "_create_job_admitted", return_value="admitted"
+                    ) as work:
+                        self.assertEqual(self.create_legacy_postgres(), "admitted")
+                        work.assert_called_once()
+                self.assertFalse(admission._INSTALLATION_CONTROL_WRITES)
+                self.assertFalse(admission.installation_persistence_active())
+
+    def test_actual_lifecycle_reservation_still_blocks_with_background_writer(self):
+        control = admission.reserve_installation_control_write(
+            "Seerr synchronization cycle"
+        )
+        external = admission.reserve_infinidysk_external_mutation(
+            "Metrics history persistence"
+        )
+        try:
+            admission.release_installation_control_write(control)
+            self.assertTrue(admission.installation_persistence_active())
+            self.assertTrue(admission.infinidysk_external_mutation_active())
+            with self.assertRaises(admission.InfiniDyskMigrationAdmissionError):
+                with admission.admit_v2_job("postgres"):
+                    self.fail("An actual lifecycle reservation was bypassed")
+            with (
+                patch.object(self.postgres, "_create_job_admitted") as work,
+                self.assertRaises(legacy_pg.ArrPostgresMigrationError),
+            ):
+                self.create_legacy_postgres()
+            work.assert_not_called()
+        finally:
+            admission.release_installation_control_write(control)
+            admission.release_infinidysk_external_mutation(external)
+
+    def test_control_writers_remain_allowed_during_native_work_but_not_backup(self):
+        self.major.has_blocking_job.return_value = True
+        try:
+            token = admission.reserve_installation_control_write(
+                "Notification persistence"
+            )
+            try:
+                self.assertTrue(admission.installation_persistence_active())
+                self.assertEqual(len(admission._INSTALLATION_CONTROL_WRITES), 1)
+            finally:
+                admission.release_installation_control_write(token)
+        finally:
+            self.major.has_blocking_job.return_value = False
+        with (
+            patch.object(admission, "_installation_blocked", return_value=True),
+            self.assertRaises(admission.InfiniDyskMigrationAdmissionError),
+        ):
+            admission.reserve_installation_control_write("Notification persistence")
+        self.assertFalse(admission._INSTALLATION_CONTROL_WRITES)
+
+    def test_releasing_lifecycle_does_not_release_an_independent_control_writer(self):
+        external = admission.reserve_infinidysk_external_mutation(
+            "service startup/update: fixture"
+        )
+        control = admission.reserve_installation_control_write(
+            "Seerr synchronization cycle"
+        )
+        try:
+            admission.release_infinidysk_external_mutation(external)
+            admission.release_infinidysk_external_mutation(control)
+            self.assertTrue(admission.installation_persistence_active())
+            self.assertFalse(admission.infinidysk_external_mutation_active())
+            self.assertIn(control, admission._INSTALLATION_CONTROL_WRITES)
+            with admission.admit_v2_job("postgres"):
+                pass
+        finally:
+            admission.release_installation_control_write(control)
+            admission.release_infinidysk_external_mutation(external)
+
+    def test_pending_reason_does_not_probe_later_guards_or_clear_existing_owner(self):
+        admission._V2_PENDING.add("postgres")
+        try:
+            with (
+                patch.object(
+                    admission,
+                    "infinidysk_namespace_migration_active",
+                    side_effect=AssertionError("A later guard was evaluated"),
+                ),
+                self.assertRaises(
+                    admission.InfiniDyskMigrationAdmissionError
+                ) as caught,
+            ):
+                with admission.admit_v2_job("postgres"):
+                    self.fail("An existing pending operation was bypassed")
+            self.assertEqual(
+                caught.exception.reason_code, admission.AdmissionReason.PENDING.value
+            )
+            self.assertIn("starting or finishing", caught.exception.public_message)
+            self.assertEqual(admission._V2_PENDING, {"postgres"})
+        finally:
+            admission._V2_PENDING.discard("postgres")
+
+    def test_admission_reports_first_blocker_in_original_short_circuit_order(self):
+        guards = (
+            (
+                admission,
+                "infinidysk_namespace_migration_active",
+                admission.AdmissionReason.NAMESPACE,
+            ),
+            (
+                admission,
+                "infinidysk_postgres_migration_active",
+                admission.AdmissionReason.LEGACY_POSTGRES,
+            ),
+            (
+                self.postgres,
+                "has_namespace_conflicting_job",
+                admission.AdmissionReason.SERVICE_DATABASE,
+            ),
+            (
+                admission,
+                "infinidysk_v2_jobs_active",
+                admission.AdmissionReason.NATIVE_MIGRATION,
+            ),
+            (admission, "_installation_blocked", admission.AdmissionReason.BACKUP),
+        )
+        for active, (_module, _name, expected) in enumerate(guards):
+            with self.subTest(reason=expected):
+                calls = []
+                replacements = []
+                for index, (module, name, _reason) in enumerate(guards):
+
+                    def check(index=index):
+                        calls.append(index)
+                        return index == active
+
+                    replacement = patch.object(module, name, side_effect=check)
+                    replacement.start()
+                    replacements.append(replacement)
+                try:
+                    with self.assertRaises(
+                        admission.InfiniDyskMigrationAdmissionError
+                    ) as caught:
+                        with admission.admit_v2_job("postgres"):
+                            self.fail("An active owner was bypassed")
+                    self.assertEqual(caught.exception.reason_code, expected.value)
+                    self.assertEqual(calls, list(range(active + 1)))
+                    self.assertEqual(
+                        str(caught.exception), admission.EXTERNAL_MUTATION_BLOCKER
+                    )
+                    self.assertFalse(admission._V2_PENDING)
+                finally:
+                    for replacement in reversed(replacements):
+                        replacement.stop()
+
+    def test_retained_same_kind_owner_has_distinct_reason_and_existing_bypass_remains(
+        self,
+    ):
+        for kind, manager, expected in (
+            ("major", self.major, admission.AdmissionReason.MAJOR_MIGRATION),
+            ("postgres", self.native, admission.AdmissionReason.NATIVE_POSTGRES),
+        ):
+            with self.subTest(kind=kind):
+                manager.has_blocking_job.return_value = True
+                try:
+                    with self.assertRaises(
+                        admission.InfiniDyskMigrationAdmissionError
+                    ) as caught:
+                        with admission.admit_v2_job(kind):
+                            self.fail("An active same-kind owner was bypassed")
+                    self.assertEqual(caught.exception.reason_code, expected.value)
+                    with admission.admit_v2_job(kind, existing=True):
+                        self.assertIn(kind, admission._V2_PENDING)
+                finally:
+                    manager.has_blocking_job.return_value = False
+                self.assertFalse(admission._V2_PENDING)
+
+    def test_external_labels_produce_only_static_safe_categories(self):
+        cases = (
+            (
+                "InfiniDysk managed Arr credential synchronization",
+                admission.AdmissionReason.ARR_SYNC,
+            ),
+            (
+                "native runtime update: private-fixture-name",
+                admission.AdmissionReason.RUNTIME_UPDATE,
+            ),
+            (
+                "service startup/update: private-fixture-name",
+                admission.AdmissionReason.SERVICE_LIFECYCLE,
+            ),
+            ("Managed arrangement setup", admission.AdmissionReason.SETUP),
+            (
+                "API POST /private-fixture-path/fixture-token",
+                admission.AdmissionReason.API_REQUEST,
+            ),
+            (
+                "InfiniDysk configuration synchronization",
+                admission.AdmissionReason.CONFIGURATION,
+            ),
+            (
+                "symlink repair private-fixture-path",
+                admission.AdmissionReason.MAINTENANCE,
+            ),
+            (
+                "rclone optimizer apply private-fixture-name",
+                admission.AdmissionReason.MAINTENANCE,
+            ),
+            (
+                "unknown private-fixture-path password=fixture-token",
+                admission.AdmissionReason.EXTERNAL,
+            ),
+        )
+        for label, expected in cases:
+            with self.subTest(reason=expected):
+                token = admission.reserve_infinidysk_external_mutation(label)
+                try:
+                    with (
+                        patch.object(
+                            admission,
+                            "_installation_blocked",
+                            side_effect=AssertionError("A later guard was evaluated"),
+                        ),
+                        self.assertRaises(
+                            admission.InfiniDyskMigrationAdmissionError
+                        ) as caught,
+                    ):
+                        with admission.admit_v2_job("postgres"):
+                            self.fail("An external mutation was bypassed")
+                    self.assertEqual(caught.exception.reason_code, expected.value)
+                    self.assertNotIn("private-fixture", caught.exception.public_message)
+                    self.assertNotIn("fixture-token", caught.exception.public_message)
+                    self.assertNotIn(label, caught.exception.public_message)
+                finally:
+                    admission.release_infinidysk_external_mutation(token)
+
+    def test_mixed_external_categories_have_a_generic_static_message(self):
+        labels = {
+            "one": "API POST /private-fixture-path",
+            "two": "native runtime update: private-fixture-name",
+        }
+        with (
+            patch.dict(admission._EXTERNAL_MUTATIONS, labels),
+            self.assertRaises(admission.InfiniDyskMigrationAdmissionError) as caught,
+        ):
+            with admission.admit_v2_job("postgres"):
+                self.fail("Mixed external mutations were bypassed")
+        self.assertEqual(
+            caught.exception.reason_code, admission.AdmissionReason.EXTERNAL.value
+        )
+        self.assertNotIn("private-fixture", caught.exception.public_message)
+
+    def test_private_diagnostic_or_unknown_reason_never_becomes_public_message(self):
+        for reason in (
+            admission.AdmissionReason.CONFLICT,
+            "private-fixture-reason",
+            None,
+        ):
+            error = admission.InfiniDyskMigrationAdmissionError(
+                "private-fixture-diagnostic", reason=reason
+            )
+            self.assertEqual(str(error), "private-fixture-diagnostic")
+            self.assertEqual(
+                error.public_message,
+                "Another lifecycle or migration operation owns admission.",
+            )
+            self.assertEqual(
+                error.reason_code, admission.AdmissionReason.CONFLICT.value
+            )
 
     def test_onboarding_options_cannot_switch_populated_v1_or_rebind_native_postgres(
         self,

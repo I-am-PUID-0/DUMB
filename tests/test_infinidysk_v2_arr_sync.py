@@ -93,6 +93,61 @@ class RecurringArrTests(unittest.TestCase):
         self.assertEqual(self.fixture.puts, [])
         self.create.assert_not_called()
 
+    def test_one_legacy_review_hold_does_not_block_an_independent_owned_arr(self):
+        other = fixtures.ManagedClientTests(methodName="runTest")
+        other.setUp()
+        self.addCleanup(other.doCleanups)
+        other.native()
+        other.entry.update(
+            port=8991, process_name="Second Sonarr", instance_name="Second"
+        )
+        other.config["sonarr"]["instances"] = {"Second": other.entry}
+        next(
+            field for field in other.client["fields"] if field["name"] == "tvCategory"
+        )["value"] = "sonarr-second"
+        next(field for field in other.other["fields"] if field["name"] == "port")[
+            "value"
+        ] = 9191
+        other.stored_key = self.key
+        other.config["infinidysk"].update(
+            enabled=True, env={"INFINIDYSK__SAB__API_KEY": self.key}
+        )
+        sync.sync_arr_clients(
+            other.config,
+            request=other.request,
+            native_key=lambda *_: self.key,
+            adopt_key=self.adopt,
+        )
+        self.fixture.config["sonarr"]["instances"]["Second"] = other.entry
+        self.fixture.stored_key = fixtures._SOURCE_ALIAS
+        other.stored_key = fixtures._SOURCE_ALIAS
+
+        def request(origin, *args):
+            return (
+                other.request if origin.endswith(":8991") else self.fixture.request
+            )(origin, *args)
+
+        outcomes = []
+        results = sync.sync_arr_clients(
+            self.fixture.config,
+            request=request,
+            native_key=lambda *_: self.key,
+            adopt_key=self.adopt,
+            continue_on_review=True,
+            result_collector=outcomes,
+        )
+        self.assertEqual(results[0]["reason_code"], "proof_missing")
+        self.assertIn("download-client settings", results[0]["message"])
+        self.assertNotIn("pre-migration", results[0]["message"])
+        self.assertEqual(self.fixture.puts, [])
+        self.assertTrue(results[1]["connection_verified"])
+        self.assertTrue(results[1]["changed"])
+        self.assertEqual(len(other.puts), 1)
+        self.assertEqual(
+            [result.instance_key for result in outcomes],
+            ["sonarr.InfiniDysk", "sonarr.Second"],
+        )
+
     def test_existing_generic_ownership_authorizes_key_repair_without_name_adoption(
         self,
     ):
@@ -235,7 +290,9 @@ class SchedulingTests(unittest.TestCase):
             SimpleNamespace(shutting_down=False, logger=Mock()),
             coordinator_manager(self),
         )
+        coordinator.retry = Mock()
         with (
+            patch.object(sync, "_admission_recovery_pending", return_value=False),
             patch(
                 "utils.infinidysk_migration_admission.reserve_infinidysk_external_mutation",
                 side_effect=InfiniDyskMigrationAdmissionError("guarded"),
@@ -249,6 +306,73 @@ class SchedulingTests(unittest.TestCase):
         self.assertFalse(changed)
         self.assertIn("deferred", detail)
         reconcile.assert_not_called()
+        coordinator.retry.schedule.assert_called_once_with(
+            coordinator.run, coordinator.shutdown
+        )
+
+    def test_persistent_recovery_guard_waits_for_review_without_retry_loop(self):
+        from utils.infinidysk_migration_admission import (
+            InfiniDyskMigrationAdmissionError,
+        )
+
+        coordinator = sync.ArrSync(
+            SimpleNamespace(shutting_down=False, logger=Mock()),
+            coordinator_manager(self),
+        )
+        coordinator.retry = Mock()
+        with (
+            patch.object(sync, "_admission_recovery_pending", return_value=True),
+            patch(
+                "utils.infinidysk_migration_admission.reserve_infinidysk_external_mutation",
+                side_effect=InfiniDyskMigrationAdmissionError("guarded"),
+            ),
+            patch(
+                "utils.infinidysk_migration_admission.release_infinidysk_external_mutation"
+            ),
+            patch.object(sync, "sync_arr_clients") as reconcile,
+        ):
+            changed, detail = coordinator.run()
+        self.assertFalse(changed)
+        self.assertIn("recovery needs review", detail)
+        reconcile.assert_not_called()
+        coordinator.retry.schedule.assert_not_called()
+
+    def test_coordinator_retains_instance_review_and_independent_success(self):
+        coordinator = sync.ArrSync(
+            SimpleNamespace(shutting_down=False, logger=Mock()),
+            coordinator_manager(self),
+        )
+        coordinator.retry = Mock()
+        records = [
+            {
+                "process_name": "Review Sonarr",
+                "changed": False,
+                "connection_verified": False,
+                "reason_code": "proof_missing",
+                "message": "Review this exact connection.",
+                "retryable": False,
+            },
+            {
+                "process_name": "Working Radarr",
+                "changed": True,
+                "connection_verified": True,
+            },
+        ]
+        with (
+            patch(
+                "utils.infinidysk_migration_admission.reserve_infinidysk_external_mutation",
+                return_value="fixture-token",
+            ),
+            patch(
+                "utils.infinidysk_migration_admission.release_infinidysk_external_mutation"
+            ),
+            patch.object(sync, "sync_arr_clients", return_value=records),
+        ):
+            changed, detail = coordinator.run()
+        self.assertTrue(changed)
+        self.assertIn("Review Sonarr", detail)
+        self.assertEqual(coordinator.last_results, records)
+        coordinator.retry.schedule.assert_not_called()
 
     def test_native_readiness_failure_schedules_bounded_retry_without_secret_logs(self):
         coordinator = sync.ArrSync(
