@@ -258,6 +258,25 @@ class NativeRuntimeTests(unittest.TestCase):
         self.assertEqual(environment["INFINIDYSK__Auth__Mode"], "local")
         self.assertNotIn("INFINIDYSK__AUTH__MODE", environment)
 
+    def test_launch_passes_only_canonical_explicit_sab_key_and_skips_blank(self):
+        runtime.native_auth(self.service, create=True)
+        self.service["env"] = {
+            "INFINIDYSK__sab__api_key": "fixture-managed-download-key",
+            "infinidysk__SAB__API_KEY": "ignored-fixture-download-key",
+            "FRONTEND_BACKEND_API_KEY": "obsolete-fixture-key",
+        }
+        environment = runtime.build_v2_environment(self.service)
+        self.assertEqual(
+            environment["INFINIDYSK__SAB__API_KEY"], "fixture-managed-download-key"
+        )
+        self.assertNotIn("INFINIDYSK__sab__api_key", environment)
+        self.assertNotIn("infinidysk__SAB__API_KEY", environment)
+        self.assertNotIn("FRONTEND_BACKEND_API_KEY", environment)
+        self.service["env"] = {"INFINIDYSK__SAB__API_KEY": ""}
+        self.assertNotIn(
+            "INFINIDYSK__SAB__API_KEY", runtime.build_v2_environment(self.service)
+        )
+
     def test_conflicting_compatibility_auth_is_refused_before_auth_or_data_creation(
         self,
     ):
@@ -991,10 +1010,16 @@ class NativeTopologyTests(unittest.TestCase):
                 return_value={"runtime_generation": "2"},
             ),
             patch.object(nzbdav_settings, "_patch_nzbdav_config_admitted") as legacy,
+            patch("utils.dependencies.get_process_handler", return_value=Mock()),
+            patch(
+                "utils.infinidysk_v2_arr_sync.synchronize_arr_config",
+                return_value=(False, None),
+            ) as native,
         ):
             changed, error = nzbdav_settings.patch_nzbdav_config()
         self.assertFalse(changed)
-        self.assertIn("native API/UI", error)
+        self.assertIsNone(error)
+        native.assert_called_once()
         legacy.assert_not_called()
 
     @isolated_runtime_test

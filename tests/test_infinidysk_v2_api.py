@@ -80,6 +80,11 @@ class NativeMigrationAPITests(unittest.TestCase):
             manager.preview_cancel.return_value = preview_task
             manager.start.return_value = {'job': {'job_id': 'a' * 32}}
             manager.prepare.return_value = {'job': {'job_id': 'b' * 32, 'mode': 'prepare'}}
+            managed_target = {'target': {'use_managed_postgres': True, 'database': 'example_database'}}
+            prepared_target = {'protocol': 1, 'ready': True, 'created': True,
+                'target': {'host': '127.0.0.1', 'port': 5432, 'database': 'example_database'},
+                'target_identity': {'system_identifier': 'fixture-cluster', 'database_oid': 1234, 'schema': 'public'}}
+            manager.prepare_target.return_value = prepared_target
             manager.activate.return_value = {'job': {'job_id': 'b' * 32, 'stage': 'activating'}}
             manager.cleanup_preview.return_value = {'protocol': 1, 'ready': False, 'blockers': ['Source ownership review is required.']}
             manager.cleanup.return_value = {'job': {'status': 'completed', 'cleanup': {'state': 'queued'}}}
@@ -107,6 +112,8 @@ class NativeMigrationAPITests(unittest.TestCase):
                 manager.get_report.assert_not_called()
                 assert client.post('/process/infinidysk-v2/start', json={}).status_code == 401
                 assert client.post('/process/infinidysk-v2/prepare', json={}).status_code == 401
+                assert client.post('/process/infinidysk-v2/postgres/prepare-target', json=managed_target).status_code == 401
+                manager.prepare_target.assert_not_called()
                 assert client.post('/process/infinidysk-v2/activate', json={}).status_code == 401
                 assert client.post('/process/infinidysk-v2/cancel', json={}).status_code == 401
                 assert client.post('/process/infinidysk-v2/retry-consumers', json={}).status_code == 401
@@ -148,11 +155,15 @@ class NativeMigrationAPITests(unittest.TestCase):
                     assert capabilities['infinidysk_v2_cleanup_protocol'] == 1
                     assert capabilities['infinidysk_v2_consumer_recovery'] is True
                     assert capabilities['infinidysk_v2_consumer_recovery_protocol'] == 1
+                    assert capabilities['infinidysk_v2_postgres_prepare_target'] is True
+                    assert capabilities['infinidysk_v2_postgres_prepare_target_protocol'] == 1
                     with patch.object(router, 'get_project_version', return_value='2.23.9'):
                         assert client.post('/process/infinidysk-v2/preview', json={}).status_code == 426
                         assert client.post('/process/infinidysk-v2/prepare', json={}).status_code == 426
                         assert client.post('/process/infinidysk-v2/activate', json={}).status_code == 426
                         assert client.post('/process/infinidysk-v2/postgres/preview', json={}).status_code == 426
+                        assert client.post('/process/infinidysk-v2/postgres/prepare-target', json=managed_target).status_code == 426
+                        manager.prepare_target.assert_not_called()
                         assert client.post('/process/infinidysk-v2/cleanup', json={}).status_code == 426
                         assert client.post('/process/infinidysk-v2/cancel', json={}).status_code == 426
                         assert client.post('/process/infinidysk-v2/retry-consumers', json={}).status_code == 426
@@ -161,12 +172,22 @@ class NativeMigrationAPITests(unittest.TestCase):
                         assert client.get('/process/infinidysk-v2/status').status_code == 200
                         manager.preview.assert_not_called()
                     with patch.object(router, 'get_project_version', return_value='2.24.0'):
+                        prepared = client.post('/process/infinidysk-v2/postgres/prepare-target', json=managed_target)
+                        assert prepared.status_code == 200, prepared.text
+                        assert prepared.json() == prepared_target
+                        assert prepared.headers['cache-control'] == 'no-store, private'
+                        assert prepared.headers['pragma'] == 'no-cache'
+                        manager.prepare_target.assert_called_once_with(managed_target)
+                        manager.preview.assert_not_called()
+                        manager.start.assert_not_called()
                         preview = client.post('/process/infinidysk-v2/preview', json={})
                         assert preview.status_code == 200, preview.text
                         assert preview.json()['capacity'] == capacity
                         assert preview.json()['ready'] is False
                         assert client.post('/process/infinidysk-v2/start', json={}).status_code == 200
                         with patch.object(router.INFINIDYSK_V2_MIGRATION_MANAGER, 'has_blocking_job', return_value=True):
+                            assert client.post('/process/infinidysk-v2/postgres/prepare-target', json=managed_target).status_code == 409
+                            assert manager.prepare_target.call_count == 1
                             assert client.post('/process/infinidysk-v2/prepare', json={}).status_code == 409
                             assert client.post('/process/infinidysk-v2/activate', json={}).json()['job']['stage'] == 'activating'
                             assert client.post('/process/infinidysk-v2/cancel', json={}).json()['job']['cancel_requested'] is True
@@ -182,10 +203,14 @@ class NativeMigrationAPITests(unittest.TestCase):
                         assert cleanup_preview.json()['ready'] is False
                         assert client.post('/process/infinidysk-v2/cleanup', json={}).json()['job']['cleanup']['state'] == 'queued'
                         with patch.object(router.INFINIDYSK_V2_POSTGRES_MANAGER, 'has_blocking_job', return_value=True):
+                            assert client.post('/process/infinidysk-v2/postgres/prepare-target', json=managed_target).status_code == 409
+                            assert manager.prepare_target.call_count == 1
                             assert client.post('/process/infinidysk-v2/start', json={}).status_code == 409
                             assert client.patch('/config/', json={}).status_code == 409
                         token = admission.reserve_infinidysk_external_mutation('API fixture')
                         try:
+                            assert client.post('/process/infinidysk-v2/postgres/prepare-target', json=managed_target).status_code == 409
+                            assert manager.prepare_target.call_count == 1
                             assert client.post('/process/infinidysk-v2/start', json={}).status_code == 409
                         finally:
                             admission.release_infinidysk_external_mutation(token)
@@ -198,7 +223,7 @@ class NativeMigrationAPITests(unittest.TestCase):
                         assert report_missing.status_code == 409, report_missing.text
                         assert report_missing.json()['detail'] == 'The native report is unavailable for this job.'
                     paths = app.openapi()['paths']
-                    for path in ('/status', '/preview', '/rehearse', '/prepare', '/activate', '/start', '/jobs/{job_id}', '/jobs/{job_id}/report', '/rollback', '/cancel', '/retry-consumers', '/finish-consumer-recovery', '/cleanup/preview', '/cleanup', '/postgres/status', '/postgres/preview', '/postgres/start', '/postgres/cutover', '/postgres/cancel', '/postgres/rollback'):
+                    for path in ('/status', '/preview', '/rehearse', '/prepare', '/activate', '/start', '/jobs/{job_id}', '/jobs/{job_id}/report', '/rollback', '/cancel', '/retry-consumers', '/finish-consumer-recovery', '/cleanup/preview', '/cleanup', '/postgres/status', '/postgres/prepare-target', '/postgres/preview', '/postgres/start', '/postgres/cutover', '/postgres/cancel', '/postgres/rollback'):
                         assert '/process/infinidysk-v2' + path in paths, path
                     assert app.version == '2.24.0'
             """)

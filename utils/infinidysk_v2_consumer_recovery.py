@@ -49,6 +49,7 @@ _MESSAGES = {
     "target_start_failed": "The accepted generation 2 owner did not start; generation 2 data remains in place.",
     "owner_unregistered": "An unregistered delivery owner may still be live; duplicate startup is refused.",
     "consumer_start_failed": "A retained consumer did not start; later dependants remain pending.",
+    "arr_client_unverified": "A retained Arr download client could not be verified against InfiniDysk 2. Review its connection and retry consumer recovery; the converted library remains active.",
     "worker_changed": "The recovery worker no longer owns this operation; generation 2 state remains protected.",
     "recovery_failed": "Generation 2 recovery did not finish; existing generation 2 writes and retained v1 evidence remain protected.",
 }
@@ -111,8 +112,9 @@ def _credential_binding(service, data_root, uid):
 
 
 class InfiniDyskV2ConsumerRecovery:
-    def __init__(self, manager):
+    def __init__(self, manager, *, reconcile_arr_clients=None):
         self.manager = manager
+        self.reconcile_arr_clients = reconcile_arr_clients
 
     def _save(self, job):
         job["updated_at"] = int(time.time())
@@ -249,6 +251,11 @@ class InfiniDyskV2ConsumerRecovery:
                 "consumers"
             ):
                 raise ConsumerRecoveryError("scope_changed")
+            proof = job.get("arr_client_bindings")
+            if record.get("arr_client_bindings_sha256") != (
+                _digest(proof) if proof is not None else None
+            ):
+                raise ConsumerRecoveryError("scope_changed")
             return service, receipt, consumers
         except ConsumerRecoveryError:
             raise
@@ -292,6 +299,11 @@ class InfiniDyskV2ConsumerRecovery:
                 "pending": consumers,
                 "resumed": [],
                 "failed": [],
+                "arr_client_bindings_sha256": (
+                    _digest(job["arr_client_bindings"])
+                    if job.get("arr_client_bindings") is not None
+                    else None
+                ),
             }
             job["activation_exposed"] = True
             job["activation_committed"] = False
@@ -394,6 +406,35 @@ class InfiniDyskV2ConsumerRecovery:
             if name not in record["resumed"]:
                 record["resumed"].append(name)
             self._save(job)
+        if job["plan"].get("mode") == "migrate":
+            from utils.infinidysk_v2_arr_clients import (
+                ArrClientReconciliationError,
+                reconcile_arr_bindings,
+            )
+
+            reconcile = self.reconcile_arr_clients or reconcile_arr_bindings
+            try:
+                record["arr_clients"] = reconcile(
+                    self.manager._config(),
+                    job["plan"]["source"]["service"],
+                    job["plan"]["inventory"]["consumers"],
+                    consumers,
+                    job.get("arr_client_bindings"),
+                    plan_fingerprint=job.get("plan_fingerprint"),
+                    check_cancel=lambda: self._owner(job),
+                )
+            except ArrClientReconciliationError as error:
+                record["failed"] = [
+                    {
+                        "process_name": error.process_name
+                        or job["plan"]["source"]["process_name"],
+                        "reason_code": "arr_client_unverified",
+                        "detail_code": error.reason_code,
+                        "message": _MESSAGES["arr_client_unverified"],
+                    }
+                ]
+                self._save(job)
+                raise ConsumerRecoveryError("arr_client_unverified") from None
         checkpoint(job, "consumers_resumed", completed=["resume_services"])
         self._save(job)
         return copy.deepcopy(record)

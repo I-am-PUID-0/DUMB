@@ -1719,7 +1719,13 @@
           "type": "string"
         },
         "env": {
-          "type": "object"
+          "type": "object",
+          "properties": {
+            "INFINIDYSK__SAB__API_KEY": {
+              "type": "string",
+              "description": "InfiniDysk 2 download-client API key. An explicit value controls the next native launch. When blank or missing, DUMB preserves the native key at launch and saves its effective value after successful native startup or prepared activation. A fresh installation creates its key once. This is separate from the native administrative key and the generation 1 frontend/backend key."
+            }
+          }
         },
         "backup_destination_id": {
           "type": "string",

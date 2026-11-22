@@ -5,6 +5,9 @@ import secrets
 from contextlib import contextmanager
 
 INFINIDYSK_MIGRATION_ADMISSION_LOCK = threading.RLock()
+# Runtime update journals bind the native settings present at update admission.
+# Ordinary post-start synchronization must not change those settings mid-update.
+INFINIDYSK_NATIVE_SETTINGS_LOCK = threading.Lock()
 _EXTERNAL_MUTATIONS: dict[str, str] = {}
 _V2_CONTEXT = threading.local()
 _V2_PENDING: set[str] = set()

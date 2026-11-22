@@ -247,9 +247,10 @@ def _target_error_message(error, target, *, identity=False):
     )
     if code == "3D000" or missing_database:
         return (
-            "The PostgreSQL destination database does not exist. Create a new empty "
-            "database with C collation before preview; choosing managed PostgreSQL "
-            "only reuses its connection settings."
+            "The PostgreSQL destination database does not exist. For DUMB-managed "
+            "PostgreSQL, choose Prepare database and review. For an external server, "
+            "ask its administrator to create a new empty database with C collation "
+            "before preview."
         )
     if (
         code in {"28P01", "28000"}
@@ -755,6 +756,17 @@ class InfiniDyskV2PostgresManager:
                     "rollback": "RESTORE SQLITE SNAPSHOT",
                 },
             }
+
+    def prepare_target(self, options):
+        from utils.infinidysk_v2_postgres_prepare import prepare_managed_target
+
+        with self._lock:
+            self._check_service()
+            if not self.status()["actions"]["start"]:
+                raise NativePostgresError(
+                    "A native provider move is not currently available."
+                )
+            return prepare_managed_target(self, options)
 
     def preview(self, options):
         with self._lock:

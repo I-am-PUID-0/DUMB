@@ -3770,6 +3770,40 @@ class Update:
         manual=False,
     ):
         from utils.infinidysk_migration_admission import (
+            INFINIDYSK_NATIVE_SETTINGS_LOCK,
+        )
+
+        if not INFINIDYSK_NATIVE_SETTINGS_LOCK.acquire(blocking=False):
+            return {
+                "status": "deferred",
+                "reason": "update_in_progress",
+                "message": "InfiniDysk settings synchronization or a native runtime update is already running. Retry after it finishes.",
+            }
+        try:
+            return self._update_native_runtime_admitted(
+                process_name,
+                config,
+                key,
+                instance_name,
+                allow_override=allow_override,
+                target=target,
+                manual=manual,
+            )
+        finally:
+            INFINIDYSK_NATIVE_SETTINGS_LOCK.release()
+
+    def _update_native_runtime_admitted(
+        self,
+        process_name,
+        config,
+        key="infinidysk",
+        instance_name=None,
+        *,
+        allow_override=False,
+        target=None,
+        manual=False,
+    ):
+        from utils.infinidysk_migration_admission import (
             INFINIDYSK_MIGRATION_ADMISSION_LOCK,
             reserve_infinidysk_external_mutation,
             release_infinidysk_external_mutation,

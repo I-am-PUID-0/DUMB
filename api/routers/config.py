@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, Query, Request
+from fastapi import APIRouter, HTTPException, Depends, Query, Request, Response
 from typing import Union, Optional, Dict, Any, List
 from pydantic import BaseModel
 import copy
@@ -1400,6 +1400,67 @@ async def get_service_ui_map(
     except Exception as e:
         logger.error(f"Failed to build service map: {e}")
         raise HTTPException(status_code=500, detail="Failed to build service map")
+
+
+@config_router.get("/embedded-ui-routing/{service_name}")
+async def get_embedded_ui_routing(
+    service_name: str,
+    response: Response,
+    logger=Depends(get_logger),
+):
+    """Return only the runtime proof needed to select an InfiniDysk adapter.
+
+    An iframe cannot send the dashboard bearer stored in browser storage. This
+    deliberately public, read-only identity contains no connection details and
+    does not grant access to the service; its own authentication still applies.
+    The full service inventory remains protected by dashboard authentication.
+    """
+    response.headers["Cache-Control"] = "no-store"
+    if service_name in {".", ".."} or not re.fullmatch(
+        r"[a-z0-9_.-]{1,128}", service_name
+    ):
+        raise HTTPException(
+            status_code=404,
+            detail="Embedded route not available",
+            headers={"Cache-Control": "no-store"},
+        )
+    try:
+        services = [
+            service
+            for service in build_ui_services()
+            if service.get("config_key") in {"infinidysk", "nzbdav"}
+            and str(service.get("name") or "")
+            .replace(" ", "_")
+            .replace("/", "_")
+            .lower()
+            == service_name
+        ]
+        if len(services) != 1:
+            raise HTTPException(
+                status_code=404,
+                detail="Embedded route not available",
+                headers={"Cache-Control": "no-store"},
+            )
+        service = services[0]
+        return {
+            key: service[key]
+            for key in (
+                "name",
+                "config_key",
+                "runtime_generation",
+                "embedded_ui_protocol",
+            )
+            if key in service
+        }
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Failed to identify embedded InfiniDysk routing")
+        raise HTTPException(
+            status_code=503,
+            detail="Embedded route not available",
+            headers={"Cache-Control": "no-store"},
+        )
 
 
 @config_router.get("/service-ui")

@@ -362,11 +362,13 @@ def _validate_data_bootstrap(data, *, allow_v1_import=False, native_url=None):
 
 
 def build_v2_environment(service, data_root="/data", uid=1000, gid=1000):
+    from utils.infinidysk_v2_sab import canonical_sab_environment
+
     auth_policy = compatibility_auth_environment(service)
     auth = native_auth(service, data_root)
     env = {
         str(k): str(v)
-        for k, v in (service.get("env") or {}).items()
+        for k, v in canonical_sab_environment(service).items()
         if str(k).startswith("INFINIDYSK_")
         or k
         in {
@@ -751,6 +753,9 @@ def prepare_v2_launch(
             service, Path(config_path).parent / "updates" / "infinidysk-v2"
         )
         compatibility_auth_environment(service)
+        from utils.infinidysk_v2_sab import canonical_sab_environment
+
+        canonical_sab_environment(service)
         if rclone_instances is not None:
             valid, error = validate_selected_owners(service, rclone_instances)
             if not valid:
@@ -817,6 +822,6 @@ def configure_v2_runtime(process_handler, process_name, service):
     if not valid:
         return False, error
     service["command"] = [str(runtime_dir(service) / "infinidysk")]
-    # Keep secrets in private native state. ProcessHandler builds this environment
-    # immediately before launch, rather than persisting credentials in DUMB config.
+    # The separate native administrator credential stays in private native state.
+    # The managed SAB credential is passed from DUMB's service environment.
     return True, None

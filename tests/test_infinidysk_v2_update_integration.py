@@ -229,6 +229,83 @@ class NativeUpdateIntegrationTests(unittest.TestCase):
         )
 
     @isolated_update_test
+    def test_native_updater_defers_while_arr_sync_holds_shared_settings_lock(self):
+        from utils import infinidysk_v2_arr_sync as arr_sync
+
+        updater = self.fixture()
+        coordinator = arr_sync.ArrSync(
+            SimpleNamespace(shutting_down=False, logger=Mock()), self.manager
+        )
+        attempted = []
+
+        def reconcile(*_args, **_kwargs):
+            attempted.append(self.update(manual=True))
+            return []
+
+        with (
+            patch(
+                "utils.infinidysk_migration_admission.reserve_infinidysk_external_mutation",
+                return_value="fixture-token",
+            ),
+            patch(
+                "utils.infinidysk_migration_admission.release_infinidysk_external_mutation"
+            ),
+            patch.object(arr_sync, "sync_arr_clients", side_effect=reconcile),
+            patch.object(updater, "_update_native_runtime_admitted") as admitted,
+        ):
+            self.assertEqual(coordinator.run(), (False, None))
+        self.assertEqual(attempted[0]["status"], "deferred")
+        self.assertEqual(attempted[0]["reason"], "update_in_progress")
+        admitted.assert_not_called()
+        self.manager.save_config.assert_not_called()
+
+    @isolated_update_test
+    def test_arr_sync_defers_during_entire_native_update_and_retries_after_release(
+        self,
+    ):
+        from utils import infinidysk_v2_arr_sync as arr_sync
+        from utils.infinidysk_migration_admission import INFINIDYSK_NATIVE_SETTINGS_LOCK
+
+        self.fixture(running=True)
+        coordinator = arr_sync.ArrSync(
+            SimpleNamespace(shutting_down=False, logger=Mock()), self.manager
+        )
+        coordinator.retry = Mock()
+        observed = []
+
+        def perform(*args, **kwargs):
+            observed.append(coordinator.run())
+            return self.perform(*args, **kwargs)
+
+        self.patches["perform"].side_effect = perform
+        with patch.object(arr_sync, "sync_arr_clients") as reconcile:
+            result = self.update(manual=True)
+        self.assertEqual(result["status"], "updated")
+        self.assertFalse(observed[0][0])
+        self.assertIn("waiting for the native runtime update", observed[0][1])
+        reconcile.assert_not_called()
+        coordinator.retry.schedule.assert_called_once_with(
+            coordinator.run, coordinator.shutdown
+        )
+        self.assertTrue(INFINIDYSK_NATIVE_SETTINGS_LOCK.acquire(blocking=False))
+        INFINIDYSK_NATIVE_SETTINGS_LOCK.release()
+
+    @isolated_update_test
+    def test_native_settings_lock_is_released_after_unexpected_update_failure(self):
+        from utils.infinidysk_migration_admission import INFINIDYSK_NATIVE_SETTINGS_LOCK
+
+        updater = self.fixture()
+        with patch.object(
+            updater,
+            "_update_native_runtime_admitted",
+            side_effect=RuntimeError("fixture failure"),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "fixture failure"):
+                self.update(manual=True)
+        self.assertTrue(INFINIDYSK_NATIVE_SETTINGS_LOCK.acquire(blocking=False))
+        INFINIDYSK_NATIVE_SETTINGS_LOCK.release()
+
+    @isolated_update_test
     def test_status_resolves_official_release_without_mutating_runtime_or_managers(
         self,
     ):

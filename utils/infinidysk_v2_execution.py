@@ -621,8 +621,9 @@ class InfiniDyskV2Executor:
     supported_source_providers = ("sqlite", "postgres")
     supports_external_blob_staging = True
 
-    def __init__(self, process_handler, config_manager):
+    def __init__(self, process_handler, config_manager, *, capture_arr_clients=None):
         self.handler, self.config = process_handler, config_manager
+        self.capture_arr_clients = capture_arr_clients
 
     def _execution_ids(self):
         uid_value, gid_value = self.config.get("puid"), self.config.get("pgid")
@@ -633,6 +634,29 @@ class InfiniDyskV2Executor:
                 "Contained migration requires non-root PUID and PGID."
             )
         return uid, gid
+
+    def verify_arr_clients_before_stop(self, plan, workspace):
+        """Read-only prerequisite, called before the manager admits execution."""
+        if plan.get("mode") != "migrate":
+            return
+        from utils.infinidysk_v2_arr_clients import capture_arr_bindings
+
+        capture = self.capture_arr_clients or capture_arr_bindings
+        proof = capture(
+            self.config,
+            plan["source"]["service"],
+            plan["inventory"]["consumers"],
+            [name for name in self._names(plan) if self._running(name)],
+            plan_fingerprint=workspace.get("plan_fingerprint"),
+            check_cancel=workspace.get("check_cancel"),
+        )
+        record = workspace.get("record_arr_clients")
+        if callable(record):
+            record(proof)
+        elif proof.get("records"):
+            raise ContainedImportError(
+                "The verified Arr download-client bindings could not be retained before stopping v1."
+            )
 
     def preflight(self, plan):
         blockers = []
@@ -1362,6 +1386,13 @@ class InfiniDyskV2Executor:
         )
         final = copy.deepcopy(plan["target"]["service"])
         final.update(branch_enabled=False, commit_sha="")
+        from utils.infinidysk_v2_sab import adopt_prepared_sab_key
+
+        adopt_prepared_sab_key(
+            final,
+            target / "infinidysk.sqlite",
+            require_stored_match=plan["mode"] == "migrate",
+        )
         success, reason = configure_v2_runtime(
             self.handler, plan["source"]["process_name"], final
         )

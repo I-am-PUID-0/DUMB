@@ -231,7 +231,8 @@ class ExecutionTests(unittest.TestCase):
             SimpleNamespace(
                 executor=self.executor,
                 _config=lambda: self.config.config,
-            )
+            ),
+            reconcile_arr_clients=getattr(self, "reconcile_arr_clients", None),
         )
         names = self.progress.call_args_list[0].kwargs["original_running_names"]
         job = {

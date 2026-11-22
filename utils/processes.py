@@ -1123,6 +1123,9 @@ class ProcessHandler:
 
             if process:
                 self._update_running_processes_file()
+            from utils.infinidysk_v2_arr_sync import schedule_arr_sync
+
+            schedule_arr_sync(self, key, config_for_wait)
             return True, None
 
         except Exception as e:

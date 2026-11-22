@@ -134,6 +134,31 @@ class ConfigLoaderEnvParsingTests(unittest.TestCase):
 
 
 class ConfigLoaderMigrationTests(unittest.TestCase):
+    def test_adopted_native_sab_key_survives_scoped_save_and_config_reload(self):
+        from utils.infinidysk_v2_sab import adopt_running_sab_key
+
+        config_manager = _load_config_manager_class()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = json.loads((ROOT / "utils" / "dumb_config.json").read_text())
+            config["infinidysk"].update(enabled=True, runtime_generation=2)
+            path = Path(temp_dir) / "dumb_config.json"
+            path.write_text(json.dumps(config))
+            manager = config_manager(
+                file_path=str(path),
+                schema_path=str(ROOT / "utils" / "dumb_config_schema.json"),
+            )
+            adopt_running_sab_key(
+                manager, manager.get("infinidysk"), "fixture-preserved-native-key"
+            )
+            reloaded = config_manager(
+                file_path=str(path),
+                schema_path=str(ROOT / "utils" / "dumb_config_schema.json"),
+            )
+            self.assertEqual(
+                reloaded.get("infinidysk")["env"]["INFINIDYSK__SAB__API_KEY"],
+                "fixture-preserved-native-key",
+            )
+
     def test_existing_nzbdav_config_gets_dumb_service_provider_default(self):
         config_manager = _load_config_manager_class()
         with tempfile.TemporaryDirectory() as temp_dir:

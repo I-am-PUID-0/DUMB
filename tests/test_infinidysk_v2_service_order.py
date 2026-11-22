@@ -52,6 +52,15 @@ class MigrationServiceOrderTests(unittest.TestCase):
         self.handler = self.fixture.handler
         self.executor = self.fixture.executor
         self.progress = self.fixture.progress
+        self.arr_reconciliation_starts = []
+
+        def reconcile_arr_clients(*_args, **_kwargs):
+            # This suite owns lifecycle ordering; the credential integration has
+            # independent saved-client API and pre-stop proof coverage.
+            self.arr_reconciliation_starts.append(self.starts())
+            return []
+
+        self.fixture.reconcile_arr_clients = reconcile_arr_clients
         self.config.config["sonarr"]["instances"]["fixture"].update(
             port=8989, wait_for_mounts=["/mnt/legacy"]
         )
@@ -119,6 +128,7 @@ class MigrationServiceOrderTests(unittest.TestCase):
             ["Prowlarr", "Sonarr", "Radarr", "rclone InfiniDysk", "InfiniDysk"],
         )
         self.assertEqual(self.starts(), ["InfiniDysk", "Radarr", "Sonarr", "Prowlarr"])
+        self.assertEqual(self.arr_reconciliation_starts, [self.starts()])
         self.assertEqual(seen, [["InfiniDysk"]])
         self.assertNotIn("Idle Whisparr", self.starts())
         self.assertNotIn("rclone InfiniDysk", self.starts())
@@ -149,6 +159,7 @@ class MigrationServiceOrderTests(unittest.TestCase):
             self.starts(),
             ["InfiniDysk", "rclone InfiniDysk", "Radarr", "Sonarr", "Prowlarr"],
         )
+        self.assertEqual(self.arr_reconciliation_starts, [self.starts()])
         self.assertNotIn("Idle Whisparr", self.starts())
 
     @isolated_service_order_test

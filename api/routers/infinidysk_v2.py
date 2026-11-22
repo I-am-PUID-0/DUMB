@@ -334,6 +334,20 @@ async def postgres_status(
     )
 
 
+@infinidysk_v2_router.post("/postgres/prepare-target")
+async def postgres_prepare_target(
+    response: Response = None,
+    request: dict[str, Any] = Body(...),
+    handler=Depends(get_process_handler),
+    updater=Depends(get_updater),
+    current_user=Depends(get_optional_current_user),
+):
+    _private_preview_response(response)
+    return await run_in_threadpool(
+        _invoke, "postgres", "prepare_target", request, handler, updater, mutation=True
+    )
+
+
 @infinidysk_v2_router.post("/postgres/preview")
 async def postgres_preview(
     request: dict[str, Any] = Body(...),

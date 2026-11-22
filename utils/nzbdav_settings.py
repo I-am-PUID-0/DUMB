@@ -691,6 +691,8 @@ def ensure_nzbdav_download_client(
     category: Optional[str] = None,
     test_before_save: bool = False,
     api_version: str = "v3",
+    config_manager=None,
+    request_fn=None,
 ) -> Tuple[bool, Optional[int]]:
     def _set_field(fields_list, field_name: str, value) -> bool:
         for f in fields_list or []:
@@ -773,9 +775,9 @@ def ensure_nzbdav_download_client(
         },
         api_version=api_version,
         test_connection=test_before_save,
-        request_fn=_arr_req,
+        request_fn=request_fn or _arr_req,
         aliases=("infinidysk", "nzbdav"),
-        config_manager=CONFIG_MANAGER,
+        config_manager=config_manager or CONFIG_MANAGER,
     )
 
 
@@ -987,10 +989,10 @@ def _patch_nzbdav_config():
     from utils.infinidysk_v2_topology import is_v2
 
     if is_v2(CONFIG_MANAGER.get("infinidysk")):
-        return (
-            False,
-            "InfiniDysk 2.x settings use its native API/UI; legacy automatic Arr wiring is not applied",
-        )
+        from utils.dependencies import get_process_handler
+        from utils.infinidysk_v2_arr_sync import synchronize_arr_config
+
+        return synchronize_arr_config(get_process_handler(), CONFIG_MANAGER)
     from utils.infinidysk_migration_admission import (
         INFINIDYSK_MIGRATION_ADMISSION_LOCK,
         infinidysk_namespace_migration_active,

@@ -1398,6 +1398,7 @@ class InfiniDyskV2MigrationManager:
                 "DATABASE_PROVIDER",
                 "DATABASE_CONNECTION_STRING",
                 "INFINIDYSK_DATABASE_URL",
+                "FRONTEND_BACKEND_API_KEY",
             }
         }
         if timezone:
@@ -3328,11 +3329,27 @@ class InfiniDyskV2MigrationManager:
         job["activation_fingerprint"] = _digest(self._owned_for_job(config, job))
         self._write(self._job_path(job["job_id"]), job)
 
+    def _record_arr_clients(self, job, proof):
+        self._assert_job_owner(job)
+        self._check_cancel(job)
+        if (
+            not isinstance(proof, dict)
+            or proof.get("schema") != 1
+            or proof.get("plan_fingerprint") != job["plan_fingerprint"]
+            or not isinstance(proof.get("records"), list)
+        ):
+            raise InfiniDyskV2MigrationError(
+                "The pre-migration Arr connection proof did not match this operation."
+            )
+        job["arr_client_bindings"] = copy.deepcopy(proof)
+        self._write(self._job_path(job["job_id"]), job)
+
     def _workspace(self, job):
         root = self.state_root / "backups" / job["job_id"]
         target = Path(job["plan"]["target"]["data_dir"])
         workspace = {
             "root": str(root),
+            "plan_fingerprint": job["plan_fingerprint"],
             "source_snapshot": str(root),
             "candidate_data": str(
                 target.parent / f".{target.name}.dumb-v2-{job['job_id']}"
@@ -3348,6 +3365,9 @@ class InfiniDyskV2MigrationManager:
             job, workspace, postgres_snapshot
         )
         workspace["check_source_queue"] = lambda: self._check_source_queue(job)
+        workspace["record_arr_clients"] = lambda proof: self._record_arr_clients(
+            job, proof
+        )
         workspace["prepare_import_database"] = lambda: self._prepare_import_database(
             job
         )
@@ -3603,6 +3623,17 @@ class InfiniDyskV2MigrationManager:
                     raise InfiniDyskV2MigrationError(
                         "The prepared migration executor is unavailable."
                     )
+                verify_clients = getattr(
+                    self.executor, "verify_arr_clients_before_stop", None
+                )
+                if callable(verify_clients):
+                    self._progress(
+                        job,
+                        "revalidating",
+                        "Checking existing managed Arr download-client connections before pausing applications.",
+                    )
+                    verify_clients(copy.deepcopy(job["plan"]), workspace)
+                    self._check_cancel(job)
             from utils.infinidysk_migration_admission import v2_migration_owner
 
             job["execution_started"] = True

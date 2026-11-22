@@ -35,6 +35,7 @@ def _install_runtime_stubs():
     fastapi.Depends = lambda *args, **kwargs: None
     fastapi.Query = lambda *args, **kwargs: None
     fastapi.Request = object
+    fastapi.Response = object
     sys.modules["fastapi"] = fastapi
 
     pydantic = types.ModuleType("pydantic")

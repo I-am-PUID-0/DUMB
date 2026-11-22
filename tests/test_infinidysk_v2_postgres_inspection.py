@@ -148,8 +148,10 @@ class TargetInspectionTests(unittest.TestCase):
             result = self.assert_private_failure(
                 lambda: inspect_target(self.target), "database does not exist"
             )
-        self.assertIn("Create a new empty database with C collation", str(result))
-        self.assertIn("only reuses its connection settings", str(result))
+        self.assertIn("choose Prepare database and review", str(result))
+        self.assertIn(
+            "ask its administrator to create a new empty database", str(result)
+        )
 
     def test_missing_database_sqlstate_and_authentication_diagnostics_are_private(self):
         for error, expected in (
