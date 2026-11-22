@@ -12,7 +12,7 @@ import tarfile
 import tempfile
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from utils import infinidysk_v2_releases as releases
 from utils import infinidysk_v2_runtime as runtime
@@ -245,40 +245,55 @@ class NativeReleaseTests(unittest.TestCase):
         with self.assertRaises(releases.NativeReleaseError):
             runtime.compare_v2_releases("v3.0.0", self.tag)
 
-    def test_startup_only_prepares_beta6_and_never_resolves_latest(self):
-        for selected in ("latest", runtime.RELEASE):
-            with self.subTest(selected=selected):
-                service = {
-                    **self.service,
-                    "release_version": selected,
-                    "release_version_enabled": True,
-                }
-                with (
-                    patch.object(
-                        runtime, "install_v2_runtime", return_value=(True, None)
-                    ) as install,
-                    patch.object(releases, "_json") as api,
-                ):
-                    self.assertEqual(
-                        runtime.ensure_active_v2_runtime(None, "InfiniDysk", service),
-                        (True, None),
-                    )
-                    self.assertEqual(install.call_args.args[2], service)
-                    self.assertEqual(service["release_version"], selected)
-                    api.assert_not_called()
-        with patch.object(runtime, "install_v2_runtime") as install:
-            self.assertFalse(
-                runtime.ensure_active_v2_runtime(
-                    None,
-                    "InfiniDysk",
+    def test_fresh_startup_resolves_latest_and_records_verified_selected_archive(self):
+        from utils.infinidysk_v2_installed_release import read_installed_release
+
+        with (
+            self.machine(),
+            patch.object(
+                releases,
+                "_json",
+                side_effect=[
+                    [self.release()],
                     {
-                        **self.service,
-                        "release_version": self.tag,
-                        "release_version_enabled": True,
+                        "ref": "refs/tags/" + self.tag,
+                        "object": {"type": "commit", "sha": self.commit},
                     },
-                )[0]
+                ],
+            ),
+            patch.object(
+                releases.urllib.request,
+                "urlopen",
+                return_value=Response(self.archive()),
+            ),
+            patch.object(
+                releases.subprocess,
+                "run",
+                return_value=SimpleNamespace(
+                    stdout=json.dumps(
+                        {"paths": {"/api/v1/upgrade/status": {}, "/api/v1/catalog": {}}}
+                    ).encode()
+                ),
+            ),
+            patch.object(runtime, "install_v2_runtime") as importer,
+        ):
+            self.assertEqual(
+                runtime.ensure_active_v2_runtime(
+                    SimpleNamespace(logger=Mock()), "InfiniDysk", self.service
+                ),
+                (True, None),
             )
-            install.assert_not_called()
+            self.assertEqual(
+                runtime.installed_active_v2_version(self.service), self.tag
+            )
+        self.assertEqual(
+            read_installed_release(
+                self.service, self.root / "updates" / "infinidysk-v2"
+            )["release"],
+            self.tag,
+        )
+        self.assertFalse(Path(self.service["v2_data_dir"]).exists())
+        importer.assert_not_called()
 
     def test_invalid_selectors_forks_or_source_builds_never_query_github(self):
         for options in (

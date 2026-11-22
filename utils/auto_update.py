@@ -3993,6 +3993,7 @@ class Update:
                 resume_native_update(
                     original,
                     journal_root=self._native_runtime_journal_root(),
+                    data_root=CONFIG_MANAGER.get("data_root") or "/data",
                     prepare_launch=prepare_launch,
                     start_candidate=start_candidate,
                     wait_ready=wait_ready,
@@ -4032,6 +4033,7 @@ class Update:
                     candidate,
                     metadata,
                     journal_root=self._native_runtime_journal_root(),
+                    data_root=CONFIG_MANAGER.get("data_root") or "/data",
                     stop_current=stop_current,
                     prepare_launch=prepare_launch,
                     start_candidate=start_candidate,

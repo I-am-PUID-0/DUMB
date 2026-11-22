@@ -169,10 +169,12 @@ class ExecutionTests(unittest.TestCase):
         for name, value in (
             ("mount_records", []),
             ("install_v2_runtime", (True, None)),
+            ("install_selected_v2_runtime", (True, None)),
             ("native_auth", {}),
             ("prepare_import_history", {"version": 1}),
             ("remove_history_guard", {"history_guard_removed": True}),
             ("configure_v2_runtime", (True, None)),
+            ("remember_installed_v2_runtime", (True, None)),
             ("native_api_request", {"status": 200}),
             ("delivery_mount_ready", True),
             (
@@ -275,6 +277,135 @@ class ExecutionTests(unittest.TestCase):
         self.assertTrue(result["generation_2_started"])
         self.assertEqual(1, self.native.call_count)
         self.assertEqual(1, self.candidate.wait_import.call_count)
+        self.assertTrue(
+            (Path(self.plan["target"]["data_dir"]) / "infinidysk.sqlite").is_file()
+        )
+
+    def test_fresh_preparation_uses_selected_release_without_v1_environment(self):
+        self.plan["mode"] = "fresh"
+        self.service.update(
+            release_version_enabled=True, release_version="v2.0.0-beta.10"
+        )
+        self.service["env"]["INFINIDYSK__SAB__API_KEY"] = self.download_key
+        self.plan["source"]["service"]["env"][
+            "FRONTEND_BACKEND_API_KEY"
+        ] = "obsolete-fixture-alias"
+
+        def install(*args, **kwargs):
+            self.assertFalse(self.handler.process_names)
+            self.assertFalse(self.native.called)
+            return True, None
+
+        with (
+            patch("utils.infinidysk_v2_execution.install_v2_runtime") as importer,
+            patch(
+                "utils.infinidysk_v2_execution.install_selected_v2_runtime",
+                side_effect=install,
+            ) as selected,
+        ):
+            self.executor.prepare(self.plan, self.workspace, self.progress)
+        importer.assert_not_called()
+        selected.assert_called_once()
+        installed = selected.call_args.args[2]
+        self.assertEqual(installed["release_version"], "v2.0.0-beta.10")
+        self.assertEqual(installed["v2_data_dir"], self.workspace["candidate_data"])
+        self.assertEqual(selected.call_args.kwargs, {"replace_verified": True})
+        self.assertFalse(self.handler.process_names)
+        self.assertEqual(self.native.call_args.args[6], {})
+        self.assertEqual(
+            self.native.call_args.args[0]["env"]["INFINIDYSK__SAB__API_KEY"],
+            self.download_key,
+        )
+        self.candidate.wait_import.assert_called_once_with(False, self.progress)
+
+    def test_fresh_never_replaces_program_when_retained_source_does_not_stop(self):
+        self.plan["mode"] = "fresh"
+        with (
+            patch.object(self.handler, "stop_process", return_value=(False, "held")),
+            patch(
+                "utils.infinidysk_v2_execution.install_selected_v2_runtime"
+            ) as selected,
+        ):
+            with self.assertRaisesRegex(ContainedImportError, "refused to stop"):
+                self.executor.prepare(self.plan, self.workspace, self.progress)
+        selected.assert_not_called()
+        self.assertFalse(self.snapshots)
+
+    def test_migration_keeps_pinned_importer_and_original_legacy_environment(self):
+        self.plan["source"]["service"]["env"][
+            "FRONTEND_BACKEND_API_KEY"
+        ] = "retained-fixture-alias"
+        with (
+            patch(
+                "utils.infinidysk_v2_execution.install_v2_runtime",
+                return_value=(True, None),
+            ) as importer,
+            patch(
+                "utils.infinidysk_v2_execution.install_selected_v2_runtime"
+            ) as selected,
+        ):
+            self.executor.prepare(self.plan, self.workspace, self.progress)
+        importer.assert_called_once()
+        self.assertEqual(importer.call_args.kwargs, {})
+        selected.assert_not_called()
+        self.assertEqual(
+            self.native.call_args.args[6],
+            {
+                "TZ": "UTC",
+                "FRONTEND_BACKEND_API_KEY": "retained-fixture-alias",
+                "DATABASE_PROVIDER": "sqlite",
+            },
+        )
+
+    def test_activation_remembers_final_release_before_configuration_or_launch(self):
+        self.plan["mode"] = "fresh"
+        self.service.update(
+            release_version_enabled=True, release_version="v2.0.0-beta.10"
+        )
+        events = []
+
+        def remember(service):
+            self.assertEqual(service["v2_data_dir"], self.plan["target"]["data_dir"])
+            self.assertEqual(service["release_version"], "v2.0.0-beta.10")
+            self.assertTrue(
+                (Path(service["v2_data_dir"]) / "infinidysk.sqlite").is_file()
+            )
+            self.assertFalse(any(action == "start" for action, _ in self.handler.calls))
+            events.append("remembered")
+            return True, None
+
+        def activate(service):
+            self.assertEqual(events, ["remembered"])
+            events.append("configured")
+
+        def expose(service, receipt):
+            self.assertEqual(events, ["remembered", "configured"])
+            self.assertFalse(any(action == "start" for action, _ in self.handler.calls))
+            events.append("exposed")
+
+        self.workspace["activate_config"].side_effect = activate
+        self.workspace["expose_activation"].side_effect = expose
+        with patch(
+            "utils.infinidysk_v2_execution.remember_installed_v2_runtime",
+            side_effect=remember,
+        ) as retained:
+            result = self.executor.cutover(self.plan, self.workspace, self.progress)
+        retained.assert_called_once()
+        self.assertTrue(result["generation_2_started"])
+        self.assertEqual(events, ["remembered", "configured", "exposed"])
+
+    def test_unretained_version_never_exposes_or_starts_final_native_data(self):
+        with patch(
+            "utils.infinidysk_v2_execution.remember_installed_v2_runtime",
+            return_value=(False, "private-state-write-failed"),
+        ):
+            with self.assertRaisesRegex(
+                ContainedImportError, "version could not be retained"
+            ):
+                self.executor.cutover(self.plan, self.workspace, self.progress)
+        self.workspace["activate_config"].assert_not_called()
+        self.workspace["expose_activation"].assert_not_called()
+        self.assertFalse(any(action == "start" for action, _ in self.handler.calls))
         self.assertTrue(
             (Path(self.plan["target"]["data_dir"]) / "infinidysk.sqlite").is_file()
         )
@@ -1113,6 +1244,51 @@ class NativeImportWatchdogTests(unittest.TestCase):
         ):
             report = candidate.wait_import(True, progress)
         return report, progress
+
+    def test_fresh_readiness_uses_health_without_legacy_upgrade_endpoints(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            candidate = self.candidate(Path(temporary))
+            candidate.probe = Mock(
+                side_effect=[
+                    {"status": 200, "body": {"status": "starting"}},
+                    {"status": 200, "body": {"status": "ok"}},
+                ]
+            )
+            with (
+                patch("utils.infinidysk_v2_execution.time.sleep"),
+                patch(
+                    "utils.infinidysk_v2_execution.os.readlink",
+                    side_effect=lambda path: (
+                        "native" if "987654" in path else "controller"
+                    ),
+                ),
+            ):
+                self.assertEqual(candidate.wait_import(False, Mock()), "")
+            self.assertEqual(
+                [call.args[0] for call in candidate.probe.call_args_list],
+                ["/healthz", "/healthz"],
+            )
+            candidate.record_report.assert_not_called()
+
+    def test_fresh_health_still_requires_native_confinement_proof(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            candidate = self.candidate(Path(temporary))
+            proof = Path(candidate.payload["proof_path"])
+            proof.write_text(json.dumps({"pid": 987654, "landlock_abi": 0}))
+            candidate.probe = Mock(
+                return_value={"status": 200, "body": {"status": "ok"}}
+            )
+            with (
+                patch(
+                    "utils.infinidysk_v2_execution.os.readlink",
+                    side_effect=lambda path: (
+                        "native" if "987654" in path else "controller"
+                    ),
+                ),
+                self.assertRaisesRegex(ContainedImportError, "confinement proof"),
+            ):
+                candidate.wait_import(False, Mock())
+            candidate.record_report.assert_not_called()
 
     def test_external_input_requires_readonly_proof_for_the_verified_identity(self):
         identity = {"device": 123, "inode": 456, "mode": 0o040000}

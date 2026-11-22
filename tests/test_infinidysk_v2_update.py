@@ -21,6 +21,10 @@ from utils.infinidysk_v2_update import (
     validate_native_update_launch,
     native_runtime_restore_metadata,
 )
+from utils.infinidysk_v2_installed_release import (
+    read_installed_release,
+    record_installed_release,
+)
 
 
 class NativeRuntimeUpdateTests(unittest.TestCase):
@@ -87,7 +91,7 @@ class NativeRuntimeUpdateTests(unittest.TestCase):
         )
 
     def journal(self):
-        paths = list(self.journals.glob("*.json"))
+        paths = list(self.journals.glob("native-runtime-*.json"))
         self.assertEqual(len(paths), 1)
         return paths[0], json.loads(paths[0].read_text())
 
@@ -611,6 +615,193 @@ class NativeRuntimeUpdateTests(unittest.TestCase):
             native_runtime_restore_metadata(self.service, self.journals), self.new
         )
         self.assertFalse(self.runtime.exists())
+
+    def test_legacy_completed_receipt_restores_exact_release_after_env_normalization(
+        self,
+    ):
+        self.service["env"] = {"FRONTEND_BACKEND_API_KEY": "fixture-old-alias"}
+        self.update()
+        path, _record = self.journal()
+        original = path.read_bytes()
+        # Simulate the deployed completed journal before installed-state existed.
+        for installed in self.journals.glob("installed-release-*.json"):
+            installed.unlink()
+        self.service["env"] = {"INFINIDYSK__SAB__API_KEY": "fixture-native-key"}
+        self.service.update(release_version="latest", release_version_enabled=False)
+        self.assertTrue(validate_native_update_launch(self.service, self.journals))
+        self.runtime.rename(self.root / "previous-container-program")
+        self.assertEqual(
+            native_runtime_restore_metadata(self.service, self.journals), self.new
+        )
+        self.assertEqual(path.read_bytes(), original)
+        self.assertEqual(list(self.journals.glob("installed-release-*.json")), [])
+
+    def test_installed_state_restores_without_any_update_journal(self):
+        record_installed_release(self.service, self.old, self.journals)
+        self.assertEqual(
+            native_runtime_restore_metadata(self.service, self.journals), self.old
+        )
+        self.assertTrue(validate_native_update_launch(self.service, self.journals))
+        self.runtime.rename(self.root / "old-container-program")
+        self.assertEqual(
+            native_runtime_restore_metadata(self.service, self.journals), self.old
+        )
+        with self.assertRaises(NativeUpdateRecoveryRequired):
+            validate_native_update_launch(self.service, self.journals)
+
+    def test_invalid_update_journal_blocks_even_a_valid_installed_record(self):
+        self.update()
+        path, _record = self.journal()
+        path.write_text("{incomplete")
+        self.assertEqual(read_installed_release(self.service, self.journals), self.new)
+        for operation in (
+            native_runtime_restore_metadata,
+            validate_native_update_launch,
+        ):
+            with self.subTest(operation=operation):
+                with self.assertRaises(NativeUpdateRecoveryRequired):
+                    operation(self.service, self.journals)
+        self.assertEqual(path.read_text(), "{incomplete")
+
+    def test_unfinished_update_dominates_older_normal_state_until_explicit_resume(self):
+        record_installed_release(self.service, self.old, self.journals)
+        self.failed_after_launch()
+        self.assertEqual(read_installed_release(self.service, self.journals), self.old)
+        with self.assertRaises(NativeUpdateRecoveryRequired):
+            native_runtime_restore_metadata(self.service, self.journals)
+        with self.assertRaises(NativeUpdateRecoveryRequired):
+            validate_native_update_launch(self.service, self.journals)
+        self.resume()
+        self.assertEqual(read_installed_release(self.service, self.journals), self.new)
+        self.assertEqual(
+            native_runtime_restore_metadata(self.service, self.journals), self.new
+        )
+
+    def test_restored_runtime_new_inode_requires_normal_state_and_all_previous_bindings(
+        self,
+    ):
+        record_installed_release(self.service, self.old, self.journals)
+        with self.assertRaises(NativeUpdateError):
+            self.update(prepare_launch=lambda: False)
+        self.assertEqual(self.journal()[1]["state"], "restored")
+        self.assertEqual(
+            native_runtime_restore_metadata(self.service, self.journals), self.old
+        )
+        self.runtime.rename(self.root / "previous-container-program")
+        shutil.copytree(self.root / "previous-container-program", self.runtime)
+        self.assertTrue(validate_native_update_launch(self.service, self.journals))
+        self.runtime.joinpath("LICENSE").write_text("different metadata")
+        with self.assertRaises(NativeUpdateRecoveryRequired):
+            validate_native_update_launch(self.service, self.journals)
+
+    def test_restored_legacy_runtime_accepts_only_verified_marker_normalization(self):
+        from utils import infinidysk_v2_runtime as runtime
+        from utils.infinidysk_v2_releases import architecture
+
+        binary_hash = hashlib.sha256(b"old program").hexdigest()
+        self.runtime.joinpath("version.txt").write_text(runtime.RELEASE)
+        self.runtime.joinpath("commit.txt").write_text(runtime.COMMIT)
+        self.runtime.joinpath(MARKER).write_text(
+            json.dumps({"commit": runtime.COMMIT, "binary_sha256": binary_hash})
+        )
+        accepted = runtime.installed_v2_metadata(self.service)
+        self.assertEqual(accepted["release"], runtime.RELEASE)
+        self.assertEqual(accepted["archive_sha256"], runtime.ASSETS[architecture()])
+        record_installed_release(self.service, accepted, self.journals)
+        with self.assertRaises(NativeUpdateError):
+            self.update(prepare_launch=lambda: False)
+        path, receipt = self.journal()
+        before = path.read_bytes()
+        self.assertEqual(receipt["state"], "restored")
+        self.assertTrue(validate_native_update_launch(self.service, self.journals))
+        self.assertEqual(
+            native_runtime_restore_metadata(self.service, self.journals), accepted
+        )
+
+        self.runtime.rename(self.root / "legacy-container-program")
+        shutil.copytree(self.root / "legacy-container-program", self.runtime)
+        self.runtime.joinpath(MARKER).write_text(json.dumps(accepted))
+        self.assertTrue(validate_native_update_launch(self.service, self.journals))
+        for name in ("infinidysk", "version.txt", "commit.txt", "LICENSE", MARKER):
+            with self.subTest(changed=name):
+                target = self.runtime / name
+                original = target.read_bytes()
+                target.write_bytes(original + b"changed")
+                with self.assertRaises(NativeUpdateRecoveryRequired):
+                    validate_native_update_launch(self.service, self.journals)
+                target.write_bytes(original)
+        self.assertEqual(path.read_bytes(), before)
+
+    def test_normal_state_conflicting_with_completed_journal_refuses_before_update(
+        self,
+    ):
+        self.update()
+        installed = next(self.journals.glob("installed-release-*.json"))
+        record = json.loads(installed.read_text())
+        record["release_metadata"] = self.old
+        installed.write_text(json.dumps(record))
+        for operation in (
+            native_runtime_restore_metadata,
+            validate_native_update_launch,
+        ):
+            with self.subTest(operation=operation):
+                with self.assertRaises(NativeUpdateRecoveryRequired):
+                    operation(self.service, self.journals)
+        stop = Mock()
+        with self.assertRaises(NativeUpdateRecoveryRequired):
+            self.update(stop_current=stop)
+        stop.assert_not_called()
+
+    def test_downgrade_and_same_version_replacement_refuse_before_lifecycle_work(self):
+        self.update()
+        path, _record = self.journal()
+        before = path.read_bytes()
+        for legacy in (False, True):
+            if legacy:
+                for installed in self.journals.glob("installed-release-*.json"):
+                    installed.unlink()
+            for release in ("v2.0.0-beta.6", "v2.0.0-beta.7"):
+                with self.subTest(legacy=legacy, release=release):
+                    if self.candidate.exists():
+                        shutil.rmtree(self.candidate)
+                    self.new = self.artifact(
+                        self.candidate, release, b"different verified candidate"
+                    )
+                    stop, start = Mock(), Mock()
+                    with self.assertRaisesRegex(NativeUpdateError, "newer verified"):
+                        self.update(stop_current=stop, start_candidate=start)
+                    stop.assert_not_called()
+                    start.assert_not_called()
+                    self.assertEqual(path.read_bytes(), before)
+                    self.assertEqual(
+                        self.runtime.joinpath("infinidysk").read_bytes(), b"new program"
+                    )
+
+    def test_failure_after_installed_state_save_still_requires_update_recovery(self):
+        from utils import infinidysk_v2_installed_release as installed
+
+        write = installed.record_installed_release
+
+        def saved_then_failed(*args, **kwargs):
+            write(*args, **kwargs)
+            raise OSError("fixture crash after normal record save")
+
+        with (
+            patch.object(
+                installed, "record_installed_release", side_effect=saved_then_failed
+            ),
+            self.assertRaises(NativeUpdateRecoveryRequired),
+        ):
+            self.update()
+        self.assertEqual(read_installed_release(self.service, self.journals), self.new)
+        self.assertEqual(self.journal()[1]["state"], "recovery_required")
+        with self.assertRaises(NativeUpdateRecoveryRequired):
+            native_runtime_restore_metadata(self.service, self.journals)
+        self.resume()
+        self.assertEqual(self.journal()[1]["state"], "completed")
+        self.assertEqual(
+            native_runtime_restore_metadata(self.service, self.journals), self.new
+        )
 
     def test_restore_metadata_refuses_tampered_journal_or_changed_data_scope(self):
         self.update()

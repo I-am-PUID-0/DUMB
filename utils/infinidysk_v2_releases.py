@@ -1,4 +1,4 @@
-"""Official v2 release artifacts for already activated native installations.
+"""Official v2 artifacts for fresh installations and native release updates.
 
 Migration qualification remains pinned in infinidysk_v2_runtime. Release
 discovery and staging do not start services, modify databases or replace the

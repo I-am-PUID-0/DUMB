@@ -49,6 +49,7 @@ class NativeRuntimeRebuildTests(unittest.TestCase):
         self.metadata_changes = {}
         self.during_staging = None
         self.staged = None
+        self.fresh = False
 
     @staticmethod
     def artifact(path, release, contents):
@@ -97,20 +98,32 @@ class NativeRuntimeRebuildTests(unittest.TestCase):
         self.program.rename(self.root / "previous-container-program")
 
     def journal(self):
-        paths = list(self.journals.glob("*.json"))
+        paths = list(self.journals.glob("native-runtime-*.json"))
         self.assertEqual(len(paths), 1)
         return paths[0]
 
     def resolve(self, service):
-        self.assertEqual(service["release_version"], "v2.0.0-beta.10")
-        self.assertTrue(service["release_version_enabled"])
+        if self.fresh:
+            self.assertEqual(
+                releases.selected_release(service),
+                releases.selected_release(self.service),
+            )
+        else:
+            self.assertEqual(service["release_version"], "v2.0.0-beta.10")
+            self.assertTrue(service["release_version_enabled"])
         self.assertEqual(self.service["v2_runtime_dir"], service["v2_runtime_dir"])
         return {**self.accepted, **self.plan_changes}
 
     @contextmanager
     def stage(self, service, plan, *, uid, gid):
-        self.assertEqual(service["release_version"], "v2.0.0-beta.10")
-        self.assertTrue(service["release_version_enabled"])
+        if self.fresh:
+            self.assertEqual(
+                releases.selected_release(service),
+                releases.selected_release(self.service),
+            )
+        else:
+            self.assertEqual(service["release_version"], "v2.0.0-beta.10")
+            self.assertTrue(service["release_version_enabled"])
         self.assertEqual((uid, gid), (self.uid, self.gid))
         staging = self.root / "restore-staging"
         staging.mkdir()
@@ -123,9 +136,9 @@ class NativeRuntimeRebuildTests(unittest.TestCase):
             self.during_staging()
         yield self.staged, {**metadata, **self.metadata_changes}
 
-    def ensure(self, *, resolver=None):
+    def ensure(self, *, resolver=None, prepare_candidate=False, replace_verified=False):
         selection = copy.deepcopy(self.service)
-        database = self.database.read_bytes()
+        database = self.database.read_bytes() if self.database.exists() else None
         configuration = self.configuration.read_bytes()
         manager = SimpleNamespace(
             file_path=str(self.configuration),
@@ -152,11 +165,21 @@ class NativeRuntimeRebuildTests(unittest.TestCase):
                 runtime, "stage_v2_runtime_update", side_effect=self.stage
             ) as stage,
         ):
-            result = runtime.ensure_active_v2_runtime(
-                self.handler, "InfiniDysk", self.service
-            )
+            if prepare_candidate:
+                result = runtime.install_selected_v2_runtime(
+                    self.handler,
+                    "InfiniDysk",
+                    self.service,
+                    replace_verified=replace_verified,
+                )
+            else:
+                result = runtime.ensure_active_v2_runtime(
+                    self.handler, "InfiniDysk", self.service
+                )
         self.assertEqual(self.service, selection)
-        self.assertEqual(self.database.read_bytes(), database)
+        self.assertEqual(
+            self.database.read_bytes() if self.database.exists() else None, database
+        )
         self.assertEqual(self.configuration.read_bytes(), configuration)
         return result, initial_install, resolve, stage
 
@@ -372,25 +395,155 @@ class NativeRuntimeRebuildTests(unittest.TestCase):
         self.assertTrue(self.root.joinpath("retained-empty-destination").is_dir())
         self.assertTrue(self.staged.is_dir())
 
-    def test_no_journal_preserves_initial_beta6_preparation_for_latest(self):
+    def prepare_fresh_install(self):
+        self.fresh = True
+        self.database.unlink()
+        self.accepted = self.artifact(
+            self.root / "official-release-fixture",
+            "v2.0.0-beta.10",
+            b"accepted beta10 program",
+        )
+
+    def test_fresh_latest_installs_selected_release_and_remembers_it(self):
+        from utils.infinidysk_v2_installed_release import read_installed_release
+
+        self.prepare_fresh_install()
         result, initial, resolve, stage = self.ensure()
         self.assertEqual(result, (True, None))
-        initial.assert_called_once_with(
-            self.handler,
-            "InfiniDysk",
-            self.service,
+        initial.assert_not_called()
+        self.assertEqual(resolve.call_count, 1)
+        self.assertEqual(stage.call_count, 1)
+        self.assertEqual(
+            read_installed_release(self.service, self.journals), self.accepted
         )
-        resolve.assert_not_called()
-        stage.assert_not_called()
-        self.assertFalse(self.journals.exists())
+        self.assertEqual(list(self.journals.glob("native-runtime-*.json")), [])
 
-    def test_no_journal_cannot_install_an_unprepared_newer_release(self):
+    def test_fresh_exact_release_uses_standard_selector(self):
+        self.prepare_fresh_install()
         self.service["release_version"] = "v2.0.0-beta.10"
         self.service["release_version_enabled"] = True
+        result, initial, resolve, stage = self.ensure()
+        self.assertEqual(result, (True, None))
+        initial.assert_not_called()
+        self.assertEqual(resolve.call_count, 1)
+        self.assertEqual(stage.call_count, 1)
+
+    def test_fresh_retry_can_replace_verified_inactive_preparation_program(self):
+        self.prepare_fresh_install()
+        self.artifact(self.program, runtime.RELEASE, b"previous fresh preparation")
+        result, initial, resolve, stage = self.ensure(
+            prepare_candidate=True, replace_verified=True
+        )
+        self.assertEqual(result, (True, None))
+        initial.assert_not_called()
+        self.assertEqual(resolve.call_count, 1)
+        self.assertEqual(stage.call_count, 1)
+        self.assertEqual(
+            self.program.joinpath("infinidysk").read_bytes(), b"accepted beta10 program"
+        )
+        self.assertEqual(list(self.root.glob(".program.fresh-previous-*")), [])
+
+    def test_existing_program_is_not_replaced_without_fresh_preparation_authority(self):
+        self.prepare_fresh_install()
+        self.artifact(self.program, runtime.RELEASE, b"previous fresh preparation")
+        result, initial, _resolve, stage = self.ensure(prepare_candidate=True)
+        self.assertFalse(result[0])
+        initial.assert_not_called()
+        stage.assert_not_called()
+        self.assertEqual(
+            self.program.joinpath("infinidysk").read_bytes(),
+            b"previous fresh preparation",
+        )
+
+    def test_fresh_retry_publish_failure_restores_exact_previous_program(self):
+        from utils import infinidysk_v2_space_control as space
+
+        self.prepare_fresh_install()
+        self.artifact(self.program, runtime.RELEASE, b"previous fresh preparation")
+        rename = space.rename_exclusive
+
+        def fail_publish(source, target, *identities):
+            if source == self.staged:
+                raise ValueError("fixture fresh publication failure")
+            return rename(source, target, *identities)
+
+        with patch.object(space, "rename_exclusive", side_effect=fail_publish):
+            result, initial, _resolve, _stage = self.ensure(
+                prepare_candidate=True, replace_verified=True
+            )
+        self.assertFalse(result[0])
+        initial.assert_not_called()
+        self.assertEqual(
+            self.program.joinpath("infinidysk").read_bytes(),
+            b"previous fresh preparation",
+        )
+        self.assertEqual(list(self.root.glob(".program.fresh-previous-*")), [])
+
+    def test_existing_data_without_release_evidence_never_guesses_latest(self):
         resolve, stage = self.assert_refused()
         resolve.assert_not_called()
         stage.assert_not_called()
         self.assertFalse(self.program.exists())
+
+    def test_completed_update_survives_normal_key_and_config_changes(self):
+        self.service["env"] = {"FRONTEND_BACKEND_API_KEY": "old-fixture-key"}
+        self.completed_update()
+        self.lose_container_program()
+        self.service["env"] = {"INFINIDYSK__SAB__API_KEY": "new-fixture-key"}
+        self.service["log_level"] = "DEBUG"
+        result, initial, _resolve, _stage = self.ensure()
+        self.assertEqual(result, (True, None))
+        initial.assert_not_called()
+
+    def test_legacy_completed_receipt_can_bootstrap_normal_record_after_key_change(
+        self,
+    ):
+        from utils.infinidysk_v2_installed_release import read_installed_release
+
+        self.completed_update()
+        for path in self.journals.glob("installed-release-*.json"):
+            path.unlink()
+        self.lose_container_program()
+        self.service["env"] = {"INFINIDYSK__SAB__API_KEY": "fixture-new-key"}
+        self.assertEqual(self.ensure()[0], (True, None))
+        self.assertEqual(
+            read_installed_release(self.service, self.journals), self.accepted
+        )
+
+    def test_custom_default_data_root_survives_start_and_container_replacement(self):
+        from utils.infinidysk_v2_installed_release import read_installed_release
+
+        self.prepare_fresh_install()
+        self.service.pop("v2_data_dir")
+        self.assertEqual(self.ensure()[0], (True, None))
+        self.assertEqual(
+            read_installed_release(
+                self.service,
+                self.journals,
+                data_root=str(self.root / "default-data"),
+            ),
+            self.accepted,
+        )
+        self.assertEqual(self.ensure()[0], (True, None))
+        self.fresh = False
+        self.lose_container_program()
+        self.root.joinpath("restore-staging").rmdir()
+        self.assertEqual(self.ensure()[0], (True, None))
+
+    def test_fresh_v2_rebuild_has_no_dependency_on_migration_or_update_journal(self):
+        self.prepare_fresh_install()
+        self.assertTrue(self.ensure()[0][0])
+        self.fresh = False
+        self.lose_container_program()
+        self.root.joinpath("restore-staging").rmdir()
+        self.database.write_bytes(b"native writes after first startup")
+        self.service["env"] = {"INFINIDYSK__SAB__API_KEY": "fixture-rotation"}
+        # Even a newly selected older pin cannot downgrade the existing database
+        # during ordinary startup. A release change requires the update flow.
+        self.service["release_version"] = runtime.RELEASE
+        self.service["release_version_enabled"] = True
+        self.assertEqual(self.ensure()[0], (True, None))
+        self.assertEqual(list(self.journals.glob("native-runtime-*.json")), [])
 
 
 if __name__ == "__main__":

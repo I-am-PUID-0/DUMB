@@ -34,6 +34,10 @@ from utils.infinidysk_v2_stages import (
 )
 from utils.infinidysk_v2_input_integrity import public_input_integrity
 from utils.infinidysk_v2_provider_diagnostics import sanitize_provider_diagnostics
+from utils.infinidysk_v2_releases import (
+    NativeReleaseError,
+    selected_release as selected_native_release,
+)
 from utils.infinidysk_v2_queue import (
     QueueInputError,
     _private_sqlite_copy,
@@ -1386,9 +1390,15 @@ class InfiniDyskV2MigrationManager:
             postgres_enabled=False,
             enabled=True if mode == "fresh" else bool(service.get("enabled")),
         )
-        # Preparation still installs the importer's fixed verified artifact.
-        # The active service uses the normal moving-release preference.
-        set_release_selection(target_service, "latest")
+        if mode == "fresh":
+            try:
+                set_release_selection(target_service, selected_native_release(service))
+            except NativeReleaseError as error:
+                blockers.append(str(error))
+        else:
+            # The v1 importer still uses its fixed verified artifact. After
+            # activation the service uses the normal moving-release preference.
+            set_release_selection(target_service, "latest")
         timezone = env.get("TZ") or os.environ.get("TZ")
         target_service["env"] = {
             key: value

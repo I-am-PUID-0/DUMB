@@ -959,6 +959,37 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
         self.assertTrue(preview["ready"], preview["blockers"])
         self.assertTrue(preview["target"]["enabled"])
 
+    def test_fresh_plan_preserves_selected_v2_release_without_changing_source(self):
+        shutil.rmtree(self.source)
+        self.source.mkdir()
+        for selector, enabled, expected in (
+            ("v2.0.0-beta.10", True, "v2.0.0-beta.10"),
+            ("2.1.0", True, "v2.1.0"),
+            ("v1.7.1", False, "latest"),
+        ):
+            with self.subTest(selector=selector, enabled=enabled):
+                self.config.config["infinidysk"].update(
+                    release_version=selector, release_version_enabled=enabled
+                )
+                original = copy.deepcopy(self.config.config)
+                plan = self.manager._plan({"mode": "fresh"})
+                self.assertFalse(plan["blockers"], plan["blockers"])
+                service = plan["target"]["service"]
+                self.assertEqual(service["release_version"], expected)
+                self.assertEqual(service["release_version_enabled"], enabled)
+                self.assertNotIn("v2_release_version", service)
+                self.assertEqual(self.config.config, original)
+
+    def test_fresh_plan_refuses_an_explicit_v1_selector(self):
+        shutil.rmtree(self.source)
+        self.source.mkdir()
+        self.config.config["infinidysk"].update(
+            release_version_enabled=True, release_version="v1.7.1"
+        )
+        preview = self.manager.preview({"mode": "fresh"})
+        self.assertFalse(preview["ready"])
+        self.assertTrue(any("release" in blocker for blocker in preview["blockers"]))
+
     def test_private_state_rejects_symlink_and_job_path_traversal(self):
         with self.assertRaises(InfiniDyskV2MigrationError):
             self.manager.get_job("../../outside")

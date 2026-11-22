@@ -20,7 +20,7 @@ import stat
 import time
 
 from utils.infinidysk_v2_runtime import MARKER, MAX_BINARY, runtime_dir
-from utils.infinidysk_v2_releases import release_tag
+from utils.infinidysk_v2_releases import compare_releases, release_tag
 from utils.infinidysk_v2_space_control import identity, rename_exclusive
 from utils.private_files import atomic_write_private_text, read_private_text
 from utils.infinidysk_release_controls import selected_release
@@ -302,7 +302,28 @@ def native_update_state(service, journal_root):
     }
 
 
-def validate_native_update_launch(service, journal_root):
+def _installed_metadata(service, journal_root, data_root, record):
+    from utils.infinidysk_v2_installed_release import read_installed_release
+
+    metadata = read_installed_release(service, journal_root, data_root=data_root)
+    if metadata and record:
+        if (
+            record["state"] == "completed" and metadata != record["release_metadata"]
+        ) or (
+            record["state"] == "restored"
+            and metadata["binary_sha256"] != record["previous_bindings"]["infinidysk"]
+        ):
+            raise NativeUpdateRecoveryRequired()
+    return metadata
+
+
+def _accepted_artifact(service, runtime, metadata):
+    from utils.infinidysk_v2_installed_release import _verify_artifact
+
+    _verify_artifact(service, runtime, metadata)
+
+
+def validate_native_update_launch(service, journal_root, *, data_root="/data"):
     """Keep ordinary starts inside the last accepted runtime/database boundary.
 
     The private owner context belongs only to explicit update lifecycle callbacks.
@@ -312,18 +333,41 @@ def validate_native_update_launch(service, journal_root):
     record = None
     try:
         runtime = _direct(runtime_dir(service))
-        record = _load(_journal_path(service, journal_root), runtime)
+        try:
+            record = _load(_journal_path(service, journal_root), runtime)
+        except FileNotFoundError:
+            record = None
+        if record is None:
+            accepted = _installed_metadata(service, journal_root, data_root, None)
+            if accepted is not None:
+                _accepted_artifact(service, runtime, accepted)
+            return True
         state = record["state"]
         owner = _UPDATE_OWNER.get()
         if state == "restored":
-            _same(runtime, record["previous_identity"])
-            if _bindings(runtime) != record["previous_bindings"]:
-                raise NativeUpdateRecoveryRequired()
+            accepted = _installed_metadata(service, journal_root, data_root, record)
+            if accepted is None:
+                _same(runtime, record["previous_identity"])
+            else:
+                _accepted_artifact(service, runtime, accepted)
+            bindings = _bindings(runtime)
+            if bindings != record["previous_bindings"]:
+                if accepted is None or any(
+                    bindings[name] != expected
+                    for name, expected in record["previous_bindings"].items()
+                    if name != MARKER
+                ):
+                    raise NativeUpdateRecoveryRequired()
+                # A rebuilt qualified beta6 artifact has a full official marker
+                # instead of the original migration's formatless marker. Only
+                # accepted metadata may explain that one changed file.
+                _artifact(runtime, accepted, _directory(runtime))
         elif state == "completed":
             # The persistent journal may outlive a container's /opt inode.
             # Identical accepted bytes/metadata remain safe after a runtime
             # restore; a different release cannot inherit this authority.
-            _artifact(runtime, record["release_metadata"], _directory(runtime))
+            accepted = _installed_metadata(service, journal_root, data_root, record)
+            _accepted_artifact(service, runtime, accepted or record["release_metadata"])
         elif (
             owner is not None
             and owner["active"] is True
@@ -335,12 +379,6 @@ def validate_native_update_launch(service, journal_root):
         else:
             raise NativeUpdateRecoveryRequired()
         return True
-    except FileNotFoundError:
-        if record is None:
-            return True
-        raise NativeUpdateRecoveryRequired(
-            receipt=record, stage=record["stage"]
-        ) from None
     except (OSError, ValueError, TypeError):
         raise NativeUpdateRecoveryRequired(
             receipt=record,
@@ -348,31 +386,31 @@ def validate_native_update_launch(service, journal_root):
         ) from None
 
 
-def native_runtime_restore_metadata(service, journal_root):
+def native_runtime_restore_metadata(service, journal_root, *, data_root="/data"):
     """Read the exact accepted release for a missing container runtime.
 
     This grants no release change, database move or recovery bypass. Completed
-    receipts can outlive /opt; unfinished attempts and changed service scope
-    cannot authorize an initial-version fallback against upgraded data.
+    receipts can outlive /opt. New installed records bind the explicit native
+    data path; legacy completed receipts retain their exact accepted release
+    independently of later service settings. Unfinished updates always win.
     """
     record = None
     try:
         runtime = _direct(runtime_dir(service))
-        record = _load(_journal_path(service, journal_root), runtime)
-        if (
-            record["state"] != "completed"
-            or not _service_matches(service, record)
-            or _selector(selected_release(service))
-            not in {record["original_selector"], record["target_selector"]}
-        ):
+        try:
+            record = _load(_journal_path(service, journal_root), runtime)
+        except FileNotFoundError:
+            record = None
+        if record and record["state"] not in _TERMINAL:
             raise NativeUpdateRecoveryRequired()
-        return copy.deepcopy(record["release_metadata"])
-    except FileNotFoundError:
+        accepted = _installed_metadata(service, journal_root, data_root, record)
+        if accepted is not None:
+            return accepted
         if record is None:
             return None
-        raise NativeUpdateRecoveryRequired(
-            receipt=record, stage=record["stage"]
-        ) from None
+        if record["state"] != "completed":
+            raise NativeUpdateRecoveryRequired()
+        return copy.deepcopy(record["release_metadata"])
     except (OSError, ValueError, TypeError):
         raise NativeUpdateRecoveryRequired(
             receipt=record, stage=record["stage"] if record else "runtime_restore"
@@ -512,6 +550,7 @@ def perform_native_update(
     retire_rollback=None,
     was_running=True,
     target_selector=None,
+    data_root="/data",
 ):
     """Publish one staged runtime; callbacks own process/provider policy.
 
@@ -534,6 +573,20 @@ def perform_native_update(
             raise NativeUpdateRecoveryRequired(
                 receipt=previous_record, stage=previous_record["stage"]
             )
+        try:
+            accepted = _installed_metadata(
+                service, journal_root, data_root, previous_record
+            )
+            if (
+                accepted is None
+                and previous_record
+                and previous_record["state"] == "completed"
+            ):
+                accepted = previous_record["release_metadata"]
+            if accepted is not None:
+                _accepted_artifact(service, runtime, accepted)
+        except (OSError, ValueError, TypeError):
+            raise NativeUpdateRecoveryRequired() from None
         record = {}
         try:
             if type(was_running) is not bool:
@@ -542,6 +595,13 @@ def perform_native_update(
                 )
             _call(verify_admission)
             metadata = _metadata(release_metadata)
+            if (
+                accepted is not None
+                and compare_releases(metadata["release"], accepted["release"]) <= 0
+            ):
+                raise NativeUpdateError(
+                    "A native update requires a newer verified release; the accepted program was preserved."
+                )
             original_selector = _selector(selected_release(service))
             selected = _selector(target_selector or metadata["release"])
             if selected not in {"latest", metadata["release"]}:
@@ -637,6 +697,16 @@ def perform_native_update(
             _artifact(runtime, metadata, new_identity)
             save("save_selection")
             _call(save_selection, copy.deepcopy(metadata))
+            save("save_installed_release")
+            from utils.infinidysk_v2_installed_release import record_installed_release
+
+            record_installed_release(
+                service,
+                metadata,
+                journal_root,
+                data_root=data_root,
+                origin="runtime_update",
+            )
             save("completed", state="completed")
             return copy.deepcopy(record)
         except BaseException as error:
@@ -687,6 +757,7 @@ def resume_native_update(
     wait_ready,
     save_selection,
     verify_admission=None,
+    data_root="/data",
 ):
     """Explicitly retry only the retained replacement, never an older binary.
 
@@ -733,6 +804,18 @@ def resume_native_update(
             _artifact(runtime, metadata, record["candidate_identity"])
             _save_record(path, record, journal_identity, "resume_save_selection")
             _call(save_selection, copy.deepcopy(metadata))
+            _save_record(
+                path, record, journal_identity, "resume_save_installed_release"
+            )
+            from utils.infinidysk_v2_installed_release import record_installed_release
+
+            record_installed_release(
+                service,
+                metadata,
+                journal_root,
+                data_root=data_root,
+                origin="runtime_update",
+            )
             _save_record(path, record, journal_identity, "completed", state="completed")
             return copy.deepcopy(record)
         except BaseException as error:

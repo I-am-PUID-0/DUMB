@@ -35,9 +35,11 @@ from utils.infinidysk_v2_history import prepare_history_guard, remove_history_gu
 from utils.infinidysk_v2_runtime import (
     build_v2_environment,
     configure_v2_runtime,
+    install_selected_v2_runtime,
     install_v2_runtime,
     native_api_request,
     native_auth,
+    remember_installed_v2_runtime,
     runtime_dir,
 )
 from utils.private_files import atomic_write_private_text
@@ -350,7 +352,7 @@ class NativeCandidate:
             if isinstance(activity, (int, float)) and activity <= now:
                 last_activity = max(last_activity, activity)
             try:
-                reply = self.probe("/api/v1/upgrade/status")
+                reply = self.probe("/api/v1/upgrade/status" if migrate else "/healthz")
             except (OSError, subprocess.TimeoutExpired):
                 if self.process.poll() is not None:
                     raise ContainedImportError(
@@ -362,7 +364,15 @@ class NativeCandidate:
             state = None
             changed = False
             if reply and reply["status"] == 200:
-                state = reply["body"]
+                if migrate:
+                    state = reply["body"]
+                elif isinstance(reply.get("body"), dict) and reply["body"].get(
+                    "status"
+                ) in {"ok", "healthy", "ready"}:
+                    # A fresh v2 release need not expose the legacy importer.
+                    # Readiness still requires the same confinement proof below.
+                    state = {"state": "none"}
+            if state is not None:
                 if state.get("state") == "failed":
                     raise ContainedImportError(
                         "The isolated native import failed; provider access may be required. No original data was changed."
@@ -1101,12 +1111,26 @@ class InfiniDyskV2Executor:
                 snapshot["source_database"], plan["source"]["service"].get("env") or {}
             )
             validate_target_sab_override(source_key, service.get("env") or {})
-        success, _ = install_v2_runtime(
-            self.handler, plan["source"]["process_name"], service
+        installer = (
+            install_v2_runtime
+            if plan["mode"] == "migrate"
+            else install_selected_v2_runtime
+        )
+        # Fresh jobs are admitted only from generation 1 with empty final native
+        # data. _quiesce already verified source/child shutdown and mount removal;
+        # no candidate worker has started. Only this boundary may replace a
+        # verified program left by an earlier fresh preparation attempt.
+        success, _ = installer(
+            self.handler,
+            plan["source"]["process_name"],
+            service,
+            **({"replace_verified": True} if plan["mode"] == "fresh" else {}),
         )
         if not success:
             raise ContainedImportError(
                 "The pinned native runtime could not be installed safely."
+                if plan["mode"] == "migrate"
+                else "The selected native runtime could not be installed safely."
             )
         native_auth(service, create=True, uid=uid, gid=gid, allow_v1_import=True)
         history_guard = None
@@ -1139,10 +1163,14 @@ class InfiniDyskV2Executor:
             uid,
             gid,
             plan["source"].get("timezone"),
-            {
-                **(plan["source"]["service"].get("env") or {}),
-                "DATABASE_PROVIDER": "sqlite",
-            },
+            (
+                {
+                    **(plan["source"]["service"].get("env") or {}),
+                    "DATABASE_PROVIDER": "sqlite",
+                }
+                if plan["mode"] == "migrate"
+                else {}
+            ),
             check_cancel=workspace.get("check_cancel"),
             record_report=workspace.get("record_import_report"),
             record_provider_diagnostics=workspace.get("record_provider_diagnostics"),
@@ -1401,6 +1429,11 @@ class InfiniDyskV2Executor:
                 "The accepted native runtime could not be prepared: "
                 + safe_native_preparation_error(reason)
                 + "."
+            )
+        success, _ = remember_installed_v2_runtime(final)
+        if not success:
+            raise ContainedImportError(
+                "The accepted native runtime version could not be retained safely; its data was retained without starting it."
             )
         workspace["activate_config"](final)
         workspace["expose_activation"](final, receipt)
