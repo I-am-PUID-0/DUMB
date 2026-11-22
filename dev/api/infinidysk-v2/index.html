@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.24">
+    <meta name="dumb-docs-package-version" content="1.25.25">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="2443c7602b282d346bd93de69831b0ea7abbf7f6">
-    <meta name="dumb-docs-release-tag" content="1.25.24">
+    <meta name="dumb-docs-build-commit" content="fb2000b98b833ad653ca1d50392f3307a6386131">
+    <meta name="dumb-docs-release-tag" content="1.25.25">
   
 
     
@@ -7076,6 +7076,14 @@ binding for subsequent checks; a previously unbound client needs exact managed
 identity/endpoint/category and a passing saved test before adoption. Broken,
 unknown or conflicting clients remain unchanged for review. Readiness failures
 receive bounded retries; ownership conflicts do not authorize replacement.
+Client-specific failures are reported per managed Arr instance while other
+eligible instances continue reconciliation. A temporary admission/startup guard
+is retryable within the bounded startup attempts; held migration/runtime
+recovery waits for operator input. A genuine restart renews exhausted attempts.
+An older unowned client that already fails its saved Test requires explicit
+review and a one-time correction to the configured SAB key, followed by a
+passing saved-client Test, before a later synchronization can bind it. Merely
+having matching DUMB/native keys does not authorize changing that saved client.
 External or unmanaged clients require manual review. Arr download-client
 verification does not establish native Arr-notification readiness, a successful
 import or playback. These settings and reconciliation use existing configuration
@@ -7206,6 +7214,22 @@ message. The dashboard then calls the separate read-only <code>preview</code> en
 Preparing a target alone never authorizes copying: review the fresh preview
 and submit the ordinary guarded start request. <code>preview</code> never creates a
 database, including when <code>use_managed_postgres</code> is true.</p>
+<p>If the current provider workflow does not admit a new conversion,
+<code>prepare-target</code> returns <code>409</code> with a specific safe blocking reason in <code>detail</code>.
+When shared lifecycle admission blocks the request, the
+<code>X-DUMB-Admission-Reason</code> response header also supplies a static reason code;
+private operation labels and credentials are not included in that code or the
+public message.
+Refresh native database-conversion status and resolve that reported condition
+before retrying preparation. An unavailable native state, competing migration
+or held recovery must not be treated as evidence that the database is missing.
+The destination guards remain enforced; the error does not authorize manual
+creation, reset or truncation of an existing database.</p>
+<p>Routine installation-only control writes, including metrics, notifications and
+Seerr synchronization history, do not reserve database-conversion admission.
+Actual service/database lifecycle operations, installation backup/restore and
+held recovery retain their guards. Installation backup and rollback still track
+both control-record writers and lifecycle reservations.</p>
 <p>Start requires that token and exact confirmation, plus
 <code>acknowledge_backup: true</code> and <code>acknowledge_destructive_target: true</code>.
 Subsequent cutover/cancel/rollback requests use the <strong>current <code>job_id</code></strong>, exact
@@ -7318,11 +7342,11 @@ cannot be confirmed, and disable actions until a valid current response returns.
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.24</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.24">Release notes</a>
+              <span>Documentation release 1.25.25</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.25">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;2443c7602b282d346bd93de69831b0ea7abbf7f6" title="Documentation source commit 2443c7602b282d346bd93de69831b0ea7abbf7f6">Source 2443c760</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;fb2000b98b833ad653ca1d50392f3307a6386131" title="Documentation source commit fb2000b98b833ad653ca1d50392f3307a6386131">Source fb2000b9</a>
             
             
           </div>

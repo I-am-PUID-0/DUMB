@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.24">
+    <meta name="dumb-docs-package-version" content="1.25.25">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="2443c7602b282d346bd93de69831b0ea7abbf7f6">
-    <meta name="dumb-docs-release-tag" content="1.25.24">
+    <meta name="dumb-docs-build-commit" content="fb2000b98b833ad653ca1d50392f3307a6386131">
+    <meta name="dumb-docs-release-tag" content="1.25.25">
   
 
     
@@ -7267,6 +7267,10 @@ reported condition, then request and review a fresh preview:</p>
 <td>Enable and start PostgreSQL from its service controls, then retry preparation. Database preparation does not start or restart services.</td>
 </tr>
 <tr>
+<td>Database preparation is blocked by the current workflow</td>
+<td>Follow the specific reason in the error. Refresh database-conversion status and resolve the reported migration, recovery, provider or native-state condition before preparing a destination. This does not mean the destination database needs to be created manually.</td>
+</tr>
+<tr>
 <td>PostgreSQL rejects the credentials</td>
 <td>Check the configured role, password and PostgreSQL connection/authentication policy. Keep credentials out of screenshots and shared logs.</td>
 </tr>
@@ -7284,6 +7288,9 @@ reported condition, then request and review a fresh preview:</p>
 </tr>
 </tbody>
 </table>
+<p>Routine metrics, notifications and Seerr synchronization history do not block
+database conversion. Active service or database changes, installation backup or
+restore, and unresolved recovery can still block it; follow the reported reason.</p>
 <details class="geek-details">
 <summary>Technical alternative: grant a specifically denied identity-inspection function</summary>
 <p>Ordinary PostgreSQL roles can normally execute the catalog identity function.
@@ -7382,14 +7389,31 @@ that the effective native key matches DUMB's configured key before synchronizing
 verified managed client IDs. Successful migration proof becomes a retained
 binding for those later checks. Missing dependencies get bounded startup retries;
 ownership or configuration conflicts remain for review.</p>
+<p>DUMB reports client-specific review separately for each Arr instance and
+continues checking the other eligible instances. A temporary startup or guarded
+operation can defer synchronization and receive bounded retries. A migration or
+runtime recovery that needs your decision stays paused until that recovery is
+resolved. A later normal restart starts a fresh reconciliation attempt.</p>
 <p>An older completed installation without a binding can be recognized only when
 its managed instance, exact client identity, local endpoint and category match
 and its saved connection test already passes. A broken or ambiguous unowned
-client is kept intact. Review it manually rather than relying on name alone.
-External/unmanaged Arr instances also need manual review. Use the download API
-key shown in InfiniDysk 2's <strong>Settings → Download client</strong>, check the client's
-host and port, save it and run the Arr connection test. The native administrative
-API key is separate; do not substitute it into an Arr SAB download client.
+client is kept intact. Even when DUMB Config already contains the correct native
+key, DUMB needs your one-time review before managing that older connection:</p>
+<ol>
+<li>In InfiniDysk's <strong>DUMB Config</strong>, copy the private value of
+   <code>env.INFINIDYSK__SAB__API_KEY</code>.</li>
+<li>In the affected Arr's <strong>Settings → Download Clients</strong>, edit the existing
+   InfiniDysk client. Verify its host, port and category belong to this
+   InfiniDysk installation, then correct only its API key and save.</li>
+<li>Run <strong>Test</strong> on the saved client. Once that test passes, DUMB can verify and
+   remember the working connection on its next synchronization, including the
+   next normal restart of that managed Arr.</li>
+</ol>
+<p>Review each affected Arr separately; a working connection in one application
+does not repair another application's saved settings. External/unmanaged Arr
+instances also need manual review and remain outside automatic management. The
+native administrative API key is separate; do not substitute it into an Arr
+SAB download client.
 Updating DUMB does not rotate working native credentials back to an old key.</p>
 <p>Check any Arr notification or connection entries configured inside InfiniDysk
 separately. A passing Arr download-client test verifies that connection only;
@@ -7600,11 +7624,11 @@ separate existing workflows.</p>
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.24</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.24">Release notes</a>
+              <span>Documentation release 1.25.25</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.25">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;2443c7602b282d346bd93de69831b0ea7abbf7f6" title="Documentation source commit 2443c7602b282d346bd93de69831b0ea7abbf7f6">Source 2443c760</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;fb2000b98b833ad653ca1d50392f3307a6386131" title="Documentation source commit fb2000b98b833ad653ca1d50392f3307a6386131">Source fb2000b9</a>
             
             
           </div>
