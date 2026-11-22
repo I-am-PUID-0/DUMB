@@ -2,7 +2,7 @@
 
 > Channel: dev. Canonical base: https://dumbarr.com/dev/
 
-Documentation artifact: release 1.25.25. Source commit: fb2000b98b833ad653ca1d50392f3307a6386131. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.25.
+Documentation artifact: release 1.25.26. Source commit: 7d25e8516d34a941457c65136756daf4a385dedf. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.26.
 
 DUMB coordinates media services. Match instructions to the installed backend version. Development guides can describe features absent from the latest release.
 
@@ -1831,13 +1831,28 @@ Normal post-activation runtime updates require
 `infinidysk_v2_runtime_updates: true` and
 `infinidysk_v2_runtime_updates_protocol: 1`. They use the existing
 `POST /process/update-check` and `POST /process/update-install` routes.
-Preparation and recovery remain fixed to the migration artifact; completed
-activation releases that internal pin once required recovery and restart work
-are finished. The active service uses standard `release_version` and
+Existing-source migration preparation and recovery remain fixed to the verified
+`v2.0.0-beta.6` importer. Fresh installation uses the saved official v2 release
+selection, defaulting to latest. Completed migration activation releases its
+internal pin once required recovery and restart work are finished. The active
+service uses standard `release_version` and
 `release_version_enabled` fields, with `runtime_generation: "2"` selecting the
 native installer. Disabled release selection follows latest; enabled selection
 uses the exact v2 tag, or follows latest when blank or `latest`. Only official
 v2 releases are eligible; branch and commit selectors are not native sources.
+
+A separate private installed-release record retains the exact verified artifact
+for the installed runtime and resolved data location. It is recorded after
+initial installation, activation and successful updates. Routine startup reuses
+that release; if a container rebuild removes the program directory, restoration
+uses its recorded release and hashes rather than resolving latest. Ordinary
+configuration or environment edits do not invalidate this record. Legacy
+completed update receipts can also authorize exact-release restoration despite
+ordinary configuration or selector changes. Neither path bypasses an unfinished
+update's stricter recovery checks. Latest is resolved for a fresh installation
+or a requested update, not for ordinary startup.
+Existing native data without either release record is retained and requires
+review of its previous installed release; it is not treated as a fresh install.
 
 Configuration loading automatically converts the older `v2_release_version`
 setting into the standard fields. New clients should submit the standard fields
@@ -1893,7 +1908,13 @@ Preview body:
 `mount_backend` is `rclone` or explicit `fuse`. The initial major workflow accepts
 only `import_strategy: "preserve"`; it does not regenerate existing outputs.
 The exact consumer-visible mount path is retained. Generation 2 uses separate
-runtime/data directories and the verified beta artifact.
+runtime/data directories. `mode: "migrate"` uses the fixed verified beta.6
+importer; `mode: "fresh"` uses the saved `release_version` and
+`release_version_enabled` controls. These release controls belong to the service
+configuration, not the preview body. Disabled selection, or enabled blank or
+`latest`, selects the latest official v2 release, including beta releases; an
+enabled exact v2 tag selects that release. Preparation retains the selected
+artifact for activation rather than resolving latest again.
 
 #### Queued-download policy
 
@@ -13124,9 +13145,12 @@ controls.
 The wizard requires DUMB API **2.24.0 or newer**, explicit InfiniDysk 2 capabilities
 and migration protocol **1**. An older, unknown or temporarily unavailable
 backend cannot start a migration. Previously discovered job identities and
-recovery information remain visible. Preparation and migration use the verified
-**`v2.0.0-beta.6`** artifact. After a fully completed activation, normal runtime
-updates can follow official **2.x** releases; see
+recovery information remain visible. Migration of existing 1.x data uses the
+verified **`v2.0.0-beta.6`** importer. An eligible fresh installation uses the
+saved official **2.x** release selection, which defaults to **latest** and
+includes v2 beta releases.
+After a fully completed activation, normal runtime updates can follow official
+**2.x** releases; see
 [updating after activation](#update-infinidysk-2-after-activation).
 Selecting 2.x through a 1.x release or source field is refused.
 
@@ -14260,7 +14284,12 @@ the current update journal normally.
 
 Your automatic-update preference is preserved. **Check only** continues to
 notify without installing. Normal startup reuses the verified installed
-runtime; it does not download latest or repeat conversion on every restart.
+runtime; it does not resolve latest or repeat conversion on every restart.
+DUMB retains the exact installed release separately from ordinary settings.
+If a container rebuild removes its program files, DUMB reinstalls that same
+verified release. Changes to an API key or other ordinary settings do not
+invalidate this record or select another release. Use **Updates** to install a
+different release; a fresh installation or a requested update resolves latest.
 Active preparation, migration, provider conversion, required restarts and
 unresolved service recovery block runtime updates.
 
@@ -14276,8 +14305,10 @@ files. A failure after launch retains the replacement, previous program files
 and update journal, and stops automatic runtime rollback. After resolving the
 reported problem, retry **Update** to start and verify that same retained
 replacement. This retry does not download another release or repeat the major
-migration. Interrupted work before launch or changed recovery evidence needs
-inspection rather than an automatic retry.
+migration. The installed-release record cannot bypass an unfinished update:
+its retained configuration and recovery evidence must still pass the stricter
+recovery checks. Interrupted work before launch or changed recovery evidence
+needs inspection rather than an automatic retry.
 
 ## Retire the old v1 installation
 
@@ -24792,9 +24823,11 @@ InfiniDysk also exposes a **Usenet download client** path in Arr by emulating a 
     belong to the upstream `v1` maintenance line before installation.
 
     Generation 2 is an explicit opt-in through the separate wizard and requires
-    DUMB API 2.24.0 or newer plus the advertised protocol 1 capabilities. This
-    integration currently accepts only the verified `v2.0.0-beta.6` native
-    artifact. It does not fall back to a source build or silently replace 1.x.
+    DUMB API 2.24.0 or newer plus the advertised protocol 1 capabilities.
+    Existing 1.x data uses the verified `v2.0.0-beta.6` importer. An eligible
+    fresh v2 installation uses the saved official 2.x release selection,
+    defaulting to latest, including v2 beta releases. Neither path falls back
+    to a source build or silently replaces 1.x.
     Existing data requires a guarded major migration; changing the generation
     field does not convert a database. See the
     [upgrade guide](../../features/infinidysk-v2-migration.md) for eligibility,
@@ -24895,10 +24928,16 @@ or retaining the original 1.x data and recovery state:
 | `release_version` | An exact official 2.x tag, or `latest`; blank also follows latest |
 | `env.INFINIDYSK__SAB__API_KEY` | Download-client key for generation 2. DUMB fills it automatically; an explicit value controls the next native launch. |
 
-Preparation and recovery use an internal fixed migration artifact. Once activation
-and required recovery work are complete, the normal release controls select
-future native updates. Existing `v2_release_version` settings are converted
-automatically on configuration load; no manual rename is needed. Old-format
+Existing-source migration preparation and recovery use an internal fixed
+importer. Fresh installation uses the normal release controls above. Once
+activation and required recovery work are complete, use those controls in
+**DUMB Config** and the service's **Updates** tool to select and install future
+native updates. Normal startup reuses the exact verified installed release;
+after a container rebuild, DUMB restores that same release even if ordinary
+settings such as an API key have changed. An unfinished runtime update still
+requires its guarded recovery before normal startup can continue.
+Existing `v2_release_version` settings are converted automatically on
+configuration load; no manual rename is needed. Old-format
 migration rollback actions are not converted; their archives and source plans
 are retained. Branch and commit selectors are inactive on the native runtime.
 Do not reuse `postgres_enabled` or

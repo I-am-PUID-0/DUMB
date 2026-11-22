@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.25">
+    <meta name="dumb-docs-package-version" content="1.25.26">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="fb2000b98b833ad653ca1d50392f3307a6386131">
-    <meta name="dumb-docs-release-tag" content="1.25.25">
+    <meta name="dumb-docs-build-commit" content="7d25e8516d34a941457c65136756daf4a385dedf">
+    <meta name="dumb-docs-release-tag" content="1.25.26">
   
 
     
@@ -6557,9 +6557,11 @@ channels stay on official InfiniDysk 1.x; selecting a 2.x release through
 the 1.x release, branch or commit fields is refused. Named 1.x refs must
 belong to the upstream <code>v1</code> maintenance line before installation.</p>
 <p>Generation 2 is an explicit opt-in through the separate wizard and requires
-DUMB API 2.24.0 or newer plus the advertised protocol 1 capabilities. This
-integration currently accepts only the verified <code>v2.0.0-beta.6</code> native
-artifact. It does not fall back to a source build or silently replace 1.x.
+DUMB API 2.24.0 or newer plus the advertised protocol 1 capabilities.
+Existing 1.x data uses the verified <code>v2.0.0-beta.6</code> importer. An eligible
+fresh v2 installation uses the saved official 2.x release selection,
+defaulting to latest, including v2 beta releases. Neither path falls back
+to a source build or silently replaces 1.x.
 Existing data requires a guarded major migration; changing the generation
 field does not convert a database. See the
 <a href="../../../features/infinidysk-v2-migration/">upgrade guide</a> for eligibility,
@@ -6680,10 +6682,16 @@ or retaining the original 1.x data and recovery state:</p>
 </tr>
 </tbody>
 </table>
-<p>Preparation and recovery use an internal fixed migration artifact. Once activation
-and required recovery work are complete, the normal release controls select
-future native updates. Existing <code>v2_release_version</code> settings are converted
-automatically on configuration load; no manual rename is needed. Old-format
+<p>Existing-source migration preparation and recovery use an internal fixed
+importer. Fresh installation uses the normal release controls above. Once
+activation and required recovery work are complete, use those controls in
+<strong>DUMB Config</strong> and the service's <strong>Updates</strong> tool to select and install future
+native updates. Normal startup reuses the exact verified installed release;
+after a container rebuild, DUMB restores that same release even if ordinary
+settings such as an API key have changed. An unfinished runtime update still
+requires its guarded recovery before normal startup can continue.
+Existing <code>v2_release_version</code> settings are converted automatically on
+configuration load; no manual rename is needed. Old-format
 migration rollback actions are not converted; their archives and source plans
 are retained. Branch and commit selectors are inactive on the native runtime.
 Do not reuse <code>postgres_enabled</code> or
@@ -7121,11 +7129,11 @@ conflicts manually before restarting a single service.</p>
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.25</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.25">Release notes</a>
+              <span>Documentation release 1.25.26</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.26">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;fb2000b98b833ad653ca1d50392f3307a6386131" title="Documentation source commit fb2000b98b833ad653ca1d50392f3307a6386131">Source fb2000b9</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;7d25e8516d34a941457c65136756daf4a385dedf" title="Documentation source commit 7d25e8516d34a941457c65136756daf4a385dedf">Source 7d25e851</a>
             
             
           </div>

@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.25">
+    <meta name="dumb-docs-package-version" content="1.25.26">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="fb2000b98b833ad653ca1d50392f3307a6386131">
-    <meta name="dumb-docs-release-tag" content="1.25.25">
+    <meta name="dumb-docs-build-commit" content="7d25e8516d34a941457c65136756daf4a385dedf">
+    <meta name="dumb-docs-release-tag" content="1.25.26">
   
 
     
@@ -6211,13 +6211,27 @@ provider/callback configuration and may use the separate native UI instead.</p>
 <code>infinidysk_v2_runtime_updates: true</code> and
 <code>infinidysk_v2_runtime_updates_protocol: 1</code>. They use the existing
 <code>POST /process/update-check</code> and <code>POST /process/update-install</code> routes.
-Preparation and recovery remain fixed to the migration artifact; completed
-activation releases that internal pin once required recovery and restart work
-are finished. The active service uses standard <code>release_version</code> and
+Existing-source migration preparation and recovery remain fixed to the verified
+<code>v2.0.0-beta.6</code> importer. Fresh installation uses the saved official v2 release
+selection, defaulting to latest. Completed migration activation releases its
+internal pin once required recovery and restart work are finished. The active
+service uses standard <code>release_version</code> and
 <code>release_version_enabled</code> fields, with <code>runtime_generation: "2"</code> selecting the
 native installer. Disabled release selection follows latest; enabled selection
 uses the exact v2 tag, or follows latest when blank or <code>latest</code>. Only official
 v2 releases are eligible; branch and commit selectors are not native sources.</p>
+<p>A separate private installed-release record retains the exact verified artifact
+for the installed runtime and resolved data location. It is recorded after
+initial installation, activation and successful updates. Routine startup reuses
+that release; if a container rebuild removes the program directory, restoration
+uses its recorded release and hashes rather than resolving latest. Ordinary
+configuration or environment edits do not invalidate this record. Legacy
+completed update receipts can also authorize exact-release restoration despite
+ordinary configuration or selector changes. Neither path bypasses an unfinished
+update's stricter recovery checks. Latest is resolved for a fresh installation
+or a requested update, not for ordinary startup.
+Existing native data without either release record is retained and requires
+review of its previous installed release; it is not treated as a fresh install.</p>
 <p>Configuration loading automatically converts the older <code>v2_release_version</code>
 setting into the standard fields. New clients should submit the standard fields
 and use the normalized configuration returned by the backend. Historical major
@@ -6350,7 +6364,13 @@ replacement. Interrupted prelaunch work or changed evidence remains blocked.</p>
 <code>mount_backend</code> is <code>rclone</code> or explicit <code>fuse</code>. The initial major workflow accepts
 only <code>import_strategy: "preserve"</code>; it does not regenerate existing outputs.
 The exact consumer-visible mount path is retained. Generation 2 uses separate
-runtime/data directories and the verified beta artifact.</p>
+runtime/data directories. <code>mode: "migrate"</code> uses the fixed verified beta.6
+importer; <code>mode: "fresh"</code> uses the saved <code>release_version</code> and
+<code>release_version_enabled</code> controls. These release controls belong to the service
+configuration, not the preview body. Disabled selection, or enabled blank or
+<code>latest</code>, selects the latest official v2 release, including beta releases; an
+enabled exact v2 tag selects that release. Preparation retains the selected
+artifact for activation rather than resolving latest again.</p>
 <h4 id="queued-download-policy">Queued-download policy<a class="headerlink" href="#queued-download-policy" title="Permanent link">&para;</a></h4>
 <p>For a backend advertising the strict boolean
 <code>infinidysk_v2_queue_omission: true</code>, an existing-source preview can request
@@ -7342,11 +7362,11 @@ cannot be confirmed, and disable actions until a valid current response returns.
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.25</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.25">Release notes</a>
+              <span>Documentation release 1.25.26</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.26">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;fb2000b98b833ad653ca1d50392f3307a6386131" title="Documentation source commit fb2000b98b833ad653ca1d50392f3307a6386131">Source fb2000b9</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;7d25e8516d34a941457c65136756daf4a385dedf" title="Documentation source commit 7d25e8516d34a941457c65136756daf4a385dedf">Source 7d25e851</a>
             
             
           </div>
