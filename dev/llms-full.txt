@@ -2,7 +2,7 @@
 
 > Channel: dev. Canonical base: https://dumbarr.com/dev/
 
-Documentation artifact: release 1.25.27. Source commit: 1fc30048a6298d0c08b977f1368852afec7e1ed9. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.27.
+Documentation artifact: release 1.25.28. Source commit: e8adb230f0190338fd0f05e7e5c1cb70ce758edf. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.28.
 
 DUMB coordinates media services. Match instructions to the installed backend version. Development guides can describe features absent from the latest release.
 
@@ -13967,9 +13967,16 @@ not DUMB's generation 1 SQLite-to-PostgreSQL adapter.
    one. External destinations use **Check destination and review**.
 3. Confirm backups and the destination reset acknowledgement, type the exact
    confirmation, then start native copying and synchronization.
-4. Wait for the backend to advertise **cutover**. Review and confirm that action
-   separately. The native restart may retain its process ID; wait for confirmed
-   provider state and service health.
+4. Wait for **Ready to switch — awaiting your approval**. SQLite continues
+   serving your library until you review the backup and destination
+   acknowledgements, type the exact switch confirmation and confirm the switch
+   to PostgreSQL. DUMB never switches automatically. The native restart may
+   retain its process ID; wait for confirmed provider state and service health.
+
+The ready notice requires a current, confirmed status check permitting the
+switch for this job. If a check fails or a blocker appears, refresh status and
+resolve it before switching. Zero pending changes or a completed table alone
+does not authorize the switch.
 
 Supporting builds save a visible job before preparing the SQLite recovery
 snapshot. The panel shows destination checks, snapshot copying, snapshot
