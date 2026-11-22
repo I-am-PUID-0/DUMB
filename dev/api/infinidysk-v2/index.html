@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.26">
+    <meta name="dumb-docs-package-version" content="1.25.27">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="7d25e8516d34a941457c65136756daf4a385dedf">
-    <meta name="dumb-docs-release-tag" content="1.25.26">
+    <meta name="dumb-docs-build-commit" content="1fc30048a6298d0c08b977f1368852afec7e1ed9">
+    <meta name="dumb-docs-release-tag" content="1.25.27">
   
 
     
@@ -7219,7 +7219,9 @@ and <code>sslmode</code>. Remote connections require verified TLS or explicit <c
 mode. Passwords and connection URLs remain private and are not returned in
 public status. Preview returns the current/target summaries, physical
 <code>target_identity</code> (<code>system_identifier</code>, <code>database_oid</code>, <code>schema</code>), checks and a
-short-lived <code>preview_token</code>/<code>confirmation_text</code>.</p>
+short-lived <code>preview_token</code>/<code>confirmation_text</code>.
+Supporting builds also return an opaque <code>preview_id</code>, retained on the admitted
+job. It identifies the reviewed request without granting mutation authority.</p>
 <p>An explicit <code>prepare-target</code> request requires the configured, running managed
 PostgreSQL service. It creates a new database from <code>template0</code>, with UTF-8,
 <code>C</code> collation and the existing configured owner role. An existing compatible
@@ -7252,7 +7254,23 @@ held recovery retain their guards. Installation backup and rollback still track
 both control-record writers and lifecycle reservations.</p>
 <p>Start requires that token and exact confirmation, plus
 <code>acknowledge_backup: true</code> and <code>acknowledge_destructive_target: true</code>.
-Subsequent cutover/cancel/rollback requests use the <strong>current <code>job_id</code></strong>, exact
+Supporting builds durably record and return a <code>starting</code> job before running
+destination revalidation, SQLite backup, integrity validation and fingerprinting
+in a background worker. <code>GET /postgres/status</code> discovers that job independently
+of the Start response and remains available during preparation. A lost response
+must be reconciled through read-only status, never by automatically repeating
+Start. The dashboard retains only opaque job/pending-request identities across
+reload and uses a matching new job's <code>preview_id</code> to confirm a lost admission.</p>
+<p>Optional job <code>progress</code> is scoped to its current <code>stage</code>. Snapshot copying can
+report <code>unit: "pages"</code>, fingerprinting <code>unit: "bytes"</code>, and native copying
+<code>unit: "rows"</code>. <code>done</code>/<code>total</code> count that pass or the current native <code>table</code>,
+not the whole conversion. Native <code>pending_changes</code> is separate; null or absent
+counts remain unknown. <code>elapsed_seconds</code>, <code>rate_per_second</code>,
+<code>bytes_per_second</code> and <code>eta_seconds</code> are optional measurements. Validation may
+report elapsed time without a measurable total or ETA. Clients must suppress
+estimates when observations are stale or unconfirmed and must not interpret a
+completed table as permission to cut over.</p>
+<p>Subsequent cutover/cancel/rollback requests use the <strong>current <code>job_id</code></strong>, exact
 text from <code>status.confirmation_texts[action]</code> and both acknowledgements. They
 do not reuse an expired initial preview token after a long synchronization.
 Only strict <code>status.actions[action] == true</code> admits an action; the backend
@@ -7362,11 +7380,11 @@ cannot be confirmed, and disable actions until a valid current response returns.
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.26</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.26">Release notes</a>
+              <span>Documentation release 1.25.27</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.27">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;7d25e8516d34a941457c65136756daf4a385dedf" title="Documentation source commit 7d25e8516d34a941457c65136756daf4a385dedf">Source 7d25e851</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;1fc30048a6298d0c08b977f1368852afec7e1ed9" title="Documentation source commit 1fc30048a6298d0c08b977f1368852afec7e1ed9">Source 1fc30048</a>
             
             
           </div>

@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.26">
+    <meta name="dumb-docs-package-version" content="1.25.27">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="7d25e8516d34a941457c65136756daf4a385dedf">
-    <meta name="dumb-docs-release-tag" content="1.25.26">
+    <meta name="dumb-docs-build-commit" content="1fc30048a6298d0c08b977f1368852afec7e1ed9">
+    <meta name="dumb-docs-release-tag" content="1.25.27">
   
 
     
@@ -6827,8 +6827,9 @@ before restoring v1 from its verified archive. A fresh installation still has to
 prove that its target is eligible and will not overwrite existing data.</p>
 <p>Closing the panel or visiting another page does not cancel the backend job.
 The global notice reopens progress or recovery after navigation and reload.
-Only job identities are saved for browser recovery; preview authorizations and
-database passwords are not. A transport error does not prove that a job stopped.
+Only opaque job and pending database-request identities are saved for browser
+recovery; preview authorizations and database passwords are not. A transport
+error does not prove that a job stopped.
 Refresh status before retrying, and retain an unconfirmed job's recovery evidence.</p>
 <p>After a confirmed successful completion, <strong>Dismiss</strong> hides that completion notice
 in this browser. The migration and database-conversion tools still retain the
@@ -7193,6 +7194,20 @@ not DUMB's generation 1 SQLite-to-PostgreSQL adapter.</p>
    separately. The native restart may retain its process ID; wait for confirmed
    provider state and service health.</li>
 </ol>
+<p>Supporting builds save a visible job before preparing the SQLite recovery
+snapshot. The panel shows destination checks, snapshot copying, snapshot
+validation and fingerprinting, then native copying and synchronization. Large
+snapshots can take time before any records reach PostgreSQL. Where available,
+it shows snapshot pages or bytes, the current database table's copied rows and
+changes waiting to synchronize. A table reaching its total does not mean the
+whole conversion has finished; remaining-time estimates cover only the current
+phase and are omitted when its work cannot be measured reliably.</p>
+<p>If <strong>Start</strong> times out, keep the panel open or reopen it. Automatic read-only
+checks discover the saved job after navigation or reload. <strong>Refresh status</strong>
+also works while a request is pending and reports whether the latest check
+succeeded. An uncertain Start is retained without its token or credentials;
+DUMB does not automatically send another Start. Keep checking status instead
+of starting a second copy. Cutover still requires its separate confirmation.</p>
 <h3 id="prepare-a-postgresql-destination">Prepare a PostgreSQL destination<a class="headerlink" href="#prepare-a-postgresql-destination" title="Permanent link">&para;</a></h3>
 <p>Copying prepares a destination while SQLite stays current; switching providers is a later confirmation:</p>
 <pre class="mermaid"><code>flowchart TD
@@ -7634,11 +7649,11 @@ separate existing workflows.</p>
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.26</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.26">Release notes</a>
+              <span>Documentation release 1.25.27</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.27">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;7d25e8516d34a941457c65136756daf4a385dedf" title="Documentation source commit 7d25e8516d34a941457c65136756daf4a385dedf">Source 7d25e851</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;1fc30048a6298d0c08b977f1368852afec7e1ed9" title="Documentation source commit 1fc30048a6298d0c08b977f1368852afec7e1ed9">Source 1fc30048</a>
             
             
           </div>

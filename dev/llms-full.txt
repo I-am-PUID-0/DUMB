@@ -2,7 +2,7 @@
 
 > Channel: dev. Canonical base: https://dumbarr.com/dev/
 
-Documentation artifact: release 1.25.26. Source commit: 7d25e8516d34a941457c65136756daf4a385dedf. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.26.
+Documentation artifact: release 1.25.27. Source commit: 1fc30048a6298d0c08b977f1368852afec7e1ed9. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.27.
 
 DUMB coordinates media services. Match instructions to the installed backend version. Development guides can describe features absent from the latest release.
 
@@ -2732,6 +2732,8 @@ mode. Passwords and connection URLs remain private and are not returned in
 public status. Preview returns the current/target summaries, physical
 `target_identity` (`system_identifier`, `database_oid`, `schema`), checks and a
 short-lived `preview_token`/`confirmation_text`.
+Supporting builds also return an opaque `preview_id`, retained on the admitted
+job. It identifies the reviewed request without granting mutation authority.
 
 An explicit `prepare-target` request requires the configured, running managed
 PostgreSQL service. It creates a new database from `template0`, with UTF-8,
@@ -2769,6 +2771,24 @@ both control-record writers and lifecycle reservations.
 
 Start requires that token and exact confirmation, plus
 `acknowledge_backup: true` and `acknowledge_destructive_target: true`.
+Supporting builds durably record and return a `starting` job before running
+destination revalidation, SQLite backup, integrity validation and fingerprinting
+in a background worker. `GET /postgres/status` discovers that job independently
+of the Start response and remains available during preparation. A lost response
+must be reconciled through read-only status, never by automatically repeating
+Start. The dashboard retains only opaque job/pending-request identities across
+reload and uses a matching new job's `preview_id` to confirm a lost admission.
+
+Optional job `progress` is scoped to its current `stage`. Snapshot copying can
+report `unit: "pages"`, fingerprinting `unit: "bytes"`, and native copying
+`unit: "rows"`. `done`/`total` count that pass or the current native `table`,
+not the whole conversion. Native `pending_changes` is separate; null or absent
+counts remain unknown. `elapsed_seconds`, `rate_per_second`,
+`bytes_per_second` and `eta_seconds` are optional measurements. Validation may
+report elapsed time without a measurable total or ETA. Clients must suppress
+estimates when observations are stale or unconfirmed and must not interpret a
+completed table as permission to cut over.
+
 Subsequent cutover/cancel/rollback requests use the **current `job_id`**, exact
 text from `status.confirmation_texts[action]` and both acknowledgements. They
 do not reuse an expired initial preview token after a long synchronization.
@@ -13586,8 +13606,9 @@ prove that its target is eligible and will not overwrite existing data.
 
 Closing the panel or visiting another page does not cancel the backend job.
 The global notice reopens progress or recovery after navigation and reload.
-Only job identities are saved for browser recovery; preview authorizations and
-database passwords are not. A transport error does not prove that a job stopped.
+Only opaque job and pending database-request identities are saved for browser
+recovery; preview authorizations and database passwords are not. A transport
+error does not prove that a job stopped.
 Refresh status before retrying, and retain an unconfirmed job's recovery evidence.
 
 After a confirmed successful completion, **Dismiss** hides that completion notice
@@ -13949,6 +13970,22 @@ not DUMB's generation 1 SQLite-to-PostgreSQL adapter.
 4. Wait for the backend to advertise **cutover**. Review and confirm that action
    separately. The native restart may retain its process ID; wait for confirmed
    provider state and service health.
+
+Supporting builds save a visible job before preparing the SQLite recovery
+snapshot. The panel shows destination checks, snapshot copying, snapshot
+validation and fingerprinting, then native copying and synchronization. Large
+snapshots can take time before any records reach PostgreSQL. Where available,
+it shows snapshot pages or bytes, the current database table's copied rows and
+changes waiting to synchronize. A table reaching its total does not mean the
+whole conversion has finished; remaining-time estimates cover only the current
+phase and are omitted when its work cannot be measured reliably.
+
+If **Start** times out, keep the panel open or reopen it. Automatic read-only
+checks discover the saved job after navigation or reload. **Refresh status**
+also works while a request is pending and reports whether the latest check
+succeeded. An uncertain Start is retained without its token or credentials;
+DUMB does not automatically send another Start. Keep checking status instead
+of starting a second copy. Cutover still requires its separate confirmation.
 
 ### Prepare a PostgreSQL destination
 
