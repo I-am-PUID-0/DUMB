@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.23">
+    <meta name="dumb-docs-package-version" content="1.25.24">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="04d5bf2349b50623d920d3ede3eecf0e369bc405">
-    <meta name="dumb-docs-release-tag" content="1.25.23">
+    <meta name="dumb-docs-build-commit" content="2443c7602b282d346bd93de69831b0ea7abbf7f6">
+    <meta name="dumb-docs-release-tag" content="1.25.24">
   
 
     
@@ -6533,7 +6533,7 @@ Change the password before exposing InfiniDysk outside your trusted network.</p>
 </div>
 <div class="admonition danger">
 <p class="admonition-title">Protect API keys</p>
-<p><code>FRONTEND_BACKEND_API_KEY</code> grants backend access. Treat it like a secret and avoid committing it to source control.</p>
+<p>In InfiniDysk 1.x, <code>FRONTEND_BACKEND_API_KEY</code> grants backend access. Treat API keys like secrets and avoid committing them to source control.</p>
 </div>
 <details class="geek-details">
 <summary>Technical details: configuration reference</summary>
@@ -6674,6 +6674,10 @@ or retaining the original 1.x data and recovery state:</p>
 <td><code>release_version</code></td>
 <td>An exact official 2.x tag, or <code>latest</code>; blank also follows latest</td>
 </tr>
+<tr>
+<td><code>env.INFINIDYSK__SAB__API_KEY</code></td>
+<td>Download-client key for generation 2. DUMB fills it automatically; an explicit value controls the next native launch.</td>
+</tr>
 </tbody>
 </table>
 <p>Preparation and recovery use an internal fixed migration artifact. Once activation
@@ -6684,7 +6688,11 @@ migration rollback actions are not converted; their archives and source plans
 are retained. Branch and commit selectors are inactive on the native runtime.
 Do not reuse <code>postgres_enabled</code> or
 the 1.x <code>DATABASE_PROVIDER</code>/<code>DATABASE_CONNECTION_STRING</code> variables for generation 2;
-use its <a href="../../../features/infinidysk-v2-migration/#native-postgresql-conversion">separate native database conversion</a>.</p>
+use its <a href="../../../features/infinidysk-v2-migration/#native-postgresql-conversion">separate native database conversion</a>.
+For DUMB-managed PostgreSQL, that tool's <strong>Prepare database and review</strong> button
+creates the dedicated empty destination with its required settings, then shows
+the checks for review. You do not need to create it manually. Copying and
+switching providers remain separate confirmations.</p>
 <p>InfiniDysk 2 opens at a dedicated root URL. The frontend does not embed its UI
 under <code>/ui/infinidysk</code> unless a validated adapter is explicitly advertised.
 Use the service page's direct local address or configured public portal.</p>
@@ -6713,18 +6721,46 @@ before changing listener ports or native authentication.</p>
 <li><code>WEBDAV_USER</code>: Override the WebDAV username (defaults to <code>admin</code>).</li>
 <li><code>WEBDAV_PASSWORD</code>: Override the WebDAV password.</li>
 <li><code>CONFIG_PATH</code>: Override the InfiniDysk config path (defaults to <code>config_dir</code>).</li>
-<li><code>FRONTEND_BACKEND_API_KEY</code>: Backend API key shared with the frontend.
+<li><code>FRONTEND_BACKEND_API_KEY</code>: Generation 1 backend API key shared with the frontend.
   DUMB generates and saves it when missing, then preserves it across configure
   runs and configuration reloads.</li>
 <li><code>ASPNETCORE_URLS</code>: Backend bind address (defaults to <code>http://+:&lt;backend_port&gt;</code>).</li>
 <li><code>PORT</code>: Frontend port (defaults to <code>frontend_port</code>).</li>
 <li><code>BACKEND_URL</code>: Frontend-to-backend URL (defaults to <code>http://127.0.0.1:&lt;backend_port&gt;</code>).</li>
 </ul>
-<p>The frontend/backend key and the API key shown in InfiniDysk's settings may
-differ; upstream accepts both. If a running instance rejects DUMB's configured
-key with HTTP 401, DUMB can retry once using the API key from that instance's
+<p>In generation 1, the frontend/backend key and the API key shown in InfiniDysk's
+settings may differ; that runtime accepts both. If a running 1.x instance rejects
+DUMB's configured key with HTTP 401, DUMB can retry once using the API key from that instance's
 active database. This does not rotate the saved frontend/backend key or fall
 back to a retained SQLite database when PostgreSQL is active.</p>
+<div class="docs-dev-section">
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+<p>Generation 2 uses its own environment settings. <code>INFINIDYSK__SAB__API_KEY</code>
+is saved under InfiniDysk's <code>env</code> object in <strong>DUMB Config</strong>. Keep an existing
+nonblank value to use that key. When the setting is blank or missing, DUMB leaves
+the native key unchanged at launch, then adopts and saves its effective value
+after the first successful native startup. A prepared candidate's verified key
+is saved at activation. A fresh installation creates its key once; the saved key
+is reused across starts and restarts. DUMB does not rotate a working
+installation's key or require you to look it up manually. An explicit leaf
+setting takes precedence at the next native launch. Do not copy the old
+<code>FRONTEND_BACKEND_API_KEY</code> into this field automatically: v2 does not accept
+that variable as an additional download-client key.</p>
+<p>Once the key is saved, <strong>DUMB Config</strong> is its managed source. To deliberately
+change it, edit <code>env.INFINIDYSK__SAB__API_KEY</code>, select <strong>Save to File</strong>, then
+restart InfiniDysk. A key adopted after startup becomes an environment override
+on the next start; the already running process keeps the settings it launched
+with. The prepared migration's key is already supplied on first activation.</p>
+<p>DUMB checks enabled, linked managed Arr instances after InfiniDysk or an Arr
+starts. Verified managed download clients follow the same configured key, with
+their IDs and all other settings preserved. Startup readiness is retried for a
+bounded period; unavailable dependencies or unknown client ownership require
+review rather than an unsafe overwrite. External or independently configured
+clients remain your responsibility. The native administrative API key is
+separate from this download-client key. For migration safeguards and the
+supported automatic repair scope, see
+<a href="../../../features/infinidysk-v2-migration/#existing-arr-download-client-credentials">download-client credentials after migration</a>.</p>
+</div>
 <hr />
 </details>
 <h2 id="integration-with-dumb">Integration with DUMB<a class="headerlink" href="#integration-with-dumb" title="Permanent link">&para;</a></h2>
@@ -7078,11 +7114,11 @@ conflicts manually before restarting a single service.</p>
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.23</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.23">Release notes</a>
+              <span>Documentation release 1.25.24</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.24">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;04d5bf2349b50623d920d3ede3eecf0e369bc405" title="Documentation source commit 04d5bf2349b50623d920d3ede3eecf0e369bc405">Source 04d5bf23</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;2443c7602b282d346bd93de69831b0ea7abbf7f6" title="Documentation source commit 2443c7602b282d346bd93de69831b0ea7abbf7f6">Source 2443c760</a>
             
             
           </div>

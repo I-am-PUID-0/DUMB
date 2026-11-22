@@ -2,7 +2,7 @@
 
 > Channel: dev. Canonical base: https://dumbarr.com/dev/
 
-Documentation artifact: release 1.25.23. Source commit: 04d5bf2349b50623d920d3ede3eecf0e369bc405. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.23.
+Documentation artifact: release 1.25.24. Source commit: 2443c7602b282d346bd93de69831b0ea7abbf7f6. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.24.
 
 DUMB coordinates media services. Match instructions to the installed backend version. Development guides can describe features absent from the latest release.
 
@@ -1788,6 +1788,11 @@ Clients require a valid `api_version >= 2.24.0`, explicit boolean
 protocols disable mutations. Retained job/recovery displays remain independent
 of those new-operation controls.
 
+Managed PostgreSQL destination preparation additionally requires strict boolean
+`infinidysk_v2_postgres_prepare_target: true` and numeric
+`infinidysk_v2_postgres_prepare_target_protocol: 1`. This grants the explicit
+preparation action only; a destination preview remains read-only.
+
 The strict boolean `infinidysk_v2_prepared_activation: true` selects the default
 prepare-once workflow. Clients prepare and review one candidate, then explicitly
 activate that same job. With the capability absent, retain the legacy separate
@@ -1800,11 +1805,21 @@ coordinates snapshots, checks, containment, activation and recovery.
 Embedded native UI routing requires the strict boolean
 `infinidysk_v2_embedded_ui_adapter: true` and numeric
 `infinidysk_v2_embedded_ui_protocol: 1`, alongside the runtime capability.
-`GET /config/service-ui?metadata_only=true` returns the existing
-`services` inventory without regenerating Traefik configuration. A native
-InfiniDysk row includes `runtime_generation: "2"` and
-`embedded_ui_protocol: 1`. The dashboard derives this identity from the
-authenticated backend response, not a browser-supplied service header.
+The embedded proxy looks up one enabled service through
+`GET /config/embedded-ui-routing/{normalized_service}`. This read-only endpoint
+does not require dashboard authentication: an iframe request cannot attach the
+dashboard's browser-stored bearer token. Its response contains only `name`,
+`config_key`, `runtime_generation` and `embedded_ui_protocol`; it exposes no
+addresses, ports, paths, credentials or full service inventory. The dashboard
+server fetches this metadata directly from DUMB, rather than trusting a
+browser-supplied service header, and expires each service result after five
+seconds. Failed refreshes cannot reuse an expired routing decision.
+
+The separate `GET /config/service-ui?metadata_only=true` inventory remains
+protected by dashboard authentication and does not regenerate Traefik
+configuration. Both backend and dashboard need the matching embedded-routing
+implementation; an older backend without the minimal endpoint cannot enable
+the new adapter.
 
 The adapter forwards the embedded UI through DUMB while keeping native
 sessions separate from dashboard credentials. Direct UI addresses, Public URL,
@@ -2550,6 +2565,53 @@ exact `confirmation_texts.retry_consumers` as `confirmation` to
 provider/mount before retrying only the exact retained pending consumers in
 dependency order. It does not repeat native import or restore v1.
 
+New major migrations also retain private proof of existing download clients for
+affected, running DUMB-managed Radarr, Sonarr, Lidarr and Whisparr instances.
+Before quiescence, DUMB binds each client to its exact Arr and resource IDs and
+settings fingerprints and requires a passing test of its saved configuration.
+After v2 exposure and consumer resumption, DUMB uses the effective native SAB
+key to verify the same client. Any repair changes only its API-key field on the
+same ID and must pass both the candidate and saved-client tests. It does not
+create clients or adopt resources by name. Failed checks retain consumer
+recovery; the existing retry action can repeat them without another import or
+v1 rollback. Missing proof, ambiguous identities or changed resources require
+review. Keys and raw resources are private and are not added to public job
+responses. This is part of the existing major/consumer-recovery workflow, with
+no additional endpoint or protocol.
+
+InfiniDysk 1.x can accept its stored API key and the legacy
+`FRONTEND_BACKEND_API_KEY` separately. Native v2 accepts its single SAB key,
+including a supported `INFINIDYSK__SAB__API_KEY` override; its administrative key
+is separate. The major migration removes the obsolete frontend/backend variable
+from the active target environment while preserving the v1 source environment.
+
+For normal generation 2 launches, `infinidysk.env.INFINIDYSK__SAB__API_KEY` is
+the persisted configured download-client key. A nonblank leaf value is preserved
+and takes precedence at launch. A blank or missing leaf leaves the native key
+unchanged during normal launch. Bounded post-startup reconciliation reads the
+authenticated effective native key and saves it after the first successful
+startup. Prepared migration/fresh-install activation adopts the verified
+candidate key before committing activation. A fresh installation creates its
+key once. This does not use the obsolete
+`FRONTEND_BACKEND_API_KEY` as a v2 rekey instruction, rotate an existing native
+key or substitute the administrative credential.
+Once adopted, the DUMB configuration is the managed source. A post-startup
+adopted leaf becomes a native environment override on the next launch; it does
+not retroactively change the running process's environment. Explicit key edits
+therefore require saving configuration and restarting the native service.
+
+Native and enabled core-linked Arr startup/restart hooks schedule bounded
+reconciliation. The effective native key must match the configured key before
+updating exact durable client bindings. Successful migration proof promotes a
+binding for subsequent checks; a previously unbound client needs exact managed
+identity/endpoint/category and a passing saved test before adoption. Broken,
+unknown or conflicting clients remain unchanged for review. Readiness failures
+receive bounded retries; ownership conflicts do not authorize replacement.
+External or unmanaged clients require manual review. Arr download-client
+verification does not establish native Arr-notification readiness, a successful
+import or playback. These settings and reconciliation use existing configuration
+and lifecycle routes; no new key-management endpoint is introduced.
+
 Finishing requires both `can_finish_consumer_recovery: true` and `ready: true`.
 After reviewing the remaining stopped consumers, post `job_id`, the exact
 `confirmation_texts.finish_consumer_recovery` as `confirmation`, and
@@ -2622,13 +2684,14 @@ native engine.
 | Method | Route | Purpose |
 |--------|-------|---------|
 | `GET` | `/process/infinidysk-v2/postgres/status` | Reconcile native provider/job state and advertise guarded actions |
+| `POST` | `/process/infinidysk-v2/postgres/prepare-target` | Explicitly create or verify a managed empty destination with the required locale and owner |
 | `POST` | `/process/infinidysk-v2/postgres/preview` | Verify a dedicated empty destination and its physical identity |
 | `POST` | `/process/infinidysk-v2/postgres/start` | Retain recovery state and start native copy/synchronization |
 | `POST` | `/process/infinidysk-v2/postgres/cutover` | Switch only the current synchronized job to PostgreSQL |
 | `POST` | `/process/infinidysk-v2/postgres/cancel` | Cancel the current native job after destination identity checks |
 | `POST` | `/process/infinidysk-v2/postgres/rollback` | Restore the retained SQLite snapshot when its guards permit |
 
-Managed destination preview:
+Managed destination preparation and preview use the same request body:
 
 ```json
 {"target": {"use_managed_postgres": true, "database": "infinidysk_v2"}}
@@ -2640,8 +2703,22 @@ mode. Passwords and connection URLs remain private and are not returned in
 public status. Preview returns the current/target summaries, physical
 `target_identity` (`system_identifier`, `database_oid`, `schema`), checks and a
 short-lived `preview_token`/`confirmation_text`.
-Provision the dedicated empty database with `C` collation and its role before previewing; choosing
-`use_managed_postgres` selects DUMB's connection settings, not database creation.
+
+An explicit `prepare-target` request requires the configured, running managed
+PostgreSQL service. It creates a new database from `template0`, with UTF-8,
+`C` collation and the existing configured owner role. An existing compatible
+empty database is checked and reused; a nonempty or incompatible database is
+refused without modification. System databases and databases configured for
+other services cannot be selected. It does not start or restart services, alter
+roles, copy library data or change the active provider. External destinations
+must be provisioned by their administrator; this action does not accept them.
+
+Preparation returns `protocol: 1`, `ready: true`, `created: true` for a new
+database (`false` for reuse), the public `target`, `target_identity` and a
+message. The dashboard then calls the separate read-only `preview` endpoint.
+Preparing a target alone never authorizes copying: review the fresh preview
+and submit the ordinary guarded start request. `preview` never creates a
+database, including when `use_managed_postgres` is true.
 
 Start requires that token and exact confirmation, plus
 `acknowledge_backup: true` and `acknowledge_destructive_target: true`.
@@ -13805,15 +13882,18 @@ After activating generation 2 and validating the running installation, open
 conversion**. This uses the native copy, synchronization and cutover engine,
 not DUMB's generation 1 SQLite-to-PostgreSQL adapter.
 
-1. Have an administrator create and start a dedicated, empty PostgreSQL database
-   with **`C` collation** and a suitable owner role first. DUMB's managed option
-   uses its configured PostgreSQL connection; it does not create the named
-   database. The ordinary [database list](../services/dependent/postgres.md)
-   inherits the cluster's locale and does not request `C` explicitly. Use the
-   destination example below, then select that database or supply its external
-   TCP address and TLS policy. The migration preview only verifies the destination.
-2. Preview the destination. Review its physical cluster identity, database OID
-   and schema, along with source, emptiness and recovery checks.
+1. For DUMB's own PostgreSQL, keep **Use DUMB-managed PostgreSQL** selected,
+   choose a dedicated database name and select **Prepare database and review**.
+   DUMB creates the empty database with the required settings and configured
+   owner, or checks and reuses an existing compatible empty database. PostgreSQL
+   must already be enabled and running; this action does not start or restart
+   services. You do not need to run SQL or add the database to the ordinary
+   database list first. For an external server, ask its administrator to prepare
+   the empty destination described below, then enter its connection details.
+2. Review the destination checks shown after preparation, including the
+   physical cluster identity, database OID and schema. **Preview existing
+   database** checks an already prepared managed destination without creating
+   one. External destinations use **Check destination and review**.
 3. Confirm backups and the destination reset acknowledgement, type the exact
    confirmation, then start native copying and synchronization.
 4. Wait for the backend to advertise **cutover**. Review and confirm that action
@@ -13827,8 +13907,8 @@ Copying prepares a destination while SQLite stays current; switching providers i
 ```mermaid
 flowchart TD
     accTitle: Copy before confirming native PostgreSQL cutover
-    accDescr: Verify the dedicated destination, copy while SQLite remains active and confirm the offered provider cutover separately.
-    SQLite["Validate the running generation 2 SQLite installation"] --> Database["Have an administrator prepare an empty C-collation database"]
+    accDescr: Explicitly prepare a managed destination or supply an external one, review its checks, copy while SQLite remains active and confirm provider cutover separately.
+    SQLite["Validate the running generation 2 SQLite installation"] --> Database["Prepare the managed database, or supply a prepared external database"]
     Database --> Preview["Preview the exact destination"]
     Preview --> Valid{"Destination checks passed?"}
     Valid -->|No| Correct["Resolve the reported destination problem"]
@@ -13839,16 +13919,27 @@ flowchart TD
     Confirm --> Verify["Verify provider state, service health and playback"]
 ```
 
-The conversion needs a separate, empty PostgreSQL database with DUMB's supported `C` locale. Selecting managed PostgreSQL fills connection settings; it does not create that destination for you. Ask the person managing PostgreSQL to prepare it, then enter the same database name and role in the conversion form. Keep the existing v1 database and every other application's database intact.
+The conversion needs a separate, empty PostgreSQL database with DUMB's supported
+`C` locale. **Prepare database and review** creates only the selected managed
+database, with the correct locale and owner, then runs the read-only destination
+preview. It does not copy library data or select PostgreSQL as the active
+provider. DUMB refuses an existing nonempty or incompatible database and never
+drops or changes it to make these checks pass. Keep the existing v1 database and
+every other application's database intact.
+
+The form never creates anything simply because it is opened or a name is typed.
+If the preparation button is unavailable, update DUMB; older backends can only
+preview a destination that has already been prepared.
 
 <details class="geek-details" markdown="1">
-<summary>Technical alternative: create the dedicated PostgreSQL destination with SQL</summary>
+<summary>External servers and technical alternative: prepare the destination with SQL</summary>
 
 The following PostgreSQL 16 example creates a **new** database with an explicit
 locale. Connect as a database administrator to a maintenance database such as
 `postgres`, and run the statement outside a transaction. Replace
 `example_role` with the existing role that the conversion will use; for
-DUMB-managed PostgreSQL this is its configured `postgres.user`. Choose an unused
+DUMB-managed PostgreSQL this is its configured `postgres.user`. The managed
+preparation button performs this setup for you. Choose an unused
 database name and enter that same name in the conversion form.
 
 ```sql
@@ -13887,7 +13978,8 @@ reported condition, then request and review a fresh preview:
 
 | Reported condition | Next step |
 | --- | --- |
-| The destination database does not exist | Create the new empty database first, using the same name and role as the conversion form. Selecting managed PostgreSQL reuses its connection settings. |
+| The destination database does not exist | For managed PostgreSQL, select **Prepare database and review**. For an external server, have its administrator create the dedicated empty database with the same name and role as the form. |
+| Managed PostgreSQL is not enabled or running | Enable and start PostgreSQL from its service controls, then retry preparation. Database preparation does not start or restart services. |
 | PostgreSQL rejects the credentials | Check the configured role, password and PostgreSQL connection/authentication policy. Keep credentials out of screenshots and shared logs. |
 | Physical identity inspection is denied | Ask the database administrator to review the named permission in the destination database. Keep the identity check enabled. |
 | The destination could not be verified | Check that the server is running and listening, the address/port and database name are correct, and the connection and TLS policies permit DUMB's selected connection. |
@@ -13952,25 +14044,75 @@ file remains blocked for investigation.
 
 ## Existing Arr download-client credentials
 
-For a new v1-to-v2 migration, DUMB carries the effective v1 **SAB-compatible
-download API key** into v2 and verifies it before accepting the candidate. This
-includes supported v1 environment key overrides. The native v2 administrative
-API key is a separate credential; do not substitute it into an Arr SAB download
-client.
+InfiniDysk 1.x could accept both the API key stored in its settings and the
+separate `FRONTEND_BACKEND_API_KEY`. InfiniDysk 2 uses one **SAB-compatible
+download API key**. Carrying the old frontend/backend variable into v2 does not
+preserve that second accepted key. An Arr client using it can therefore return
+HTTP 401 after an earlier migration.
+
+DUMB keeps the generation 2 download-client key in
+`infinidysk.env.INFINIDYSK__SAB__API_KEY`, visible on the service's **DUMB
+Config** tab. An existing nonblank setting is preserved. If it is blank or
+missing, DUMB leaves the native key unchanged at launch and saves its effective
+value after the first successful native startup. For a prepared migration or
+fresh installation, the verified candidate's key is saved at activation. A fresh
+installation creates its key once. The saved value is reused across starts and
+restarts; no manual key lookup or copy is needed. An explicit leaf setting
+controls the next native launch; the old
+frontend/backend variable is not used to replace the native key automatically.
+After adoption, manage this key in **DUMB Config**. Save and restart InfiniDysk
+to apply a deliberate change. The persisted leaf becomes a native environment
+override on that next start; adoption does not change the already running
+process's launch settings. A prepared candidate receives its saved key on first
+activation.
+
+For a new v1-to-v2 migration, DUMB verifies that the canonical v1 download API
+key survives the native import. Before pausing v1, it also identifies and tests
+the existing download clients belonging to the affected, running DUMB-managed
+Radarr, Sonarr, Lidarr and Whisparr instances. Once v2 is active and those apps
+resume, DUMB checks each proven client against the current native SAB key. If a
+key change is needed, it updates only that client's API key, preserving its ID
+and all other settings, and tests the result before completing consumer recovery.
+
+If those checks fail, the accepted v2 installation remains available and DUMB
+holds the affected consumer recovery for review. Use **Retry pending consumers**
+or **Verify/restart v2 and retry consumers**, as offered; this retries the
+retained client checks without repeating the native import or restoring v1.
+DUMB does not create replacement clients or
+adopt one merely because its name matches. Missing pre-migration proof, changed
+client settings or ambiguous client identities require review.
 
 Whole-section JSON overrides such as `INFINIDYSK__SAB` are refused during
 v1-to-v2 migration: native section replacement can hide the retained download API
 key. Remove that override or express the settings as individual
-`INFINIDYSK__SAB__...` fields. An explicit `INFINIDYSK__SAB__API_KEY` must match
-the retained v1 key; other individual SAB fields remain supported. If DUMB
+`INFINIDYSK__SAB__...` fields. An explicit `INFINIDYSK__SAB__API_KEY` is the native
+SAB key override and must match the retained canonical v1 key during migration;
+other individual SAB fields remain supported. The obsolete
+`FRONTEND_BACKEND_API_KEY` is removed from the new v2 launch configuration; the
+retained v1 source configuration is unchanged. If DUMB
 requests renewed key proof, generate and review a fresh preview, then prepare a
 new candidate. An older backend requires its separate test before migration.
 
-DUMB does not edit Arr applications' settings. If v2 is already running after an
-earlier migration or manual credential changes, compare the Arr download client's
-host, port and SAB API key with the current v2 configuration, then test that
-client's connection. Updating DUMB does not automatically rotate working v2 or
-Arr credentials back to the retained v1 key.
+After ordinary starts and restarts, DUMB also checks enabled managed Radarr,
+Sonarr, Lidarr and Whisparr instances linked to the InfiniDysk core. It verifies
+that the effective native key matches DUMB's configured key before synchronizing
+verified managed client IDs. Successful migration proof becomes a retained
+binding for those later checks. Missing dependencies get bounded startup retries;
+ownership or configuration conflicts remain for review.
+
+An older completed installation without a binding can be recognized only when
+its managed instance, exact client identity, local endpoint and category match
+and its saved connection test already passes. A broken or ambiguous unowned
+client is kept intact. Review it manually rather than relying on name alone.
+External/unmanaged Arr instances also need manual review. Use the download API
+key shown in InfiniDysk 2's **Settings → Download client**, check the client's
+host and port, save it and run the Arr connection test. The native administrative
+API key is separate; do not substitute it into an Arr SAB download client.
+Updating DUMB does not rotate working native credentials back to an old key.
+
+Check any Arr notification or connection entries configured inside InfiniDysk
+separately. A passing Arr download-client test verifies that connection only;
+it does not verify InfiniDysk's notifications, an import or playback.
 
 ## Authentication with the retained backend port
 
@@ -14005,6 +14147,12 @@ through DUMB's own address. This also works when DUMB is reached through a rever
 proxy: the browser uses DUMB's service path, and DUMB forwards it internally.
 The adapter preserves InfiniDysk's native login and security restrictions while
 routing its pages, API calls and live updates.
+
+Keep both DUMB and its dashboard updated. The embedded view checks a small
+read-only routing endpoint independently of dashboard sign-in, while
+InfiniDysk still handles its own login. If the embedded page says its routing
+cannot be confirmed, check that both components contain this support and that
+the backend is reachable. Disabling dashboard authentication is not required.
 
 Direct access such as `http://server:3000/` and a dedicated reverse-proxy hostname
 such as `https://infinidysk.example.com/` remain separate options. DUMB does not
@@ -24535,7 +24683,7 @@ InfiniDysk also exposes a **Usenet download client** path in Arr by emulating a 
 
 !!! danger "Protect API keys"
 
-    `FRONTEND_BACKEND_API_KEY` grants backend access. Treat it like a secret and avoid committing it to source control.
+    In InfiniDysk 1.x, `FRONTEND_BACKEND_API_KEY` grants backend access. Treat API keys like secrets and avoid committing them to source control.
 
 <details class="geek-details" markdown="1">
 <summary>Technical details: configuration reference</summary>
@@ -24667,6 +24815,7 @@ or retaining the original 1.x data and recovery state:
 | `v2_data_dir` | Separate generation 2 data; blank resolves beneath `data_root` as `infinidysk-v2` |
 | `release_version_enabled` | Disabled follows the latest official 2.x release; enabled uses `release_version` |
 | `release_version` | An exact official 2.x tag, or `latest`; blank also follows latest |
+| `env.INFINIDYSK__SAB__API_KEY` | Download-client key for generation 2. DUMB fills it automatically; an explicit value controls the next native launch. |
 
 Preparation and recovery use an internal fixed migration artifact. Once activation
 and required recovery work are complete, the normal release controls select
@@ -24677,6 +24826,10 @@ are retained. Branch and commit selectors are inactive on the native runtime.
 Do not reuse `postgres_enabled` or
 the 1.x `DATABASE_PROVIDER`/`DATABASE_CONNECTION_STRING` variables for generation 2;
 use its [separate native database conversion](../../features/infinidysk-v2-migration.md#native-postgresql-conversion).
+For DUMB-managed PostgreSQL, that tool's **Prepare database and review** button
+creates the dedicated empty destination with its required settings, then shows
+the checks for review. You do not need to create it manually. Copying and
+switching providers remain separate confirmations.
 
 InfiniDysk 2 opens at a dedicated root URL. The frontend does not embed its UI
 under `/ui/infinidysk` unless a validated adapter is explicitly advertised.
@@ -24724,18 +24877,56 @@ Candidate builds and data preservation are documented in the [source-build updat
 * `WEBDAV_USER`: Override the WebDAV username (defaults to `admin`).
 * `WEBDAV_PASSWORD`: Override the WebDAV password.
 * `CONFIG_PATH`: Override the InfiniDysk config path (defaults to `config_dir`).
-* `FRONTEND_BACKEND_API_KEY`: Backend API key shared with the frontend.
+* `FRONTEND_BACKEND_API_KEY`: Generation 1 backend API key shared with the frontend.
   DUMB generates and saves it when missing, then preserves it across configure
   runs and configuration reloads.
 * `ASPNETCORE_URLS`: Backend bind address (defaults to `http://+:<backend_port>`).
 * `PORT`: Frontend port (defaults to `frontend_port`).
 * `BACKEND_URL`: Frontend-to-backend URL (defaults to `http://127.0.0.1:<backend_port>`).
 
-The frontend/backend key and the API key shown in InfiniDysk's settings may
-differ; upstream accepts both. If a running instance rejects DUMB's configured
-key with HTTP 401, DUMB can retry once using the API key from that instance's
+In generation 1, the frontend/backend key and the API key shown in InfiniDysk's
+settings may differ; that runtime accepts both. If a running 1.x instance rejects
+DUMB's configured key with HTTP 401, DUMB can retry once using the API key from that instance's
 active database. This does not rotate the saved frontend/backend key or fall
 back to a retained SQLite database when PostgreSQL is active.
+
+
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
+Generation 2 uses its own environment settings. `INFINIDYSK__SAB__API_KEY`
+is saved under InfiniDysk's `env` object in **DUMB Config**. Keep an existing
+nonblank value to use that key. When the setting is blank or missing, DUMB leaves
+the native key unchanged at launch, then adopts and saves its effective value
+after the first successful native startup. A prepared candidate's verified key
+is saved at activation. A fresh installation creates its key once; the saved key
+is reused across starts and restarts. DUMB does not rotate a working
+installation's key or require you to look it up manually. An explicit leaf
+setting takes precedence at the next native launch. Do not copy the old
+`FRONTEND_BACKEND_API_KEY` into this field automatically: v2 does not accept
+that variable as an additional download-client key.
+
+Once the key is saved, **DUMB Config** is its managed source. To deliberately
+change it, edit `env.INFINIDYSK__SAB__API_KEY`, select **Save to File**, then
+restart InfiniDysk. A key adopted after startup becomes an environment override
+on the next start; the already running process keeps the settings it launched
+with. The prepared migration's key is already supplied on first activation.
+
+DUMB checks enabled, linked managed Arr instances after InfiniDysk or an Arr
+starts. Verified managed download clients follow the same configured key, with
+their IDs and all other settings preserved. Startup readiness is retried for a
+bounded period; unavailable dependencies or unknown client ownership require
+review rather than an unsafe overwrite. External or independently configured
+clients remain your responsibility. The native administrative API key is
+separate from this download-client key. For migration safeguards and the
+supported automatic repair scope, see
+[download-client credentials after migration](../../features/infinidysk-v2-migration.md#existing-arr-download-client-credentials).
+
+</div>
+
+
 
 ---
 
