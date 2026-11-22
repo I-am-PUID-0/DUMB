@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+from contextlib import closing
 import hashlib
 import json
 import os
@@ -24,6 +25,10 @@ from utils.private_files import atomic_write_private_text
 
 
 class NativePostgresError(ValueError):
+    pass
+
+
+class _PreparationCancelled(Exception):
     pass
 
 
@@ -55,6 +60,8 @@ _PUBLIC_JOB = {
     "operation",
     "cleanup_required",
     "rollback_unavailable_reason",
+    "preview_id",
+    "cancel_requested",
 }
 
 
@@ -380,6 +387,9 @@ class InfiniDyskV2PostgresManager:
         self.clock = clock
         self._lock = threading.RLock()
         self._previews = {}
+        self._thread = None
+        self._worker_job_id = None
+        self._start_cancel = threading.Event()
 
     def configure(self, process_handler=None, config_manager=None):
         if process_handler is not None:
@@ -407,7 +417,9 @@ class InfiniDyskV2PostgresManager:
             )
         )
 
-    def _native(self, method="GET", path="/api/v1/database", payload=None):
+    def _native(
+        self, method="GET", path="/api/v1/database", payload=None, *, timeout=10
+    ):
         callback = self.native_request
         if callback is None:
             from utils.infinidysk_v2_runtime import native_api_request
@@ -419,6 +431,7 @@ class InfiniDyskV2PostgresManager:
             path,
             payload,
             data_root=self._config().get("data_root") or "/data",
+            timeout=timeout,
         )
         if isinstance(response, dict) and "status" in response:
             if not 200 <= response["status"] < 300:
@@ -611,11 +624,63 @@ class InfiniDyskV2PostgresManager:
             manager.complete_planned(token, success=success)
             job.pop("protection_token_private", None)
 
+    def _native_target_matches(self, job):
+        return (self._boot().get("migration") or {}).get("target") == job[
+            "target_url_private"
+        ]
+
+    def _require_native_target(self, job, native):
+        if not native.get("migration") or not self._native_target_matches(job):
+            raise NativePostgresError(
+                "The observed native transfer does not match this job's authorized destination. No native mutation was requested."
+            )
+
     def _reconcile(self, job, native):
         if not job:
             return None
         migration = native.get("migration") or {}
         backend = str(native.get("backend") or "").lower()
+        if (
+            migration
+            and job.get("status") in _ACTIVE
+            and not self._native_target_matches(job)
+        ):
+            job.update(
+                status="recovery_required",
+                recovery_required=True,
+                native_transfer_mismatch=True,
+                message="The observed native transfer has a different or unverified destination. Review it in InfiniDysk; DUMB will not cancel or switch that transfer.",
+            )
+            self._save(job)
+            return job
+        job.pop("native_transfer_mismatch", None)
+        if job.get("native_admission_attempted") is True and not job.get(
+            "native_admission_confirmed"
+        ):
+            if migration.get("state") in {
+                "copying",
+                "syncing",
+            } and self._native_target_matches(job):
+                self._binding(job)
+                job.update(
+                    status=migration["state"],
+                    recovery_required=False,
+                    native_admission_confirmed=True,
+                )
+            else:
+                # A controller may have stopped after the write-ahead flag but
+                # before either POST acknowledgement or its failure was saved.
+                # An unrelated/empty native observation grants no ownership.
+                job.update(
+                    status="recovery_required",
+                    recovery_required=True,
+                    message="Native admission could not be confirmed; retain this job and inspect the native transfer before continuing.",
+                )
+                job["native"] = {
+                    key: native.get(key) for key in ("backend", "env_managed")
+                }
+                self._save(job)
+                return job
         if job["status"] in {"starting", "copying", "syncing"}:
             state = migration.get("state")
             if state in {"copying", "syncing"}:
@@ -623,8 +688,11 @@ class InfiniDyskV2PostgresManager:
                     status=state,
                     stage=migration.get("stage") or state,
                     progress={
-                        key: migration.get(key)
-                        for key in ("done", "total", "table", "pending_changes")
+                        "unit": "rows",
+                        **{
+                            key: migration.get(key)
+                            for key in ("done", "total", "table", "pending_changes")
+                        },
                     },
                     message=(
                         "Native copy is synchronizing."
@@ -684,13 +752,74 @@ class InfiniDyskV2PostgresManager:
         self._save(job)
         return job
 
+    def _pending_status(self, job, *, busy=False):
+        return {
+            "protocol": 1,
+            "provider": (job or {}).get("native", {}).get("backend"),
+            "job": self._public(job),
+            "ready": False,
+            "blockers": (
+                [
+                    "A conversion operation is still running; its saved progress is shown."
+                ]
+                if busy
+                else []
+            ),
+            "actions": {
+                "start": False,
+                "cutover": False,
+                "cancel": bool(
+                    not busy
+                    and job
+                    and job.get("native_admission_attempted") is False
+                    and job.get("status") in {"starting", "recovery_required"}
+                ),
+                "rollback": False,
+            },
+            "confirmation_texts": {
+                "cutover": "SWITCH TO POSTGRESQL",
+                "cancel": "EMPTY MIGRATION TARGET",
+                "rollback": "RESTORE SQLITE SNAPSHOT",
+            },
+        }
+
     def status(self):
+        # Snapshot copying and native POSTs never own the observation lock.
+        # Other lifecycle operations can still be slow: serve their atomically
+        # saved receipt without queuing another request behind their I/O.
+        if not self._lock.acquire(blocking=False):
+            self._check_service()
+            return self._pending_status(self._job(), busy=True)
+        try:
+            self._check_service()
+            job = self._job()
+            if self._worker_active(job):
+                return self._pending_status(job)
+            if (
+                job
+                and job.get("native_admission_attempted") is False
+                and job.get("status") in {"starting", "recovery_required"}
+            ):
+                if job["status"] == "starting":
+                    job.update(
+                        status="recovery_required",
+                        stage="preparation_interrupted",
+                        recovery_required=True,
+                        message="Local preparation was interrupted before native conversion. Cancel this retained job before starting again; no target cleanup is needed.",
+                    )
+                    self._save(job)
+                return self._pending_status(job)
+            return self._status_locked()
+        finally:
+            self._lock.release()
+
+    def _status_locked(self):
         with self._lock:
             self._check_service()
             job = self._job()
             blockers = []
             try:
-                native = self._native()
+                native = self._native(timeout=2)
                 job = self._reconcile(job, native)
             except (OSError, ValueError):
                 native = {}
@@ -707,6 +836,18 @@ class InfiniDyskV2PostgresManager:
             if native.get("env_managed"):
                 blockers.append(
                     "The database is environment-managed; native provider moves are disabled."
+                )
+            if (
+                job
+                and job.get("native_admission_attempted") is True
+                and not job.get("native_admission_confirmed")
+            ):
+                blockers.append(
+                    "Native admission is unconfirmed. Keep the retained job and inspect the native transfer; an empty status response cannot safely cancel a delayed request."
+                )
+            if job and job.get("native_transfer_mismatch"):
+                blockers.append(
+                    "The native transfer destination does not match this retained job; cancellation and cutover are held for review."
                 )
             ready = bool(native and not blockers)
             active = bool(job and job.get("status") in _ACTIVE)
@@ -793,6 +934,7 @@ class InfiniDyskV2PostgresManager:
                 if value["expires_at"] > self.clock()
             }
             record = {
+                "preview_id": uuid.uuid4().hex,
                 "release_controls_schema": "standard-v1",
                 "target_private": target,
                 "target_identity": identity,
@@ -804,6 +946,7 @@ class InfiniDyskV2PostgresManager:
             return {
                 "protocol": 1,
                 "ready": True,
+                "preview_id": record["preview_id"],
                 "preview_token": token,
                 "expires_at": int(record["expires_at"]),
                 "confirmation_text": "COPY TO NEW POSTGRESQL DATABASE",
@@ -838,26 +981,220 @@ class InfiniDyskV2PostgresManager:
                 "Acknowledge that native cancellation can empty the dedicated target."
             )
 
-    def _snapshot(self, job):
-        directory = _private_directory(self.state_root / job["job_id"])
+    def _worker_active(self, job):
+        return bool(
+            job
+            and self._worker_job_id == job.get("job_id")
+            and self._thread is not None
+            and self._thread.is_alive()
+        )
+
+    def _verify_start_source(self, job):
+        if _fingerprint(self._service()) != job["service_fingerprint"]:
+            raise NativePostgresError(
+                "The source configuration changed during preparation."
+            )
         source = self._data() / "infinidysk.sqlite"
         info = source.lstat()
-        if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+        if (
+            not stat.S_ISREG(info.st_mode)
+            or info.st_nlink != 1
+            or {"path": str(source), "device": info.st_dev, "inode": info.st_ino}
+            != job["source_sqlite_identity_private"]
+        ):
             raise NativePostgresError(
-                "The active SQLite source is not a direct regular file."
+                "The active SQLite source changed during preparation."
             )
+
+    def _save_start(self, job):
+        with self._lock:
+            current = self._job()
+            if not current or current["job_id"] != job["job_id"]:
+                raise NativePostgresError("The retained preparation identity changed.")
+            if self._start_cancel.is_set() or current.get("cancel_requested"):
+                raise _PreparationCancelled()
+            self._save(job)
+
+    def _snapshot(self, job, progress):
+        directory = _private_directory(self.state_root / job["job_id"])
+        source = self._data() / "infinidysk.sqlite"
+        self._verify_start_source(job)
         snapshot = directory / "before-native-copy.sqlite"
-        with sqlite3.connect(
-            f"file:{quote(str(source))}?mode=ro", uri=True
+        progress("backup", "Saving an independent SQLite recovery snapshot.")
+        with closing(
+            sqlite3.connect(f"file:{quote(str(source))}?mode=ro", uri=True)
         ) as original:
-            with sqlite3.connect(snapshot) as backup:
-                original.backup(backup)
+            with closing(sqlite3.connect(snapshot)) as backup:
+                snapshot.chmod(0o600)
+                original.backup(
+                    backup,
+                    pages=256,
+                    progress=lambda _status, remaining, total: progress(
+                        "backup",
+                        "Saving an independent SQLite recovery snapshot.",
+                        unit="pages",
+                        done=max(0, total - remaining),
+                        total=total,
+                    ),
+                )
+                progress("backup_validation", "Checking the SQLite recovery snapshot.")
+                backup.set_progress_handler(
+                    lambda: (
+                        progress(
+                            "backup_validation",
+                            "Checking the SQLite recovery snapshot.",
+                        )
+                        or 0
+                    ),
+                    10000,
+                )
                 if backup.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
                     raise NativePostgresError("The SQLite backup did not validate.")
-        snapshot.chmod(0o600)
+        progress("backup_fingerprint", "Reading back the SQLite recovery snapshot.")
+        digest = hashlib.sha256()
+        total, done = snapshot.stat().st_size, 0
+        with snapshot.open("rb") as saved:
+            while chunk := saved.read(1024 * 1024):
+                digest.update(chunk)
+                done += len(chunk)
+                progress(
+                    "backup_fingerprint",
+                    "Reading back the SQLite recovery snapshot.",
+                    unit="bytes",
+                    done=done,
+                    total=total,
+                )
+            os.fsync(saved.fileno())
+        _sync_directory(directory)
         job["snapshot_private"] = str(snapshot)
-        job["snapshot_sha256"] = hashlib.sha256(snapshot.read_bytes()).hexdigest()
+        job["snapshot_sha256"] = digest.hexdigest()
         job["snapshot_at"] = int(self.clock())
+
+    def _run_start(self, job):
+        from utils.infinidysk_migration_admission import v2_migration_owner
+
+        phase, phase_started, last_saved = None, time.monotonic(), 0.0
+
+        def progress(stage, message, *, unit=None, done=None, total=None):
+            nonlocal phase, phase_started, last_saved
+            if self._start_cancel.is_set():
+                raise _PreparationCancelled()
+            now = time.monotonic()
+            changed = stage != phase
+            if changed:
+                phase, phase_started = stage, now
+            completed = done is not None and total is not None and done >= total
+            if not changed and now - last_saved < 1 and not completed:
+                return
+            elapsed = max(0, now - phase_started)
+            rate = done / elapsed if done and elapsed > 0 else None
+            job.update(
+                stage=stage,
+                message=message,
+                progress={
+                    "unit": unit,
+                    "done": done,
+                    "total": total,
+                    "elapsed_seconds": round(elapsed, 1),
+                    "rate_per_second": rate,
+                    "bytes_per_second": rate if unit == "bytes" else None,
+                    "eta_seconds": (
+                        max(0, total - done) / rate
+                        if rate and total is not None and done is not None
+                        else None
+                    ),
+                },
+            )
+            self._save_start(job)
+            last_saved = now
+
+        try:
+            with v2_migration_owner("postgres"):
+                progress("target_check", "Rechecking the source and empty destination.")
+                self._verify_start_source(job)
+                native = self._native()
+                if (
+                    native.get("backend") != "sqlite"
+                    or native.get("migration")
+                    or native.get("env_managed")
+                ):
+                    raise NativePostgresError(
+                        "The native provider changed after preview."
+                    )
+                job["native"] = {
+                    key: native.get(key) for key in ("backend", "env_managed")
+                }
+                self._binding(job, empty=True)
+                self._snapshot(job, progress)
+                progress(
+                    "target_check", "Rechecking identities before native conversion."
+                )
+                self._verify_start_source(job)
+                self._binding(job, empty=True)
+                native = self._native()
+                if (
+                    native.get("backend") != "sqlite"
+                    or native.get("migration")
+                    or native.get("env_managed")
+                ):
+                    raise NativePostgresError(
+                        "The native provider changed during preparation."
+                    )
+                progress(
+                    "native_admission", "Asking InfiniDysk to start its online copy."
+                )
+                with self._lock:
+                    if self._start_cancel.is_set():
+                        raise _PreparationCancelled()
+                    job["native_admission_attempted"] = True
+                    self._save(job)  # A lost POST response must never be resubmitted.
+                self._native(
+                    "POST",
+                    "/api/v1/database/migration",
+                    {"url": job["target_url_private"]},
+                )
+                job.update(
+                    status="copying",
+                    stage="copying",
+                    progress={},
+                    message="Native online copy admitted; SQLite remains active.",
+                    native_admission_confirmed=True,
+                )
+                with self._lock:
+                    self._save(job)
+        except _PreparationCancelled:
+            # All owned snapshot connections are closed before releasing admission.
+            job.update(
+                status="cancelled",
+                stage="cancelled",
+                recovery_required=False,
+                message="Local preparation cancelled. SQLite and PostgreSQL were not changed.",
+            )
+            with self._lock:
+                self._save(job)
+        except Exception as error:
+            # Driver/SQLite errors can contain private paths or credentials.
+            attempted = job.get("native_admission_attempted") is True
+            cancelled = self._start_cancel.is_set() and not attempted
+            job.update(
+                status="cancelled" if cancelled else "recovery_required",
+                recovery_required=not cancelled,
+                preparation_error_private={
+                    "type": type(error).__name__[:128],
+                    "message": str(error)[:2048],
+                },
+                message=(
+                    "Local preparation cancelled. SQLite and PostgreSQL were not changed."
+                    if cancelled
+                    else (
+                        "Native admission could not be confirmed; inspect its state before continuing."
+                        if attempted
+                        else "Preparation stopped before native conversion. SQLite remains active; the retained job can be cancelled safely."
+                    )
+                ),
+            )
+            with self._lock:
+                self._save(job)
 
     def start(self, request):
         with self._lock:
@@ -865,9 +1202,20 @@ class InfiniDyskV2PostgresManager:
             record = self._previews.pop(str(request.get("preview_token") or ""), None)
             if not record or record["expires_at"] < self.clock():
                 raise NativePostgresError("Preview expired; inspect the target again.")
-            if not self.status()["actions"]["start"]:
+            prior = self._job()
+            if (prior and prior.get("status") in _ACTIVE) or self._worker_active(prior):
                 raise NativePostgresError(
                     "The native provider state changed after preview."
+                )
+            if record["service_fingerprint"] != _fingerprint(self._service()):
+                raise NativePostgresError(
+                    "The source configuration changed after preview."
+                )
+            source = self._data() / "infinidysk.sqlite"
+            info = source.lstat()
+            if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+                raise NativePostgresError(
+                    "The active SQLite source is not a direct regular file."
                 )
             job = {
                 **record,
@@ -875,7 +1223,14 @@ class InfiniDyskV2PostgresManager:
                 "protocol": 1,
                 "operation": "infinidysk_v2_postgres",
                 "status": "starting",
-                "stage": "backup",
+                "stage": "queued",
+                "message": "Preparation admitted. The recovery snapshot will be saved before conversion starts.",
+                "native_admission_attempted": False,
+                "source_sqlite_identity_private": {
+                    "path": str(source),
+                    "device": info.st_dev,
+                    "inode": info.st_ino,
+                },
                 "created_at": int(self.clock()),
                 "recovery_required": False,
                 "can_rollback": False,
@@ -899,30 +1254,27 @@ class InfiniDyskV2PostgresManager:
                 and int(managed.get("port") or 5432) == target["port"]
             ):
                 job["managed_postgres_fingerprint"] = _fingerprint(managed)
-            self._binding(job, empty=True)
-            self._snapshot(job)
-            self._save(job)  # Recovery exists before native target mutation.
+            self._save(job)  # Durable admission precedes all heavyweight work.
+            result = {"job": self._public(job)}
+            self._worker_job_id = job["job_id"]
+            self._start_cancel = threading.Event()
+            self._thread = threading.Thread(
+                target=self._run_start,
+                args=(job,),
+                name="InfiniDysk native PostgreSQL preparation",
+                daemon=True,
+            )
             try:
-                self._native(
-                    "POST",
-                    "/api/v1/database/migration",
-                    {"url": job["target_url_private"]},
-                )
-            except (OSError, ValueError):
+                self._thread.start()
+            except RuntimeError:
                 job.update(
                     status="recovery_required",
                     recovery_required=True,
-                    message="Native admission could not be confirmed; inspect it before retrying.",
+                    message="Preparation could not start. The retained job can be cancelled safely; no native conversion was requested.",
                 )
                 self._save(job)
-                raise NativePostgresError(job["message"]) from None
-            job.update(
-                status="copying",
-                stage="copying",
-                message="Native online copy admitted; SQLite remains active.",
-            )
-            self._save(job)
-            return {"job": self._public(job)}
+                result = {"job": self._public(job)}
+            return result
 
     def _action_job(self, request, action):
         request = _request(request)
@@ -948,6 +1300,7 @@ class InfiniDyskV2PostgresManager:
     def cutover(self, request):
         with self._lock:
             job = self._action_job(request, "cutover")
+            self._require_native_target(job, self._native())
             manager = getattr(self.process_handler, "media_protection_manager", None)
             protection = (
                 manager.begin_planned(
@@ -971,6 +1324,7 @@ class InfiniDyskV2PostgresManager:
                     message="Native cutover is draining and restarting the application.",
                 )
                 self._save(job)
+                self._require_native_target(job, self._native())
                 result = self._native("POST", "/api/v1/database/cutover")
                 job["native_started_ms"] = result.get("started_ms")
                 self._save(job)
@@ -984,8 +1338,38 @@ class InfiniDyskV2PostgresManager:
 
     def cancel(self, request):
         with self._lock:
+            request = _request(request)
+            current = self._job()
+            if (
+                current
+                and current.get("native_admission_attempted") is False
+                and current.get("status") in {"starting", "recovery_required"}
+                and request.get("job_id") == current.get("job_id")
+            ):
+                self._ack(request, "EMPTY MIGRATION TARGET")
+                if self._worker_active(current):
+                    self._start_cancel.set()
+                    current.update(
+                        cancel_requested=True,
+                        message="Stopping local preparation safely; no native conversion was requested.",
+                    )
+                else:
+                    current.update(
+                        status="cancelled",
+                        stage="cancelled",
+                        recovery_required=False,
+                        message="Local preparation cancelled. SQLite and PostgreSQL were not changed.",
+                    )
+                self._save(current)
+                return {"job": self._public(current)}
+            if self._worker_active(current):
+                raise NativePostgresError(
+                    "Native admission is still being confirmed. Refresh its status before cancelling."
+                )
             job = self._action_job(request, "cancel")
             native = self._native()
+            if native.get("migration"):
+                self._require_native_target(job, native)
             result = (
                 self._native("DELETE", "/api/v1/database/migration")
                 if native.get("migration")

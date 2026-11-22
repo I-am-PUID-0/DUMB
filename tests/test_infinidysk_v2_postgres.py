@@ -5,6 +5,7 @@ from pathlib import Path
 import sqlite3
 import sys
 import tempfile
+import threading
 import traceback
 from types import SimpleNamespace
 import unittest
@@ -82,6 +83,7 @@ class NativePostgresTests(unittest.TestCase):
             delivery_checker=lambda *a: self.delivery_ready,
             clock=lambda: self.clock,
         )
+        self.addCleanup(self.wait_worker)
         self.options = {
             "target": {
                 "host": "127.0.0.1",
@@ -102,8 +104,14 @@ class NativePostgresTests(unittest.TestCase):
             body = {"version": "PostgreSQL fixture", "error": None, "warnings": []}
         elif path.endswith("/migration") and method == "POST":
             self.view["migration"] = {"state": "copying", "done": 0, "total": 1}
+            (self.data / "database.toml").write_text(
+                '[migration]\nstate = "copying"\ntarget = '
+                + json.dumps(payload["url"])
+                + "\n"
+            )
         elif path.endswith("/migration") and method == "DELETE":
             self.view["migration"] = None
+            (self.data / "database.toml").unlink(missing_ok=True)
             body = {"warnings": self.cleanup_warnings}
         elif path.endswith("/cutover"):
             if method == "POST":
@@ -151,7 +159,7 @@ class NativePostgresTests(unittest.TestCase):
         self.assertEqual("completed", result["status"])
         return result
 
-    def begin(self):
+    def start_request(self):
         preview = self.manager.preview(self.options)
         request = {
             "preview_token": preview["preview_token"],
@@ -159,7 +167,19 @@ class NativePostgresTests(unittest.TestCase):
             "acknowledge_backup": True,
             "acknowledge_destructive_target": True,
         }
-        return self.manager.start(request)["job"]
+        return preview, request
+
+    def wait_worker(self):
+        worker = self.manager._thread
+        if worker is not None and worker.ident is not None:
+            worker.join(timeout=5)
+            self.assertFalse(worker.is_alive(), "Owned preparation worker did not stop")
+
+    def begin(self):
+        _preview, request = self.start_request()
+        self.manager.start(request)
+        self.wait_worker()
+        return self.manager._public(self.manager._job())
 
     def action(self, job, kind):
         status = self.manager.status()
@@ -185,6 +205,401 @@ class NativePostgresTests(unittest.TestCase):
         self.assertEqual("copying", job["status"])
         self.assertTrue(self.manager.has_blocking_job())
 
+    def test_start_is_durable_and_status_responsive_while_snapshot_is_blocked(self):
+        preview, request = self.start_request()
+        entered, release = threading.Event(), threading.Event()
+        self.addCleanup(release.set)
+        snapshot = self.manager._snapshot
+
+        def blocked(job, progress):
+            self.assertEqual(job["job_id"], self.manager._job()["job_id"])
+            progress(
+                "backup",
+                "Saving the recovery snapshot.",
+                unit="pages",
+                done=1,
+                total=10,
+            )
+            entered.set()
+            if not release.wait(timeout=5):
+                raise TimeoutError("fixture snapshot was not released")
+            snapshot(job, progress)
+
+        with patch.object(self.manager, "_snapshot", side_effect=blocked):
+            result = self.manager.start(request)["job"]
+            self.assertEqual("queued", result["stage"])
+            self.assertEqual(preview["preview_id"], result["preview_id"])
+            self.assertTrue(entered.wait(timeout=2))
+            native_calls = len(self.calls)
+            status = self.manager.status()
+            self.assertEqual(result["job_id"], status["job"]["job_id"])
+            self.assertEqual("backup", status["job"]["stage"])
+            self.assertEqual(1, status["job"]["progress"]["done"])
+            self.assertEqual(native_calls, len(self.calls))
+            self.assertTrue(self.manager.has_blocking_job())
+            self.assertFalse(status["actions"]["start"])
+            self.assertFalse(status["actions"]["cutover"])
+            self.assertFalse(
+                any(
+                    method == "POST" and path.endswith("/migration")
+                    for method, path, _ in self.calls
+                )
+            )
+            release.set()
+            self.wait_worker()
+        self.assertEqual("copying", self.manager.status()["job"]["status"])
+
+    def test_snapshot_has_page_validation_and_streamed_readback_progress(self):
+        saved = []
+        save = self.manager._save
+
+        def capture(job):
+            saved.append(copy.deepcopy(job))
+            save(job)
+
+        with patch.object(self.manager, "_save", side_effect=capture):
+            job = self.begin()
+        self.assertEqual("copying", job["status"])
+        self.assertTrue(
+            any(row.get("progress", {}).get("unit") == "pages" for row in saved)
+        )
+        validation = next(row for row in saved if row["stage"] == "backup_validation")
+        self.assertIsNone(validation["progress"]["total"])
+        readback = [row for row in saved if row["stage"] == "backup_fingerprint"][-1]
+        self.assertEqual("bytes", readback["progress"]["unit"])
+        self.assertEqual(readback["progress"]["total"], readback["progress"]["done"])
+        admitted = next(row for row in saved if row.get("native_admission_attempted"))
+        self.assertTrue(Path(admitted["snapshot_private"]).is_file())
+        self.assertTrue(admitted["snapshot_sha256"])
+
+    def test_indeterminate_validation_callbacks_are_throttled(self):
+        saved = []
+        save = self.manager._save
+
+        def capture(job):
+            saved.append(copy.deepcopy(job))
+            save(job)
+
+        def validation(_job, progress):
+            for _ in range(100):
+                progress("backup_validation", "Checking the SQLite recovery snapshot.")
+
+        with (
+            patch("utils.infinidysk_v2_postgres.time.monotonic", return_value=10.0),
+            patch.object(self.manager, "_save", side_effect=capture),
+            patch.object(self.manager, "_snapshot", side_effect=validation),
+        ):
+            self.begin()
+        self.assertEqual(1, sum(row["stage"] == "backup_validation" for row in saved))
+
+    def test_snapshot_failure_is_private_and_local_cancel_works_without_native_api(
+        self,
+    ):
+        with patch.object(
+            self.manager,
+            "_snapshot",
+            side_effect=OSError("fixture-only-secret /private/example"),
+        ):
+            job = self.begin()
+        self.assertEqual("recovery_required", job["status"])
+        self.assertNotIn("fixture-only-secret", json.dumps(job))
+        private_error = self.manager._job()["preparation_error_private"]
+        self.assertEqual("OSError", private_error["type"])
+        self.assertIn("fixture-only-secret", private_error["message"])
+        self.native_unavailable = True
+        status = self.manager.status()
+        self.assertTrue(status["actions"]["cancel"])
+        result = self.manager.cancel(
+            {
+                "job_id": job["job_id"],
+                "confirmation": "EMPTY MIGRATION TARGET",
+                "acknowledge_backup": True,
+                "acknowledge_destructive_target": True,
+            }
+        )["job"]
+        self.assertEqual("cancelled", result["status"])
+        self.assertFalse(self.manager.has_blocking_job())
+        self.assertFalse(
+            any(
+                method in {"DELETE", "POST"} and path.endswith("/migration")
+                for method, path, _ in self.calls
+            )
+        )
+
+    def test_interrupted_queued_job_is_discoverable_and_never_resubmitted(self):
+        _preview, request = self.start_request()
+        with patch(
+            "utils.infinidysk_v2_postgres.threading.Thread.start",
+            side_effect=RuntimeError("fixture launch failure"),
+        ):
+            admitted = self.manager.start(request)["job"]
+        self.assertEqual("recovery_required", admitted["status"])
+        replacement = InfiniDyskV2PostgresManager(
+            config_manager=self.config,
+            state_root=self.manager.state_root,
+            native_request=Mock(side_effect=OSError("fixture native unavailable")),
+        )
+        status = replacement.status()
+        self.assertEqual(admitted["job_id"], status["job"]["job_id"])
+        self.assertTrue(status["actions"]["cancel"])
+        replacement.native_request.assert_not_called()
+        self.assertFalse(
+            any(
+                method == "POST" and path.endswith("/migration")
+                for method, path, _ in self.calls
+            )
+        )
+
+    def test_cancelled_snapshot_never_authorizes_native_post_or_target_cleanup(self):
+        _preview, request = self.start_request()
+        entered, release = threading.Event(), threading.Event()
+        self.addCleanup(release.set)
+
+        def blocked(_job, progress):
+            entered.set()
+            if not release.wait(timeout=5):
+                raise TimeoutError("fixture cancellation was not released")
+            progress(
+                "backup",
+                "Saving the recovery snapshot.",
+                unit="pages",
+                done=1,
+                total=10,
+            )
+
+        with patch.object(self.manager, "_snapshot", side_effect=blocked):
+            job = self.manager.start(request)["job"]
+            self.assertTrue(entered.wait(timeout=2))
+            result = self.manager.cancel(self.action(job, "cancel"))["job"]
+            self.assertTrue(result["cancel_requested"])
+            self.assertTrue(self.manager.has_blocking_job())
+            release.set()
+            self.wait_worker()
+        self.assertEqual("cancelled", self.manager.status()["job"]["status"])
+        self.assertFalse(
+            any(
+                method in {"DELETE", "POST"} and path.endswith("/migration")
+                for method, path, _ in self.calls
+            )
+        )
+
+    def test_lost_native_post_response_never_treats_empty_get_as_safe_cancellation(
+        self,
+    ):
+        native = self.manager.native_request
+
+        def lost_response(service, method, path, payload=None, **options):
+            if method == "POST" and path.endswith("/migration"):
+                self.assertTrue(self.manager._job()["native_admission_attempted"])
+                raise TimeoutError("fixture response lost")
+            return native(service, method, path, payload, **options)
+
+        self.manager.native_request = lost_response
+        job = self.begin()
+        self.assertEqual("recovery_required", job["status"])
+        status = self.manager.status()
+        self.assertFalse(status["actions"]["start"])
+        self.assertFalse(status["actions"]["cancel"])
+        with self.assertRaises(NativePostgresError):
+            self.manager.cancel(self.action(job, "cancel"))
+        self.assertTrue(self.manager.has_blocking_job())
+        self.assertFalse(any(method == "DELETE" for method, _, _ in self.calls))
+
+    def test_lost_post_acknowledgement_recovers_only_exact_native_transfer(self):
+        native = self.manager.native_request
+
+        def accepted_response_lost(service, method, path, payload=None, **options):
+            result = native(service, method, path, payload, **options)
+            if method == "POST" and path.endswith("/migration"):
+                raise TimeoutError("fixture acknowledgement lost")
+            return result
+
+        self.manager.native_request = accepted_response_lost
+        job = self.begin()
+        self.assertEqual("recovery_required", job["status"])
+        self.assertEqual("copying", self.manager.status()["job"]["status"])
+        self.assertEqual(
+            1,
+            sum(
+                method == "POST" and path.endswith("/migration")
+                for method, path, _ in self.calls
+            ),
+        )
+
+    def test_crashed_start_and_confirmed_job_never_adopt_an_unrelated_transfer(self):
+        job = self.begin()
+        accepted = copy.deepcopy(self.manager._job())
+        for confirmed, matching in ((False, False), (False, True), (True, False)):
+            with self.subTest(confirmed=confirmed, matching=matching):
+                private = copy.deepcopy(accepted)
+                private.update(
+                    status="copying" if confirmed else "starting",
+                    recovery_required=False,
+                )
+                if not confirmed:
+                    private.pop("native_admission_confirmed", None)
+                self.manager._save(private)
+                target = (
+                    private["target_url_private"]
+                    if matching
+                    else "postgres://reserved.invalid/different_target"
+                )
+                (self.data / "database.toml").write_text(
+                    '[migration]\nstate = "copying"\ntarget = '
+                    + json.dumps(target)
+                    + "\n"
+                )
+                replacement = InfiniDyskV2PostgresManager(
+                    config_manager=self.config,
+                    state_root=self.manager.state_root,
+                    native_request=self.native,
+                    target_inspector=lambda *a, **k: copy.deepcopy(self.identity),
+                )
+                status = replacement.status()
+                self.assertEqual(job["job_id"], status["job"]["job_id"])
+                self.assertEqual(
+                    "copying" if matching else "recovery_required",
+                    status["job"]["status"],
+                )
+                if not matching:
+                    self.assertFalse(status["actions"]["cancel"])
+                    self.assertFalse(status["actions"]["cutover"])
+                    for action, text in (
+                        ("cancel", "EMPTY MIGRATION TARGET"),
+                        ("cutover", "SWITCH TO POSTGRESQL"),
+                    ):
+                        with self.assertRaises(NativePostgresError):
+                            getattr(replacement, action)(
+                                {
+                                    "job_id": job["job_id"],
+                                    "confirmation": text,
+                                    "acknowledge_backup": True,
+                                    "acknowledge_destructive_target": True,
+                                }
+                            )
+        self.assertFalse(
+            any(
+                method == "DELETE" or (method == "POST" and path.endswith("/cutover"))
+                for method, path, _ in self.calls
+            )
+        )
+        self.assertEqual(
+            1,
+            sum(
+                method == "POST" and path.endswith("/migration")
+                for method, path, _ in self.calls
+            ),
+        )
+
+    def test_native_target_is_rechecked_immediately_before_cancel_and_cutover(self):
+        job = self.begin()
+        self.view["migration"]["state"] = "syncing"
+        target = self.manager._job()["target_url_private"]
+
+        def replace_transfer(*_args, **_options):
+            (self.data / "database.toml").write_text(
+                '[migration]\nstate = "syncing"\ntarget = "postgres://reserved.invalid/other"\n'
+            )
+            return copy.deepcopy(self.identity)
+
+        for action in ("cancel", "cutover"):
+            with self.subTest(action=action):
+                (self.data / "database.toml").write_text(
+                    '[migration]\nstate = "syncing"\ntarget = '
+                    + json.dumps(target)
+                    + "\n"
+                )
+                request = self.action(job, action)
+                with patch.object(
+                    self.manager, "target_inspector", side_effect=replace_transfer
+                ):
+                    with self.assertRaisesRegex(
+                        NativePostgresError, "authorized destination"
+                    ):
+                        getattr(self.manager, action)(request)
+        self.assertFalse(
+            any(
+                method == "DELETE" or (method == "POST" and path.endswith("/cutover"))
+                for method, path, _ in self.calls
+            )
+        )
+
+    def test_target_is_rechecked_after_snapshot_before_native_mutation(self):
+        snapshot = self.manager._snapshot
+
+        def target_changed(job, progress):
+            snapshot(job, progress)
+            self.identity["database_oid"] = "replacement"
+
+        with patch.object(self.manager, "_snapshot", side_effect=target_changed):
+            job = self.begin()
+        self.assertEqual("recovery_required", job["status"])
+        self.assertFalse(self.manager._job()["native_admission_attempted"])
+        self.assertFalse(
+            any(
+                method == "POST" and path.endswith("/migration")
+                for method, path, _ in self.calls
+            )
+        )
+
+    def test_replaced_sqlite_source_after_snapshot_is_not_converted(self):
+        snapshot = self.manager._snapshot
+
+        def source_changed(job, progress):
+            snapshot(job, progress)
+            source = self.data / "infinidysk.sqlite"
+            source.rename(self.data / "original.sqlite")
+            with sqlite3.connect(source) as replacement:
+                replacement.execute("CREATE TABLE preserved(value TEXT)")
+                replacement.execute("INSERT INTO preserved VALUES('replacement')")
+
+        with patch.object(self.manager, "_snapshot", side_effect=source_changed):
+            job = self.begin()
+        self.assertEqual("recovery_required", job["status"])
+        self.assertFalse(self.manager._job()["native_admission_attempted"])
+        with sqlite3.connect(self.data / "infinidysk.sqlite") as source:
+            self.assertEqual(
+                [("replacement",)], source.execute("SELECT * FROM preserved").fetchall()
+            )
+        self.assertFalse(
+            any(
+                method == "POST" and path.endswith("/migration")
+                for method, path, _ in self.calls
+            )
+        )
+
+    def test_blocked_native_post_retains_owner_progress_and_cannot_be_cancelled(self):
+        from utils import infinidysk_migration_admission as admission
+
+        _preview, request = self.start_request()
+        entered, release = threading.Event(), threading.Event()
+        self.addCleanup(release.set)
+        native = self.manager.native_request
+
+        def blocked(service, method, path, payload=None, **options):
+            if method == "POST" and path.endswith("/migration"):
+                self.assertIn("postgres", admission._V2_CONTEXT.owners)
+                private = self.manager._job()
+                self.assertTrue(private["native_admission_attempted"])
+                self.assertTrue(Path(private["snapshot_private"]).is_file())
+                entered.set()
+                if not release.wait(timeout=5):
+                    raise TimeoutError("fixture native admission was not released")
+            return native(service, method, path, payload, **options)
+
+        self.manager.native_request = blocked
+        job = self.manager.start(request)["job"]
+        self.assertTrue(entered.wait(timeout=2))
+        status = self.manager.status()
+        self.assertEqual("native_admission", status["job"]["stage"])
+        self.assertFalse(status["actions"]["cancel"])
+        with self.assertRaisesRegex(NativePostgresError, "still being confirmed"):
+            self.manager.cancel(self.action(job, "cancel"))
+        self.assertTrue(self.manager.has_blocking_job())
+        release.set()
+        self.wait_worker()
+        self.assertEqual("copying", self.manager.status()["job"]["status"])
+
     def test_stale_preview_and_target_drift_never_start_copy(self):
         preview = self.manager.preview(self.options)
         self.identity["database_oid"] = "99"
@@ -194,8 +609,9 @@ class NativePostgresTests(unittest.TestCase):
             "acknowledge_backup": True,
             "acknowledge_destructive_target": True,
         }
-        with self.assertRaises(NativePostgresError):
-            self.manager.start(request)
+        self.manager.start(request)
+        self.wait_worker()
+        self.assertEqual("recovery_required", self.manager._job()["status"])
         self.assertFalse(
             any(
                 method == "POST" and path.endswith("/migration")

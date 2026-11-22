@@ -101,6 +101,7 @@ class NativeMigrationAPITests(unittest.TestCase):
                  patch.object(router.INFINIDYSK_V2_POSTGRES_MANAGER, 'has_blocking_job', return_value=False):
                 client = Client()
                 assert client.get('/process/infinidysk-v2/status').status_code == 401
+                assert client.get('/process/infinidysk-v2/postgres/status').status_code == 401
                 assert client.post('/process/infinidysk-v2/preview/start', json={}).status_code == 401
                 assert client.get('/process/infinidysk-v2/preview/task').status_code == 401
                 assert client.get('/process/infinidysk-v2/preview/task/' + 'a' * 32).status_code == 401
@@ -128,6 +129,7 @@ class NativeMigrationAPITests(unittest.TestCase):
                     assert status.json()['protocol'] == 1
                     task_responses = [
                         status,
+                        client.get('/process/infinidysk-v2/postgres/status'),
                         client.post('/process/infinidysk-v2/preview/start', json={'mode': 'migrate'}),
                         client.get('/process/infinidysk-v2/preview/task'),
                         client.get('/process/infinidysk-v2/preview/task/' + 'a' * 32),

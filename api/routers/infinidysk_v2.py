@@ -326,10 +326,12 @@ async def major_cleanup(
 
 @infinidysk_v2_router.get("/postgres/status")
 async def postgres_status(
+    response: Response = None,
     handler=Depends(get_process_handler),
     updater=Depends(get_updater),
     current_user=Depends(get_optional_current_user),
 ):
+    _private_preview_response(response)
     return await run_in_threadpool(
         _invoke, "postgres", "status", None, handler, updater
     )
