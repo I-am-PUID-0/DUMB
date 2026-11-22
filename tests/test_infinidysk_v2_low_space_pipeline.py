@@ -95,6 +95,10 @@ class LowSpacePipelineTests(unittest.TestCase):
         self.bad_report = False
         self.native_candidates = []
         self.patches = []
+        # The real runtime-state writer uses the global accessor. Keep it in
+        # the same temporary scope as the manager/executor, including on CI
+        # hosts where the ordinary controller configuration is not writable.
+        self.start_patch(patch("utils.config_loader.CONFIG_MANAGER", self.config))
         for target, value in (
             ("utils.backup_storage.get_backup_storage", self.storage),
             ("utils.infinidysk_v2_space_control.get_backup_storage", self.storage),
@@ -271,6 +275,16 @@ class LowSpacePipelineTests(unittest.TestCase):
         )
         return self.manager.get_job(response["job"]["job_id"])["job"]
 
+    def assert_installed_release_record(self):
+        state = Path(self.config.file_path).parent / "updates" / "infinidysk-v2"
+        records = list(state.glob("installed-release-*.json"))
+        self.assertEqual(len(records), 1)
+        record = json.loads(records[0].read_text())
+        service = self.config.config["infinidysk"]
+        self.assertEqual(record["runtime"], str(runtime_dir(service)))
+        self.assertEqual(record["data_dir"], service["v2_data_dir"])
+        self.assertEqual(record["release_metadata"]["release"], RELEASE)
+
     def test_rehearsal_rebinds_preview_then_cutover_and_rollback_restore_real_archive(
         self,
     ):
@@ -286,6 +300,7 @@ class LowSpacePipelineTests(unittest.TestCase):
             self.manager.start({**request, "rehearsal_job_id": rehearsal["job_id"]})
         )
         self.assertEqual("completed", completed["status"], completed)
+        self.assert_installed_release_record()
         self.assertFalse(self.source.exists())
         self.assertEqual("2", self.config.config["infinidysk"]["runtime_generation"])
         self.assertTrue(
@@ -429,6 +444,7 @@ class LowSpacePipelineTests(unittest.TestCase):
             )
         )
         self.assertEqual("completed", completed["status"], completed)
+        self.assert_installed_release_record()
         self.assertEqual(
             1,
             len(self.native_candidates),
@@ -470,6 +486,33 @@ class LowSpacePipelineTests(unittest.TestCase):
         )
         self.assertEqual("1", self.config.config["infinidysk"]["runtime_generation"])
         self.assertFalse(Path(self.config.config["infinidysk"]["v2_data_dir"]).exists())
+
+
+class LowSpaceRuntimeStateScopeTests(unittest.TestCase):
+    def test_real_activation_ignores_unwritable_unrelated_global_configuration(self):
+        unrelated = SimpleNamespace(
+            file_path="/proc/dumb-test-config/dumb_config.json",
+            get=lambda key: None,
+        )
+        with patch("utils.config_loader.CONFIG_MANAGER", unrelated):
+            fixture = LowSpacePipelineTests(methodName="runTest")
+            try:
+                fixture.setUp()
+                _, request = fixture.preview()
+                prepared = fixture.wait(fixture.manager.prepare(request))
+                self.assertEqual("prepared", prepared["status"], prepared)
+                completed = fixture.wait(
+                    fixture.manager.activate(
+                        {
+                            "job_id": prepared["job_id"],
+                            "confirmation": prepared["activate_confirmation"],
+                        }
+                    )
+                )
+                self.assertEqual("completed", completed["status"], completed)
+                fixture.assert_installed_release_record()
+            finally:
+                self.assertTrue(fixture.doCleanups())
 
 
 if __name__ == "__main__":
