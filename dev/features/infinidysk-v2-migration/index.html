@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.32">
+    <meta name="dumb-docs-package-version" content="1.25.33">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="30d0814484eda6ce8f82869d21ebd55e2aa0005d">
-    <meta name="dumb-docs-release-tag" content="1.25.32">
+    <meta name="dumb-docs-build-commit" content="e422d8d0e4e503b79277ffba7ddb3f9392f2c10b">
+    <meta name="dumb-docs-release-tag" content="1.25.33">
   
 
     
@@ -7374,7 +7374,11 @@ restoring over writes accepted since the first restart. A missing or replaced
 file remains blocked for investigation.</p>
 <p>After confirmed PostgreSQL cutover, <code>infinidysk.sqlite.pre-postgres</code> is the
 SQLite rollback copy. Keep it until you have a verified PostgreSQL backup and
-deliberately choose to give up SQLite rollback. The separate
+deliberately choose to give up SQLite rollback. After that decision, the old
+SQLite database is not a permanent startup requirement. DUMB checks the saved
+PostgreSQL selection in InfiniDysk's database journal (<code>database.toml</code>) against
+the effective provider, with no unfinished conversion. Removing the rollback
+copy does not switch the provider back to SQLite or repeat the migration. The separate
 <code>before-native-copy.sqlite</code> snapshot can lack writes accepted during conversion.
 Do not remove <code>metrics.sqlite</code> or <code>warden.db</code> as conversion leftovers; they
 remain separate live stores.</p>
@@ -7680,11 +7684,11 @@ separate existing workflows.</p>
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.32</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.32">Release notes</a>
+              <span>Documentation release 1.25.33</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.33">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;30d0814484eda6ce8f82869d21ebd55e2aa0005d" title="Documentation source commit 30d0814484eda6ce8f82869d21ebd55e2aa0005d">Source 30d08144</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;e422d8d0e4e503b79277ffba7ddb3f9392f2c10b" title="Documentation source commit e422d8d0e4e503b79277ffba7ddb3f9392f2c10b">Source e422d8d0</a>
             
             
           </div>

@@ -2,7 +2,7 @@
 
 > Channel: dev. Canonical base: https://dumbarr.com/dev/
 
-Documentation artifact: release 1.25.32. Source commit: 30d0814484eda6ce8f82869d21ebd55e2aa0005d. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.32.
+Documentation artifact: release 1.25.33. Source commit: e422d8d0e4e503b79277ffba7ddb3f9392f2c10b. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.33.
 
 DUMB coordinates media services. Match instructions to the installed backend version. Development guides can describe features absent from the latest release.
 
@@ -14177,7 +14177,11 @@ file remains blocked for investigation.
 
 After confirmed PostgreSQL cutover, `infinidysk.sqlite.pre-postgres` is the
 SQLite rollback copy. Keep it until you have a verified PostgreSQL backup and
-deliberately choose to give up SQLite rollback. The separate
+deliberately choose to give up SQLite rollback. After that decision, the old
+SQLite database is not a permanent startup requirement. DUMB checks the saved
+PostgreSQL selection in InfiniDysk's database journal (`database.toml`) against
+the effective provider, with no unfinished conversion. Removing the rollback
+copy does not switch the provider back to SQLite or repeat the migration. The separate
 `before-native-copy.sqlite` snapshot can lack writes accepted during conversion.
 Do not remove `metrics.sqlite` or `warden.db` as conversion leftovers; they
 remain separate live stores.
