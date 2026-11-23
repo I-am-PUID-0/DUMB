@@ -1088,6 +1088,7 @@ class ProcessHandler:
                     file_logger=subprocess_file_logger,
                     access_logger=subprocess_access_logger,
                     log_to_main=log_to_main,
+                    service_key=key,
                 )
                 subprocess_logger.start_logging_stdout(process)
                 subprocess_logger.start_monitoring_stderr(

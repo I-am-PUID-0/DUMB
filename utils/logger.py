@@ -3,6 +3,8 @@ import asyncio, os, re, sys, tempfile, threading, time, logging
 from logging.handlers import BaseRotatingHandler
 from colorlog import ColoredFormatter
 
+_ANSI_CSI_PATTERN = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+
 SENSITIVE_LOG_REDACTIONS = [
     (
         re.compile(
@@ -119,7 +121,9 @@ SENSITIVE_LOG_REDACTIONS = [
 
 
 def redact_sensitive_log_data(value):
-    text = str(value or "")
+    # Native terminal styles can split a sensitive field name from its '=' or
+    # ':' delimiter. Normalize them before matching, including retained logs.
+    text = _ANSI_CSI_PATTERN.sub("", str(value or ""))
     for pattern, replacement in SENSITIVE_LOG_REDACTIONS:
         text = pattern.sub(replacement, text)
     return text
@@ -147,9 +151,22 @@ def _ensure_sensitive_filter(handler):
         handler.addFilter(SensitiveDataFilter())
 
 
+_INFINIDYSK_LOG_IDENTITIES = frozenset({"infinidysk", "nzbdav"})
+_INFINIDYSK_TRACING_HEADER = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?"
+    r"(?:Z|[+-]\d{2}:\d{2})\s+(TRACE|DEBUG|INFO|WARN|ERROR)(?=\s|$)"
+)
+
+
 class SubprocessLogger:
     def __init__(
-        self, logger, key_type, file_logger=None, access_logger=None, log_to_main=True
+        self,
+        logger,
+        key_type,
+        file_logger=None,
+        access_logger=None,
+        log_to_main=True,
+        service_key=None,
     ):
         self.logger = logger
         self.file_logger = file_logger
@@ -159,6 +176,7 @@ class SubprocessLogger:
         self.stderr_thread = None
         self.stop_event = threading.Event()
         self.key_type = key_type
+        self.service_key = service_key
         self.log_methods = {}
         if self.log_to_main:
             self.log_methods = {
@@ -194,7 +212,21 @@ class SubprocessLogger:
         return False
 
     @staticmethod
-    def parse_log_level_and_message(line, process_name):
+    def parse_log_level_and_message(line, process_name, *, service_key=None):
+        identity = (
+            str(service_key if service_key is not None else process_name)
+            .strip()
+            .lower()
+        )
+        if identity in _INFINIDYSK_LOG_IDENTITIES:
+            match = _INFINIDYSK_TRACING_HEADER.match(_ANSI_CSI_PATTERN.sub("", line))
+            if match:
+                level = match.group(1)
+                # Keep the native event time, target and payload intact. The
+                # shared redactor neutralizes terminal styles before emission
+                # and on retained-log reads; only the outer severity changes.
+                return {"WARN": "WARNING", "TRACE": "DEBUG"}.get(level, level), line
+
         log_levels = {"DEBUG", "INFO", "NOTICE", "WARNING", "ERROR", "CRITICAL"}
         alt_log_levels = {"DEBUG", "INFO", "NOTICE", "WARN", "ERROR", "FATAL", "LOG"}
 
@@ -298,7 +330,7 @@ class SubprocessLogger:
                     self.access_logger.info(line)
                     continue
                 log_level, message = SubprocessLogger.parse_log_level_and_message(
-                    line, process_name
+                    line, process_name, service_key=self.service_key
                 )
                 if process_name == "rclone":
                     formatted = f'rclone mount name "{mount_name}": {redact_sensitive_log_data(message)}'
@@ -336,7 +368,7 @@ class SubprocessLogger:
                         self.access_logger.info(line)
                         continue
                     log_level, message = SubprocessLogger.parse_log_level_and_message(
-                        line, self.key_type
+                        line, self.key_type, service_key=self.service_key
                     )
                     formatted = f"{self.key_type} subprocess: {redact_sensitive_log_data(message)}"
                     if self.log_to_main:

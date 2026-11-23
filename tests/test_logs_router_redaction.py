@@ -70,6 +70,39 @@ class LogChunkRedactionTests(unittest.TestCase):
             )
             self.assertEqual(cursor, path.stat().st_size)
 
+    def test_retained_colored_native_credentials_are_redacted_on_read(self):
+        native = (
+            "2026-01-02T03:04:05.123456Z  WARN sqlx::query: "
+            "\x1b[3mtoken\x1b[0m\x1b[2m=\x1b[0mexample-token "
+            "\x1b[3mapi_key\x1b[0m\x1b[2m=\x1b[0mexample-api-key "
+            "statement=\"SELECT 'INFO'\\nFROM example\"\n"
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "native.log"
+            path.write_text(native)
+
+            with patch("api.routers.logs.find_log_file", return_value=path):
+                result = asyncio.run(
+                    get_log_file(
+                        process_name="Custom download service",
+                        cursor=None,
+                        tail_bytes=1024,
+                        file_id=None,
+                        logger=Mock(),
+                        current_user=None,
+                    )
+                )
+
+            expected = (
+                "2026-01-02T03:04:05.123456Z  WARN sqlx::query: "
+                "token=[REDACTED] api_key=[REDACTED] "
+                "statement=\"SELECT 'INFO'\\nFROM example\"\n"
+            )
+            self.assertEqual(result["chunk"], expected)
+            self.assertEqual(result["log"], expected)
+            self.assertEqual(result["cursor"], path.stat().st_size)
+            self.assertEqual(path.read_text(), native)
+
     def test_skips_a_tail_cursor_that_starts_inside_a_log_line(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir) / "service.log"
