@@ -2,7 +2,7 @@
 
 > Channel: dev. Canonical base: https://dumbarr.com/dev/
 
-Documentation artifact: release 1.25.31. Source commit: 0e45ce60d5878a9b2ff3feca1ec2c5941eddf625. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.31.
+Documentation artifact: release 1.25.32. Source commit: 30d0814484eda6ce8f82869d21ebd55e2aa0005d. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.32.
 
 DUMB coordinates media services. Match instructions to the installed backend version. Development guides can describe features absent from the latest release.
 
@@ -1849,10 +1849,14 @@ uses its recorded release and hashes rather than resolving latest. Ordinary
 configuration or environment edits do not invalidate this record. Legacy
 completed update receipts can also authorize exact-release restoration despite
 ordinary configuration or selector changes. Neither path bypasses an unfinished
-update's stricter recovery checks. Latest is resolved for a fresh installation
-or a requested update, not for ordinary startup.
-Existing native data without either release record is retained and requires
-review of its previous installed release; it is not treated as a fresh install.
+update's stricter recovery checks. Once this release evidence is recorded,
+latest is resolved for a requested update, not for ordinary startup.
+For legacy installations without either record, ordinary startup restores missing
+program files using the configured official v2 release selection, then records
+the verified installed release. This compatibility path applies to both migrated
+and fresh v2 installations; major-migration history is not required and conversion
+does not repeat. Present invalid records and unfinished updates remain blocked;
+they cannot fall through to configured-release restoration.
 
 Configuration loading automatically converts the older `v2_release_version`
 setting into the standard fields. New clients should submit the standard fields
@@ -14374,6 +14378,16 @@ different release; a fresh installation or a requested update resolves latest.
 Active preparation, migration, provider conversion, required restarts and
 unresolved service recovery block runtime updates.
 
+Early 2.x installations may not have saved this record. At normal startup,
+DUMB restores their missing program files using the existing configured release
+selection, then saves an independent installed-release record. This works for
+both migrated and fresh 2.x installations; no migration history or repeated
+major migration is needed. Later container rebuilds restore the exact recorded
+release. An existing installed-release or completed-update record takes
+precedence over the configured selection, even if it contains an older pin.
+Invalid records and unfinished updates still require their guarded recovery;
+they do not fall back to the configured selection.
+
 DUMB verifies the official archive, published checksum, exact release and commit
 before stopping the service. Create an independent service backup before an
 update. Starting a newer binary can upgrade its database schema. At that point
@@ -25034,6 +25048,10 @@ native updates. Normal startup reuses the exact verified installed release;
 after a container rebuild, DUMB restores that same release even if ordinary
 settings such as an API key have changed. An unfinished runtime update still
 requires its guarded recovery before normal startup can continue.
+Older 2.x installations without a release record recover their missing program
+using the configured release selection, then save their own record. This applies
+to both fresh and migrated 2.x installations; no migration history is required.
+An existing release record takes precedence over a retained older version pin.
 Existing `v2_release_version` settings are converted automatically on
 configuration load; no manual rename is needed. Old-format
 migration rollback actions are not converted; their archives and source plans
