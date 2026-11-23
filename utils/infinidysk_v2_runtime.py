@@ -164,7 +164,7 @@ def remember_installed_v2_runtime(service):
 def install_selected_v2_runtime(
     process_handler, process_name, service, *, replace_verified=False
 ):
-    """Install a fresh selected official release without touching native data.
+    """Install the selected official release without touching native data.
 
     Contained fresh preparation has a temporary data path. Its lifecycle owner
     records the final installed-release scope before exposing the final service.
@@ -284,6 +284,8 @@ def ensure_active_v2_runtime(process_handler, process_name, service):
     A container rebuild must never put beta6 over data already upgraded by a
     later accepted runtime. Ordinary configuration changes do not change the
     recorded installed release; upgrades remain separate lifecycle operations.
+    Older installations without accepted-release evidence retain their existing
+    configured release selection, then save the verified installed release.
     """
     valid, error = validate_active_v2_selection(service)
     if not valid:
@@ -338,9 +340,15 @@ def ensure_active_v2_runtime(process_handler, process_name, service):
     except (OSError, ValueError):
         return False, "The native data directory could not be verified."
     if existing_data:
-        return False, (
-            "Existing InfiniDysk 2 data has no recorded installed release. "
-            "Retain the data and identify its previous release before reinstalling."
+        # Persistent release records were introduced after native installs and
+        # migrations were already supported. Their absence cannot turn those
+        # installations into a manual recovery requirement. Known accepted or
+        # invalid update/installed records were handled above and never reach
+        # this compatibility path; the normal selector remains the user's
+        # version intent when no historical release authority exists.
+        process_handler.logger.info(
+            "Restoring the configured InfiniDysk 2 release for an older "
+            "installation without a saved release record. Existing data is retained."
         )
     result = install_selected_v2_runtime(process_handler, process_name, service)
     return remember_installed_v2_runtime(service) if result[0] else result

@@ -50,6 +50,7 @@ class NativeRuntimeRebuildTests(unittest.TestCase):
         self.during_staging = None
         self.staged = None
         self.fresh = False
+        self.candidate_bytes = b"accepted beta10 program"
 
     @staticmethod
     def artifact(path, release, contents):
@@ -109,7 +110,7 @@ class NativeRuntimeRebuildTests(unittest.TestCase):
                 releases.selected_release(self.service),
             )
         else:
-            self.assertEqual(service["release_version"], "v2.0.0-beta.10")
+            self.assertEqual(service["release_version"], self.accepted["release"])
             self.assertTrue(service["release_version_enabled"])
         self.assertEqual(self.service["v2_runtime_dir"], service["v2_runtime_dir"])
         return {**self.accepted, **self.plan_changes}
@@ -122,14 +123,14 @@ class NativeRuntimeRebuildTests(unittest.TestCase):
                 releases.selected_release(self.service),
             )
         else:
-            self.assertEqual(service["release_version"], "v2.0.0-beta.10")
+            self.assertEqual(service["release_version"], self.accepted["release"])
             self.assertTrue(service["release_version_enabled"])
         self.assertEqual((uid, gid), (self.uid, self.gid))
         staging = self.root / "restore-staging"
         staging.mkdir()
         self.staged = staging / "candidate"
         metadata = self.artifact(
-            self.staged, "v2.0.0-beta.10", b"accepted beta10 program"
+            self.staged, self.accepted["release"], self.candidate_bytes
         )
         self.assertEqual(plan, {**self.accepted, **self.plan_changes})
         if self.during_staging is not None:
@@ -479,11 +480,149 @@ class NativeRuntimeRebuildTests(unittest.TestCase):
         )
         self.assertEqual(list(self.root.glob(".program.fresh-previous-*")), [])
 
-    def test_existing_data_without_release_evidence_never_guesses_latest(self):
+    def prepare_legacy_install(self, *, release="v2.0.0-beta.10", migrated=False):
+        """Retain old native data but no new installed-release/update record."""
+        self.fresh = True
+        self.candidate_bytes = ("official " + release + " program").encode()
+        self.accepted = self.artifact(
+            self.root / "official-release-fixture", release, self.candidate_bytes
+        )
+        if migrated:
+            legacy = Path(self.service["config_dir"])
+            legacy.mkdir()
+            (legacy / ".dumb_infinidysk_install.json").write_text(
+                json.dumps({"release": "v1.7.1"})
+            )
+
+    def test_legacy_fresh_v2_data_uses_latest_without_migration_history(self):
+        from utils.infinidysk_v2_installed_release import read_installed_release
+
+        self.prepare_legacy_install()
+        self.assertFalse(self.journals.exists())
+        result, initial, resolve, stage = self.ensure()
+        self.assertEqual(result, (True, None))
+        initial.assert_not_called()
+        self.assertEqual(resolve.call_count, 1)
+        self.assertEqual(stage.call_count, 1)
+        self.assertEqual(
+            read_installed_release(self.service, self.journals), self.accepted
+        )
+        self.assertEqual(list(self.journals.glob("native-runtime-*.json")), [])
+
+    def test_legacy_migrated_v2_data_uses_configured_exact_beta6(self):
+        from utils.infinidysk_v2_installed_release import read_installed_release
+
+        self.prepare_legacy_install(release=runtime.RELEASE, migrated=True)
+        self.service["release_version"] = runtime.RELEASE
+        self.service["release_version_enabled"] = True
+        legacy_receipt = (
+            Path(self.service["config_dir"]) / ".dumb_infinidysk_install.json"
+        )
+        before = legacy_receipt.read_bytes()
+        result, initial, resolve, stage = self.ensure()
+        self.assertEqual(result, (True, None))
+        initial.assert_not_called()
+        self.assertEqual(resolve.call_count, 1)
+        self.assertEqual(stage.call_count, 1)
+        self.assertEqual(legacy_receipt.read_bytes(), before)
+        self.assertEqual(
+            read_installed_release(self.service, self.journals), self.accepted
+        )
+        self.assertEqual(
+            runtime.installed_active_v2_version(self.service), runtime.RELEASE
+        )
+
+    def test_legacy_existing_data_allows_verified_empty_program_destination(self):
+        self.prepare_legacy_install()
+        self.program.mkdir()
+        self.assertEqual(self.ensure()[0], (True, None))
+        self.assertEqual(
+            self.program.joinpath("infinidysk").read_bytes(), self.candidate_bytes
+        )
+
+    def test_legacy_existing_data_preserves_unverified_program_without_download(self):
+        self.prepare_legacy_install()
+        self.program.mkdir()
+        unknown = self.program / "operator-file"
+        unknown.write_bytes(b"preserve unverified program directory")
         resolve, stage = self.assert_refused()
         resolve.assert_not_called()
         stage.assert_not_called()
+        self.assertEqual(unknown.read_bytes(), b"preserve unverified program directory")
+        self.assertFalse(self.journals.exists())
+
+    def test_legacy_rebuild_records_release_then_restores_exact_bytes_next_time(self):
+        from utils.infinidysk_v2_installed_release import read_installed_release
+
+        self.prepare_legacy_install()
+        self.assertEqual(self.ensure()[0], (True, None))
+        accepted = read_installed_release(self.service, self.journals)
+        self.fresh = False
+        self.lose_container_program()
+        self.root.joinpath("restore-staging").rmdir()
+        # The compatibility bootstrap runs once. A subsequent stale pin must
+        # not override the now-persistent accepted native release.
+        self.service["release_version"] = runtime.RELEASE
+        self.service["release_version_enabled"] = True
+        self.assertEqual(self.ensure()[0], (True, None))
+        self.assertEqual(read_installed_release(self.service, self.journals), accepted)
+        self.assertEqual(
+            runtime.installed_active_v2_version(self.service), "v2.0.0-beta.10"
+        )
+        self.assertEqual(
+            self.program.joinpath("infinidysk").read_bytes(), self.candidate_bytes
+        )
+
+    def test_legacy_record_after_bootstrap_cannot_be_bypassed_when_invalid(self):
+        self.prepare_legacy_install()
+        self.assertEqual(self.ensure()[0], (True, None))
+        self.fresh = False
+        self.lose_container_program()
+        record = next(self.journals.glob("installed-release-*.json"))
+        record.write_text("{interrupted installed-release write")
+        resolve, stage = self.assert_refused()
+        resolve.assert_not_called()
+        stage.assert_not_called()
+        self.assertEqual(record.read_text(), "{interrupted installed-release write")
         self.assertFalse(self.program.exists())
+
+    def test_legacy_release_download_failure_preserves_existing_data(self):
+        self.prepare_legacy_install()
+
+        def unavailable(_service):
+            raise releases.NativeReleaseError("fixture official release unavailable")
+
+        resolve, stage = self.assert_refused(resolver=unavailable)
+        self.assertEqual(resolve.call_count, 1)
+        stage.assert_not_called()
+        self.assertFalse(self.program.exists())
+        self.assertFalse(self.journals.exists())
+
+    def test_legacy_record_write_failure_blocks_startup_until_record_can_be_saved(self):
+        from utils.infinidysk_v2_installed_release import read_installed_release
+
+        self.prepare_legacy_install()
+        with patch(
+            "utils.infinidysk_v2_installed_release.record_installed_release",
+            side_effect=OSError("fixture installed-release write unavailable"),
+        ):
+            result, initial, resolve, stage = self.ensure()
+        self.assertFalse(result[0])
+        initial.assert_not_called()
+        self.assertEqual(resolve.call_count, 1)
+        self.assertEqual(stage.call_count, 1)
+        self.assertIsNone(read_installed_release(self.service, self.journals))
+        self.assertEqual(
+            self.program.joinpath("infinidysk").read_bytes(), self.candidate_bytes
+        )
+        result, initial, resolve, stage = self.ensure()
+        self.assertEqual(result, (True, None))
+        initial.assert_not_called()
+        resolve.assert_not_called()
+        stage.assert_not_called()
+        self.assertEqual(
+            read_installed_release(self.service, self.journals), self.accepted
+        )
 
     def test_completed_update_survives_normal_key_and_config_changes(self):
         self.service["env"] = {"FRONTEND_BACKEND_API_KEY": "old-fixture-key"}
