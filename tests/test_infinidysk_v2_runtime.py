@@ -586,6 +586,148 @@ class NativeRuntimeTests(unittest.TestCase):
             runtime.prepare_v2_launch(self.service, os.getuid(), os.getgid())[0]
         )
 
+    def postgres_after_sqlite_cleanup(self):
+        """Retain settled native PostgreSQL state after optional SQLite cleanup."""
+        self.installed()
+        runtime.native_auth(self.service, create=True)
+        data = Path(self.service["v2_data_dir"])
+        (data / "db-contract.json").write_text('{"retained": "v1 import receipt"}')
+        (data / "database.toml").write_text(
+            'url = "postgresql://localhost:5432/native"\n'
+        )
+        return data
+
+    def test_settled_postgres_restart_does_not_require_deleted_native_sqlite(self):
+        import sqlite3
+
+        data = self.postgres_after_sqlite_cleanup()
+        for scheme in ("postgres", "postgresql"):
+            with self.subTest(scheme=scheme):
+                (data / "database.toml").write_text(
+                    f'url = "{scheme}://localhost:5432/native"\n'
+                )
+                before = {path.name: path.read_bytes() for path in data.iterdir()}
+                env = dict(self.service["env"])
+                with (
+                    patch.object(sqlite3, "connect") as sqlite,
+                    patch.object(runtime.subprocess, "run") as subprocess_run,
+                ):
+                    valid, error = runtime.prepare_v2_launch(
+                        self.service, os.getuid(), os.getgid()
+                    )
+                self.assertTrue(valid, error)
+                sqlite.assert_not_called()
+                subprocess_run.assert_not_called()
+                self.assertEqual(
+                    {path.name: path.read_bytes() for path in data.iterdir()}, before
+                )
+                self.assertEqual(self.service["env"], env)
+                self.assertFalse((data / "infinidysk.sqlite").exists())
+                self.assertFalse((data / "infinidysk.sqlite.pre-postgres").exists())
+
+    def test_postgres_environment_only_or_unsettled_native_boot_cannot_authorize_import(
+        self,
+    ):
+        data = self.postgres_after_sqlite_cleanup()
+        boot = data / "database.toml"
+        for saved, override in (
+            (None, "postgresql://localhost:5432/native"),
+            ("", "postgresql://localhost:5432/native"),
+            ('url = "sqlite://infinidysk.sqlite"\n', None),
+            (
+                'url = "sqlite://infinidysk.sqlite"\n',
+                "postgresql://localhost:5432/native",
+            ),
+            (
+                'url = "postgresql://localhost:5432/native"\n',
+                "postgresql://localhost:5432/other",
+            ),
+            (
+                'url = "postgresql://localhost:5432/native"\n',
+                "sqlite://infinidysk.sqlite",
+            ),
+            ('url = "postgresql://localhost:5432/native"\nmigration = {}\n', None),
+            (
+                'url = "postgresql://localhost:5432/native"\n'
+                '[migration]\nstate = "syncing"\n',
+                None,
+            ),
+            ('url = "postgresql://localhost:5432/native"\nmigration = false\n', None),
+            ('url = ["postgresql://localhost:5432/native"]\n', None),
+            ('url = "unterminated', None),
+        ):
+            with self.subTest(saved=saved, override=override):
+                if saved is None:
+                    boot.unlink(missing_ok=True)
+                else:
+                    boot.write_text(saved)
+                self.service["env"] = (
+                    {"INFINIDYSK_DATABASE_URL": override} if override else {}
+                )
+                before = {path.name: path.read_bytes() for path in data.iterdir()}
+                with (
+                    patch.object(runtime.os, "chown") as own,
+                    patch.object(runtime.subprocess, "run") as subprocess_run,
+                ):
+                    valid, _error = runtime.prepare_v2_launch(
+                        self.service, os.getuid(), os.getgid()
+                    )
+                self.assertFalse(valid)
+                own.assert_not_called()
+                subprocess_run.assert_not_called()
+                self.assertEqual(
+                    {path.name: path.read_bytes() for path in data.iterdir()}, before
+                )
+
+    def test_settled_postgres_boot_without_private_auth_remains_foreign(self):
+        data = self.postgres_after_sqlite_cleanup()
+        private = data / runtime.AUTH_FILE
+        private.unlink()
+        before = {path.name: path.read_bytes() for path in data.iterdir()}
+        with patch.object(runtime.os, "chown") as own:
+            valid, error = runtime.prepare_v2_launch(
+                self.service, os.getuid(), os.getgid()
+            )
+        self.assertFalse(valid)
+        self.assertIn("foreign nonempty", error)
+        own.assert_not_called()
+        with self.assertRaises(ValueError):
+            runtime.native_auth(self.service, create=True)
+        self.assertFalse(private.exists())
+        self.assertEqual(
+            {path.name: path.read_bytes() for path in data.iterdir()}, before
+        )
+
+    def test_settled_postgres_boot_still_requires_private_credentials_and_direct_evidence(
+        self,
+    ):
+        data = self.postgres_after_sqlite_cleanup()
+        private = data / runtime.AUTH_FILE
+        private.chmod(0o644)
+        self.assertFalse(
+            runtime.prepare_v2_launch(self.service, os.getuid(), os.getgid())[0]
+        )
+        private.chmod(0o600)
+        for name in ("infinidysk.sqlite", "infinidysk.sqlite.pre-postgres"):
+            with self.subTest(name=name):
+                link = data / name
+                link.symlink_to(self.root / "foreign-db")
+                self.assertFalse(
+                    runtime.prepare_v2_launch(self.service, os.getuid(), os.getgid())[0]
+                )
+                self.assertTrue(link.is_symlink())
+                link.unlink()
+        boot = data / "database.toml"
+        retained = self.root / "foreign-boot-state"
+        boot.rename(retained)
+        boot.symlink_to(retained)
+        before = retained.read_bytes()
+        self.assertFalse(
+            runtime.prepare_v2_launch(self.service, os.getuid(), os.getgid())[0]
+        )
+        self.assertTrue(boot.is_symlink())
+        self.assertEqual(retained.read_bytes(), before)
+
     def test_native_shutdown_reports_leftover_mount_without_detaching_it(self):
         from utils import processes
         from utils import infinidysk_migration_admission as admission

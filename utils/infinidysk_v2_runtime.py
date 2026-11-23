@@ -512,10 +512,12 @@ def native_auth(
         return auth
     if not create:
         raise ValueError("Native controller credentials have not been prepared")
+    data, native_boot = _native_database_boot(service, data_root)
     _validate_data_bootstrap(
         data,
         allow_v1_import=allow_v1_import,
-        native_url=native_database_url(service, data_root),
+        native_url=_selected_database_url(service, data, native_boot),
+        native_boot=native_boot,
     )
     data.mkdir(parents=True, exist_ok=True)
     env = service.get("env") or {}
@@ -530,7 +532,9 @@ def native_auth(
     return auth
 
 
-def _validate_data_bootstrap(data, *, allow_v1_import=False, native_url=None):
+def _validate_data_bootstrap(
+    data, *, allow_v1_import=False, native_url=None, native_boot=None
+):
     data = Path(data)
     if data in {
         Path("/etc"),
@@ -560,9 +564,23 @@ def _validate_data_bootstrap(data, *, allow_v1_import=False, native_url=None):
     for evidence in (main, retired):
         if evidence.is_symlink():
             raise ValueError("Native database evidence cannot be a symbolic link")
-    native_evidence = main.is_file() or (
-        retired.is_file()
-        and str(native_url or "").startswith(("postgres://", "postgresql://"))
+    # Native cutover durably records its PostgreSQL selection and removes the
+    # migration section. Its obsolete SQLite rollback copy is not a permanent
+    # startup prerequisite. An environment override alone is not this evidence.
+    settled_postgres = (
+        isinstance(native_boot, dict)
+        and isinstance(native_boot.get("url"), str)
+        and native_boot["url"].startswith(("postgres://", "postgresql://"))
+        and native_boot["url"] == native_url
+        and "migration" not in native_boot
+    )
+    native_evidence = (
+        main.is_file()
+        or (
+            retired.is_file()
+            and str(native_url or "").startswith(("postgres://", "postgresql://"))
+        )
+        or settled_postgres
     )
     if (
         ((data / "db.sqlite").exists() or (data / "db-contract.json").exists())
@@ -975,11 +993,12 @@ def prepare_v2_launch(
             valid, error = validate_selected_owners(service, rclone_instances)
             if not valid:
                 return False, error
-        native_database_url(service, data_root)
+        native_data, native_boot = _native_database_boot(service, data_root)
         _validate_data_bootstrap(
-            resolve_v2_data_dir(service, data_root),
+            native_data,
             allow_v1_import=allow_v1_import,
-            native_url=native_database_url(service, data_root),
+            native_url=_selected_database_url(service, native_data, native_boot),
+            native_boot=native_boot,
         )
         private = Path(resolve_v2_data_dir(service, data_root)) / AUTH_FILE
         if private.exists() or private.is_symlink():
