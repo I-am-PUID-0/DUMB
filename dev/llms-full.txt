@@ -2,7 +2,7 @@
 
 > Channel: dev. Canonical base: https://dumbarr.com/dev/
 
-Documentation artifact: release 1.25.30. Source commit: dcbcc33203bb8afbd25e65aad216ba124f3d04b5. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.30.
+Documentation artifact: release 1.25.31. Source commit: 0e45ce60d5878a9b2ff3feca1ec2c5941eddf625. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.31.
 
 DUMB coordinates media services. Match instructions to the installed backend version. Development guides can describe features absent from the latest release.
 
@@ -14171,6 +14171,13 @@ is delayed, retrying verifies that same SQLite file and its health without
 restoring over writes accepted since the first restart. A missing or replaced
 file remains blocked for investigation.
 
+After confirmed PostgreSQL cutover, `infinidysk.sqlite.pre-postgres` is the
+SQLite rollback copy. Keep it until you have a verified PostgreSQL backup and
+deliberately choose to give up SQLite rollback. The separate
+`before-native-copy.sqlite` snapshot can lack writes accepted during conversion.
+Do not remove `metrics.sqlite` or `warden.db` as conversion leftovers; they
+remain separate live stores.
+
 ## Existing Arr download-client credentials
 
 InfiniDysk 1.x could accept both the API key stored in its settings and the
@@ -20421,6 +20428,23 @@ The [AI Assistant guide](../features/ai-assistant.md) covers supported models, p
 4. Keep **Follow tail** checked to scroll to the newest lines. Download a snapshot when you need to keep it.
 
 You can also change the line limit. Service-aware parsing retains application timestamps/severity and groups multiline errors where supported. Traefik offers access logs; Plex offers DBRepair logs when enabled.
+
+
+
+<div class="docs-dev-section" markdown="1">
+
+<p class="docs-dev-section-label">Development update · not in the released 2.23.0 docs</p>
+
+InfiniDysk supports both its older bracketed logs and the 2.x tracing format.
+The viewer prefers InfiniDysk's own timestamp, removes terminal color codes,
+and preserves query text and module/operation context within each InfiniDysk
+message. Use **INFO**, **WARNING**, **ERROR** and **DEBUG**
+filters as usual: native `WARN` appears as **WARNING**, and `TRACE` appears
+under **DEBUG**.
+
+</div>
+
+
 
 DUMB applies its sensitive-data redactor to logs viewed or downloaded here. Review a download before sharing it; arbitrary application output can contain values the redactor does not recognize.
 
