@@ -205,7 +205,7 @@ class PublisherSignatureTests(unittest.TestCase):
             )
 
     def test_bundled_keys_have_reviewed_fingerprints(self):
-        for publisher in ("bun", "dotnet"):
+        for publisher in ("bun", "dotnet", "pgadmin"):
             key, expected = verification._PUBLISHERS[publisher]
             result = subprocess.run(
                 self.gpg + ["--with-colons", "--show-keys", str(key)],

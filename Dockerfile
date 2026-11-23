@@ -97,7 +97,10 @@ RUN echo "export PATH=/usr/lib/postgresql/16/bin:\$PATH" >> /root/.bashrc
 # Stage 1: pgadmin-builder
 ####################################################################################################################################################
 FROM base AS pgadmin-builder
-ARG PGADMIN_VERSION=9.18
+COPY scripts/prepare_pgadmin_assets.py /tmp/pgadmin-build/scripts/prepare_pgadmin_assets.py
+COPY utils/__init__.py utils/artifact_verification.py /tmp/pgadmin-build/utils/
+COPY utils/signing_keys/pgadmin.asc /tmp/pgadmin-build/utils/signing_keys/pgadmin.asc
+ARG PGADMIN_VERSION=9.19
 RUN --mount=type=cache,target=/root/.cache/pip,sharing=shared \
     python3.11 -m venv /pgadmin/venv && \
     /pgadmin/venv/bin/python -m pip install --upgrade pip setuptools wheel && \
@@ -119,7 +122,8 @@ RUN --mount=type=cache,target=/root/.cache/pip,sharing=shared \
     /pgadmin/venv/bin/python -c \
       'import importlib.metadata, pgadmin4; assert int(importlib.metadata.version("setuptools").split(".")[0]) >= 83' && \
     find /pgadmin/venv/lib/python3.11/site-packages -type d \
-      \( -name tests -o -name test \) -prune -exec rm -rf '{}' +
+      \( -name tests -o -name test \) -prune -exec rm -rf '{}' + && \
+    PYTHONPATH=/tmp/pgadmin-build /pgadmin/venv/bin/python -m scripts.prepare_pgadmin_assets
 
 ####################################################################################################################################################
 # Stage 2: systemstats-builder

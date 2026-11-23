@@ -25,6 +25,10 @@ _PUBLISHERS = {
         _KEY_DIRECTORY / "dotnet.asc",
         "2B930AB1228D11D5D7F6B6ACB9CF1A51FC7D3ACF",
     ),
+    "pgadmin": (
+        _KEY_DIRECTORY / "pgadmin.asc",
+        "E8697E2EEF76C02D3A6332778881B2A8210976F2",
+    ),
 }
 _REJECTED_STATUSES = {
     "BADSIG",
