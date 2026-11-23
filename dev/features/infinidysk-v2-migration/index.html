@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.28">
+    <meta name="dumb-docs-package-version" content="1.25.29">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="e8adb230f0190338fd0f05e7e5c1cb70ce758edf">
-    <meta name="dumb-docs-release-tag" content="1.25.28">
+    <meta name="dumb-docs-build-commit" content="7271c67a507802d40ebb02b8fd0aa726eda7c262">
+    <meta name="dumb-docs-release-tag" content="1.25.29">
   
 
     
@@ -7208,6 +7208,16 @@ it shows snapshot pages or bytes, the current database table's copied rows and
 changes waiting to synchronize. A table reaching its total does not mean the
 whole conversion has finished; remaining-time estimates cover only the current
 phase and are omitted when its work cannot be measured reliably.</p>
+<p>The recovery copy uses a consistent point-in-time view while InfiniDysk keeps
+accepting writes. This requires SQLite's write-ahead log (WAL) mode and enough
+free space for the snapshot and the active write log. DUMB monitors storage
+headroom; an unsafe mode or insufficient space stops preparation before native
+conversion. It does not change the source database's journal mode.</p>
+<p>If a snapshot copy restarts, its page count can go backward. The panel shows
+the restart count and hides the phase's pace and remaining-time estimate.
+Counts describe the current pass. A recent status check does not make an old
+work measurement current; estimates require recent, reliable measurements.
+Older backends without that evidence still show counts and elapsed time.</p>
 <p>If <strong>Start</strong> times out, keep the panel open or reopen it. Automatic read-only
 checks discover the saved job after navigation or reload. <strong>Refresh status</strong>
 also works while a request is pending and reports whether the latest check
@@ -7655,11 +7665,11 @@ separate existing workflows.</p>
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.28</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.28">Release notes</a>
+              <span>Documentation release 1.25.29</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.29">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;e8adb230f0190338fd0f05e7e5c1cb70ce758edf" title="Documentation source commit e8adb230f0190338fd0f05e7e5c1cb70ce758edf">Source e8adb230</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;7271c67a507802d40ebb02b8fd0aa726eda7c262" title="Documentation source commit 7271c67a507802d40ebb02b8fd0aa726eda7c262">Source 7271c67a</a>
             
             
           </div>

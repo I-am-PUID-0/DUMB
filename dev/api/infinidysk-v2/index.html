@@ -27,10 +27,10 @@
   <meta name="generator" content="zensical-0.1.1">
   
     
-    <meta name="dumb-docs-package-version" content="1.25.28">
+    <meta name="dumb-docs-package-version" content="1.25.29">
     <meta name="dumb-docs-build-kind" content="release">
-    <meta name="dumb-docs-build-commit" content="e8adb230f0190338fd0f05e7e5c1cb70ce758edf">
-    <meta name="dumb-docs-release-tag" content="1.25.28">
+    <meta name="dumb-docs-build-commit" content="7271c67a507802d40ebb02b8fd0aa726eda7c262">
+    <meta name="dumb-docs-release-tag" content="1.25.29">
   
 
     
@@ -7270,6 +7270,22 @@ counts remain unknown. <code>elapsed_seconds</code>, <code>rate_per_second</code
 report elapsed time without a measurable total or ETA. Clients must suppress
 estimates when observations are stale or unconfirmed and must not interpret a
 completed table as permission to cut over.</p>
+<p>Supporting builds distinguish job observation from actual work measurements:
+<code>progress.updated_at</code> is the measurement time in epoch seconds,
+<code>progress.estimate_reliable</code> is a strict boolean, and <code>progress.restarts</code> is a
+nonnegative restart count for the current phase. A counter rewind or changed
+total invalidates pace and ETA; do not clamp the visible count to its previous
+maximum. A new phase starts its own counters and restart count. The dashboard
+requires recent confirmed measurements, <code>estimate_reliable: true</code>, zero
+restarts and its measurement warmup before showing pace or ETA. Job/status
+heartbeats cannot refresh the measurement time. Older responses without this
+evidence retain counts and elapsed time without an unproven estimate.</p>
+<p>Online snapshot preparation pins a consistent read-only SQLite view in WAL
+mode while native writers continue. It releases that view immediately after
+copying, before snapshot integrity checks and fingerprinting. DUMB monitors
+source/destination storage headroom, including room for WAL growth. Non-WAL
+mode or insufficient headroom stops preparation before native conversion;
+the source journal mode is not changed.</p>
 <p>Subsequent cutover/cancel/rollback requests use the <strong>current <code>job_id</code></strong>, exact
 text from <code>status.confirmation_texts[action]</code> and both acknowledgements. They
 do not reuse an expired initial preview token after a long synchronization.
@@ -7380,11 +7396,11 @@ cannot be confirmed, and disable actions until a valid current response returns.
           
           <div class="docs-build-identity" aria-label="Documentation release and build" data-docs-build-kind="release">
             
-              <span>Documentation release 1.25.28</span>
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.28">Release notes</a>
+              <span>Documentation release 1.25.29</span>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;releases&#x2f;tag&#x2f;1.25.29">Release notes</a>
             
             
-              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;e8adb230f0190338fd0f05e7e5c1cb70ce758edf" title="Documentation source commit e8adb230f0190338fd0f05e7e5c1cb70ce758edf">Source e8adb230</a>
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;I-am-PUID-0&#x2f;DUMB_docs&#x2f;commit&#x2f;7271c67a507802d40ebb02b8fd0aa726eda7c262" title="Documentation source commit 7271c67a507802d40ebb02b8fd0aa726eda7c262">Source 7271c67a</a>
             
             
           </div>

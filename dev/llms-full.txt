@@ -2,7 +2,7 @@
 
 > Channel: dev. Canonical base: https://dumbarr.com/dev/
 
-Documentation artifact: release 1.25.28. Source commit: e8adb230f0190338fd0f05e7e5c1cb70ce758edf. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.28.
+Documentation artifact: release 1.25.29. Source commit: 7271c67a507802d40ebb02b8fd0aa726eda7c262. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.29.
 
 DUMB coordinates media services. Match instructions to the installed backend version. Development guides can describe features absent from the latest release.
 
@@ -2788,6 +2788,24 @@ counts remain unknown. `elapsed_seconds`, `rate_per_second`,
 report elapsed time without a measurable total or ETA. Clients must suppress
 estimates when observations are stale or unconfirmed and must not interpret a
 completed table as permission to cut over.
+
+Supporting builds distinguish job observation from actual work measurements:
+`progress.updated_at` is the measurement time in epoch seconds,
+`progress.estimate_reliable` is a strict boolean, and `progress.restarts` is a
+nonnegative restart count for the current phase. A counter rewind or changed
+total invalidates pace and ETA; do not clamp the visible count to its previous
+maximum. A new phase starts its own counters and restart count. The dashboard
+requires recent confirmed measurements, `estimate_reliable: true`, zero
+restarts and its measurement warmup before showing pace or ETA. Job/status
+heartbeats cannot refresh the measurement time. Older responses without this
+evidence retain counts and elapsed time without an unproven estimate.
+
+Online snapshot preparation pins a consistent read-only SQLite view in WAL
+mode while native writers continue. It releases that view immediately after
+copying, before snapshot integrity checks and fingerprinting. DUMB monitors
+source/destination storage headroom, including room for WAL growth. Non-WAL
+mode or insufficient headroom stops preparation before native conversion;
+the source journal mode is not changed.
 
 Subsequent cutover/cancel/rollback requests use the **current `job_id`**, exact
 text from `status.confirmation_texts[action]` and both acknowledgements. They
@@ -13986,6 +14004,18 @@ it shows snapshot pages or bytes, the current database table's copied rows and
 changes waiting to synchronize. A table reaching its total does not mean the
 whole conversion has finished; remaining-time estimates cover only the current
 phase and are omitted when its work cannot be measured reliably.
+
+The recovery copy uses a consistent point-in-time view while InfiniDysk keeps
+accepting writes. This requires SQLite's write-ahead log (WAL) mode and enough
+free space for the snapshot and the active write log. DUMB monitors storage
+headroom; an unsafe mode or insufficient space stops preparation before native
+conversion. It does not change the source database's journal mode.
+
+If a snapshot copy restarts, its page count can go backward. The panel shows
+the restart count and hides the phase's pace and remaining-time estimate.
+Counts describe the current pass. A recent status check does not make an old
+work measurement current; estimates require recent, reliable measurements.
+Older backends without that evidence still show counts and elapsed time.
 
 If **Start** times out, keep the panel open or reopen it. Automatic read-only
 checks discover the saved job after navigation or reload. **Refresh status**
