@@ -1,4 +1,5 @@
 import copy
+from contextlib import closing
 import json
 import os
 from pathlib import Path
@@ -35,7 +36,8 @@ class NativePostgresTests(unittest.TestCase):
         self.root = Path(self.scratch.name)
         self.data = self.root / "native"
         self.data.mkdir()
-        with sqlite3.connect(self.data / "infinidysk.sqlite") as db:
+        with closing(sqlite3.connect(self.data / "infinidysk.sqlite")) as db, db:
+            db.execute("PRAGMA journal_mode=WAL")
             db.execute("CREATE TABLE items(id INTEGER PRIMARY KEY, name TEXT)")
             db.execute("INSERT INTO items VALUES(1, 'reserved example')")
         self.config = Config(
@@ -181,6 +183,52 @@ class NativePostgresTests(unittest.TestCase):
         self.wait_worker()
         return self.manager._public(self.manager._job())
 
+    def admit_snapshot_job(self):
+        _preview, request = self.start_request()
+        with patch.object(self.manager, "_run_start"):
+            self.manager.start(request)
+            self.wait_worker()
+        return self.manager._job()
+
+    def enlarge_sqlite_source(self):
+        with closing(sqlite3.connect(self.data / "infinidysk.sqlite")) as db, db:
+            db.execute("CREATE TABLE snapshot_payload(value BLOB)")
+            db.executemany(
+                "INSERT INTO snapshot_payload VALUES(zeroblob(?))", [(8192,)] * 512
+            )
+
+    def assert_sqlite_checkpoint_released(self):
+        with closing(sqlite3.connect(self.data / "infinidysk.sqlite", timeout=0)) as db:
+            self.assertEqual(
+                (0, 0, 0), db.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()
+            )
+
+    def snapshot_progress_samples(self, samples):
+        saved = []
+        save = self.manager._save
+        monotonic = [10.0]
+
+        def capture(job):
+            saved.append(copy.deepcopy(job))
+            save(job)
+
+        def simulate(_job, progress):
+            for timestamp, stage, measurements in samples:
+                monotonic[0] = timestamp
+                self.clock = 1000 + int(timestamp - 10)
+                progress(stage, "Fixture progress measurement.", **measurements)
+
+        with (
+            patch(
+                "utils.infinidysk_v2_postgres.time.monotonic",
+                side_effect=lambda: monotonic[0],
+            ),
+            patch.object(self.manager, "_save", side_effect=capture),
+            patch.object(self.manager, "_snapshot", side_effect=simulate),
+        ):
+            self.assertEqual("copying", self.begin()["status"])
+        return saved
+
     def action(self, job, kind):
         status = self.manager.status()
         return {
@@ -272,6 +320,288 @@ class NativePostgresTests(unittest.TestCase):
         self.assertTrue(Path(admitted["snapshot_private"]).is_file())
         self.assertTrue(admitted["snapshot_sha256"])
 
+    def test_snapshot_is_fixed_while_native_wal_writer_commits(self):
+        self.enlarge_sqlite_source()
+        job = self.admit_snapshot_job()
+        write_requested, write_finished = threading.Event(), threading.Event()
+        writer_errors = []
+
+        def native_writer():
+            try:
+                if not write_requested.wait(timeout=5):
+                    raise TimeoutError("Snapshot did not reach the concurrent write")
+                with (
+                    closing(
+                        sqlite3.connect(self.data / "infinidysk.sqlite", timeout=0)
+                    ) as db,
+                    db,
+                ):
+                    db.execute("UPDATE items SET name = 'committed during backup'")
+                    db.execute("INSERT INTO items VALUES(2, 'new native item')")
+            except Exception as error:
+                writer_errors.append(error)
+            finally:
+                write_finished.set()
+
+        writer = threading.Thread(target=native_writer)
+        writer.start()
+
+        def stop_writer():
+            write_requested.set()
+            writer.join(timeout=5)
+            self.assertFalse(writer.is_alive(), "Owned SQLite writer did not stop")
+
+        self.addCleanup(stop_writer)
+        pages = []
+
+        def observe(stage, _message, **measurements):
+            if stage != "backup" or measurements.get("unit") != "pages":
+                return
+            pages.append((measurements["done"], measurements["total"]))
+            if len(pages) == 2:
+                write_requested.set()
+                self.assertTrue(write_finished.wait(timeout=5))
+                self.assertFalse(writer_errors, str(writer_errors))
+                self.clock = 2000
+
+        self.manager._snapshot(job, observe)
+        writer.join(timeout=5)
+        self.assertFalse(writer.is_alive())
+        self.assertTrue(write_requested.is_set())
+        self.assertGreater(len(pages), 2)
+        self.assertEqual(
+            sorted(done for done, _total in pages), [done for done, _total in pages]
+        )
+        self.assertEqual(1, len({total for _done, total in pages}))
+        self.assertEqual(pages[-1][1], pages[-1][0])
+        self.assertEqual(1000, job["snapshot_at"])
+        with closing(sqlite3.connect(job["snapshot_private"])) as snapshot:
+            self.assertEqual(
+                [(1, "reserved example")],
+                snapshot.execute("SELECT * FROM items ORDER BY id").fetchall(),
+            )
+        with closing(sqlite3.connect(self.data / "infinidysk.sqlite")) as source:
+            self.assertEqual(
+                [(1, "committed during backup"), (2, "new native item")],
+                source.execute("SELECT * FROM items ORDER BY id").fetchall(),
+            )
+        self.assert_sqlite_checkpoint_released()
+
+    def test_snapshot_releases_live_reader_before_validation_and_readback(self):
+        self.enlarge_sqlite_source()
+        job = self.admit_snapshot_job()
+        stages = []
+        readers = []
+        connect = sqlite3.connect
+
+        class TrackedReader:
+            def __init__(self, connection):
+                self.connection = connection
+                self.closed = False
+
+            def __getattr__(self, name):
+                return getattr(self.connection, name)
+
+            def close(self):
+                self.connection.close()
+                self.closed = True
+
+        def observed_connect(database, *args, **kwargs):
+            connection = connect(database, *args, **kwargs)
+            if isinstance(database, str) and "?mode=ro" in database:
+                connection = TrackedReader(connection)
+                readers.append(connection)
+            return connection
+
+        with closing(
+            sqlite3.connect(self.data / "infinidysk.sqlite", timeout=0)
+        ) as writer:
+            writer.execute("PRAGMA wal_autocheckpoint=0")
+            wrote = False
+
+            def observe(stage, _message, **measurements):
+                nonlocal wrote
+                if measurements.get("unit") == "pages" and not wrote:
+                    writer.execute("UPDATE items SET name = 'live native write'")
+                    writer.commit()
+                    wrote = True
+                if stage in {"backup_validation", "backup_fingerprint"}:
+                    stages.append(stage)
+                    self.assertTrue(readers)
+                    self.assertTrue(all(reader.closed for reader in readers))
+                    self.assertEqual(
+                        (0, 0, 0),
+                        writer.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone(),
+                        "Snapshot source reader still holds the native WAL",
+                    )
+
+            with patch(
+                "utils.infinidysk_v2_postgres.sqlite3.connect", observed_connect
+            ):
+                self.manager._snapshot(job, observe)
+        self.assertTrue(wrote)
+        self.assertIn("backup_validation", stages)
+        self.assertIn("backup_fingerprint", stages)
+
+    def test_snapshot_callback_failure_releases_reader_and_preserves_native_writes(
+        self,
+    ):
+        self.enlarge_sqlite_source()
+        job = self.admit_snapshot_job()
+        with closing(
+            sqlite3.connect(self.data / "infinidysk.sqlite", timeout=0)
+        ) as writer:
+
+            def interrupt(_stage, _message, **measurements):
+                if measurements.get("unit") == "pages":
+                    writer.execute("UPDATE items SET name = 'preserved native write'")
+                    writer.commit()
+                    raise OSError("Fixture snapshot callback failed")
+
+            with self.assertRaisesRegex(OSError, "callback failed"):
+                self.manager._snapshot(job, interrupt)
+            self.assertEqual(
+                (0, 0, 0), writer.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()
+            )
+            self.assertEqual(
+                "preserved native write",
+                writer.execute("SELECT name FROM items WHERE id = 1").fetchone()[0],
+            )
+        self.assertNotIn("snapshot_private", job)
+        self.assertFalse(
+            any(
+                method in {"POST", "DELETE"} and path.endswith("/migration")
+                for method, path, _body in self.calls
+            )
+        )
+
+    def test_cancel_during_real_backup_releases_reader_without_native_mutation(self):
+        self.enlarge_sqlite_source()
+        snapshot = self.manager._snapshot
+
+        def cancel_during_copy(job, progress):
+            with closing(
+                sqlite3.connect(self.data / "infinidysk.sqlite", timeout=0)
+            ) as writer:
+
+                def observe(stage, message, **measurements):
+                    if measurements.get("unit") == "pages":
+                        writer.execute("UPDATE items SET name = 'preserved on cancel'")
+                        writer.commit()
+                        self.manager._start_cancel.set()
+                    progress(stage, message, **measurements)
+
+                snapshot(job, observe)
+
+        with patch.object(self.manager, "_snapshot", side_effect=cancel_during_copy):
+            job = self.begin()
+        self.assertEqual("cancelled", job["status"])
+        self.assert_sqlite_checkpoint_released()
+        with closing(sqlite3.connect(self.data / "infinidysk.sqlite")) as source:
+            self.assertEqual(
+                "preserved on cancel",
+                source.execute("SELECT name FROM items WHERE id = 1").fetchone()[0],
+            )
+        self.assertFalse(
+            any(
+                method in {"POST", "DELETE"} and path.endswith("/migration")
+                for method, path, _body in self.calls
+            )
+        )
+
+    def test_non_wal_snapshot_fails_before_copy_or_native_mutation(self):
+        with closing(sqlite3.connect(self.data / "infinidysk.sqlite")) as source:
+            self.assertEqual(
+                "delete", source.execute("PRAGMA journal_mode=DELETE").fetchone()[0]
+            )
+        original = (self.data / "infinidysk.sqlite").read_bytes()
+        job = self.begin()
+        self.assertEqual("recovery_required", job["status"])
+        private = self.manager._job()
+        self.assertIn("WAL", private["preparation_error_private"]["message"])
+        self.assertIn("requires WAL mode", job["message"])
+        self.assertEqual(original, (self.data / "infinidysk.sqlite").read_bytes())
+        self.assertFalse(
+            (
+                self.manager.state_root / job["job_id"] / "before-native-copy.sqlite"
+            ).exists()
+        )
+        self.assertNotIn("snapshot_private", private)
+        self.assertFalse(
+            any(
+                method in {"POST", "DELETE"} and path.endswith("/migration")
+                for method, path, _body in self.calls
+            )
+        )
+
+    def test_low_storage_refusal_is_actionable_without_returning_driver_errors(self):
+        with patch(
+            "utils.infinidysk_v2_postgres.shutil.disk_usage",
+            return_value=SimpleNamespace(free=0),
+        ):
+            job = self.begin()
+        self.assertEqual("recovery_required", job["status"])
+        self.assertIn("Storage headroom is too low", job["message"])
+        self.assertNotIn("preparation_error_private", job)
+        self.assertFalse(
+            any(
+                method == "POST" and path.endswith("/migration")
+                for method, path, _body in self.calls
+            )
+        )
+
+    def test_snapshot_headroom_failure_releases_reader_and_preserves_native_writes(
+        self,
+    ):
+        self.enlarge_sqlite_source()
+        job = self.admit_snapshot_job()
+        now, exhausted = [10.0], [False]
+        observed_pages = []
+
+        def capacity(_path):
+            return SimpleNamespace(free=0 if exhausted[0] else 1024**4)
+
+        with closing(
+            sqlite3.connect(self.data / "infinidysk.sqlite", timeout=0)
+        ) as writer:
+
+            def observe(_stage, _message, **measurements):
+                if measurements.get("unit") == "pages":
+                    observed_pages.append(measurements["done"])
+                    writer.execute("UPDATE items SET name = 'preserved on low space'")
+                    writer.commit()
+                    exhausted[0] = True
+                    now[0] = 12.0
+
+            with (
+                patch("utils.infinidysk_v2_postgres.shutil.disk_usage", capacity),
+                patch(
+                    "utils.infinidysk_v2_postgres.time.monotonic",
+                    side_effect=lambda: now[0],
+                ),
+                self.assertRaisesRegex(NativePostgresError, "headroom"),
+            ):
+                self.manager._snapshot(job, observe)
+            self.assertEqual(1, len(observed_pages))
+            self.assertGreater(observed_pages[0], 0)
+            self.assertLess(
+                observed_pages[0], writer.execute("PRAGMA page_count").fetchone()[0]
+            )
+            self.assertEqual(
+                (0, 0, 0), writer.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()
+            )
+            self.assertEqual(
+                "preserved on low space",
+                writer.execute("SELECT name FROM items WHERE id = 1").fetchone()[0],
+            )
+        self.assertNotIn("snapshot_private", job)
+        self.assertFalse(
+            any(
+                method in {"POST", "DELETE"} and path.endswith("/migration")
+                for method, path, _body in self.calls
+            )
+        )
+
     def test_indeterminate_validation_callbacks_are_throttled(self):
         saved = []
         save = self.manager._save
@@ -291,6 +621,86 @@ class NativePostgresTests(unittest.TestCase):
         ):
             self.begin()
         self.assertEqual(1, sum(row["stage"] == "backup_validation" for row in saved))
+
+    def test_snapshot_measurement_time_is_not_refreshed_by_heartbeat_or_busy(self):
+        saved = self.snapshot_progress_samples(
+            [
+                (10, "backup", {"unit": "pages", "done": 0, "total": 1000}),
+                (15, "backup", {"unit": "pages", "done": 50, "total": 1000}),
+                (20, "backup", {"unit": "pages", "done": 100, "total": 1000}),
+                (21, "backup", {"unit": "pages", "done": 100, "total": 1000}),
+                (
+                    22,
+                    "backup",
+                    {"unit": "pages", "done": 100, "total": 1000, "blocked": True},
+                ),
+            ]
+        )
+        progress = [row["progress"] for row in saved if row["stage"] == "backup"]
+        self.assertEqual(5, len(progress))
+        self.assertFalse(progress[1]["estimate_reliable"])
+        self.assertIsNone(progress[1]["rate_per_second"])
+        self.assertIsNone(progress[1]["eta_seconds"])
+        self.assertTrue(progress[2]["estimate_reliable"])
+        self.assertGreater(progress[2]["rate_per_second"], 0)
+        self.assertGreater(progress[2]["eta_seconds"], 0)
+        self.assertEqual(
+            [1000, 1005, 1010, 1010, 1010], [row["updated_at"] for row in progress]
+        )
+        self.assertFalse(progress[-1]["estimate_reliable"])
+        self.assertIsNone(progress[-1]["rate_per_second"])
+        self.assertIsNone(progress[-1]["eta_seconds"])
+
+    def test_suppressed_counter_rewinds_and_total_changes_invalidate_phase_estimate(
+        self,
+    ):
+        saved = self.snapshot_progress_samples(
+            [
+                (10, "backup", {"unit": "pages", "done": 0, "total": 1000}),
+                (20, "backup", {"unit": "pages", "done": 100, "total": 1000}),
+                (20.1, "backup", {"unit": "pages", "done": 200, "total": 1000}),
+                (20.2, "backup", {"unit": "pages", "done": 50, "total": 1000}),
+                (21.2, "backup", {"unit": "pages", "done": 150, "total": 1000}),
+                (21.3, "backup", {"unit": "pages", "done": 175, "total": 1100}),
+                (22.3, "backup", {"unit": "pages", "done": 180, "total": 1100}),
+                (24, "backup_fingerprint", {"unit": "bytes", "done": 0, "total": 4096}),
+                (
+                    34,
+                    "backup_fingerprint",
+                    {"unit": "bytes", "done": 2048, "total": 4096},
+                ),
+            ]
+        )
+        progress = [row["progress"] for row in saved if row["stage"] == "backup"]
+        self.assertEqual([0, 100, 50, 150, 175, 180], [row["done"] for row in progress])
+        self.assertTrue(progress[1]["estimate_reliable"])
+        self.assertEqual([1, 1, 2, 2], [row["restarts"] for row in progress[2:]])
+        self.assertEqual(
+            [1000, 1000, 1100, 1100], [row["total"] for row in progress[2:]]
+        )
+        for row in progress[2:]:
+            self.assertFalse(row["estimate_reliable"])
+            self.assertIsNone(row["rate_per_second"])
+            self.assertIsNone(row["eta_seconds"])
+        next_phase = [
+            row["progress"] for row in saved if row["stage"] == "backup_fingerprint"
+        ][-1]
+        self.assertEqual(0, next_phase["restarts"])
+        self.assertTrue(next_phase["estimate_reliable"])
+        self.assertGreater(next_phase["bytes_per_second"], 0)
+
+    def test_repeated_completed_callbacks_do_not_repeatedly_persist_journal(self):
+        samples = [
+            (10, "backup", {"unit": "pages", "done": 0, "total": 1000}),
+            (20, "backup", {"unit": "pages", "done": 500, "total": 1000}),
+        ]
+        samples.extend(
+            (20.1, "backup", {"unit": "pages", "done": 1000, "total": 1000})
+            for _ in range(1000)
+        )
+        saved = self.snapshot_progress_samples(samples)
+        progress = [row["progress"] for row in saved if row["stage"] == "backup"]
+        self.assertEqual([0, 500, 1000], [row["done"] for row in progress])
 
     def test_snapshot_failure_is_private_and_local_cancel_works_without_native_api(
         self,

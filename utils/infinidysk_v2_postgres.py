@@ -32,6 +32,10 @@ class _PreparationCancelled(Exception):
     pass
 
 
+class _SnapshotPreparationError(NativePostgresError):
+    """An authored snapshot refusal safe to show without driver diagnostics."""
+
+
 _NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,62}")
 _HOST = re.compile(r"[A-Za-z0-9_.:-]+")
 _ACTIVE = {
@@ -1024,19 +1028,92 @@ class InfiniDyskV2PostgresManager:
         with closing(
             sqlite3.connect(f"file:{quote(str(source))}?mode=ro", uri=True)
         ) as original:
+            # Chunked backup_step calls otherwise release their read view. A
+            # different writer can then make SQLite restart the entire copy.
+            # WAL lets this fixed view coexist with native writer commits;
+            # holding the same lock in rollback-journal mode would block them.
+            if original.execute("PRAGMA journal_mode").fetchone()[0].lower() != "wal":
+                raise _SnapshotPreparationError(
+                    "The online SQLite recovery snapshot requires WAL mode; "
+                    "review the native database configuration before retrying."
+                )
             with closing(sqlite3.connect(snapshot)) as backup:
                 snapshot.chmod(0o600)
-                original.backup(
-                    backup,
-                    pages=256,
-                    progress=lambda _status, remaining, total: progress(
-                        "backup",
-                        "Saving an independent SQLite recovery snapshot.",
-                        unit="pages",
-                        done=max(0, total - remaining),
-                        total=total,
-                    ),
-                )
+                try:
+                    original.execute("BEGIN")
+                    original.execute(
+                        "SELECT rootpage FROM sqlite_schema LIMIT 1"
+                    ).fetchone()
+                    if (
+                        original.execute("PRAGMA journal_mode").fetchone()[0].lower()
+                        != "wal"
+                    ):
+                        raise _SnapshotPreparationError(
+                            "The SQLite journal mode changed before the recovery "
+                            "snapshot could be established. Review it before retrying."
+                        )
+                    snapshot_at = int(self.clock())
+                    page_size = original.execute("PRAGMA page_size").fetchone()[0]
+                    pages = original.execute("PRAGMA page_count").fetchone()[0]
+                    reserve = max(
+                        256 * 1024**2, min(4 * 1024**3, pages * page_size // 10)
+                    )
+                    last_capacity_check = None
+
+                    def headroom(remaining):
+                        nonlocal last_capacity_check
+                        now = time.monotonic()
+                        if (
+                            last_capacity_check is not None
+                            and now - last_capacity_check < 1
+                            and remaining
+                        ):
+                            return
+                        last_capacity_check = now
+                        required = max(0, remaining) * page_size + reserve
+                        source_free = shutil.disk_usage(source.parent).free
+                        target_free = shutil.disk_usage(directory).free
+                        shared = source.parent.stat().st_dev == directory.stat().st_dev
+                        if target_free < required or source_free < (
+                            required if shared else reserve
+                        ):
+                            raise _SnapshotPreparationError(
+                                "Storage headroom is too low to finish the online SQLite "
+                                "recovery snapshot safely. No native conversion was requested."
+                            )
+                        wal = source.with_name(source.name + "-wal")
+                        wal_bytes = wal.stat().st_size if wal.exists() else 0
+                        job["snapshot_source_wal_peak_bytes_private"] = max(
+                            job.get("snapshot_source_wal_peak_bytes_private", 0),
+                            wal_bytes,
+                        )
+
+                    def copied(status, remaining, total):
+                        # Cancellation stays responsive even between throttled
+                        # observations and while SQLite reports lock contention.
+                        if self._start_cancel.is_set():
+                            raise _PreparationCancelled()
+                        headroom(remaining)
+                        blocked = status not in {sqlite3.SQLITE_OK, sqlite3.SQLITE_DONE}
+                        progress(
+                            "backup",
+                            "Saving an independent SQLite recovery snapshot.",
+                            unit="pages",
+                            done=max(0, total - remaining) if total > 0 else None,
+                            total=total if total > 0 else None,
+                            blocked=blocked,
+                        )
+
+                    headroom(pages)
+                    original.backup(backup, pages=256, progress=copied)
+                finally:
+                    # Do not retain a WAL reader through the much slower
+                    # integrity check or fingerprint readback. This also runs
+                    # after callback failure/cancellation, allowing checkpoints.
+                    try:
+                        original.rollback()
+                    finally:
+                        original.close()
                 progress("backup_validation", "Checking the SQLite recovery snapshot.")
                 backup.set_progress_handler(
                     lambda: (
@@ -1068,26 +1145,81 @@ class InfiniDyskV2PostgresManager:
         _sync_directory(directory)
         job["snapshot_private"] = str(snapshot)
         job["snapshot_sha256"] = digest.hexdigest()
-        job["snapshot_at"] = int(self.clock())
+        job["snapshot_at"] = snapshot_at
 
     def _run_start(self, job):
         from utils.infinidysk_migration_admission import v2_migration_owner
 
-        phase, phase_started, last_saved = None, time.monotonic(), 0.0
+        phase, phase_started, last_saved = None, time.monotonic(), None
+        previous_done = previous_total = measured_at = advanced_at = None
+        restarts, previously_blocked, previously_complete = 0, False, False
+        measurement_valid = False
 
-        def progress(stage, message, *, unit=None, done=None, total=None):
-            nonlocal phase, phase_started, last_saved
+        def progress(
+            stage, message, *, unit=None, done=None, total=None, blocked=False
+        ):
+            nonlocal phase, phase_started, last_saved, previous_done, previous_total
+            nonlocal measured_at, advanced_at, restarts, measurement_valid
+            nonlocal previously_blocked, previously_complete
             if self._start_cancel.is_set():
                 raise _PreparationCancelled()
             now = time.monotonic()
             changed = stage != phase
             if changed:
                 phase, phase_started = stage, now
-            completed = done is not None and total is not None and done >= total
-            if not changed and now - last_saved < 1 and not completed:
+                previous_done = previous_total = measured_at = advanced_at = None
+                restarts, measurement_valid = 0, False
+                previously_blocked = previously_complete = False
+            numeric = (
+                unit in {"pages", "bytes"}
+                and isinstance(done, int)
+                and not isinstance(done, bool)
+                and isinstance(total, int)
+                and not isinstance(total, bool)
+                and total > 0
+                and 0 <= done <= total
+            )
+            unstable = bool(
+                numeric
+                and not blocked
+                and previous_done is not None
+                and (done < previous_done or total != previous_total)
+            )
+            if unstable:
+                restarts += 1
+                measurement_valid = False
+            if blocked:
+                measurement_valid = False
+            if numeric and not blocked:
+                if done != previous_done or total != previous_total:
+                    measured_at = int(self.clock())
+                if done > (previous_done if previous_done is not None else 0):
+                    advanced_at = now
+                    measurement_valid = restarts == 0
+                previous_done, previous_total = done, total
+            completed = numeric and done == total and not blocked
+            urgent = (
+                changed
+                or unstable
+                or blocked != previously_blocked
+                or completed
+                and not previously_complete
+            )
+            previously_blocked, previously_complete = blocked, completed
+            if not urgent and last_saved is not None and now - last_saved < 1:
                 return
             elapsed = max(0, now - phase_started)
-            rate = done / elapsed if done and elapsed > 0 else None
+            reliable = bool(
+                numeric
+                and 0 < done < total
+                and not blocked
+                and restarts == 0
+                and measurement_valid
+                and elapsed >= 10
+                and advanced_at is not None
+                and now - advanced_at <= 30
+            )
+            rate = done / elapsed if reliable else None
             job.update(
                 stage=stage,
                 message=message,
@@ -1103,6 +1235,9 @@ class InfiniDyskV2PostgresManager:
                         if rate and total is not None and done is not None
                         else None
                     ),
+                    "updated_at": measured_at,
+                    "estimate_reliable": reliable,
+                    "restarts": restarts,
                 },
             )
             self._save_start(job)
@@ -1174,6 +1309,7 @@ class InfiniDyskV2PostgresManager:
                 self._save(job)
         except Exception as error:
             # Driver/SQLite errors can contain private paths or credentials.
+            # Only our static snapshot refusal messages are public.
             attempted = job.get("native_admission_attempted") is True
             cancelled = self._start_cancel.is_set() and not attempted
             job.update(
@@ -1189,7 +1325,11 @@ class InfiniDyskV2PostgresManager:
                     else (
                         "Native admission could not be confirmed; inspect its state before continuing."
                         if attempted
-                        else "Preparation stopped before native conversion. SQLite remains active; the retained job can be cancelled safely."
+                        else (
+                            str(error)
+                            if isinstance(error, _SnapshotPreparationError)
+                            else "Preparation stopped before native conversion. SQLite remains active; the retained job can be cancelled safely."
+                        )
                     )
                 ),
             )
