@@ -1,7 +1,7 @@
 services:
   DUMB:
     container_name: DUMB
-    image: iampuid0/dumb:latest
+    image: ghcr.io/i-am-puid-0/dumb:latest
     stop_grace_period: 30s
     shm_size: 128mb
     stdin_open: true

@@ -7,7 +7,7 @@
       "--pull"
     ],
     "args": {
-      "DUMB_IMAGE": "iampuid0/dumb:dev"
+      "DUMB_IMAGE": "ghcr.io/i-am-puid-0/dumb:dev"
     }
   },
   "workspaceFolder": "/workspace",

@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-ARG DUMB_IMAGE=iampuid0/dumb:dev
+ARG DUMB_IMAGE=ghcr.io/i-am-puid-0/dumb:dev
 FROM ${DUMB_IMAGE}
 
 ARG POETRY_VERSION=2.5.1

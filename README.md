@@ -133,9 +133,11 @@ This README intentionally keeps the overview brief. See the DUMB
 [Features documentation](https://dumbarr.com/features/) for the comprehensive
 capability, configuration, and settings reference.
 
-## 🐳 Docker Hub
+## 🏷️ Container images
 
-A prebuilt image is hosted on [Docker Hub](https://hub.docker.com/r/iampuid0/dumb).
+The recommended prebuilt image is hosted on [GitHub Container Registry](https://github.com/I-am-PUID-0/DUMB/pkgs/container/dumb). Use `ghcr.io/i-am-puid-0/dumb:latest` for the stable channel or `ghcr.io/i-am-puid-0/dumb:dev` for development builds. Numbered release tags are also available.
+
+The same images continue to be published to [Docker Hub](https://hub.docker.com/r/iampuid0/dumb) as an alternative registry. Existing Docker Hub image references remain supported.
 
 ## 🖥️ Proxmox LXC
 
@@ -144,10 +146,6 @@ a Debian LXC without Docker. See the
 [Proxmox deployment guide](https://dumbarr.com/deployment/proxmox/) for the
 recommended all-in-one topology, native paths, updates, backups, and the
 additional considerations for Plex or Arr applications in other LXCs.
-
-## 🏷️ GitHub Container Registry
-
-A prebuilt image is hosted on [GitHub Container Registry](https://github.com/I-am-PUID-0/DUMB/pkgs/container/DUMB).
 
 ## 🐳 Docker-compose
 >
@@ -159,7 +157,7 @@ A prebuilt image is hosted on [GitHub Container Registry](https://github.com/I-a
 services:
   DUMB:
     container_name: DUMB
-    image: iampuid0/dumb:latest
+    image: ghcr.io/i-am-puid-0/dumb:latest
     stop_grace_period: 30s
     shm_size: 128mb
     stdin_open: true
