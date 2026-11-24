@@ -2,7 +2,7 @@
 
 > Channel: dev. Canonical base: https://dumbarr.com/dev/
 
-Documentation artifact: release 1.25.34. Source commit: 2147a383f7fa8c22fd0a16c038d818ab570958c9. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.34.
+Documentation artifact: release 1.25.35. Source commit: d4da4edc9aa01c8be7843bb45ef51206188b25d3. Release notes: https://github.com/I-am-PUID-0/DUMB_docs/releases/tag/1.25.35.
 
 DUMB coordinates media services. Match instructions to the installed backend version. Development guides can describe features absent from the latest release.
 
@@ -48,7 +48,7 @@ The retained [setup checklist](features/setup-checklist.md) shows automatic, man
 | Backend and container source | [I-am-PUID-0/DUMB](https://github.com/I-am-PUID-0/DUMB) |
 | Dashboard source | [nicocapalbo/dmbdb](https://github.com/nicocapalbo/dmbdb) |
 | Documentation source | [I-am-PUID-0/DUMB_docs](https://github.com/I-am-PUID-0/DUMB_docs) |
-| Container images | [Docker Hub](https://hub.docker.com/r/iampuid0/dumb) |
+| Container images | [GitHub Container Registry](https://github.com/I-am-PUID-0/DUMB/pkgs/container/dumb); also available on [Docker Hub](https://hub.docker.com/r/iampuid0/dumb) |
 | Bugs and feature requests | [GitHub issues](https://github.com/I-am-PUID-0/DUMB/issues) |
 | Community support | [Discord](https://discord.gg/8dqKUBtbp5) |
 | Financial support | [GitHub Sponsors](https://github.com/sponsors/I-am-PUID-0) |
@@ -7266,10 +7266,16 @@ Open `docker-compose.yml` and review:
 | Host volume paths | Replace `/home/username/docker/DUMB` with the absolute directory created above |
 | `PUID`, `PGID` | The nonzero values returned by `id -u` and `id -g` |
 | `TZ` | A time zone such as `Etc/UTC` |
-| Image | `iampuid0/dumb:latest` for the stable channel; see [documentation versions](../reference/doc-versions.md) for development |
+| Image | `ghcr.io/i-am-puid-0/dumb:latest` for the stable channel; see [documentation versions](../reference/doc-versions.md) for development |
 | Ports | Keep `3005:3005` for normal dashboard/API access |
 | `/dev/dri` | Keep for supported GPU acceleration; remove this device mapping if the host has no such device |
 | `/dev/fuse`, `SYS_ADMIN`, AppArmor option | Required by workflows that create FUSE/rclone mounts |
+
+These guides use GitHub Container Registry (GHCR). Docker Hub remains available
+as `iampuid0/dumb:<tag>`. To move an existing deployment to GHCR, change the
+`image` reference and keep its tag, persistent mounts, and other settings. Pull
+the image with `sudo docker compose pull`, then recreate the container with
+`sudo docker compose up -d`.
 
 For example, the environment section can use:
 
@@ -7423,7 +7429,7 @@ The resulting storage and port section should resemble:
 ```yaml
 services:
   DUMB:
-    image: iampuid0/dumb:latest
+    image: ghcr.io/i-am-puid-0/dumb:latest
     container_name: DUMB
     volumes:
       - /opt/dumb/config:/config
@@ -8350,7 +8356,7 @@ mounts will propagate.
 
 ## Update and recover
 
-- Pull `iampuid0/dumb:latest`, then recreate/redeploy the application.
+- Pull `ghcr.io/i-am-puid-0/dumb:latest`, then recreate/redeploy the application.
 - Preserve `/share/Container/DUMB/config`, `data`, `log`, and `mnt/debrid`.
 - Use Container Station logs first; then review [Troubleshooting](../faq/dumb.md)
   and [Service ports](../reference/ports.md).
@@ -8597,7 +8603,7 @@ flowchart TD
 
 1. Open **Apps**, search for `DUMB`, and select the Distributed Unlimited Media Bridge
    template.
-2. Confirm the image is `iampuid0/dumb:latest` (or the release tag you intend to
+2. Set the image to `ghcr.io/i-am-puid-0/dumb:latest` (or the release tag you intend to
    run).
 3. Configure the four persistent mappings shown below.
 4. Set `TZ`, `PUID`, and `PGID` to values that can access those shares.
@@ -21483,8 +21489,8 @@ problem. A local or pull-request preview is labelled **unreleased** instead.
 
 | Choose | When to use it |
 | --- | --- |
-| **Latest release** | You run a stable DUMB image, such as `iampuid0/dumb:latest` or a numbered stable tag. |
-| **Development** | You run `iampuid0/dumb:dev`, or you want to read about work awaiting a stable release. |
+| **Latest release** | You run a stable DUMB image, such as `ghcr.io/i-am-puid-0/dumb:latest` or a numbered stable tag. |
+| **Development** | You run `ghcr.io/i-am-puid-0/dumb:dev`, or you want to read about work awaiting a stable release. |
 
 Switching keeps you on the same guide where it exists. A feature that has not
 shipped shows an availability page in the release channel with a link to its
